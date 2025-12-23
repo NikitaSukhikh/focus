@@ -19,9 +19,10 @@ interface DroppedIcon {
 
 interface CenterPaneProps {
   onObjectClick?: () => void;
+  onCanvasEmptyClick?: () => void;
 }
 
-export function CenterPane({ onObjectClick }: CenterPaneProps) {
+export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [iconsByIsland, setIconsByIsland] = useState<Record<string, DroppedIcon[]>>({});
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
@@ -514,6 +515,15 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
       });
   };
 
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const clickedIcon = target.closest('[data-icon-tile]');
+    if (clickedIcon) return;
+
+    setSelectedIconId(null);
+    onCanvasEmptyClick?.();
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
       {/* Canvas - Freeform icons */}
@@ -526,12 +536,7 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={(e) => {
-          // Deselect icon when clicking on empty canvas
-          if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.relative.min-h-full')) {
-            setSelectedIconId(null);
-          }
-        }}
+        onClick={handleCanvasClick}
       >
         <div className="relative min-h-full">
           {(selectedIsland && iconsByIsland[selectedIsland.id]?.length) ? null : (
@@ -737,6 +742,7 @@ function IconTile({ id, type, title, x, y, url, description, isSelected, onClick
   return (
     <>
       <button
+        data-icon-tile
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
