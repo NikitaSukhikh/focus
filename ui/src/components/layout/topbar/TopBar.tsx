@@ -132,6 +132,28 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     }
   };
 
+  const handleAddFiles = async () => {
+    try {
+      // Use Tauri's file dialog to select files
+      const { open } = await import('@tauri-apps/api/dialog');
+      const selected = await open({
+        multiple: true,
+        title: 'Select files to add',
+      });
+
+      if (selected) {
+        const paths = Array.isArray(selected) ? selected : [selected];
+        // Emit the same event as OS file drops
+        const customEvent = new CustomEvent('os-file-drop-received', {
+          detail: { paths }
+        });
+        window.dispatchEvent(customEvent);
+      }
+    } catch (err) {
+      console.error('Failed to select files:', err);
+    }
+  };
+
   const handleIntegrationDragEnd = (_e: React.DragEvent<HTMLElement>) => {
     isDraggingRef.current = false;
     // Close dropdown after drag completes
@@ -726,15 +748,17 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         </div>
 
         {/* Internal Storage quick action */}
-        <button
-          type="button"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer no-drag"
-          title="Internal Storage"
-          onClick={handleOpenInternalStorage}
-        >
-          <IntStorageIcon size={16} />
-          Internal Storage
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer no-drag"
+            title="Internal Storage - Click to add files"
+            onClick={handleAddFiles}
+          >
+            <IntStorageIcon size={16} />
+            Add Files
+          </button>
+        </div>
 
         <div className="relative z-20">
           <button
