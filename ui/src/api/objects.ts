@@ -92,4 +92,14 @@ export const objectsApi = {
       throw new Error(`Failed to delete object: ${res.status} ${text}`);
     }
   },
+
+  async getAllByType(type: ObjectType): Promise<ObjectResponse[]> {
+    const res = await fetch(`${API_BASE}/objects/by-type/${type}`);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to list objects by type: ${res.status} ${text}`);
+    }
+    const data = await res.json();
+    return data.objects || [];
+  },
 };

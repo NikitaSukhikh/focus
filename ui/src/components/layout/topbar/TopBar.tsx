@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Mail, Database, Cloud, ChevronRight, Plus, Search } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon, GoogleIcon } from '../../icons/GoogleServiceIcons';
+import { WebviewWindow } from '@tauri-apps/api/window';
+import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
+import { useIslandStore } from '../../../stores/islandStore';
+import { objectsApi } from '../../../api/objects';
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -14,6 +18,7 @@ interface TopBarProps {
 
 export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth }: TopBarProps) {
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
+  const [isGoogleExpanded, setIsGoogleExpanded] = useState(false);
   const [isEmailExpanded, setIsEmailExpanded] = useState(false);
   const [isLinksExpanded, setIsLinksExpanded] = useState(false);
   const [isDatabasesExpanded, setIsDatabasesExpanded] = useState(false);
@@ -26,11 +31,18 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined);
+  const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
+  const [savedLinks, setSavedLinks] = useState<Array<{ id: string; url: string; title: string; description?: string }>>([]);
+  const [isEditingIslandName, setIsEditingIslandName] = useState(false);
+  const [editingIslandName, setEditingIslandName] = useState('');
   const isDraggingRef = useRef(false);
   const integrationsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const integrationsDropdownRef = useRef<HTMLDivElement | null>(null);
   const googleTriggerRef = useRef<HTMLButtonElement | null>(null);
   const googleWindowRef = useRef<Window | null>(null);
+  const islandNameInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
+  const updateIsland = useIslandStore((state) => state.updateIsland);
   const googleIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] =
     [
       { provider: 'google', key: 'gmail', label: 'Gmail', Icon: GmailIcon },
@@ -42,7 +54,6 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     ];
 
   const emailIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
-  const linkIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
   const databaseIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
   const cloudIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
 
@@ -64,6 +75,29 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
       provider,
       key: integrationKey,
       label,
+    };
+
+    e.dataTransfer.setData('text/plain', JSON.stringify(payload));
+    e.dataTransfer.setData('application/json', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleSavedLinkDragStart = (
+    e: React.DragEvent<HTMLElement>,
+    linkId: string,
+    url: string,
+    title: string,
+    description?: string
+  ) => {
+    isDraggingRef.current = true;
+
+    const payload = {
+      source: 'saved-link',
+      linkId,
+      url,
+      label: title,
+      title,
+      description,
     };
 
     e.dataTransfer.setData('text/plain', JSON.stringify(payload));
@@ -152,6 +186,39 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     localStorage.setItem('googleConnected', String(isGoogleConnected));
   }, [isGoogleConnected]);
 
+  // Load saved links on mount and when integrations dropdown opens
+  useEffect(() => {
+    if (isIntegrationsOpen) {
+      objectsApi
+        .getAllByType('link')
+        .then((links) => {
+          const mapped = links.map((link) => ({
+            id: link.id,
+            url: (link.metadata as any)?.url || '',
+            title: link.title,
+            description: link.description,
+          }));
+          setSavedLinks(mapped);
+        })
+        .catch((err) => {
+          console.error('Failed to load saved links:', err);
+        });
+    }
+  }, [isIntegrationsOpen]);
+
+  // Sync island name with editing state
+  useEffect(() => {
+    setEditingIslandName(selectedIsland?.name || '');
+  }, [selectedIsland?.name]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingIslandName && islandNameInputRef.current) {
+      islandNameInputRef.current.focus();
+      islandNameInputRef.current.select();
+    }
+  }, [isEditingIslandName]);
+
   // Check backend status on mount (best-effort)
   useEffect(() => {
     let cancelled = false;
@@ -178,50 +245,123 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   useEffect(() => {
     if (!isGoogleSigningIn) return;
     let cancelled = false;
-    const interval = window.setInterval(async () => {
+
+    const checkStatus = async () => {
       try {
         const res = await fetch('/api/google/status');
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.log('Status check failed:', res.status);
+          return false;
+        }
         const data = await res.json();
-        if (cancelled) return;
+        console.log('Status check result:', data);
+        if (cancelled) return false;
         if (data?.connected) {
+          console.log('Connected! Updating UI...');
           setIsGoogleConnected(true);
           setIsGoogleSigningIn(false);
-          if (googleWindowRef.current && !googleWindowRef.current.closed) {
-            googleWindowRef.current.close();
-          }
           setIsGoogleMenuOpen(false);
+
+          // Auto-close the OAuth window
+          if (googleWindowRef.current) {
+            try {
+              googleWindowRef.current.close();
+            } catch (e) {
+              console.log('Window already closed');
+            }
+            googleWindowRef.current = null;
+          }
+
+          return true;
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error('Status check error:', err);
       }
-      // Stop polling if user closed popup
-      if (googleWindowRef.current && googleWindowRef.current.closed) {
-        setIsGoogleSigningIn(false);
+      return false;
+    };
+
+    // Check immediately
+    checkStatus();
+
+    // Then poll every 500ms
+    const interval = window.setInterval(async () => {
+      const connected = await checkStatus();
+      if (connected) {
+        window.clearInterval(interval);
+        return;
       }
-    }, 2000);
+    }, 500);
+
+    // Stop polling after 5 minutes (timeout)
+    const timeout = window.setTimeout(() => {
+      setIsGoogleSigningIn(false);
+      window.clearInterval(interval);
+    }, 300000);
+
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      window.clearTimeout(timeout);
     };
   }, [isGoogleSigningIn]);
 
   const handleGoogleSignIn = () => {
     const run = async () => {
       try {
+        console.log('Fetching Google auth URL...');
         const res = await fetch('/api/google/auth/url');
-        if (!res.ok) throw new Error('Failed to fetch Google auth URL');
+        console.log('Response status:', res.status);
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('Error response:', errorText);
+          throw new Error(`Failed to fetch Google auth URL: ${res.status}`);
+        }
+
         const data = await res.json();
+        console.log('Auth data received:', data);
+
         if (data?.auth_url) {
-          const win = window.open(data.auth_url, '_blank', 'noopener,noreferrer');
-          googleWindowRef.current = win || null;
-          setIsGoogleSigningIn(true);
+          console.log('Opening auth URL:', data.auth_url);
+
+          try {
+            // Create a popup-style Tauri window for OAuth
+            const webview = new WebviewWindow('google-oauth', {
+              url: data.auth_url,
+              title: 'Sign in with Google',
+              width: 500,
+              height: 600,
+              resizable: true,
+              center: true,
+              alwaysOnTop: false,
+              decorations: true,
+              skipTaskbar: false,
+            });
+
+            console.log('WebviewWindow created:', webview.label);
+
+            // Store reference for auto-close
+            googleWindowRef.current = webview as any;
+
+            // Listen for window close
+            webview.once('tauri://destroyed', () => {
+              console.log('OAuth window closed');
+              googleWindowRef.current = null;
+            });
+
+            // Start polling for status
+            setIsGoogleSigningIn(true);
+          } catch (windowError) {
+            console.error('Failed to create WebviewWindow:', windowError);
+            throw new Error('Failed to open OAuth window. Please try again.');
+          }
         } else {
           throw new Error('Missing auth_url in response');
         }
       } catch (err) {
-        console.error(err);
-        alert('Could not start Google sign-in. Please try again.');
+        console.error('Google sign-in error:', err);
+        const message = err instanceof Error ? err.message : 'Could not start Google sign-in. Please try again.';
+        alert(message);
       } finally {
         // keep menu open to show status while polling
       }
@@ -251,8 +391,57 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     ? 'Google Authorisation is On. Click to manage.'
     : 'Google Authorisation is Off. Click to sign in.';
 
+  const handleAddLink = async (url: string, title: string, description: string) => {
+    if (!selectedIsland) {
+      alert('Please select an island first');
+      return;
+    }
+
+    try {
+      await objectsApi.create(selectedIsland.id, {
+        type: 'link',
+        title,
+        url,
+        description,
+        x: 200,
+        y: 200,
+      });
+
+      // Reload saved links
+      const links = await objectsApi.getAllByType('link');
+      const mapped = links.map((link) => ({
+        id: link.id,
+        url: (link.metadata as any)?.url || '',
+        title: link.title,
+        description: link.description,
+      }));
+      setSavedLinks(mapped);
+    } catch (err) {
+      console.error('Failed to create link:', err);
+      alert('Failed to add link. Please try again.');
+    }
+  };
+
+  const handleIslandNameSubmit = async () => {
+    if (selectedIsland && editingIslandName.trim() && editingIslandName.trim() !== selectedIsland.name) {
+      await updateIsland(selectedIsland.id, editingIslandName.trim());
+    } else {
+      setEditingIslandName(selectedIsland?.name || '');
+    }
+    setIsEditingIslandName(false);
+  };
+
+  const handleIslandNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleIslandNameSubmit();
+    } else if (e.key === 'Escape') {
+      setEditingIslandName(selectedIsland?.name || '');
+      setIsEditingIslandName(false);
+    }
+  };
+
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4">
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4">
       {/* Left section */}
       <div
         className="flex items-center gap-3 transition-all duration-200"
@@ -295,20 +484,36 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                   Drag and Drop to the Main Pane
                 </div>
 
-                {googleIntegrations.map(({ provider, key, label, Icon }) => (
+                {/* Google Section */}
+                <div>
                   <button
-                    key={key}
-                    draggable
-                    onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
-                    onDrag={handleIntegrationDrag}
-                    onDragEnd={handleIntegrationDragEnd}
-                    className="w-full px-4 py-2 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                    onClick={() => setIsGoogleExpanded(!isGoogleExpanded)}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
                   >
-                    <Icon size={16} />
-                    {label}
+                    <div className="flex items-center gap-2">
+                      <GoogleIcon size={16} />
+                      Google
+                    </div>
+                    <ChevronRight size={14} className={`transition-transform ${isGoogleExpanded ? 'rotate-90' : ''}`} />
                   </button>
-                ))}
-                <div className="border-t border-slate-200 my-1" />
+                  {isGoogleExpanded && (
+                    <div className="space-y-1">
+                      {googleIntegrations.map(({ provider, key, label, Icon }) => (
+                        <div
+                          key={key}
+                          draggable={true}
+                          onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
+                          onDrag={handleIntegrationDrag}
+                          onDragEnd={handleIntegrationDragEnd}
+                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          <Icon size={14} />
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Email Section */}
                 <div>
@@ -358,22 +563,27 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                   </button>
                   {isLinksExpanded && (
                     <div className="space-y-1">
-                      {linkIntegrations.map(({ provider, key, label, Icon }) => (
-                        <div
-                          key={key}
-                          draggable={true}
-                          onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
-                          onDragEnd={handleIntegrationDragEnd}
-                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing"
-                        >
-                          <Icon size={14} />
-                          {label}
-                        </div>
-                      ))}
-                      <button className="w-full px-4 py-2 pl-10 text-left text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                      <button
+                        onClick={() => setIsAddLinkDialogOpen(true)}
+                        className="w-full px-4 py-2 pl-10 text-left text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                      >
                         <Plus size={14} />
                         Add a link/website
                       </button>
+                      {savedLinks.map((link) => (
+                        <div
+                          key={link.id}
+                          draggable={true}
+                          onDragStart={(e) => handleSavedLinkDragStart(e, link.id, link.url, link.title, link.description)}
+                          onDrag={handleIntegrationDrag}
+                          onDragEnd={handleIntegrationDragEnd}
+                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                          title={link.description || link.url}
+                        >
+                          <Link2 size={14} className="text-indigo-600" />
+                          <span className="truncate">{link.title}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -490,6 +700,33 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         </div>
       </div>
 
+      {/* Center section - Island Name */}
+      <div className="flex-1 flex items-center justify-center px-4">
+        {selectedIsland ? (
+          isEditingIslandName ? (
+            <input
+              ref={islandNameInputRef}
+              type="text"
+              value={editingIslandName}
+              onChange={(e) => setEditingIslandName(e.target.value)}
+              onKeyDown={handleIslandNameKeyDown}
+              onBlur={handleIslandNameSubmit}
+              className="text-xl font-semibold text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center max-w-md"
+            />
+          ) : (
+            <h1
+              onDoubleClick={() => setIsEditingIslandName(true)}
+              className="text-xl font-semibold text-slate-900 cursor-pointer hover:text-blue-600 transition-colors"
+              title="Double-click to rename"
+            >
+              {selectedIsland.name}
+            </h1>
+          )
+        ) : (
+          <span className="text-xl font-semibold text-slate-400">No Island Selected</span>
+        )}
+      </div>
+
       {/* Right section */}
       <div className="flex items-center gap-2">
         {/* Search Bar */}
@@ -535,6 +772,13 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
           <Settings size={20} />
         </button>
       </div>
+
+      {/* Add Link Dialog */}
+      <AddLinkDialog
+        isOpen={isAddLinkDialogOpen}
+        onClose={() => setIsAddLinkDialogOpen(false)}
+        onAdd={handleAddLink}
+      />
     </header>
   );
 }
