@@ -1,0 +1,59 @@
+<!-- Vite HTML shell mounting the React app root. -->
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Alfy</title>
+    <style>
+      /* Soft neutral backdrop to avoid any dark halo behind content */
+      html, body, #root {
+        margin: 0;
+        background: #f8fafc;
+        color: #0f172a;
+        min-height: 100vh;
+        width: 100%;
+      }
+      #root {
+        position: relative;
+        isolation: isolate;
+      }
+      /* Minimal splash with Alfy mark centered on screen */
+      #alfy-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 20% 20%, #0f172a, #0b1021 55%);
+        z-index: 50;
+        opacity: 1;
+        transition: opacity 200ms ease;
+      }
+      #alfy-splash.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #alfy-splash .mark {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #3b82f6, #a855f7);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        display: grid;
+        place-items: center;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        font-size: 32px;
+        font-weight: 700;
+        color: #0b1021;
+        letter-spacing: -0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="alfy-splash">
+      <div class="mark">A</div>
+    </div>
+    <div id="root"></div>
+  </body>
+</html>
