@@ -6,6 +6,8 @@ import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
 import { buildFaviconUrl } from '../../../utils/favicon';
+import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
+import { getFileTypeIcon } from '../../icons/FileTypeIcons';
 
 type IconKind = 'link' | 'file' | 'gmail' | 'google_drive' | 'google_sheets' | 'google_docs' | 'google_slides' | 'text' | 'telegram' | 'intstorage' | 'unknown';
 
@@ -20,6 +22,7 @@ interface DroppedIcon {
   description?: string; // For all objects
   faviconUrl?: string;
   service?: string;
+  filePath?: string; // For file objects - path to original file
 }
 
 interface CenterPaneProps {
@@ -54,6 +57,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           const url = obj.type === 'link' ? (meta.url as string) : undefined;
           const service = meta.service as string | undefined;
           const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
+          const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
 
           let kind: IconKind =
             obj.type === 'link'
@@ -87,6 +91,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
             service,
             description,
             faviconUrl,
+            filePath,
           };
         });
         setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
@@ -133,12 +138,19 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       const customEvent = event as CustomEvent<{ paths: string[] }>;
       const paths = customEvent.detail?.paths || [];
 
+      console.log('[OS FILE DROP] Event received:', {
+        hasIsland: !!selectedIsland,
+        hasPane: !!paneRef.current,
+        pathCount: paths.length,
+        paths
+      });
+
       if (!selectedIsland || !paneRef.current || paths.length === 0) {
-        console.log('[OS FILE DROP] Missing island or pane ref');
+        console.log('[OS FILE DROP] Aborting - missing requirements');
         return;
       }
 
-      console.log('[OS FILE DROP] Files dropped:', paths);
+      console.log('[OS FILE DROP] Processing files:', paths);
 
       // Create file objects at center of pane for each dropped file
       const rect = paneRef.current.getBoundingClientRect();
@@ -148,6 +160,8 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       paths.forEach((filePath, index) => {
         // Extract filename from path
         const filename = filePath.split(/[\\/]/).pop() || 'Unknown File';
+
+        console.log('[OS FILE DROP] Processing file:', { filePath, filename });
 
         // Offset each file slightly so they don't all stack on top of each other
         const offsetX = (index % 3) * 80;
@@ -172,22 +186,32 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           title: filename,
           x,
           y,
+          filePath: filePath,
         };
 
-        setIconsByIsland((prev) => ({
-          ...prev,
-          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
-        }));
+        console.log('[OS FILE DROP] Creating optimistic icon:', { tempId, filename, x, y, filePath });
+
+        setIconsByIsland((prev) => {
+          const newState = {
+            ...prev,
+            [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
+          };
+          console.log('[OS FILE DROP] Updated icons state:', newState);
+          return newState;
+        });
 
         // Create object in backend
         objectsApi
           .create(selectedIsland.id, payload)
           .then((created) => {
             // Replace temp ID with real ID from backend
+            const meta = (created.metadata || {}) as Record<string, any>;
+            const createdFilePath = meta.file_path as string;
+
             setIconsByIsland((prev) => ({
               ...prev,
               [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id } : i
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
               ),
             }));
           })
@@ -332,6 +356,78 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       // Update backend
       objectsApi.updatePosition(iconId, x, y).catch((err) => {
         console.error('Failed to update position:', err);
+      });
+      return;
+    }
+
+    // Check for OS file drops (from file manager)
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      console.log('[DROP] OS files dropped via drag handler:', files);
+      console.warn('[DROP] Note: fileDropEnabled is false in Tauri config, so files should come via os-file-drop event instead');
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      Array.from(files).forEach((file, index) => {
+        // Get file path if available (Electron/Tauri provide this)
+        const filePath = (file as any).path || file.name;
+        const filename = file.name;
+        console.log('[DROP] Processing file:', { filename, filePath, hasPath: !!(file as any).path });
+
+        // Offset each file slightly so they don't all stack on top of each other
+        const offsetX = (index % 3) * 80;
+        const offsetY = Math.floor(index / 3) * 80;
+        const x = centerX + offsetX;
+        const y = centerY + offsetY;
+
+        // Create file object payload
+        const payload: ObjectCreatePayload = {
+          type: 'file',
+          title: filename,
+          file_path: filePath,
+          x,
+          y,
+        };
+
+        // Optimistically add icon
+        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
+        const optimisticIcon: DroppedIcon = {
+          id: tempId,
+          type: 'file',
+          title: filename,
+          x,
+          y,
+          filePath: filePath,
+        };
+
+        setIconsByIsland((prev) => ({
+          ...prev,
+          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
+        }));
+
+        // Create object in backend
+        objectsApi
+          .create(selectedIsland.id, payload)
+          .then((created) => {
+            // Replace temp ID with real ID from backend
+            const meta = (created.metadata || {}) as Record<string, any>;
+            const createdFilePath = meta.file_path as string;
+
+            setIconsByIsland((prev) => ({
+              ...prev,
+              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
+              ),
+            }));
+          })
+          .catch((err) => {
+            console.error('Failed to create file object:', err);
+            // Remove optimistic icon on error
+            setIconsByIsland((prev) => ({
+              ...prev,
+              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+            }));
+          });
       });
       return;
     }
@@ -604,6 +700,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
               url={icon.url}
               description={icon.description}
               faviconUrl={icon.faviconUrl}
+              filePath={icon.filePath}
               isSelected={selectedIconId === icon.id}
               onClick={() => {
                 setSelectedIconId(icon.id);
@@ -651,7 +748,8 @@ interface IconTileProps {
   y: number;
   url?: string;
   description?: string;
-   faviconUrl?: string;
+  faviconUrl?: string;
+  filePath?: string;
   isSelected?: boolean;
   onClick?: () => void;
   onPositionChange?: (_x: number, _y: number) => void;
@@ -659,7 +757,7 @@ interface IconTileProps {
   onRename?: (_newTitle: string) => void;
 }
 
-function IconTile({ id, type, title, x, y, url, description, faviconUrl, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
+function IconTile({ id, type, title, x, y, url, description, faviconUrl, filePath, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
   const [isDragging, setIsDragging] = React.useState(false);
   const [skipTransition, setSkipTransition] = React.useState(false);
   const [showContextMenu, setShowContextMenu] = React.useState(false);
@@ -667,11 +765,36 @@ function IconTile({ id, type, title, x, y, url, description, faviconUrl, isSelec
   const [isRenaming, setIsRenaming] = React.useState(false);
   const [renamingValue, setRenamingValue] = React.useState(title);
   const [useFavicon, setUseFavicon] = React.useState(true);
+  const [thumbnailUrl, setThumbnailUrl] = React.useState<string | null>(null);
   const renameInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     setUseFavicon(true);
   }, [faviconUrl]);
+
+  // Load thumbnail for image files
+  React.useEffect(() => {
+    console.log('[ICON TILE] Checking thumbnail for:', { type, filePath, title });
+    if (type === 'file' && filePath && canShowImageThumbnail(filePath)) {
+      // Build thumbnail URL
+      const params = new URLSearchParams({
+        file_path: filePath,
+        max_width: '256',
+        max_height: '256',
+        quality: '85',
+      });
+      const url = `/api/thumbnails/image?${params.toString()}`;
+      console.log('[ICON TILE] Setting thumbnail URL:', url);
+      setThumbnailUrl(url);
+    } else {
+      console.log('[ICON TILE] No thumbnail needed:', {
+        isFile: type === 'file',
+        hasFilePath: !!filePath,
+        canShowThumbnail: filePath ? canShowImageThumbnail(filePath) : false
+      });
+      setThumbnailUrl(null);
+    }
+  }, [type, filePath, title]);
 
   const handleDragStart = (e: React.DragEvent) => {
     // Store current icon position and cursor position
@@ -802,6 +925,26 @@ function IconTile({ id, type, title, x, y, url, description, faviconUrl, isSelec
       : Grid3x3;
 
   const renderIcon = () => {
+    // Show thumbnail for image files
+    if (type === 'file' && thumbnailUrl) {
+      return (
+        <img
+          src={thumbnailUrl}
+          alt={title}
+          className="w-12 h-12 rounded-md object-cover bg-white border border-slate-200"
+          onError={() => setThumbnailUrl(null)}
+        />
+      );
+    }
+
+    // Show file type icon for non-image files
+    if (type === 'file' && filePath) {
+      const fileTypeInfo = detectFileType(filePath);
+      const FileTypeIconComponent = getFileTypeIcon(fileTypeInfo.extension);
+      return <FileTypeIconComponent size={48} />;
+    }
+
+    // Show favicon for links
     if (type === 'link' && faviconUrl && useFavicon) {
       return (
         <img
@@ -812,6 +955,8 @@ function IconTile({ id, type, title, x, y, url, description, faviconUrl, isSelec
         />
       );
     }
+
+    // Default icon
     return <Icon size={48} />;
   };
 
