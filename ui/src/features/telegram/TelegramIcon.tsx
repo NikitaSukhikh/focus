@@ -1,0 +1,29 @@
+import React from 'react';
+
+interface TelegramIconProps {
+  size?: number;
+}
+
+export function TelegramIcon({ size = 16 }: TelegramIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 240 240"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="120" cy="120" r="120" fill="#2AABEE" />
+      <path
+        fill="#ffffff"
+        d="M184.6 64.3 47.1 119.2c-4.7 1.9-4.6 8.6.2 10.3l34.9 12.3 13.4 42.6c1.6 4.9 7.9 6.6 11.9 3.2l19.3-16.6c2.9-2.5 7.1-2.7 10.3-.6l34.8 23.1c4.6 3 10.7.8 12.1-4.4l24.5-112.2c1.2-5.1-3.7-9.5-8.9-7.7Z"
+      />
+      <path
+        fill="#c8e8ff"
+        d="M99.8 154.4 95 184.6c-.6 3.6 3.2 6.3 6.4 4.5l17.3-10.1 33.4-61.6c1.8-3.3-2-6.8-5-4.6l-47.3 34.7a8.1 8.1 0 0 0-3 5Z"
+      />
+    </svg>
+  );
+}

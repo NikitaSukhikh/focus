@@ -6,7 +6,7 @@ Dependencies include database sessions, authentication, settings access, and mor
 """
 
 from typing import AsyncGenerator, Optional
-from fastapi import Depends, HTTPException, Header, Path, status
+from fastapi import Depends, HTTPException, Header, Path, Request, status
 
 from app.core.config import Settings, get_settings
 from app.core.logging import get_logger
@@ -333,7 +333,7 @@ class FilterParams:
 
 
 # Validation helpers
-def validate_uuid(value: str) -> str:
+def validate_uuid(request: Request) -> str:
     """
     Validate that a string is a valid UUID.
 
@@ -353,13 +353,25 @@ def validate_uuid(value: str) -> str:
     """
     import uuid
 
+    # Prefer path params, but allow query fallback for flexibility.
+    candidate: Optional[str] = None
+    if request.path_params:
+        candidate = next(iter(request.path_params.values()))
+    elif request.query_params.get("value"):
+        candidate = request.query_params.get("value")
+
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid UUID: must be provided",
+        )
+
     try:
-        uuid.UUID(value)
-        return value
+        return uuid.UUID(str(candidate))
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid UUID: must be a valid UUID"
+            detail="Invalid UUID: must be a valid UUID"
         )
 
 

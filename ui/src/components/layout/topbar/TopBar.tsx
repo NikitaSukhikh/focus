@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Mail, Database, Cloud, ChevronRight, Plus, Search } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon, GoogleIcon } from '../../icons/GoogleServiceIcons';
+import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
+import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { WebviewWindow } from '@tauri-apps/api/window';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
 import { useIslandStore } from '../../../stores/islandStore';
@@ -484,6 +486,19 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                   Drag and Drop to the Main Pane
                 </div>
 
+                {/* Telegram quick action */}
+                <div
+                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing"
+                  draggable={true}
+                  onDragStart={(e) => handleIntegrationDragStart(e, 'telegram', 'telegram', 'Telegram')}
+                  onDrag={handleIntegrationDrag}
+                  onDragEnd={handleIntegrationDragEnd}
+                  title="Drag to add a Telegram integration"
+                >
+                  <TelegramIcon size={14} />
+                  Telegram
+                </div>
+
                 {/* Google Section */}
                 <div>
                   <button
@@ -659,6 +674,16 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
             </>
           )}
         </div>
+
+        {/* Internal Storage quick action */}
+        <button
+          type="button"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer no-drag"
+          title="Internal Storage"
+        >
+          <IntStorageIcon size={16} />
+          Internal Storage
+        </button>
 
         <div className="relative z-20">
           <button

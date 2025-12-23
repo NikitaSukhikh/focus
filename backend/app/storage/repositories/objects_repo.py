@@ -150,6 +150,8 @@ class ObjectsRepository:
             metadata = {
                 "content": object_data.content,
             }
+            if getattr(object_data, "service", None):
+                metadata["service"] = object_data.service
 
         # Add position coordinates if provided
         if hasattr(object_data, 'x') and object_data.x is not None:
@@ -410,17 +412,25 @@ class ObjectsRepository:
                 return None
 
             update_data = object_data.model_dump(exclude_unset=True, exclude_none=True)
-            metadata_updates = update_data.pop("metadata", None)
+            # Pull metadata updates directly to avoid Pydantic omissions
+            metadata_updates = object_data.metadata if object_data.metadata is not None else update_data.pop("metadata", None)
             for key, value in update_data.items():
                 setattr(obj, key, value)
+            logger.debug("Object update payload", extra={"object_id": str(object_id), "update_data": update_data, "metadata_updates": metadata_updates})
             if metadata_updates:
                 current_meta = obj.metadata_json or {}
                 current_meta.update(metadata_updates)
-                obj.metadata_json = current_meta
-            obj.updated_at = datetime.utcnow()
-
-            await session.commit()
-            await session.refresh(obj)
+                await session.execute(
+                    update(Object)
+                    .where(Object.id == str(object_id))
+                    .values(metadata_json=current_meta, updated_at=datetime.utcnow())
+                )
+                await session.commit()
+                await session.refresh(obj)
+            else:
+                obj.updated_at = datetime.utcnow()
+                await session.commit()
+                await session.refresh(obj)
 
             logger.info(
                 f"Updated object: {obj.title}",

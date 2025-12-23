@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Search } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface PreviewPaneProps {
   isOpen: boolean;
@@ -23,7 +23,6 @@ export function PreviewPane({ isOpen, onClose, width, onResizeStart }: PreviewPa
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200">
         <div className="flex items-center gap-2">
-          <Search size={18} className="text-blue-600" />
           <h2 className="text-lg font-semibold text-slate-900">Preview</h2>
         </div>
         <button
