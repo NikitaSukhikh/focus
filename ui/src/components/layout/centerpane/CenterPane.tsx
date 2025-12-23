@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Grid3x3, Link, FileText, Edit2, Trash2 } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
+import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
+import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
 
-type IconKind = 'link' | 'file' | 'gmail' | 'google_drive' | 'google_sheets' | 'google_docs' | 'google_slides' | 'text' | 'unknown';
+type IconKind = 'link' | 'file' | 'gmail' | 'google_drive' | 'google_sheets' | 'google_docs' | 'google_slides' | 'text' | 'telegram' | 'intstorage' | 'unknown';
 
 interface DroppedIcon {
   id: string;
@@ -47,6 +49,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
           const description = obj.type !== 'google_drive' ? obj.description : undefined;
           const url = obj.type === 'link' ? (meta.url as string) : undefined;
+          const service = meta.service as string | undefined;
 
           let kind: IconKind =
             obj.type === 'link'
@@ -55,6 +58,10 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
               ? 'file'
               : obj.type === 'gmail'
               ? 'gmail'
+              : service === 'telegram'
+              ? 'telegram'
+              : service === 'intstorage'
+              ? 'intstorage'
               : obj.type === 'google_drive'
               ? (
                 serviceKey === 'sheets' ? 'google_sheets' :
@@ -73,6 +80,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
             y,
             serviceKey,
             url,
+            service,
             description,
           };
         });
@@ -341,6 +349,28 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           const key = (payload?.key || '').toString().toLowerCase();
           const label = payload?.label || payload?.title || 'Integration';
 
+          if (provider === 'telegram') {
+            return {
+              type: 'text',
+              title: label,
+              content: 'Telegram integration',
+              description: payload?.description,
+              service: 'telegram',
+              x,
+              y,
+            };
+          }
+          if (provider === 'intstorage') {
+            return {
+              type: 'text',
+              title: label,
+              content: 'Internal storage integration',
+              description: payload?.description,
+              service: 'intstorage',
+              x,
+              y,
+            };
+          }
           if (provider.includes('gmail') || key.includes('gmail')) {
             return {
               type: 'gmail',
@@ -437,6 +467,8 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
     // Optimistically add icon
     const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const optimisticType: IconKind =
+      payload.service === 'telegram' ? 'telegram' :
+      payload.service === 'intstorage' ? 'intstorage' :
       payload.type === 'gmail' ? 'gmail' :
       payload.type === 'google_drive' ? (
         serviceKey === 'sheets' ? 'google_sheets' :
@@ -467,7 +499,11 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       .then((created) => {
         const createdServiceKey = created.description;
         const iconType: IconKind =
-          created.type === 'gmail'
+          (created.metadata as any)?.service === 'telegram'
+            ? 'telegram'
+            : (created.metadata as any)?.service === 'intstorage'
+            ? 'intstorage'
+            : created.type === 'gmail'
             ? 'gmail'
             : created.type === 'google_drive'
             ? (
@@ -481,7 +517,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
             : created.type === 'file'
             ? 'file'
             : created.type === 'text'
-            ? 'text'
+            ? ((created.metadata as any)?.service === 'telegram' ? 'telegram' : (created.metadata as any)?.service === 'intstorage' ? 'intstorage' : 'text')
             : 'unknown';
 
         const meta = (created.metadata || {}) as Record<string, any>;
@@ -735,6 +771,10 @@ function IconTile({ id, type, title, x, y, url, description, isSelected, onClick
       ? DocsIcon
       : type === 'google_slides'
       ? SlidesIcon
+      : type === 'telegram'
+      ? TelegramIcon
+      : type === 'intstorage'
+      ? IntStorageIcon
       : type === 'text'
       ? FileText
       : Grid3x3;

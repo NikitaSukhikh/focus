@@ -442,6 +442,11 @@ class TextObjectCreate(ObjectBase):
         max_length=10000,
         description="Text content"
     )
+    service: Optional[str] = Field(
+        None,
+        max_length=50,
+        description="Optional service identifier (e.g., telegram)"
+    )
 
     @field_validator("type")
     @classmethod

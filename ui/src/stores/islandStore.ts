@@ -149,18 +149,30 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
 
   deleteIsland: async (id: string) => {
     const { islands, selectedIslandId } = get();
+    const previousIslands = islands;
+
+    // Optimistically remove locally
+    const newIslands = islands.filter((i) => i.id !== id);
+    const nextSelected =
+      selectedIslandId === id
+        ? newIslands[0]?.id || null
+        : newIslands.some((i) => i.id === selectedIslandId)
+        ? selectedIslandId
+        : newIslands[0]?.id || null;
+
+    set({ islands: newIslands, selectedIslandId: nextSelected });
+
+    // Skip backend call for local-only temp islands
+    if (id.startsWith('temp-')) {
+      return;
+    }
+
     try {
       await islandsApi.delete(id);
-      const newIslands = islands.filter(i => i.id !== id);
-      set({
-        islands: newIslands,
-        selectedIslandId:
-          selectedIslandId === id
-            ? newIslands[0]?.id || null
-            : (newIslands.some((i) => i.id === selectedIslandId) ? selectedIslandId : newIslands[0]?.id || null)
-      });
     } catch (error) {
       console.error('Failed to delete island:', error);
+      // Restore previous state on failure
+      set({ islands: previousIslands, selectedIslandId });
     }
   },
 }));
