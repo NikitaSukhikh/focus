@@ -1,0 +1,18 @@
+2025-12-10 13:20:36.722 [INFO] app.main: ============================================================
+2025-12-10 13:20:36.722 [INFO] app.main: Starting Alfy backend (simplified)...
+2025-12-10 13:20:36.722 [INFO] app.main: [INFO] Session log file: logs\alfy_10-12-2025_13-20.log
+2025-12-10 13:20:36.722 [INFO] app.main: ============================================================
+2025-12-10 13:20:37.064 [INFO] app.core.simple_llm: [OK] Resolved model path: llm_models\Qwen_Qwen3-1.7B-Q4_K_M.gguf
+2025-12-10 13:20:37.065 [INFO] app.core.simple_llm: [INFO] Loading Qwen 1.7B from llm_models\Qwen_Qwen3-1.7B-Q4_K_M.gguf...
+2025-12-10 13:20:37.814 [INFO] app.core.simple_llm: [OK] Model loaded successfully in 0.99s
+2025-12-10 13:20:37.915 [INFO] app.main: [OK] Model preloaded successfully
+2025-12-10 13:20:37.915 [INFO] app.main: [INFO] CPU usage during load: 0.0%
+2025-12-10 13:20:37.915 [INFO] app.main: [INFO] Memory usage: 337.3 MB
+2025-12-10 13:20:37.916 [INFO] app.main: ============================================================
+2025-12-10 13:20:37.916 [INFO] app.main: Alfy backend ready!
+2025-12-10 13:20:37.916 [INFO] app.main: ============================================================
+2025-12-10 13:22:01.330 [DEBUG] app.storage.conversation_store: [OK] Saved conversation b2a47215-d467-41f8-a15c-7c0212605d5f
+2025-12-10 13:22:01.431 [INFO] app.core.simple_llm: [INFO] Generating response for 2 messages...
+2025-12-10 13:22:16.919 [INFO] app.core.simple_llm: [OK] Generated 388 chars in 15.49s
+2025-12-10 13:22:17.020 [INFO] app.main: [INFO] Inference CPU: 93.4%, Memory: 1393.4 MB
+2025-12-10 13:22:17.025 [DEBUG] app.storage.conversation_store: [OK] Saved conversation b2a47215-d467-41f8-a15c-7c0212605d5f

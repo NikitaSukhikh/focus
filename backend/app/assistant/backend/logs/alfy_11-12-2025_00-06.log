@@ -1,0 +1,55 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-11 00:06:58
+================================================================================
+
+MODEL CONFIGURATION:
+  Model: Qwen 1.7B (Q4_K_M quantization)
+  n_ctx: 2048          # Context window
+  n_threads: 2         # Threading (ultra-conservative)
+  n_batch: 256         # Batch processing
+  n_gpu_layers: 0      # CPU only
+  Semaphore: 1         # Sequential processing (no parallelism)
+
+INFERENCE SETTINGS:
+  max_tokens: 512      # Maximum output tokens
+  timeout: 30s         # Response timeout
+  temperature: 0.7     # Sampling temperature
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 8.3 GB (47.6% used)
+
+OPTIMIZATION NOTES:
+  - Ultra-conservative settings (2 threads) to prevent crashes
+  - Sequential processing only (no parallel inference)
+  - Reduced batch size for lower memory footprint
+
+================================================================================
+
+2025-12-11 00:06:58.583 [INFO] app.main: ============================================================
+2025-12-11 00:06:58.583 [INFO] app.main: Starting Alfy backend (simplified)...
+2025-12-11 00:06:58.583 [INFO] app.main: [INFO] Session log file: logs\alfy_11-12-2025_00-06.log
+2025-12-11 00:06:58.583 [INFO] app.main: ============================================================
+2025-12-11 00:06:58.684 [ERROR] app.main: [FAIL] Failed to preload model: name 'llm' is not defined
+Traceback (most recent call last):
+  File "D:\alfy\backend\app\main.py", line 141, in startup_event
+    await llm._load_model()
+          ^^^
+NameError: name 'llm' is not defined
+2025-12-11 00:06:58.686 [WARNING] app.main: Model will be loaded on first request
+2025-12-11 00:06:58.687 [INFO] app.main: ============================================================
+2025-12-11 00:06:58.687 [INFO] app.main: Alfy backend ready!
+2025-12-11 00:06:58.687 [INFO] app.main: ============================================================
+2025-12-11 00:07:15.109 [INFO] app.main: ================================================================================
+2025-12-11 00:07:15.110 [INFO] app.main: SESSION SUMMARY
+2025-12-11 00:07:15.110 [INFO] app.main: ================================================================================
+2025-12-11 00:07:15.110 [INFO] app.main: [INFO] Session duration: 0:00:16.538797
+2025-12-11 00:07:15.110 [INFO] app.main: [INFO] Peak CPU usage: 0.0%
+2025-12-11 00:07:15.110 [INFO] app.main: [INFO] Peak memory usage: 0.0 MB
+2025-12-11 00:07:15.110 [INFO] app.main: [INFO] Final memory usage: 50.4 MB
+2025-12-11 00:07:15.110 [INFO] app.main: ================================================================================
+2025-12-11 00:07:15.110 [INFO] app.main: Session ended
+2025-12-11 00:07:15.110 [INFO] app.main: ================================================================================

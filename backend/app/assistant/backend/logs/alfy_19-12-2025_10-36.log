@@ -1,0 +1,51 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-19 10:36:37
+================================================================================
+
+LLM PROVIDER: Claude API
+  Model: claude-3-5-haiku-20241022
+  Max Tokens: 4096
+  Temperature: 0.3
+  API Key: sk-ant-api03-eg7ynmR... (configured)
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 10.0 GB (37.1% used)
+
+================================================================================
+
+2025-12-19 10:36:37.827 [INFO] app.main: ============================================================
+2025-12-19 10:36:37.828 [INFO] app.main: Starting Alfy backend...
+2025-12-19 10:36:37.828 [INFO] app.main: LLM Provider: claude
+2025-12-19 10:36:37.828 [INFO] app.main: Session log file: logs\alfy_19-12-2025_10-36.log
+2025-12-19 10:36:37.828 [INFO] app.main: ============================================================
+2025-12-19 10:36:37.929 [INFO] app.core.llm_provider: Creating new LLM provider: LLMProvider.CLAUDE
+2025-12-19 10:36:38.029 [INFO] app.main: [OK] LLM provider initialized: ClaudeLLMProvider
+2025-12-19 10:36:38.029 [INFO] app.main: [INFO] CPU usage during init: 0.0%
+2025-12-19 10:36:38.030 [INFO] app.main: [INFO] Memory usage: 70.7 MB
+2025-12-19 10:36:38.030 [INFO] app.main: ============================================================
+2025-12-19 10:36:38.030 [INFO] app.main: Alfy backend ready!
+2025-12-19 10:36:38.030 [INFO] app.main: ============================================================
+2025-12-19 10:37:34.282 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-19 10:37:38.043 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-19 10:37:39.182 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-19 10:37:39.303 [DEBUG] requests_oauthlib.oauth2_session: Generated new state riTHFA01es0MDWoSIsfplbTsh7ZhS6.
+2025-12-19 10:37:39.304 [INFO] app.tools.gdrive.oauth_manager: Opening browser for OAuth at: https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=29879173672-1kjab350d306e34d1pn0djbfono9n4gp.apps.googleusercontent.com&redirect_uri=http%3A%2F%2Flocalhost%3A50780%2F&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fgmail.send&state=riTHFA01es0MDWoSIsfplbTsh7ZhS6&access_type=offline&prompt=consent&include_granted_scopes=true
+2025-12-19 10:39:39.927 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-19 10:39:40.028 [INFO] app.main: Cleaning up LLM provider...
+2025-12-19 10:39:40.029 [INFO] app.main: ================================================================================
+2025-12-19 10:39:40.029 [INFO] app.main: SESSION SUMMARY
+2025-12-19 10:39:40.029 [INFO] app.main: ================================================================================
+2025-12-19 10:39:40.029 [INFO] app.main: [INFO] LLM Provider: claude
+2025-12-19 10:39:40.029 [INFO] app.main: [INFO] Session duration: 0:03:02.221299
+2025-12-19 10:39:40.029 [INFO] app.main: [INFO] Peak CPU usage: 0.0%
+2025-12-19 10:39:40.029 [INFO] app.main: [INFO] Peak memory usage: 70.7 MB
+2025-12-19 10:39:40.029 [INFO] app.main: [INFO] Final memory usage: 79.3 MB
+2025-12-19 10:39:40.029 [INFO] app.main: ================================================================================
+2025-12-19 10:39:40.029 [INFO] app.main: No LLM queries made during this session.
+2025-12-19 10:39:40.030 [INFO] app.main: ================================================================================
+2025-12-19 10:39:40.030 [INFO] app.main: Session ended
+2025-12-19 10:39:40.030 [INFO] app.main: ================================================================================

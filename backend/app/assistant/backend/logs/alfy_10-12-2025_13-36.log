@@ -1,0 +1,62 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-10 13:36:42
+================================================================================
+
+MODEL CONFIGURATION:
+  Model: Qwen 1.7B (Q4_K_M quantization)
+  n_ctx: 2048          # Context window
+  n_threads: 2         # Threading (ultra-conservative)
+  n_batch: 256         # Batch processing
+  n_gpu_layers: 0      # CPU only
+  Semaphore: 1         # Sequential processing (no parallelism)
+
+INFERENCE SETTINGS:
+  max_tokens: 512      # Maximum output tokens
+  timeout: 30s         # Response timeout
+  temperature: 0.7     # Sampling temperature
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 10.0 GB (36.9% used)
+
+OPTIMIZATION NOTES:
+  - Ultra-conservative settings (2 threads) to prevent crashes
+  - Sequential processing only (no parallel inference)
+  - Reduced batch size for lower memory footprint
+
+================================================================================
+
+2025-12-10 13:36:42.879 [INFO] app.main: ============================================================
+2025-12-10 13:36:42.879 [INFO] app.main: Starting Alfy backend (simplified)...
+2025-12-10 13:36:42.879 [INFO] app.main: [INFO] Session log file: logs\alfy_10-12-2025_13-36.log
+2025-12-10 13:36:42.880 [INFO] app.main: ============================================================
+2025-12-10 13:36:44.987 [INFO] app.core.simple_llm: [OK] Resolved model path: llm_models\Qwen_Qwen3-1.7B-Q4_K_M.gguf
+2025-12-10 13:36:44.987 [INFO] app.core.simple_llm: [INFO] Loading Qwen 1.7B from llm_models\Qwen_Qwen3-1.7B-Q4_K_M.gguf...
+2025-12-10 13:36:45.750 [INFO] app.core.simple_llm: [OK] Model loaded successfully in 2.77s
+2025-12-10 13:36:45.852 [INFO] app.main: [OK] Model preloaded successfully
+2025-12-10 13:36:45.852 [INFO] app.main: [INFO] CPU usage during load: 0.0%
+2025-12-10 13:36:45.852 [INFO] app.main: [INFO] Memory usage: 339.4 MB
+2025-12-10 13:36:45.853 [INFO] app.main: ============================================================
+2025-12-10 13:36:45.853 [INFO] app.main: Alfy backend ready!
+2025-12-10 13:36:45.853 [INFO] app.main: ============================================================
+2025-12-10 13:37:42.100 [DEBUG] app.storage.conversation_store: [OK] Saved conversation f743fa0c-ea4e-40f9-96d7-784c8cd4bcf8
+2025-12-10 13:37:42.201 [INFO] app.core.simple_llm: [INFO] Generating response for 2 messages...
+2025-12-10 13:37:54.952 [INFO] app.core.simple_llm: [OK] Generated 313 chars in 12.75s
+2025-12-10 13:37:55.053 [INFO] app.main: [INFO] Inference CPU: 93.3%, Memory: 1397.5 MB
+2025-12-10 13:37:55.054 [DEBUG] app.storage.conversation_store: [OK] Saved conversation f743fa0c-ea4e-40f9-96d7-784c8cd4bcf8
+2025-12-10 13:38:02.702 [INFO] app.core.simple_llm: [INFO] Generating response for 4 messages...
+2025-12-10 13:38:28.862 [INFO] app.core.simple_llm: [OK] Generated 756 chars in 26.16s
+2025-12-10 13:38:28.962 [INFO] app.main: [INFO] Inference CPU: 93.6%, Memory: 1400.0 MB
+2025-12-10 13:38:28.985 [DEBUG] app.storage.conversation_store: [OK] Saved conversation f743fa0c-ea4e-40f9-96d7-784c8cd4bcf8
+2025-12-10 13:38:57.423 [INFO] app.core.simple_llm: [INFO] Generating response for 6 messages...
+2025-12-10 13:39:27.424 [ERROR] app.core.simple_llm: [FAIL] Generation timeout after 30 seconds
+2025-12-10 13:39:27.525 [INFO] app.main: [INFO] Inference CPU: 187.1%, Memory: 1403.1 MB
+2025-12-10 13:39:27.526 [DEBUG] app.storage.conversation_store: [OK] Saved conversation f743fa0c-ea4e-40f9-96d7-784c8cd4bcf8
+2025-12-10 13:39:53.622 [INFO] app.core.simple_llm: [INFO] Generating response for 8 messages...
+2025-12-10 13:40:23.622 [ERROR] app.core.simple_llm: [FAIL] Generation timeout after 30 seconds
+2025-12-10 13:40:23.723 [INFO] app.main: [INFO] Inference CPU: 187.0%, Memory: 1403.4 MB
+2025-12-10 13:40:23.725 [DEBUG] app.storage.conversation_store: [OK] Saved conversation f743fa0c-ea4e-40f9-96d7-784c8cd4bcf8
+2025-12-10 13:40:34.413 [INFO] app.core.simple_llm: [INFO] Generating response for 10 messages...

@@ -1,0 +1,48 @@
+/* Global styles and Tailwind base overrides. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom global styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f8fafc;
+  color: #0f172a;
+  min-height: 100vh;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar scrollbar styling */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(55, 65, 81, 0.9) rgba(15, 23, 42, 0.7);
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.7);
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(55, 65, 81, 0.9);
+  border-radius: 9999px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.95);
+}

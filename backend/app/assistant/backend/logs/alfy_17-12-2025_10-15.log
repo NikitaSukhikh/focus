@@ -1,0 +1,58 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-17 10:15:45
+================================================================================
+
+LLM PROVIDER: Claude API
+  Model: claude-3-5-haiku-20241022
+  Max Tokens: 4096
+  Temperature: 0.3
+  API Key: sk-ant-api03-eg7ynmR... (configured)
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 8.2 GB (48.4% used)
+
+================================================================================
+
+2025-12-17 10:15:45.299 [INFO] app.main: ============================================================
+2025-12-17 10:15:45.300 [INFO] app.main: Starting Alfy backend...
+2025-12-17 10:15:45.301 [INFO] app.main: LLM Provider: claude
+2025-12-17 10:15:45.301 [INFO] app.main: Session log file: logs\alfy_17-12-2025_10-15.log
+2025-12-17 10:15:45.301 [INFO] app.main: ============================================================
+2025-12-17 10:15:45.401 [INFO] app.core.llm_provider: Creating new LLM provider: LLMProvider.CLAUDE
+2025-12-17 10:15:45.502 [INFO] app.main: [OK] LLM provider initialized: ClaudeLLMProvider
+2025-12-17 10:15:45.503 [INFO] app.main: [INFO] CPU usage during init: 0.0%
+2025-12-17 10:15:45.503 [INFO] app.main: [INFO] Memory usage: 70.4 MB
+2025-12-17 10:15:45.503 [INFO] app.main: ============================================================
+2025-12-17 10:15:45.503 [INFO] app.main: Alfy backend ready!
+2025-12-17 10:15:45.503 [INFO] app.main: ============================================================
+2025-12-17 10:16:03.644 [INFO] app.tools.gdrive.oauth_manager: Loaded credentials from token file
+2025-12-17 10:18:06.458 [INFO] app.storage.conversation_store: [OK] Deleted conversation 01448d3a-8ca1-471e-9738-430c2b1fa761
+2025-12-17 10:18:08.305 [INFO] app.storage.conversation_store: [OK] Deleted conversation c3ea57ae-48e1-4de3-88fb-98452dbc793c
+2025-12-17 10:18:11.939 [INFO] app.storage.conversation_store: [OK] Deleted conversation aeb4311f-ad44-4fd4-8db1-3882ad281bf0
+2025-12-17 10:18:14.531 [INFO] app.storage.conversation_store: [OK] Deleted conversation 3f7bb7b1-c3a9-42dd-8dfa-772938aadd2c
+2025-12-17 10:18:16.692 [INFO] app.storage.conversation_store: [OK] Deleted conversation 9b8798d4-9772-45e4-8537-8d3ed8ab8601
+2025-12-17 10:18:19.409 [INFO] app.storage.conversation_store: [OK] Deleted conversation 35afdec2-0ad9-4928-a20b-b46d92cfb723
+2025-12-17 10:18:23.311 [INFO] app.storage.conversation_store: [OK] Deleted conversation 5cea60bc-3372-4386-b7d0-63c1a1b4b137
+2025-12-17 10:18:26.123 [INFO] app.storage.conversation_store: [OK] Deleted conversation 7074d9df-d34b-49d3-af60-ce942764d5f7
+2025-12-17 10:18:28.570 [INFO] app.storage.conversation_store: [OK] Deleted conversation f743fa0c-ea4e-40f9-96d7-784c8cd4bcf8
+2025-12-17 10:18:29.790 [INFO] app.storage.conversation_store: [OK] Deleted conversation b2a47215-d467-41f8-a15c-7c0212605d5f
+2025-12-17 10:18:30.727 [INFO] app.storage.conversation_store: [OK] Deleted conversation bdeb40e0-8334-488a-ae43-7fcde8b7c8d9
+2025-12-17 10:18:31.624 [INFO] app.storage.conversation_store: [OK] Deleted conversation cc4a2672-b052-49fb-89de-e087788184ba
+2025-12-17 10:18:33.620 [INFO] app.storage.conversation_store: [OK] Deleted conversation 17997141-e9fa-4be6-8c7b-014ee25c2a19
+2025-12-17 10:18:36.652 [INFO] app.storage.conversation_store: [OK] Deleted conversation bae6c71a-ac26-40d9-a453-af612751cf8e
+2025-12-17 10:19:28.875 [INFO] app.main: Cleaning up LLM provider...
+2025-12-17 10:19:28.875 [INFO] app.main: ================================================================================
+2025-12-17 10:19:28.875 [INFO] app.main: SESSION SUMMARY
+2025-12-17 10:19:28.875 [INFO] app.main: ================================================================================
+2025-12-17 10:19:28.875 [INFO] app.main: [INFO] LLM Provider: claude
+2025-12-17 10:19:28.876 [INFO] app.main: [INFO] Session duration: 0:03:43.594093
+2025-12-17 10:19:28.876 [INFO] app.main: [INFO] Peak CPU usage: 0.0%
+2025-12-17 10:19:28.876 [INFO] app.main: [INFO] Peak memory usage: 70.4 MB
+2025-12-17 10:19:28.876 [INFO] app.main: [INFO] Final memory usage: 74.2 MB
+2025-12-17 10:19:28.876 [INFO] app.main: ================================================================================
+2025-12-17 10:19:28.876 [INFO] app.main: Session ended
+2025-12-17 10:19:28.876 [INFO] app.main: ================================================================================

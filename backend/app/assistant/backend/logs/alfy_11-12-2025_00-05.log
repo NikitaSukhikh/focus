@@ -1,0 +1,54 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-11 00:05:35
+================================================================================
+
+MODEL CONFIGURATION:
+  Model: Qwen 1.7B (Q4_K_M quantization)
+  n_ctx: 2048          # Context window
+  n_threads: 2         # Threading (ultra-conservative)
+  n_batch: 256         # Batch processing
+  n_gpu_layers: 0      # CPU only
+  Semaphore: 1         # Sequential processing (no parallelism)
+
+INFERENCE SETTINGS:
+  max_tokens: 512      # Maximum output tokens
+  timeout: 30s         # Response timeout
+  temperature: 0.7     # Sampling temperature
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 8.4 GB (47.2% used)
+
+OPTIMIZATION NOTES:
+  - Ultra-conservative settings (2 threads) to prevent crashes
+  - Sequential processing only (no parallel inference)
+  - Reduced batch size for lower memory footprint
+
+================================================================================
+
+2025-12-11 00:05:35.289 [INFO] app.main: ============================================================
+2025-12-11 00:05:35.289 [INFO] app.main: Starting Alfy backend (simplified)...
+2025-12-11 00:05:35.289 [INFO] app.main: [INFO] Session log file: logs\alfy_11-12-2025_00-05.log
+2025-12-11 00:05:35.289 [INFO] app.main: ============================================================
+2025-12-11 00:05:38.373 [INFO] app.core.simple_llm: [OK] Resolved model path: llm_models\Qwen_Qwen3-1.7B-Q4_K_M.gguf
+2025-12-11 00:05:38.373 [INFO] app.core.simple_llm: [INFO] Loading Qwen 1.7B from llm_models\Qwen_Qwen3-1.7B-Q4_K_M.gguf...
+2025-12-11 00:05:55.464 [INFO] app.core.simple_llm: [OK] Model loaded successfully in 20.07s
+2025-12-11 00:05:55.565 [INFO] app.main: [OK] Model preloaded successfully
+2025-12-11 00:05:55.565 [INFO] app.main: [INFO] CPU usage during load: 0.0%
+2025-12-11 00:05:55.565 [INFO] app.main: [INFO] Memory usage: 338.9 MB
+2025-12-11 00:05:55.566 [INFO] app.main: ============================================================
+2025-12-11 00:05:55.566 [INFO] app.main: Alfy backend ready!
+2025-12-11 00:05:55.566 [INFO] app.main: ============================================================
+2025-12-11 00:06:56.952 [INFO] app.main: ================================================================================
+2025-12-11 00:06:56.953 [INFO] app.main: SESSION SUMMARY
+2025-12-11 00:06:56.953 [INFO] app.main: ================================================================================
+2025-12-11 00:06:56.953 [INFO] app.main: [INFO] Session duration: 0:01:21.676540
+2025-12-11 00:06:56.953 [INFO] app.main: [INFO] Peak CPU usage: 0.0%
+2025-12-11 00:06:56.953 [INFO] app.main: [INFO] Peak memory usage: 338.9 MB
+2025-12-11 00:06:56.953 [INFO] app.main: [INFO] Final memory usage: 341.2 MB
+2025-12-11 00:06:56.953 [INFO] app.main: ================================================================================
+2025-12-11 00:06:56.953 [INFO] app.main: Session ended
+2025-12-11 00:06:56.953 [INFO] app.main: ================================================================================

@@ -1,0 +1,31 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-16 21:26:23
+================================================================================
+
+LLM PROVIDER: Claude API
+  Model: claude-3-5-haiku-20241022
+  Max Tokens: 4096
+  Temperature: 0.3
+  API Key: sk-ant-api03-eg7ynmR... (configured)
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 8.1 GB (48.7% used)
+
+================================================================================
+
+2025-12-16 21:26:23.602 [INFO] app.main: ============================================================
+2025-12-16 21:26:23.603 [INFO] app.main: Starting Alfy backend...
+2025-12-16 21:26:23.603 [INFO] app.main: LLM Provider: claude
+2025-12-16 21:26:23.603 [INFO] app.main: Session log file: logs\alfy_16-12-2025_21-26.log
+2025-12-16 21:26:23.604 [INFO] app.main: ============================================================
+2025-12-16 21:26:23.705 [INFO] app.core.llm_provider: Creating new LLM provider: LLMProvider.CLAUDE
+2025-12-16 21:26:23.805 [INFO] app.main: [OK] LLM provider initialized: ClaudeLLMProvider
+2025-12-16 21:26:23.806 [INFO] app.main: [INFO] CPU usage during init: 0.0%
+2025-12-16 21:26:23.806 [INFO] app.main: [INFO] Memory usage: 55.5 MB
+2025-12-16 21:26:23.806 [INFO] app.main: ============================================================
+2025-12-16 21:26:23.806 [INFO] app.main: Alfy backend ready!
+2025-12-16 21:26:23.806 [INFO] app.main: ============================================================

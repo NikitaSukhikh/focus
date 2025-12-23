@@ -1,0 +1,48 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-17 12:13:08
+================================================================================
+
+LLM PROVIDER: Claude API
+  Model: claude-3-5-haiku-20241022
+  Max Tokens: 4096
+  Temperature: 0.3
+  API Key: sk-ant-api03-eg7ynmR... (configured)
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 8.7 GB (45.2% used)
+
+================================================================================
+
+2025-12-17 12:13:08.293 [INFO] app.main: ============================================================
+2025-12-17 12:13:08.294 [INFO] app.main: Starting Alfy backend...
+2025-12-17 12:13:08.294 [INFO] app.main: LLM Provider: claude
+2025-12-17 12:13:08.294 [INFO] app.main: Session log file: logs\alfy_17-12-2025_12-13.log
+2025-12-17 12:13:08.294 [INFO] app.main: ============================================================
+2025-12-17 12:13:08.394 [INFO] app.core.llm_provider: Creating new LLM provider: LLMProvider.CLAUDE
+2025-12-17 12:13:08.495 [INFO] app.main: [OK] LLM provider initialized: ClaudeLLMProvider
+2025-12-17 12:13:08.495 [INFO] app.main: [INFO] CPU usage during init: 0.0%
+2025-12-17 12:13:08.495 [INFO] app.main: [INFO] Memory usage: 70.9 MB
+2025-12-17 12:13:08.496 [INFO] app.main: ============================================================
+2025-12-17 12:13:08.496 [INFO] app.main: Alfy backend ready!
+2025-12-17 12:13:08.496 [INFO] app.main: ============================================================
+2025-12-17 12:13:51.693 [INFO] app.tools.gdrive.oauth_manager: Loaded credentials from token file
+2025-12-17 12:13:51.697 [DEBUG] urllib3.connectionpool: Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2025-12-17 12:13:52.258 [DEBUG] urllib3.connectionpool: https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2025-12-17 12:13:52.261 [INFO] app.tools.gdrive.oauth_manager: Saved credentials to D:\alfy\backend\data\gdrive_tokens\token.json
+2025-12-17 12:13:52.261 [INFO] app.tools.gdrive.oauth_manager: Refreshed expired credentials
+2025-12-17 12:59:56.432 [INFO] app.main: Cleaning up LLM provider...
+2025-12-17 12:59:56.433 [INFO] app.main: ================================================================================
+2025-12-17 12:59:56.433 [INFO] app.main: SESSION SUMMARY
+2025-12-17 12:59:56.433 [INFO] app.main: ================================================================================
+2025-12-17 12:59:56.433 [INFO] app.main: [INFO] LLM Provider: claude
+2025-12-17 12:59:56.433 [INFO] app.main: [INFO] Session duration: 0:46:48.160189
+2025-12-17 12:59:56.433 [INFO] app.main: [INFO] Peak CPU usage: 0.0%
+2025-12-17 12:59:56.433 [INFO] app.main: [INFO] Peak memory usage: 70.9 MB
+2025-12-17 12:59:56.433 [INFO] app.main: [INFO] Final memory usage: 76.2 MB
+2025-12-17 12:59:56.433 [INFO] app.main: ================================================================================
+2025-12-17 12:59:56.433 [INFO] app.main: Session ended
+2025-12-17 12:59:56.433 [INFO] app.main: ================================================================================

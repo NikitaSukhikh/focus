@@ -1,0 +1,35 @@
+================================================================================
+ALFY SESSION LOG
+Session started: 2025-12-18 20:53:48
+================================================================================
+
+LLM PROVIDER: Claude API
+  Model: claude-3-5-haiku-20241022
+  Max Tokens: 4096
+  Temperature: 0.3
+  API Key: sk-ant-api03-eg7ynmR... (configured)
+
+SYSTEM RESOURCES:
+  CPU Cores: 8 logical cores
+  CPU Frequency: 2101 MHz (max: 2101 MHz)
+  Total RAM: 15.9 GB
+  Available RAM: 8.5 GB (46.5% used)
+
+================================================================================
+
+2025-12-18 20:53:48.091 [INFO] app.main: ============================================================
+2025-12-18 20:53:48.113 [INFO] app.main: Starting Alfy backend...
+2025-12-18 20:53:48.113 [INFO] app.main: LLM Provider: claude
+2025-12-18 20:53:48.113 [INFO] app.main: Session log file: logs\alfy_18-12-2025_20-53.log
+2025-12-18 20:53:48.113 [INFO] app.main: ============================================================
+2025-12-18 20:53:48.214 [INFO] app.core.llm_provider: Creating new LLM provider: LLMProvider.CLAUDE
+2025-12-18 20:53:48.315 [INFO] app.main: [OK] LLM provider initialized: ClaudeLLMProvider
+2025-12-18 20:53:48.315 [INFO] app.main: [INFO] CPU usage during init: 0.0%
+2025-12-18 20:53:48.315 [INFO] app.main: [INFO] Memory usage: 70.9 MB
+2025-12-18 20:53:48.316 [INFO] app.main: ============================================================
+2025-12-18 20:53:48.316 [INFO] app.main: Alfy backend ready!
+2025-12-18 20:53:48.316 [INFO] app.main: ============================================================
+2025-12-18 20:54:06.217 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-18 20:54:10.432 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-18 20:54:11.379 [WARNING] app.tools.gdrive.oauth_manager: No valid credentials available. User needs to authenticate.
+2025-12-18 20:54:11.389 [DEBUG] requests_oauthlib.oauth2_session: Generated new state Bg6YdesMioGuQPhjTInUOt0JRjZi1n.
