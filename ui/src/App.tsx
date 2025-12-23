@@ -179,6 +179,12 @@ export function App() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  const handleCanvasEmptyClick = () => {
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-slate-50">
       <TopBar
@@ -203,7 +209,10 @@ export function App() {
           className="flex-1 flex transition-all duration-200"
           style={{ marginLeft: isSidebarOpen ? sidebarWidth : 0 }}
         >
-          <CenterPane onObjectClick={() => setIsPreviewOpen(true)} />
+          <CenterPane
+            onObjectClick={() => setIsPreviewOpen(true)}
+            onCanvasEmptyClick={handleCanvasEmptyClick}
+          />
           <PreviewPane
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}
