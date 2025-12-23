@@ -4,7 +4,7 @@ API Routes Module
 Contains all FastAPI router modules for the Ocean backend API.
 """
 
-from app.api.routes import health, islands, objects, preview, google_oauth
+from app.api.routes import health, islands, objects, preview, google_oauth, internal_storage
 
 __all__ = [
     "health",
@@ -12,4 +12,5 @@ __all__ = [
     "objects",
     "preview",
     "google_oauth",
+    "internal_storage",
 ]

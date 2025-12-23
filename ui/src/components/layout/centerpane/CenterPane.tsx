@@ -5,6 +5,7 @@ import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
+import { buildFaviconUrl } from '../../../utils/favicon';
 
 type IconKind = 'link' | 'file' | 'gmail' | 'google_drive' | 'google_sheets' | 'google_docs' | 'google_slides' | 'text' | 'telegram' | 'intstorage' | 'unknown';
 
@@ -17,6 +18,8 @@ interface DroppedIcon {
   serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
   url?: string; // For link objects
   description?: string; // For all objects
+  faviconUrl?: string;
+  service?: string;
 }
 
 interface CenterPaneProps {
@@ -50,6 +53,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           const description = obj.type !== 'google_drive' ? obj.description : undefined;
           const url = obj.type === 'link' ? (meta.url as string) : undefined;
           const service = meta.service as string | undefined;
+          const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
 
           let kind: IconKind =
             obj.type === 'link'
@@ -82,6 +86,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
             url,
             service,
             description,
+            faviconUrl,
           };
         });
         setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
@@ -406,22 +411,26 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           }
           // Handle saved links from the Links dropdown
           if (payload?.source === 'saved-link' || payload?.linkId) {
+            const favicon_url = buildFaviconUrl(payload.url);
             return {
               type: 'link',
               title: payload.title || payload.label || payload.url,
               url: payload.url,
               description: payload.description,
+              favicon_url,
               x,
               y,
             };
           }
           // Handle generic links with URL
           if (payload?.url) {
+            const favicon_url = buildFaviconUrl(payload.url);
             return {
               type: 'link',
               title: label || payload.url,
               url: payload.url,
               description: payload.description,
+              favicon_url,
               x,
               y,
             };
@@ -443,7 +452,8 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       if (uriFallback) {
         const url = uriFallback.trim();
         if (url.startsWith('http')) {
-          return { type: 'link', title: url, url, x, y };
+          const favicon_url = buildFaviconUrl(url);
+          return { type: 'link', title: url, url, x, y, favicon_url };
         }
         return { type: 'text', title: url, content: url, x, y };
       }
@@ -487,7 +497,8 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       y,
       serviceKey,
       url: payload.type === 'link' ? (payload as any).url : undefined,
-      description: payload.description
+      description: payload.description,
+      faviconUrl: payload.type === 'link' ? (payload as any).favicon_url || buildFaviconUrl((payload as any).url) : undefined,
     };
     setIconsByIsland((prev) => {
       const current = prev[selectedIsland.id] || [];
@@ -525,6 +536,9 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
         const finalY = typeof meta.y === 'number' ? meta.y : y;
         const finalUrl = created.type === 'link' ? (meta.url as string) : undefined;
         const finalDescription = created.type !== 'google_drive' ? created.description : undefined;
+        const finalFavicon = created.type === 'link'
+          ? (meta.favicon_url as string | undefined) || (finalUrl ? buildFaviconUrl(finalUrl) : undefined)
+          : undefined;
 
         setIconsByIsland((prev) => {
           const current = (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId);
@@ -541,6 +555,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
                 serviceKey: createdServiceKey,
                 url: finalUrl,
                 description: finalDescription,
+                faviconUrl: finalFavicon,
               },
             ],
           };
@@ -588,6 +603,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
               y={icon.y}
               url={icon.url}
               description={icon.description}
+              faviconUrl={icon.faviconUrl}
               isSelected={selectedIconId === icon.id}
               onClick={() => {
                 setSelectedIconId(icon.id);
@@ -635,6 +651,7 @@ interface IconTileProps {
   y: number;
   url?: string;
   description?: string;
+   faviconUrl?: string;
   isSelected?: boolean;
   onClick?: () => void;
   onPositionChange?: (_x: number, _y: number) => void;
@@ -642,14 +659,19 @@ interface IconTileProps {
   onRename?: (_newTitle: string) => void;
 }
 
-function IconTile({ id, type, title, x, y, url, description, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
+function IconTile({ id, type, title, x, y, url, description, faviconUrl, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
   const [isDragging, setIsDragging] = React.useState(false);
   const [skipTransition, setSkipTransition] = React.useState(false);
   const [showContextMenu, setShowContextMenu] = React.useState(false);
   const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
   const [isRenaming, setIsRenaming] = React.useState(false);
   const [renamingValue, setRenamingValue] = React.useState(title);
+  const [useFavicon, setUseFavicon] = React.useState(true);
   const renameInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setUseFavicon(true);
+  }, [faviconUrl]);
 
   const handleDragStart = (e: React.DragEvent) => {
     // Store current icon position and cursor position
@@ -779,6 +801,20 @@ function IconTile({ id, type, title, x, y, url, description, isSelected, onClick
       ? FileText
       : Grid3x3;
 
+  const renderIcon = () => {
+    if (type === 'link' && faviconUrl && useFavicon) {
+      return (
+        <img
+          src={faviconUrl}
+          alt=""
+          className="w-12 h-12 rounded-md object-contain bg-white border border-slate-200"
+          onError={() => setUseFavicon(false)}
+        />
+      );
+    }
+    return <Icon size={48} />;
+  };
+
   return (
     <>
       <button
@@ -809,7 +845,7 @@ function IconTile({ id, type, title, x, y, url, description, isSelected, onClick
               ? 'border-2 border-blue-500 shadow-lg'
               : 'border border-slate-200 group-hover:border-blue-400'
           }`}>
-            <Icon size={48} />
+            {renderIcon()}
           </div>
           {isRenaming ? (
             <input
