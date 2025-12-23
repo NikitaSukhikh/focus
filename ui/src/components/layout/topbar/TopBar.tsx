@@ -7,6 +7,19 @@ import { WebviewWindow } from '@tauri-apps/api/window';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
+import { internalStorageApi } from '../../../api/internalStorage';
+import { buildFaviconUrl } from '../../../utils/favicon';
+
+const getLinkDisplayName = (url: string, title?: string) => {
+  const trimmedTitle = title?.trim();
+  if (trimmedTitle && trimmedTitle !== url) return trimmedTitle;
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./i, '');
+    return hostname || url;
+  } catch {
+    return trimmedTitle || url;
+  }
+};
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -34,7 +47,9 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined);
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
-  const [savedLinks, setSavedLinks] = useState<Array<{ id: string; url: string; title: string; description?: string }>>([]);
+  const [savedLinks, setSavedLinks] = useState<
+    Array<{ id: string; url: string; title: string; name: string; description?: string; favicon_url?: string }>
+  >([]);
   const [isEditingIslandName, setIsEditingIslandName] = useState(false);
   const [editingIslandName, setEditingIslandName] = useState('');
   const isDraggingRef = useRef(false);
@@ -89,6 +104,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     linkId: string,
     url: string,
     title: string,
+    displayName: string,
     description?: string
   ) => {
     isDraggingRef.current = true;
@@ -97,14 +113,23 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
       source: 'saved-link',
       linkId,
       url,
-      label: title,
-      title,
+      label: displayName,
+      title: displayName,
       description,
+      favicon_url: buildFaviconUrl(url),
     };
 
     e.dataTransfer.setData('text/plain', JSON.stringify(payload));
     e.dataTransfer.setData('application/json', JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleOpenInternalStorage = async () => {
+    try {
+      await internalStorageApi.open();
+    } catch (err) {
+      console.error('Failed to open internal storage:', err);
+    }
   };
 
   const handleIntegrationDragEnd = (_e: React.DragEvent<HTMLElement>) => {
@@ -196,9 +221,11 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         .then((links) => {
           const mapped = links.map((link) => ({
             id: link.id,
-            url: (link.metadata as any)?.url || '',
+            url: (link.metadata as any)?.url || link.title || '',
             title: link.title,
+            name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
             description: link.description,
+            favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
           }));
           setSavedLinks(mapped);
         })
@@ -399,12 +426,15 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
       return;
     }
 
+    const favicon_url = buildFaviconUrl(url);
+
     try {
       await objectsApi.create(selectedIsland.id, {
         type: 'link',
         title,
         url,
         description,
+        favicon_url,
         x: 200,
         y: 200,
       });
@@ -413,9 +443,11 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
       const links = await objectsApi.getAllByType('link');
       const mapped = links.map((link) => ({
         id: link.id,
-        url: (link.metadata as any)?.url || '',
+        url: (link.metadata as any)?.url || link.title || '',
         title: link.title,
+        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
         description: link.description,
+        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
       }));
       setSavedLinks(mapped);
     } catch (err) {
@@ -589,14 +621,32 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                         <div
                           key={link.id}
                           draggable={true}
-                          onDragStart={(e) => handleSavedLinkDragStart(e, link.id, link.url, link.title, link.description)}
+                          onDragStart={(e) =>
+                            handleSavedLinkDragStart(e, link.id, link.url, link.title, link.name, link.description)
+                          }
                           onDrag={handleIntegrationDrag}
                           onDragEnd={handleIntegrationDragEnd}
                           className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
                           title={link.description || link.url}
                         >
-                          <Link2 size={14} className="text-indigo-600" />
-                          <span className="truncate">{link.title}</span>
+                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                            {link.favicon_url && (
+                              <img
+                                src={link.favicon_url}
+                                alt=""
+                                className="w-4 h-4 object-contain"
+                                onError={(e) => {
+                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                  if (fallback) {
+                                    fallback.classList.remove('hidden');
+                                  }
+                                  e.currentTarget.remove();
+                                }}
+                              />
+                            )}
+                            <Link2 size={14} className={`text-indigo-600 ${link.favicon_url ? 'hidden' : ''}`} />
+                          </div>
+                          <span className="truncate">{link.name}</span>
                         </div>
                       ))}
                     </div>
@@ -680,6 +730,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
           type="button"
           className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer no-drag"
           title="Internal Storage"
+          onClick={handleOpenInternalStorage}
         >
           <IntStorageIcon size={16} />
           Internal Storage
