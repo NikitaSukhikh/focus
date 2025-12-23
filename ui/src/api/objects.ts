@@ -12,14 +12,20 @@ export interface ObjectCreatePayload {
   y?: number;
   // Type-specific fields
   url?: string;
+  favicon_url?: string;
+  thumbnail_url?: string;
   drive_file_id?: string;
   drive_file_name?: string;
+  web_view_link?: string;
   thread_id?: string;
   message_id?: string;
   subject?: string;
   sender?: string;
   snippet?: string;
   content?: string;
+  service?: string;
+  file_path?: string;
+  mime_type?: string;
 }
 
 export interface ObjectResponse {
@@ -28,6 +34,7 @@ export interface ObjectResponse {
   type: ObjectType;
   title: string;
   description?: string;
+  tags?: string[];
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
