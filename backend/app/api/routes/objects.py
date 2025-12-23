@@ -563,10 +563,10 @@ async def get_objects_by_type(
         500: Internal server error
     """
     try:
-        objects = await objects_service.get_all_objects(
+        objects = await objects_service.get_objects_by_type(
+            object_type=object_type,
             skip=skip,
-            limit=limit,
-            type_filter=object_type
+            limit=limit
         )
 
         logger.debug(

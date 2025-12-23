@@ -13,6 +13,8 @@ interface DroppedIcon {
   x: number;
   y: number;
   serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
+  url?: string; // For link objects
+  description?: string; // For all objects
 }
 
 interface CenterPaneProps {
@@ -20,32 +22,12 @@ interface CenterPaneProps {
 }
 
 export function CenterPane({ onObjectClick }: CenterPaneProps) {
-  const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingName, setEditingName] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [iconsByIsland, setIconsByIsland] = useState<Record<string, DroppedIcon[]>>({});
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
 
   const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
-  const updateIsland = useIslandStore((state) => state.updateIsland);
-  const deleteIsland = useIslandStore((state) => state.deleteIsland);
-
-  const islandName = selectedIsland?.name || '';
-
-  useEffect(() => {
-    setEditingName(islandName);
-  }, [islandName]);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
 
   // Load existing objects as icons when island changes
   useEffect(() => {
@@ -58,7 +40,12 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
           const meta = (obj.metadata || {}) as Record<string, any>;
           const x = typeof meta.x === 'number' ? meta.x : 100 + (idx % 5) * 120;
           const y = typeof meta.y === 'number' ? meta.y : 100 + Math.floor(idx / 5) * 140;
-          const serviceKey = obj.description; // Service key stored in description
+
+          // For Google Drive services, service key is in description
+          // For links, description is the actual description
+          const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
+          const description = obj.type !== 'google_drive' ? obj.description : undefined;
+          const url = obj.type === 'link' ? (meta.url as string) : undefined;
 
           let kind: IconKind =
             obj.type === 'link'
@@ -84,6 +71,8 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
             x,
             y,
             serviceKey,
+            url,
+            description,
           };
         });
         setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
@@ -97,8 +86,7 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIconId && selectedIsland) {
-        // Don't delete if user is editing something (island name or icon rename)
-        if (isEditing) return;
+        // Don't delete if user is editing something (icon rename)
 
         // Don't delete if target is an input or textarea
         const target = e.target as HTMLElement;
@@ -123,7 +111,7 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIconId, selectedIsland, isEditing]);
+  }, [selectedIconId, selectedIsland]);
 
   // Listen for OS file drop events
   useEffect(() => {
@@ -385,11 +373,24 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
             }
             return drivePayload as ObjectCreatePayload;
           }
+          // Handle saved links from the Links dropdown
+          if (payload?.source === 'saved-link' || payload?.linkId) {
+            return {
+              type: 'link',
+              title: payload.title || payload.label || payload.url,
+              url: payload.url,
+              description: payload.description,
+              x,
+              y,
+            };
+          }
+          // Handle generic links with URL
           if (payload?.url) {
             return {
               type: 'link',
               title: label || payload.url,
               url: payload.url,
+              description: payload.description,
               x,
               y,
             };
@@ -424,9 +425,10 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
 
     // Get drag data to determine specific service
     let serviceKey: string | undefined;
+    let dragPayloadData: any;
     try {
-      const dragPayload = JSON.parse(rawJson);
-      serviceKey = dragPayload?.key;
+      dragPayloadData = JSON.parse(rawJson);
+      serviceKey = dragPayloadData?.key;
     } catch {
       // Ignore malformed drag payload
     }
@@ -444,7 +446,16 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
       payload.type === 'link' ? 'link' :
       payload.type === 'file' ? 'file' :
       payload.type === 'text' ? 'text' : 'unknown';
-    const optimisticIcon: DroppedIcon = { id: tempId, type: optimisticType, title: payload.title, x, y, serviceKey };
+    const optimisticIcon: DroppedIcon = {
+      id: tempId,
+      type: optimisticType,
+      title: payload.title,
+      x,
+      y,
+      serviceKey,
+      url: payload.type === 'link' ? (payload as any).url : undefined,
+      description: payload.description
+    };
     setIconsByIsland((prev) => {
       const current = prev[selectedIsland.id] || [];
       return { ...prev, [selectedIsland.id]: [...current, optimisticIcon] };
@@ -475,6 +486,8 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
         const meta = (created.metadata || {}) as Record<string, any>;
         const finalX = typeof meta.x === 'number' ? meta.x : x;
         const finalY = typeof meta.y === 'number' ? meta.y : y;
+        const finalUrl = created.type === 'link' ? (meta.url as string) : undefined;
+        const finalDescription = created.type !== 'google_drive' ? created.description : undefined;
 
         setIconsByIsland((prev) => {
           const current = (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId);
@@ -489,6 +502,8 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
                 x: finalX,
                 y: finalY,
                 serviceKey: createdServiceKey,
+                url: finalUrl,
+                description: finalDescription,
               },
             ],
           };
@@ -501,72 +516,6 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
-      {/* Island Title Bar */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200">
-        <div className="min-h-[2.5rem] flex items-center w-full">
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={editingName}
-              onChange={handleNameChange}
-              onKeyDown={handleNameKeyDown}
-              onBlur={handleNameBlur}
-              className="w-full text-2xl font-bold text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 leading-none h-10"
-            />
-          ) : (
-            <h1
-              onContextMenu={handleContextMenu}
-              onDoubleClick={handleDoubleClick}
-              className="w-full text-2xl font-bold text-slate-900 cursor-pointer leading-none h-10 flex items-center"
-            >
-              {islandName}
-            </h1>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Add Object
-          </button>
-        </div>
-      </div>
-
-      {/* Context Menu */}
-      {showContextMenu && (
-        <>
-          {/* Backdrop to close menu */}
-          <div
-            className="fixed inset-0 z-50"
-            onClick={handleCloseContextMenu}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              handleCloseContextMenu();
-            }}
-          />
-
-          {/* Menu */}
-          <div
-            className="fixed z-50 w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }}
-          >
-            <button
-              onClick={handleRename}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
-            >
-              <Edit2 size={14} />
-              Rename
-            </button>
-            <button
-              onClick={handleDelete}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-            >
-              <Trash2 size={14} />
-              Delete
-            </button>
-          </div>
-        </>
-      )}
-
       {/* Canvas - Freeform icons */}
       <div
         className={`flex-1 overflow-y-auto custom-scroll p-6 transition-colors ${
@@ -596,6 +545,8 @@ export function CenterPane({ onObjectClick }: CenterPaneProps) {
               title={icon.title}
               x={icon.x}
               y={icon.y}
+              url={icon.url}
+              description={icon.description}
               isSelected={selectedIconId === icon.id}
               onClick={() => {
                 setSelectedIconId(icon.id);
@@ -641,6 +592,8 @@ interface IconTileProps {
   title: string;
   x: number;
   y: number;
+  url?: string;
+  description?: string;
   isSelected?: boolean;
   onClick?: () => void;
   onPositionChange?: (_x: number, _y: number) => void;
@@ -648,7 +601,7 @@ interface IconTileProps {
   onRename?: (_newTitle: string) => void;
 }
 
-function IconTile({ id, type, title, x, y, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
+function IconTile({ id, type, title, x, y, url, description, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
   const [isDragging, setIsDragging] = React.useState(false);
   const [skipTransition, setSkipTransition] = React.useState(false);
   const [showContextMenu, setShowContextMenu] = React.useState(false);
@@ -734,6 +687,13 @@ function IconTile({ id, type, title, x, y, isSelected, onClick, onPositionChange
     }
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (type === 'link' && url) {
+      window.open(url, '_blank');
+    }
+  };
+
   const handleRenameSubmit = () => {
     const newTitle = renamingValue.trim();
     if (newTitle && newTitle !== title && onRename) {
@@ -781,7 +741,9 @@ function IconTile({ id, type, title, x, y, isSelected, onClick, onPositionChange
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={onClick}
+        onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
+        title={description || (type === 'link' && url ? url : title)}
         className={`
           group absolute
           text-center w-32 cursor-grab active:cursor-grabbing

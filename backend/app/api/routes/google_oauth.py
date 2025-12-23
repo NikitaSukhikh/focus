@@ -7,6 +7,7 @@ Supports Gmail and Google Drive (including Docs, Sheets, Slides).
 
 from typing import Optional, List
 from fastapi import APIRouter, status, Query, Depends
+from fastapi.responses import HTMLResponse
 
 from app.models.google import (
     GoogleAuthURL,
@@ -87,6 +88,128 @@ async def get_auth_url(
         ) from e
 
 
+@router.get(
+    "/auth/callback",
+    status_code=status.HTTP_200_OK,
+    summary="Handle OAuth callback (GET)",
+    description="Handle the OAuth callback from Google redirect.",
+    dependencies=[Depends(FeatureFlags.google_integration)],
+    tags=["Google OAuth"],
+    response_class=HTMLResponse
+)
+async def handle_auth_callback_get(
+    code: str = Query(..., description="Authorization code"),
+    state: str = Query(..., description="State token"),
+    config: GoogleOAuthSettings = Depends(get_google_config)
+):
+    """
+    Handle Google OAuth callback from browser redirect.
+
+    Returns an HTML page that processes the callback and closes the window.
+    """
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Google Sign In - Processing</title>
+        <style>
+            body {{
+                font-family: system-ui, -apple-system, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }}
+            .container {{
+                text-align: center;
+                background: white;
+                padding: 2rem;
+                border-radius: 1rem;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }}
+            .spinner {{
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #667eea;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 1rem;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            .success {{
+                color: #10b981;
+                font-size: 3rem;
+            }}
+            .error {{
+                color: #ef4444;
+                font-size: 3rem;
+            }}
+            h2 {{
+                margin: 0.5rem 0;
+                color: #1f2937;
+            }}
+            p {{
+                color: #6b7280;
+                margin: 0.5rem 0;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="loading">
+                <div class="spinner"></div>
+                <h2>Connecting to Google...</h2>
+                <p>Please wait while we complete the sign-in process.</p>
+            </div>
+            <div id="success" style="display: none;">
+                <div class="success">✓</div>
+                <h2>Successfully Connected!</h2>
+                <p>You can close this window now.</p>
+            </div>
+            <div id="error" style="display: none;">
+                <div class="error">✗</div>
+                <h2>Connection Failed</h2>
+                <p id="error-message">Please try again.</p>
+            </div>
+        </div>
+        <script>
+            (async function() {{
+                try {{
+                    const response = await fetch('/api/google/auth/callback', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            code: '{code}',
+                            state: '{state}'
+                        }})
+                    }});
+
+                    if (response.ok) {{
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('success').style.display = 'block';
+                        setTimeout(() => window.close(), 2000);
+                    }} else {{
+                        throw new Error('Authentication failed');
+                    }}
+                }} catch (error) {{
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error-message').textContent = error.message;
+                }}
+            }})();
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+
 @router.post(
     "/auth/callback",
     response_model=GoogleAuthSuccess,
@@ -96,7 +219,7 @@ async def get_auth_url(
     dependencies=[Depends(FeatureFlags.google_integration)],
     tags=["Google OAuth"]
 )
-async def handle_auth_callback(
+async def handle_auth_callback_post(
     callback_data: GoogleAuthCallback,
     config: GoogleOAuthSettings = Depends(get_google_config)
 ) -> GoogleAuthSuccess:
@@ -222,13 +345,14 @@ async def get_connection_status(
         500: Internal server error
     """
     try:
-        is_connected = await token_store.is_connected()
+        is_connected = await token_store.is_connected("default")
+        scopes = await token_store.get_scopes("default") if is_connected else []
 
         logger.debug(f"Google connection status: {is_connected}")
 
         return GoogleConnectionStatus(
             connected=is_connected,
-            scopes=[]  # TODO: Store and return granted scopes
+            scopes=scopes or []
         )
 
     except Exception as e:

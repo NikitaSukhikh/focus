@@ -5,6 +5,14 @@ Main application entry point for the Ocean backend server.
 Provides REST API for Islands, Objects, Previews, Google OAuth, and AI Assistant.
 """
 
+# Load .env file before importing settings
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from backend directory (parent of app directory)
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import uuid
