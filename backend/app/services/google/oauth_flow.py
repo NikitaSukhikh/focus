@@ -165,9 +165,9 @@ class GoogleOAuthService:
             user_info = await self._get_user_info(credentials)
             user_email = user_info.get("email", "unknown")
 
-            # Save tokens to repository
+            # Save tokens to repository (use email as user_id for multi-account support)
             await self.tokens_repo.save_tokens(
-                user_id="default",  # Single user for desktop app
+                user_id=user_email,  # Use email as user_id for multi-account support
                 access_token=credentials.token,
                 refresh_token=credentials.refresh_token,
                 token_uri=credentials.token_uri,

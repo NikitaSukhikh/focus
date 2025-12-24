@@ -1,14 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Mail, Database, Cloud, ChevronRight, Plus, Search } from 'lucide-react';
-import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon, GoogleIcon } from '../../icons/GoogleServiceIcons';
-import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
+import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Plus, Search, Edit2, Trash2 } from 'lucide-react';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
+import { GmailIcon } from '../../icons/GoogleServiceIcons';
 import { WebviewWindow } from '@tauri-apps/api/window';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
+import { EditLinkDialog } from '../../dialogs/EditLinkDialog';
+import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
 import { internalStorageApi } from '../../../api/internalStorage';
 import { buildFaviconUrl } from '../../../utils/favicon';
+
+interface GoogleAccount {
+  email: string;
+  scopes: string[];
+  connected_at: string;
+}
 
 const getLinkDisplayName = (url: string, title?: string) => {
   const trimmedTitle = title?.trim();
@@ -18,6 +25,15 @@ const getLinkDisplayName = (url: string, title?: string) => {
     return hostname || url;
   } catch {
     return trimmedTitle || url;
+  }
+};
+
+const isGmailUrl = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname === 'mail.google.com' || urlObj.hostname === 'gmail.com';
+  } catch {
+    return false;
   }
 };
 
@@ -33,25 +49,26 @@ interface TopBarProps {
 
 export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth }: TopBarProps) {
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
-  const [isGoogleExpanded, setIsGoogleExpanded] = useState(false);
-  const [isEmailExpanded, setIsEmailExpanded] = useState(false);
-  const [isLinksExpanded, setIsLinksExpanded] = useState(false);
-  const [isDatabasesExpanded, setIsDatabasesExpanded] = useState(false);
-  const [isCloudExpanded, setIsCloudExpanded] = useState(false);
   const [isGoogleMenuOpen, setIsGoogleMenuOpen] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(() => {
     const stored = localStorage.getItem('googleConnected');
     return stored === 'true' ? true : false;
   });
+  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
+  const [isAccountSelectionOpen, setIsAccountSelectionOpen] = useState(false);
+  const [pendingGmailLink, setPendingGmailLink] = useState<{url: string; title: string; description: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined);
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [savedLinks, setSavedLinks] = useState<
-    Array<{ id: string; url: string; title: string; name: string; description?: string; favicon_url?: string }>
+    Array<{ id: string; url: string; title: string; name: string; description?: string; favicon_url?: string; account_email?: string }>
   >([]);
   const [isEditingIslandName, setIsEditingIslandName] = useState(false);
   const [editingIslandName, setEditingIslandName] = useState('');
+  const [linkContextMenu, setLinkContextMenu] = useState<{ linkId: string; x: number; y: number } | null>(null);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [editingLinkData, setEditingLinkData] = useState<{ url: string; title: string; description: string }>({ url: '', title: '', description: '' });
   const isDraggingRef = useRef(false);
   const integrationsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const integrationsDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -60,44 +77,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   const islandNameInputRef = useRef<HTMLInputElement | null>(null);
   const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
   const updateIsland = useIslandStore((state) => state.updateIsland);
-  const googleIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] =
-    [
-      { provider: 'google', key: 'gmail', label: 'Gmail', Icon: GmailIcon },
-      { provider: 'google', key: 'drive', label: 'Google Drive', Icon: DriveIcon },
-      { provider: 'google', key: 'sheets', label: 'Google Sheets', Icon: SheetsIcon },
-      { provider: 'google', key: 'docs', label: 'Google Docs', Icon: DocsIcon },
-      { provider: 'google', key: 'slides', label: 'Google Slides', Icon: SlidesIcon },
-      { provider: 'google', key: 'google', label: 'All Google Services', Icon: GoogleIcon },
-    ];
 
-  const emailIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
-  const databaseIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
-  const cloudIntegrations: { provider: string; key: string; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [];
-
-
-  const handleIntegrationDrag = (_e: React.DragEvent<HTMLElement>) => {
-    // Drag in progress
-  };
-
-  const handleIntegrationDragStart = (
-    e: React.DragEvent<HTMLElement>,
-    provider: string,
-    integrationKey: string,
-    label: string
-  ) => {
-    isDraggingRef.current = true;
-
-    const payload = {
-      source: 'integration',
-      provider,
-      key: integrationKey,
-      label,
-    };
-
-    e.dataTransfer.setData('text/plain', JSON.stringify(payload));
-    e.dataTransfer.setData('application/json', JSON.stringify(payload));
-    e.dataTransfer.effectAllowed = 'copy';
-  };
 
   const handleSavedLinkDragStart = (
     e: React.DragEvent<HTMLElement>,
@@ -235,12 +215,14 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     localStorage.setItem('googleConnected', String(isGoogleConnected));
   }, [isGoogleConnected]);
 
-  // Load saved links on mount and when integrations dropdown opens
+  // Load saved links for current island when integrations dropdown opens
   useEffect(() => {
-    if (isIntegrationsOpen) {
+    if (isIntegrationsOpen && selectedIsland) {
       objectsApi
-        .getAllByType('link')
-        .then((links) => {
+        .list(selectedIsland.id)
+        .then((objects) => {
+          // Filter only link type objects
+          const links = objects.filter(obj => obj.type === 'link');
           const mapped = links.map((link) => ({
             id: link.id,
             url: (link.metadata as any)?.url || link.title || '',
@@ -254,8 +236,11 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         .catch((err) => {
           console.error('Failed to load saved links:', err);
         });
+    } else if (!selectedIsland) {
+      // Clear links if no island is selected
+      setSavedLinks([]);
     }
-  }, [isIntegrationsOpen]);
+  }, [isIntegrationsOpen, selectedIsland]);
 
   // Sync island name with editing state
   useEffect(() => {
@@ -270,23 +255,23 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     }
   }, [isEditingIslandName]);
 
-  // Check backend status on mount (best-effort)
+  // Check backend status and load accounts on mount
   useEffect(() => {
     let cancelled = false;
-    const checkStatus = async () => {
+    const loadGoogleAccounts = async () => {
       try {
-        const res = await fetch('/api/google/status');
+        const res = await fetch('/api/google/accounts');
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
-        if (typeof data?.connected === 'boolean') {
-          setIsGoogleConnected(data.connected);
-        }
+        const accounts = data.accounts || [];
+        setGoogleAccounts(accounts);
+        setIsGoogleConnected(accounts.length > 0);
       } catch {
         // Ignore network/backend issues; fall back to local state
       }
     };
-    checkStatus();
+    loadGoogleAccounts();
     return () => {
       cancelled = true;
     };
@@ -321,6 +306,31 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
               console.log('Window already closed');
             }
             googleWindowRef.current = null;
+          }
+
+          // Load all Google accounts to get the newly authenticated one
+          try {
+            const accountsRes = await fetch('/api/google/accounts');
+            if (accountsRes.ok) {
+              const accountsData = await accountsRes.json();
+              const accounts = accountsData.accounts || [];
+              setGoogleAccounts(accounts);
+
+              // If there's a pending Gmail link, create it with the newly authenticated account
+              if (pendingGmailLink && accounts.length > 0) {
+                // Get the most recently connected account (last in the list)
+                const newestAccount = accounts[accounts.length - 1];
+                await createGmailLinkWithAccount(
+                  pendingGmailLink.url,
+                  pendingGmailLink.title,
+                  pendingGmailLink.description,
+                  newestAccount.email
+                );
+                setPendingGmailLink(null);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to load accounts after OAuth:', err);
           }
 
           return true;
@@ -442,12 +452,55 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     ? 'Google Authorisation is On. Click to manage.'
     : 'Google Authorisation is Off. Click to sign in.';
 
+  const createGmailLinkWithAccount = async (url: string, title: string, description: string, accountEmail: string) => {
+    if (!selectedIsland) return;
+
+    try {
+      const favicon_url = buildFaviconUrl(url);
+      await objectsApi.create(selectedIsland.id, {
+        type: 'link',
+        title: title || accountEmail,
+        url,
+        description: description || `Gmail - ${accountEmail}`,
+        favicon_url,
+        x: 200,
+        y: 200,
+      });
+
+      // Reload saved links
+      const objects = await objectsApi.list(selectedIsland.id);
+      const links = objects.filter(obj => obj.type === 'link');
+      const mapped = links.map((link) => ({
+        id: link.id,
+        url: (link.metadata as any)?.url || link.title || '',
+        title: link.title,
+        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
+        description: link.description,
+        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
+        account_email: (link.metadata as any)?.account_email,
+      }));
+      setSavedLinks(mapped);
+    } catch (err) {
+      console.error('Failed to create Gmail link:', err);
+      alert('Failed to add Gmail link. Please try again.');
+    }
+  };
+
   const handleAddLink = async (url: string, title: string, description: string) => {
     if (!selectedIsland) {
       alert('Please select an island first');
       return;
     }
 
+    // Check if it's a Gmail URL - always trigger OAuth for new Gmail links
+    if (isGmailUrl(url)) {
+      // Store pending link and trigger OAuth flow
+      setPendingGmailLink({ url, title, description });
+      handleGoogleSignIn();
+      return;
+    }
+
+    // Regular link handling
     const favicon_url = buildFaviconUrl(url);
 
     try {
@@ -461,8 +514,9 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         y: 200,
       });
 
-      // Reload saved links
-      const links = await objectsApi.getAllByType('link');
+      // Reload saved links for current island
+      const objects = await objectsApi.list(selectedIsland.id);
+      const links = objects.filter(obj => obj.type === 'link');
       const mapped = links.map((link) => ({
         id: link.id,
         url: (link.metadata as any)?.url || link.title || '',
@@ -494,6 +548,78 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
       setEditingIslandName(selectedIsland?.name || '');
       setIsEditingIslandName(false);
     }
+  };
+
+  const handleLinkContextMenu = (e: React.MouseEvent, linkId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLinkContextMenu({ linkId, x: e.clientX, y: e.clientY });
+  };
+
+  const handleDeleteLink = async (linkId: string) => {
+    if (!selectedIsland) return;
+
+    try {
+      await objectsApi.delete(linkId);
+
+      // Reload saved links
+      const objects = await objectsApi.list(selectedIsland.id);
+      const links = objects.filter(obj => obj.type === 'link');
+      const mapped = links.map((link) => ({
+        id: link.id,
+        url: (link.metadata as any)?.url || link.title || '',
+        title: link.title,
+        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
+        description: link.description,
+        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
+      }));
+      setSavedLinks(mapped);
+    } catch (err) {
+      console.error('Failed to delete link:', err);
+      alert('Failed to delete link. Please try again.');
+    }
+
+    setLinkContextMenu(null);
+  };
+
+  const handleEditLink = (linkId: string) => {
+    const link = savedLinks.find(l => l.id === linkId);
+    if (link) {
+      setEditingLinkId(linkId);
+      setEditingLinkData({
+        url: link.url,
+        title: link.title,
+        description: link.description || ''
+      });
+    }
+    setLinkContextMenu(null);
+  };
+
+  const handleSaveEditedLink = async (url: string, title: string, description: string) => {
+    if (!selectedIsland || !editingLinkId) return;
+
+    try {
+      const favicon_url = buildFaviconUrl(url);
+      await objectsApi.updateLink(editingLinkId, url, title, description || '', favicon_url);
+
+      // Reload saved links
+      const objects = await objectsApi.list(selectedIsland.id);
+      const links = objects.filter(obj => obj.type === 'link');
+      const mapped = links.map((link) => ({
+        id: link.id,
+        url: (link.metadata as any)?.url || link.title || '',
+        title: link.title,
+        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
+        description: link.description || '',
+        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
+      }));
+      setSavedLinks(mapped);
+    } catch (err) {
+      console.error('Failed to update link:', err);
+      alert('Failed to update link. Please try again.');
+    }
+
+    setEditingLinkId(null);
   };
 
   return (
@@ -540,208 +666,45 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                   Drag and Drop to the Main Pane
                 </div>
 
-                {/* Telegram quick action */}
-                <div
-                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing"
-                  draggable={true}
-                  onDragStart={(e) => handleIntegrationDragStart(e, 'telegram', 'telegram', 'Telegram')}
-                  onDrag={handleIntegrationDrag}
-                  onDragEnd={handleIntegrationDragEnd}
-                  title="Drag to add a Telegram integration"
-                >
-                  <TelegramIcon size={14} />
-                  Telegram
-                </div>
+                {/* Saved Links - Direct List */}
+                {savedLinks.map((link) => {
+                  const isGmail = isGmailUrl(link.url);
+                  const displayName = isGmail && link.description?.includes('Gmail - ')
+                    ? link.description.replace('Gmail - ', '')
+                    : link.name;
 
-                {/* Google Section */}
-                <div>
-                  <button
-                    onClick={() => setIsGoogleExpanded(!isGoogleExpanded)}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <GoogleIcon size={16} />
-                      Google
+                  return (
+                    <div
+                      key={link.id}
+                      draggable
+                      onDragStart={(e) =>
+                        handleSavedLinkDragStart(e, link.id, link.url, link.title, link.name, link.description)
+                      }
+                      onDragEnd={handleIntegrationDragEnd}
+                      onContextMenu={(e) => handleLinkContextMenu(e, link.id)}
+                      className="w-full px-4 py-2 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                      title={link.description || link.url}
+                    >
+                      <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                        {isGmail ? (
+                          <GmailIcon size={14} />
+                        ) : link.favicon_url ? (
+                          <img
+                            src={link.favicon_url}
+                            alt=""
+                            className="w-4 h-4 object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <Link2 size={14} className="text-indigo-600" />
+                        )}
+                      </div>
+                      <span className="truncate">{displayName}</span>
                     </div>
-                    <ChevronRight size={14} className={`transition-transform ${isGoogleExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isGoogleExpanded && (
-                    <div className="space-y-1">
-                      {googleIntegrations.map(({ provider, key, label, Icon }) => (
-                        <div
-                          key={key}
-                          draggable={true}
-                          onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
-                          onDrag={handleIntegrationDrag}
-                          onDragEnd={handleIntegrationDragEnd}
-                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                        >
-                          <Icon size={14} />
-                          {label}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Email Section */}
-                <div>
-                  <button
-                    onClick={() => setIsEmailExpanded(!isEmailExpanded)}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Mail size={16} className="text-slate-600" />
-                      Email
-                    </div>
-                    <ChevronRight size={14} className={`transition-transform ${isEmailExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isEmailExpanded && (
-                    <div className="space-y-1">
-                      {emailIntegrations.map(({ provider, key, label, Icon }) => (
-                        <div
-                          key={key}
-                          draggable={true}
-                          onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
-                          onDragEnd={handleIntegrationDragEnd}
-                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing"
-                        >
-                          <Icon size={14} />
-                          {label}
-                        </div>
-                      ))}
-                      <button className="w-full px-4 py-2 pl-10 text-left text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                        <Plus size={14} />
-                        Add Custom Email
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Links Section */}
-                <div>
-                  <button
-                    onClick={() => setIsLinksExpanded(!isLinksExpanded)}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Link2 size={16} className="text-indigo-600" />
-                      Links
-                    </div>
-                    <ChevronRight size={14} className={`transition-transform ${isLinksExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isLinksExpanded && (
-                    <div className="space-y-1">
-                      <button
-                        onClick={() => setIsAddLinkDialogOpen(true)}
-                        className="w-full px-4 py-2 pl-10 text-left text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
-                      >
-                        <Plus size={14} />
-                        Add a link/website
-                      </button>
-                      {savedLinks.map((link) => (
-                        <div
-                          key={link.id}
-                          draggable={true}
-                          onDragStart={(e) =>
-                            handleSavedLinkDragStart(e, link.id, link.url, link.title, link.name, link.description)
-                          }
-                          onDrag={handleIntegrationDrag}
-                          onDragEnd={handleIntegrationDragEnd}
-                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                          title={link.description || link.url}
-                        >
-                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                            {link.favicon_url && (
-                              <img
-                                src={link.favicon_url}
-                                alt=""
-                                className="w-4 h-4 object-contain"
-                                onError={(e) => {
-                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                  if (fallback) {
-                                    fallback.classList.remove('hidden');
-                                  }
-                                  e.currentTarget.remove();
-                                }}
-                              />
-                            )}
-                            <Link2 size={14} className={`text-indigo-600 ${link.favicon_url ? 'hidden' : ''}`} />
-                          </div>
-                          <span className="truncate">{link.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Databases Section */}
-                <div>
-                  <button
-                    onClick={() => setIsDatabasesExpanded(!isDatabasesExpanded)}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Database size={16} className="text-purple-600" />
-                      Databases
-                    </div>
-                    <ChevronRight size={14} className={`transition-transform ${isDatabasesExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isDatabasesExpanded && (
-                    <div className="space-y-1">
-                      {databaseIntegrations.map(({ provider, key, label, Icon }) => (
-                        <div
-                          key={key}
-                          draggable={true}
-                          onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
-                          onDragEnd={handleIntegrationDragEnd}
-                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing"
-                        >
-                          <Icon size={14} />
-                          {label}
-                        </div>
-                      ))}
-                      <button className="w-full px-4 py-2 pl-10 text-left text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                        <Plus size={14} />
-                        Add Database
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Cloud Section */}
-                <div>
-                  <button
-                    onClick={() => setIsCloudExpanded(!isCloudExpanded)}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Cloud size={16} className="text-sky-500" />
-                      Cloud
-                    </div>
-                    <ChevronRight size={14} className={`transition-transform ${isCloudExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isCloudExpanded && (
-                    <div className="space-y-1">
-                      {cloudIntegrations.map(({ provider, key, label, Icon }) => (
-                        <div
-                          key={key}
-                          draggable={true}
-                          onDragStart={(e) => handleIntegrationDragStart(e, provider, key, label)}
-                          onDragEnd={handleIntegrationDragEnd}
-                          className="w-full px-4 py-2 pl-10 flex items-center gap-2 cursor-grab active:cursor-grabbing"
-                        >
-                          <Icon size={14} />
-                          {label}
-                        </div>
-                      ))}
-                      <button className="w-full px-4 py-2 pl-10 text-left text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                        <Plus size={14} />
-                        Add Cloud
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -798,6 +761,28 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
             </>
           )}
         </div>
+
+        {/* Add Link Button */}
+        <button
+          type="button"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+          title="Add a link/website"
+          onClick={() => setIsAddLinkDialogOpen(true)}
+        >
+          <Plus size={16} />
+          Add link
+        </button>
+
+        {/* Telegram Account Button */}
+        <button
+          type="button"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-500 bg-slate-100 rounded-lg cursor-not-allowed"
+          title="Add Telegram account (coming soon)"
+          disabled
+        >
+          <Plus size={16} />
+          Add Telegram account
+        </button>
       </div>
 
       {/* Center section - Island Name */}
@@ -879,6 +864,66 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         onClose={() => setIsAddLinkDialogOpen(false)}
         onAdd={handleAddLink}
       />
+
+      {/* Account Selection Dialog */}
+      <AccountSelectionDialog
+        isOpen={isAccountSelectionOpen}
+        onClose={() => setIsAccountSelectionOpen(false)}
+        accounts={googleAccounts}
+        onSelectAccount={(email) => {
+          if (pendingGmailLink) {
+            createGmailLinkWithAccount(
+              pendingGmailLink.url,
+              pendingGmailLink.title,
+              pendingGmailLink.description,
+              email
+            );
+            setPendingGmailLink(null);
+          }
+        }}
+        onAddNewAccount={() => {
+          handleGoogleSignIn();
+        }}
+      />
+
+      {/* Edit Link Dialog */}
+      <EditLinkDialog
+        isOpen={!!editingLinkId}
+        onClose={() => setEditingLinkId(null)}
+        onSave={handleSaveEditedLink}
+        initialUrl={editingLinkData.url}
+        initialTitle={editingLinkData.title}
+        initialDescription={editingLinkData.description}
+      />
+
+      {/* Link Context Menu */}
+      {linkContextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setLinkContextMenu(null)}
+          />
+          <div
+            className="fixed z-50 w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
+            style={{ left: `${linkContextMenu.x}px`, top: `${linkContextMenu.y}px` }}
+          >
+            <button
+              onClick={() => handleEditLink(linkContextMenu.linkId)}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+            >
+              <Edit2 size={14} />
+              Edit
+            </button>
+            <button
+              onClick={() => handleDeleteLink(linkContextMenu.linkId)}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
+        </>
+      )}
     </header>
   );
 }
