@@ -336,6 +336,61 @@ async def disconnect_google(
         ) from e
 
 
+@router.delete(
+    "/accounts/{email}",
+    response_model=GoogleDisconnectResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Delete Google account",
+    description="Remove a stored Google account and clear its OAuth tokens.",
+    dependencies=[Depends(FeatureFlags.google_integration)],
+    tags=["Google OAuth"]
+)
+async def delete_google_account(
+    email: str,
+    config: GoogleOAuthSettings = Depends(get_google_config)
+) -> GoogleDisconnectResponse:
+    """
+    Delete a stored Google account (email) and clear its tokens.
+    """
+    try:
+        from app.storage.repositories.google_repo import google_tokens_repository
+
+        # Attempt to disconnect (revoke) then delete tokens
+        try:
+            await oauth_service.disconnect(user_id=email)
+        except Exception as e:
+            logger.warning(f"Failed to disconnect before delete for {email}: {e}")
+
+        deleted = await google_tokens_repository.delete_tokens(email)
+
+        if not deleted:
+            # Fallback to legacy default user_id
+            deleted = await google_tokens_repository.delete_tokens("default")
+
+        if not deleted:
+            raise AppError(
+                f"No stored Google account found for {email}.",
+                status_code=status.HTTP_404_NOT_FOUND,
+                error_code="google_account_not_found",
+            )
+
+        return GoogleDisconnectResponse(
+            success=True,
+            message=f"Deleted Google account {email}"
+        )
+    except AppError:
+        raise
+    except Exception as e:
+        logger.exception("Failed to delete Google account")
+        raise AppError(
+            "Unable to delete Google account right now.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="google_account_delete_failed",
+            details={"error": str(e)},
+            log_level="error",
+        ) from e
+
+
 @router.get(
     "/accounts",
     response_model=GoogleAccountsList,

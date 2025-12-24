@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Grid3x3, Link, FileText, Edit2, Trash2 } from 'lucide-react';
+import { Grid3x3, Link, FileText, Edit2, EyeOff } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
@@ -1110,10 +1110,10 @@ function IconTile({ id, type, title, x, y, url, description, faviconUrl, filePat
             </button>
             <button
               onClick={handleDeleteClick}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-2"
             >
-              <Trash2 size={14} />
-              Delete
+              <EyeOff size={14} />
+              Remove
             </button>
           </div>
         </>
