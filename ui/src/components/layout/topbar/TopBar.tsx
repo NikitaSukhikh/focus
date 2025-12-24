@@ -66,6 +66,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   const [linkContextMenu, setLinkContextMenu] = useState<{ linkId: string; x: number; y: number } | null>(null);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [editingLinkData, setEditingLinkData] = useState<{ url: string; title: string; description: string }>({ url: '', title: '', description: '' });
+  const [accountContextMenu, setAccountContextMenu] = useState<{ email: string; x: number; y: number } | null>(null);
   const isDraggingRef = useRef(false);
   const integrationsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const integrationsDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -308,7 +309,6 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
           console.log('Connected! Updating UI...');
           setIsGoogleConnected(true);
           setIsGoogleSigningIn(false);
-          setIsGoogleMenuOpen(false);
 
           // Auto-close the OAuth window
           if (googleWindowRef.current) {
@@ -779,6 +779,10 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                   googleAccounts.map((account) => (
                     <div
                       key={account.email}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setAccountContextMenu({ email: account.email, x: e.clientX, y: e.clientY });
+                      }}
                       className="px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
                     >
                       <div className="flex items-center gap-2 text-sm text-slate-700 truncate">
@@ -786,14 +790,14 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                         <div className={`w-2.5 h-2.5 rounded-full ${googleStatusColor}`} />
                       </div>
                       <button
-                        onClick={isGoogleConnected ? handleGoogleSignOut : handleGoogleSignIn}
-                        className="text-xs font-medium text-slate-700 hover:text-slate-900"
-                      >
-                        {isGoogleConnected ? 'Sign Out' : 'Sign In'}
-                      </button>
-                    </div>
-                  ))
-                ) : (
+                      onClick={isGoogleConnected ? handleGoogleSignOut : handleGoogleSignIn}
+                      className="text-xs font-medium text-slate-700 hover:text-slate-900"
+                    >
+                      {isGoogleConnected ? 'Sign Out' : 'Sign In'}
+                    </button>
+                  </div>
+                ))
+              ) : (
                   <>
                     <div className="px-3 py-2 text-xs text-slate-500">No Google accounts</div>
                     <button
@@ -808,6 +812,46 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
             </>
           )}
         </div>
+
+        {/* Account Context Menu */}
+        {accountContextMenu && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setAccountContextMenu(null)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setAccountContextMenu(null);
+              }}
+            />
+            <div
+              className="fixed z-50 w-44 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
+              style={{ left: `${accountContextMenu.x}px`, top: `${accountContextMenu.y}px` }}
+            >
+              <button
+                onClick={async () => {
+                  const email = accountContextMenu.email;
+                  setAccountContextMenu(null);
+                  try {
+                    const res = await fetch(`/api/google/accounts/${encodeURIComponent(email)}`, { method: 'DELETE' });
+                    if (!res.ok) {
+                      const text = await res.text();
+                      throw new Error(text || 'Failed to remove Google account');
+                    }
+                    setGoogleAccounts((prev) => prev.filter((a) => a.email !== email));
+                    setIsGoogleConnected(false);
+                  } catch (err) {
+                    console.error('Failed to remove Google account', err);
+                    alert('Failed to remove Google account. Please try again.');
+                  }
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Remove account
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Add Link Button */}
         <button
