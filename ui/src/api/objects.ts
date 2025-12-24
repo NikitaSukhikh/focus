@@ -90,6 +90,23 @@ export const objectsApi = {
     return res.json();
   },
 
+  async updateLink(objectId: string, url: string, title: string, description: string, favicon_url: string): Promise<ObjectResponse> {
+    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        description,
+        metadata: { url, favicon_url }
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to update link: ${res.status} ${text}`);
+    }
+    return res.json();
+  },
+
   async delete(objectId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/objects/${objectId}`, {
       method: 'DELETE',

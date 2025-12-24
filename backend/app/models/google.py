@@ -88,6 +88,58 @@ class GoogleAuthSuccess(BaseModel):
     )
 
 
+class GoogleAccount(BaseModel):
+    """Information about a connected Google account."""
+
+    email: str = Field(..., description="Google account email")
+    scopes: List[str] = Field(
+        default_factory=list,
+        description="List of granted scopes"
+    )
+    connected_at: Optional[datetime] = Field(None, description="When the account was connected")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "user@example.com",
+                "scopes": [
+                    "https://www.googleapis.com/auth/gmail.readonly",
+                    "https://www.googleapis.com/auth/drive.readonly"
+                ],
+                "connected_at": "2024-01-20T10:30:00Z"
+            }
+        }
+    )
+
+
+class GoogleAccountsList(BaseModel):
+    """List of connected Google accounts."""
+
+    accounts: List[GoogleAccount] = Field(
+        default_factory=list,
+        description="List of connected Google accounts"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "accounts": [
+                    {
+                        "email": "work@company.com",
+                        "scopes": ["https://www.googleapis.com/auth/gmail.readonly"],
+                        "connected_at": "2024-01-20T10:30:00Z"
+                    },
+                    {
+                        "email": "personal@gmail.com",
+                        "scopes": ["https://www.googleapis.com/auth/drive.readonly"],
+                        "connected_at": "2024-01-21T14:20:00Z"
+                    }
+                ]
+            }
+        }
+    )
+
+
 class GoogleConnectionStatus(BaseModel):
     """Response indicating Google connection status."""
 

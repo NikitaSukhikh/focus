@@ -235,6 +235,26 @@ class GoogleTokensRepository:
                 logger.info(f"Deleted tokens for user {user_id}")
             return bool(deleted)
 
+    async def get_all_accounts(self) -> list[Dict[str, Any]]:
+        """
+        Get all connected Google accounts.
+
+        Returns:
+            List of account information dictionaries
+        """
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(GoogleToken))
+            accounts = result.scalars().all()
+
+            return [
+                {
+                    "email": account.user_email or account.user_id,
+                    "scopes": account.scopes or [],
+                    "connected_at": account.created_at,
+                }
+                for account in accounts
+            ]
+
 
 # Singleton instance
 google_tokens_repository = GoogleTokensRepository()
