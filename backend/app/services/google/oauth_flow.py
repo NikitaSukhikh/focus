@@ -7,6 +7,7 @@ Supports Gmail, Drive (including Docs, Sheets, Slides, and other Drive files).
 
 from typing import Dict, Any, Optional
 import secrets
+from datetime import datetime
 from urllib.parse import urlencode
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -306,8 +307,13 @@ class GoogleOAuthService:
         Returns:
             bool: True if disconnected successfully
         """
-        # Get tokens
+        # Get tokens (try provided user_id, then legacy 'default')
         token_data = await self.tokens_repo.get_tokens(user_id)
+        token_user_id = user_id
+
+        if token_data is None and user_id != "default":
+            token_data = await self.tokens_repo.get_tokens("default")
+            token_user_id = "default" if token_data else user_id
 
         if token_data is None:
             logger.warning(f"No tokens to disconnect for user {user_id}")
@@ -319,13 +325,23 @@ class GoogleOAuthService:
         except Exception as e:
             logger.warning(f"Failed to revoke token with Google: {e}")
 
-        # Delete tokens from repository
-        deleted = await self.tokens_repo.delete_tokens(user_id)
+        # Instead of deleting the row (which removes the email), mark it as requiring reauth
+        updated = await self.tokens_repo.mark_requires_reauth(
+            user_id=token_user_id,
+            requires_reauth=True,
+            expires_at=datetime.utcnow(),
+            refresh_token=None,
+            wipe_access_token=True,
+        )
 
-        if deleted:
-            logger.info(f"Disconnected Google account for user {user_id}")
+        if not updated:
+            # Fallback to forcing the flag without token changes
+            updated = await self.tokens_repo.force_requires_reauth_flag(token_user_id)
 
-        return deleted
+        if updated:
+            logger.info(f"Disconnected Google account for user {token_user_id} (requires reauth)")
+
+        return updated
 
     async def _revoke_token(self, token: str) -> None:
         """
@@ -359,9 +375,9 @@ class GoogleOAuthService:
         Returns:
             Dict with connection status
         """
-        has_tokens = await self.tokens_repo.has_tokens(user_id)
+        token_row = await self.tokens_repo.get_tokens(user_id)
 
-        if not has_tokens:
+        if not token_row:
             return {
                 "connected": False,
                 "user_email": None,
@@ -370,16 +386,16 @@ class GoogleOAuthService:
                 "requires_reauth": False
             }
 
-        token_data = await self.tokens_repo.get_tokens(user_id)
+        requires_reauth_flag = token_row.get("requires_reauth", False)
         is_valid = await self.tokens_repo.is_token_valid(user_id)
         requires_refresh = await self.tokens_repo.requires_refresh(user_id)
 
         return {
-            "connected": True,
-            "user_email": token_data.get("user_email"),
-            "scopes": token_data.get("scopes", []),
-            "token_expires_at": token_data.get("expires_at"),
-            "requires_reauth": not is_valid and not token_data.get("refresh_token")
+            "connected": bool(is_valid and not requires_reauth_flag),
+            "user_email": token_row.get("user_email"),
+            "scopes": token_row.get("scopes", []),
+            "token_expires_at": token_row.get("expires_at"),
+            "requires_reauth": True if requires_reauth_flag else (not is_valid and not token_row.get("refresh_token"))
         }
 
 

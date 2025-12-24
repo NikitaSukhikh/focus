@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Link2, ExternalLink } from 'lucide-react';
+import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/url';
 
 interface EditLinkDialogProps {
   isOpen: boolean;
@@ -29,51 +30,29 @@ export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTit
     }
   }, [isOpen, initialUrl, initialTitle, initialDescription]);
 
-  const normalizeUrl = (value: string): string => {
-    const trimmed = value.trim();
-    if (!trimmed) return trimmed;
-
-    // If URL doesn't have a protocol, add https://
-    if (!trimmed.match(/^https?:\/\//i)) {
-      return `https://${trimmed}`;
-    }
-    return trimmed;
-  };
-
-  const validateUrl = (value: string): boolean => {
-    if (!value.trim()) return true; // Empty is valid (not yet filled)
-
-    // Try to normalize and validate
-    const normalized = normalizeUrl(value);
-    try {
-      const urlObj = new URL(normalized);
-      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  };
-
   const handleUrlChange = (value: string) => {
     setUrl(value);
-    setIsValidUrl(validateUrl(value));
+    setIsValidUrl(isLikelyHttpUrl(value, { allowEmpty: true }));
   };
 
   const handleUrlBlur = () => {
     if (url.trim()) {
       const normalized = normalizeUrl(url);
       setUrl(normalized);
-      setIsValidUrl(validateUrl(normalized));
+      setIsValidUrl(isLikelyHttpUrl(normalized, { allowEmpty: true }));
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const trimmedUrl = url.trim();
-    if (!trimmedUrl || !isValidUrl) return;
+    const { normalizedUrl, isValid } = validateUrlOnSubmit(url);
+    setUrl(normalizedUrl);
+    setIsValidUrl(isValid);
+
+    if (!isValid) return;
 
     // Normalize URL before submitting
-    const normalizedUrl = normalizeUrl(trimmedUrl);
     const trimmedTitle = title.trim() || normalizedUrl;
     const trimmedDescription = description.trim();
 
@@ -88,6 +67,8 @@ export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTit
   };
 
   if (!isOpen) return null;
+
+  const showHttpsPrefix = !/^https?:\/\//i.test(url);
 
   return (
     <>
@@ -133,14 +114,19 @@ export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTit
                   value={url}
                   onChange={(e) => handleUrlChange(e.target.value)}
                   onBlur={handleUrlBlur}
-                  placeholder="https://example.com"
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                  placeholder="example.com"
+                  className={`w-full py-2 ${showHttpsPrefix ? 'pl-20 pr-3' : 'px-3'} border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
                     !isValidUrl
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                       : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200'
                   }`}
                   required
                 />
+                {showHttpsPrefix && (
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 select-none pointer-events-none">
+                    https://
+                  </span>
+                )}
                 {url && isValidUrl && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     <ExternalLink size={16} className="text-slate-400" />
@@ -149,7 +135,7 @@ export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTit
               </div>
               {!isValidUrl && (
                 <p className="mt-1 text-xs text-red-600">
-                  Please enter a valid URL (http:// or https://)
+                  Please enter a valid URL
                 </p>
               )}
             </div>

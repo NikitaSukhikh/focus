@@ -1,6 +1,8 @@
+const FALLBACK_QUESTION_MARK = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABrSURBVEhL7ZBBCsAgDATzE899Qf//MqUwwvYgSbFK0Q7klDCD2hTSceYRg361QC/qQr9LwNtX1IXeD+i+dVPRO/TPvsi7URf6eMDbX6gL/YcCEdSFfqcXRFAX+j9wR13oJwfeHPQrBMZhVgDG9DeYb1qTSwAAAABJRU5ErkJggg==';
+
+export const FALLBACK_FAVICON = FALLBACK_QUESTION_MARK;
+
 function normalizeHostname(hostname: string): string {
-  const lower = hostname.toLowerCase();
-  if (lower === 'youtu.be') return 'youtube.com';
   return hostname.replace(/^www\./i, '');
 }
 
@@ -9,9 +11,11 @@ export function buildFaviconUrl(targetUrl?: string): string | undefined {
   try {
     const parsed = new URL(targetUrl);
     const domain = normalizeHostname(parsed.hostname);
-    // Use Google's favicon service for consistent sizing; domain-based works better for shortlinks
-    return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`;
+    const protocol = parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.protocol : 'https:';
+    // Prefer the site's own favicon to detect unreachable domains (onError will fall back to question mark)
+    return `${protocol}//${domain}/favicon.ico`;
   } catch {
-    return undefined;
+    // Provide fallback for syntactically valid but unreachable domains
+    return FALLBACK_FAVICON;
   }
 }

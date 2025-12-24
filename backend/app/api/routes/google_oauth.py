@@ -305,9 +305,20 @@ async def disconnect_google(
         500: Internal server error
     """
     try:
-        await oauth_service.disconnect()
+        # Disconnect all stored Google accounts to avoid stale reuse
+        from app.storage.repositories.google_repo import google_tokens_repository
 
-        logger.info("Disconnected Google account")
+        accounts = await google_tokens_repository.get_all_accounts()
+        if not accounts:
+            logger.info("No Google accounts to disconnect")
+        else:
+            for account in accounts:
+                user_id = account["email"]
+                try:
+                    await oauth_service.disconnect(user_id=user_id)
+                    logger.info(f"Disconnected Google account {user_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to disconnect Google account {user_id}: {e}")
 
         return GoogleDisconnectResponse(
             success=True,
@@ -400,18 +411,27 @@ async def get_connection_status(
         from app.storage.repositories.google_repo import google_tokens_repository
 
         accounts_data = await google_tokens_repository.get_all_accounts()
-        is_connected = len(accounts_data) > 0
 
-        # Return first account's info if any exists (for backwards compatibility)
-        user_email = accounts_data[0]["email"] if accounts_data else None
-        scopes = accounts_data[0]["scopes"] if accounts_data else []
+        # Consider connected only if at least one account does NOT require reauth
+        connected_accounts = [a for a in accounts_data if not a.get("requires_reauth")]
+        is_connected = len(connected_accounts) > 0
+        requires_reauth = not is_connected and bool(accounts_data)
+
+        # Prefer a connected account for display; otherwise show first stored account
+        display_account = connected_accounts[0] if connected_accounts else (accounts_data[0] if accounts_data else None)
+
+        user_email = display_account.get("email") if display_account else None
+        scopes = display_account.get("scopes") if display_account else []
+        token_expires_at = display_account.get("expires_at") if display_account else None
 
         logger.debug(f"Google connection status: {is_connected}")
 
         return GoogleConnectionStatus(
             connected=is_connected,
             user_email=user_email,
-            scopes=scopes or []
+            scopes=scopes or [],
+            token_expires_at=token_expires_at,
+            requires_reauth=requires_reauth
         )
 
     except Exception as e:
