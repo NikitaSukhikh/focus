@@ -97,6 +97,7 @@ class GoogleTokensRepository:
                 token_row.scopes = scopes or []
                 token_row.expires_at = expires_at
                 token_row.user_email = user_email
+                token_row.requires_reauth = False
                 token_row.updated_at = datetime.utcnow()
 
                 await session.commit()
@@ -145,6 +146,7 @@ class GoogleTokensRepository:
                     "scopes": token_row.scopes or [],
                     "expires_at": token_row.expires_at,
                     "user_email": token_row.user_email,
+                    "requires_reauth": token_row.requires_reauth,
                     "created_at": token_row.created_at,
                     "updated_at": token_row.updated_at,
                 }
@@ -165,9 +167,14 @@ class GoogleTokensRepository:
     async def is_token_valid(self, user_id: str) -> bool:
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(GoogleToken.expires_at).where(GoogleToken.user_id == user_id)
+                select(GoogleToken.expires_at, GoogleToken.requires_reauth).where(GoogleToken.user_id == user_id)
             )
-            expires_at = result.scalar_one_or_none()
+            row = result.one_or_none()
+            if row is None:
+                return False
+            expires_at, requires_reauth = row
+            if requires_reauth:
+                return False
             if expires_at is None:
                 return False
             return expires_at > datetime.utcnow() + timedelta(minutes=5)
@@ -235,6 +242,63 @@ class GoogleTokensRepository:
                 logger.info(f"Deleted tokens for user {user_id}")
             return bool(deleted)
 
+    async def mark_requires_reauth(
+        self,
+        user_id: str,
+        requires_reauth: bool = True,
+        expires_at: Optional[datetime] = None,
+        refresh_token: Optional[str] = None,
+        wipe_access_token: bool = False,
+    ) -> bool:
+        """
+        Mark a Google account as requiring re-auth without losing email.
+        Optionally expire tokens immediately and clear refresh token.
+        """
+        try:
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GoogleToken).where(GoogleToken.user_id == user_id)
+                )
+                token_row = result.scalar_one_or_none()
+                if token_row is None:
+                    return False
+
+                token_row.requires_reauth = requires_reauth
+                token_row.expires_at = expires_at or datetime.utcnow()
+                # Clear refresh token unless explicitly provided
+                token_row.refresh_token = None if refresh_token is None else self._encryption.encrypt(refresh_token)
+                if wipe_access_token:
+                    token_row.access_token = self._encryption.encrypt("revoked")
+                token_row.updated_at = datetime.utcnow()
+                await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to mark requires_reauth for user {user_id}: {e}", exc_info=True)
+            return False
+
+    async def force_requires_reauth_flag(self, user_id: str) -> bool:
+        """
+        Hard-set requires_reauth flag without touching tokens (used as a fallback).
+        """
+        try:
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GoogleToken).where(GoogleToken.user_id == user_id)
+                )
+                token_row = result.scalar_one_or_none()
+                if token_row is None:
+                    return False
+
+                token_row.requires_reauth = True
+                token_row.expires_at = datetime.utcnow()
+                token_row.refresh_token = None
+                token_row.updated_at = datetime.utcnow()
+                await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to force requires_reauth for user {user_id}: {e}", exc_info=True)
+            return False
+
     async def get_all_accounts(self) -> list[Dict[str, Any]]:
         """
         Get all connected Google accounts.
@@ -251,6 +315,8 @@ class GoogleTokensRepository:
                     "email": account.user_email or account.user_id,
                     "scopes": account.scopes or [],
                     "connected_at": account.created_at,
+                    "requires_reauth": account.requires_reauth or account.user_id == "default",
+                    "expires_at": account.expires_at,
                 }
                 for account in accounts
             ]
