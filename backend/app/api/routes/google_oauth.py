@@ -15,6 +15,8 @@ from app.models.google import (
     GoogleAuthSuccess,
     GoogleConnectionStatus,
     GoogleDisconnectResponse,
+    GoogleAccountsList,
+    GoogleAccount,
     DriveFileList,
     DriveSearchQuery,
     GmailThreadList,
@@ -324,11 +326,61 @@ async def disconnect_google(
 
 
 @router.get(
+    "/accounts",
+    response_model=GoogleAccountsList,
+    status_code=status.HTTP_200_OK,
+    summary="List all connected Google accounts",
+    description="Get list of all connected Google accounts.",
+    dependencies=[Depends(FeatureFlags.google_integration)],
+    tags=["Google OAuth"]
+)
+async def list_accounts(
+    config: GoogleOAuthSettings = Depends(get_google_config)
+) -> GoogleAccountsList:
+    """
+    List all connected Google accounts.
+
+    Returns:
+        GoogleAccountsList: List of connected accounts
+
+    Raises:
+        500: Internal server error
+    """
+    try:
+        from app.storage.repositories.google_repo import google_tokens_repository
+
+        accounts_data = await google_tokens_repository.get_all_accounts()
+
+        accounts = [
+            GoogleAccount(
+                email=account["email"],
+                scopes=account["scopes"],
+                connected_at=account["connected_at"]
+            )
+            for account in accounts_data
+        ]
+
+        logger.debug(f"Found {len(accounts)} connected Google accounts")
+
+        return GoogleAccountsList(accounts=accounts)
+
+    except Exception as e:
+        logger.exception("Failed to list accounts")
+        raise AppError(
+            "Unable to retrieve connected accounts right now.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="google_accounts_list_failed",
+            details={"error": str(e)},
+            log_level="error",
+        ) from e
+
+
+@router.get(
     "/status",
     response_model=GoogleConnectionStatus,
     status_code=status.HTTP_200_OK,
     summary="Get Google connection status",
-    description="Check if Google account is connected and which scopes are available.",
+    description="Check if any Google account is connected (legacy endpoint - use /accounts for multi-account support).",
     dependencies=[Depends(FeatureFlags.google_integration)],
     tags=["Google OAuth"]
 )
@@ -336,7 +388,7 @@ async def get_connection_status(
     config: GoogleOAuthSettings = Depends(get_google_config)
 ) -> GoogleConnectionStatus:
     """
-    Get Google connection status.
+    Get Google connection status (legacy - checks if ANY account is connected).
 
     Returns:
         GoogleConnectionStatus: Connection status and available scopes
@@ -345,13 +397,20 @@ async def get_connection_status(
         500: Internal server error
     """
     try:
-        is_connected = await token_store.is_connected("default")
-        scopes = await token_store.get_scopes("default") if is_connected else []
+        from app.storage.repositories.google_repo import google_tokens_repository
+
+        accounts_data = await google_tokens_repository.get_all_accounts()
+        is_connected = len(accounts_data) > 0
+
+        # Return first account's info if any exists (for backwards compatibility)
+        user_email = accounts_data[0]["email"] if accounts_data else None
+        scopes = accounts_data[0]["scopes"] if accounts_data else []
 
         logger.debug(f"Google connection status: {is_connected}")
 
         return GoogleConnectionStatus(
             connected=is_connected,
+            user_email=user_email,
             scopes=scopes or []
         )
 

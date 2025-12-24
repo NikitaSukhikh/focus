@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Link2, ExternalLink } from 'lucide-react';
 
-interface AddLinkDialogProps {
+interface EditLinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (url: string, title: string, description: string) => void;
+  onSave: (url: string, title: string, description: string) => void;
+  initialUrl: string;
+  initialTitle: string;
+  initialDescription: string;
 }
 
-export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
+export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTitle, initialDescription }: EditLinkDialogProps) {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -15,19 +18,16 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen && urlInputRef.current) {
-      urlInputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setUrl('');
-      setTitle('');
-      setDescription('');
+    if (isOpen) {
+      setUrl(initialUrl);
+      setTitle(initialTitle);
+      setDescription(initialDescription);
       setIsValidUrl(true);
+      if (urlInputRef.current) {
+        urlInputRef.current.focus();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialUrl, initialTitle, initialDescription]);
 
   const normalizeUrl = (value: string): string => {
     const trimmed = value.trim();
@@ -77,7 +77,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
     const trimmedTitle = title.trim() || normalizedUrl;
     const trimmedDescription = description.trim();
 
-    onAdd(normalizedUrl, trimmedTitle, trimmedDescription);
+    onSave(normalizedUrl, trimmedTitle, trimmedDescription);
     onClose();
   };
 
@@ -108,7 +108,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <Link2 size={20} className="text-indigo-600" />
-              <h2 className="text-lg font-semibold text-slate-900">Add Link</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Edit Link</h2>
             </div>
             <button
               onClick={onClose}
@@ -198,7 +198,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
                 disabled={!url.trim() || !isValidUrl}
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Link
+                Save Changes
               </button>
             </div>
           </form>

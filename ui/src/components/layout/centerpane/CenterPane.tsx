@@ -11,6 +11,15 @@ import { getFileTypeIcon } from '../../icons/FileTypeIcons';
 
 type IconKind = 'link' | 'file' | 'gmail' | 'google_drive' | 'google_sheets' | 'google_docs' | 'google_slides' | 'text' | 'telegram' | 'intstorage' | 'unknown';
 
+const isGmailUrl = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname === 'mail.google.com' || urlObj.hostname === 'gmail.com';
+  } catch {
+    return false;
+  }
+};
+
 interface DroppedIcon {
   id: string;
   type: IconKind;
@@ -45,10 +54,18 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
     objectsApi
       .list(islandId)
       .then((objects) => {
-        const mapped: DroppedIcon[] = objects.map((obj, idx) => {
-          const meta = (obj.metadata || {}) as Record<string, any>;
-          const x = typeof meta.x === 'number' ? meta.x : 100 + (idx % 5) * 120;
-          const y = typeof meta.y === 'number' ? meta.y : 100 + Math.floor(idx / 5) * 140;
+        const mapped: DroppedIcon[] = objects
+          .filter((obj) => {
+            // Filter out objects with negative or missing positions (removed from canvas)
+            const meta = (obj.metadata || {}) as Record<string, any>;
+            const x = meta.x;
+            const y = meta.y;
+            return typeof x === 'number' && typeof y === 'number' && x >= 0 && y >= 0;
+          })
+          .map((obj, idx) => {
+            const meta = (obj.metadata || {}) as Record<string, any>;
+            const x = typeof meta.x === 'number' ? meta.x : 100 + (idx % 5) * 120;
+            const y = typeof meta.y === 'number' ? meta.y : 100 + Math.floor(idx / 5) * 140;
 
           // For Google Drive services, service key is in description
           // For links, description is the actual description
@@ -59,9 +76,17 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
           const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
 
+          // Check if it's a Gmail link
+          const isGmail = url && isGmailUrl(url);
+
+          // Extract email from description for Gmail links
+          const displayTitle = isGmail && description?.includes('Gmail - ')
+            ? description.replace('Gmail - ', '')
+            : obj.title;
+
           let kind: IconKind =
             obj.type === 'link'
-              ? 'link'
+              ? (isGmail ? 'gmail' : 'link')
               : obj.type === 'file'
               ? 'file'
               : obj.type === 'gmail'
@@ -83,7 +108,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
           return {
             id: obj.id,
             type: kind,
-            title: obj.title,
+            title: displayTitle,
             x,
             y,
             serviceKey,
@@ -114,15 +139,17 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
         // Prevent default behavior to avoid any unwanted side effects
         e.preventDefault();
 
-        console.log('[DELETE] Deleting icon:', selectedIconId);
+        console.log('[DELETE] Removing icon from canvas:', selectedIconId);
 
-        // Delete the selected icon
+        // Remove the icon from canvas (local state)
         setIconsByIsland((prev) => ({
           ...prev,
           [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== selectedIconId),
         }));
-        objectsApi.delete(selectedIconId).catch((err) => {
-          console.error('Failed to delete object:', err);
+
+        // Clear position in backend to hide from canvas but keep in database
+        objectsApi.updatePosition(selectedIconId, -1, -1).catch((err) => {
+          console.error('Failed to clear object position:', err);
         });
         setSelectedIconId(null);
       }
@@ -360,6 +387,71 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       return;
     }
 
+    // Check if dragging a saved link from the Integrations dropdown
+    const rawJson = e.dataTransfer.getData('application/json');
+    if (rawJson) {
+      try {
+        const dragData = JSON.parse(rawJson);
+        if (dragData.source === 'saved-link' && dragData.linkId) {
+          // This is an existing saved link - just update its position, don't create a duplicate
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+
+          console.log('[DROP] Saved link drag detected:', { linkId: dragData.linkId, x, y });
+
+          // Check if icon already exists in local state
+          setIconsByIsland((prev) => {
+            const currentIcons = prev[selectedIsland.id] || [];
+            const existingIconIndex = currentIcons.findIndex((i) => i.id === dragData.linkId);
+
+            if (existingIconIndex >= 0) {
+              // Icon exists - update its position
+              return {
+                ...prev,
+                [selectedIsland.id]: currentIcons.map((i) =>
+                  i.id === dragData.linkId ? { ...i, x, y } : i
+                ),
+              };
+            } else {
+              // Icon doesn't exist in canvas (was removed) - add it back
+              const isGmail = isGmailUrl(dragData.url || '');
+              const faviconUrl = dragData.url ? buildFaviconUrl(dragData.url) : undefined;
+
+              // Extract email from description for Gmail links
+              const displayTitle = isGmail && dragData.description?.includes('Gmail - ')
+                ? dragData.description.replace('Gmail - ', '')
+                : dragData.title || dragData.label || 'Link';
+
+              const newIcon: DroppedIcon = {
+                id: dragData.linkId,
+                type: isGmail ? 'gmail' : 'link',
+                title: displayTitle,
+                x,
+                y,
+                url: dragData.url,
+                description: dragData.description,
+                faviconUrl: isGmail ? undefined : faviconUrl,
+              };
+
+              return {
+                ...prev,
+                [selectedIsland.id]: [...currentIcons, newIcon],
+              };
+            }
+          });
+
+          // Update backend
+          objectsApi.updatePosition(dragData.linkId, x, y).catch((err) => {
+            console.error('Failed to update saved link position:', err);
+          });
+          return;
+        }
+      } catch (err) {
+        // Not a saved link or malformed JSON, continue to normal drop handling
+        console.log('[DROP] Failed to parse drag data or not a saved link:', err);
+      }
+    }
+
     // Check for OS file drops (from file manager)
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
@@ -436,7 +528,6 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const rawJson = e.dataTransfer.getData('application/json');
     const uriFallback = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
     console.log('[DROP] New integration drop', { rawJson, uriFallback, x, y });
 
@@ -505,21 +596,8 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
             }
             return drivePayload as ObjectCreatePayload;
           }
-          // Handle saved links from the Links dropdown
-          if (payload?.source === 'saved-link' || payload?.linkId) {
-            const favicon_url = buildFaviconUrl(payload.url);
-            return {
-              type: 'link',
-              title: payload.title || payload.label || payload.url,
-              url: payload.url,
-              description: payload.description,
-              favicon_url,
-              x,
-              y,
-            };
-          }
-          // Handle generic links with URL
-          if (payload?.url) {
+          // Handle generic links with URL (but NOT saved links - those are handled above)
+          if (payload?.url && !payload?.source) {
             const favicon_url = buildFaviconUrl(payload.url);
             return {
               type: 'link',
@@ -722,14 +800,14 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
               }}
               onDelete={() => {
                 if (!selectedIsland) return;
-                // Update local state
+                // Remove from canvas (local state)
                 setIconsByIsland((prev) => ({
                   ...prev,
                   [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== icon.id),
                 }));
-                // Update backend
-                objectsApi.delete(icon.id).catch((err) => {
-                  console.error('Failed to delete object:', err);
+                // Clear position in backend to hide from canvas but keep in database
+                objectsApi.updatePosition(icon.id, -1, -1).catch((err) => {
+                  console.error('Failed to clear object position:', err);
                 });
               }}
             />
