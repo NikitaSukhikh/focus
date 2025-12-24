@@ -5,7 +5,7 @@ import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
-import { buildFaviconUrl } from '../../../utils/favicon';
+import { buildFaviconUrl, FALLBACK_FAVICON } from '../../../utils/favicon';
 import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
 import { getFileTypeIcon } from '../../icons/FileTypeIcons';
 
@@ -842,13 +842,8 @@ function IconTile({ id, type, title, x, y, url, description, faviconUrl, filePat
   const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
   const [isRenaming, setIsRenaming] = React.useState(false);
   const [renamingValue, setRenamingValue] = React.useState(title);
-  const [useFavicon, setUseFavicon] = React.useState(true);
   const [thumbnailUrl, setThumbnailUrl] = React.useState<string | null>(null);
   const renameInputRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    setUseFavicon(true);
-  }, [faviconUrl]);
 
   // Load thumbnail for image files
   React.useEffect(() => {
@@ -1022,14 +1017,19 @@ function IconTile({ id, type, title, x, y, url, description, faviconUrl, filePat
       return <FileTypeIconComponent size={48} />;
     }
 
-    // Show favicon for links
-    if (type === 'link' && faviconUrl && useFavicon) {
+    // Show favicon for links (fallbacks to pixelated question mark)
+    if (type === 'link') {
       return (
         <img
-          src={faviconUrl}
+          src={faviconUrl || FALLBACK_FAVICON}
           alt=""
           className="w-12 h-12 rounded-md object-contain bg-white border border-slate-200"
-          onError={() => setUseFavicon(false)}
+          onError={(e) => {
+            if (e.currentTarget.src !== FALLBACK_FAVICON) {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = FALLBACK_FAVICON;
+            }
+          }}
         />
       );
     }

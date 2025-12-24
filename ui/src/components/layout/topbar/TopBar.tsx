@@ -9,7 +9,7 @@ import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
 import { internalStorageApi } from '../../../api/internalStorage';
-import { buildFaviconUrl } from '../../../utils/favicon';
+import { buildFaviconUrl, FALLBACK_FAVICON } from '../../../utils/favicon';
 
 interface GoogleAccount {
   email: string;
@@ -51,10 +51,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [isGoogleMenuOpen, setIsGoogleMenuOpen] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
-  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(() => {
-    const stored = localStorage.getItem('googleConnected');
-    return stored === 'true' ? true : false;
-  });
+  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
   const [isAccountSelectionOpen, setIsAccountSelectionOpen] = useState(false);
   const [pendingGmailLink, setPendingGmailLink] = useState<{url: string; title: string; description: string} | null>(null);
@@ -215,6 +212,12 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     localStorage.setItem('googleConnected', String(isGoogleConnected));
   }, [isGoogleConnected]);
 
+  // Always start disconnected until user completes an explicit OAuth flow
+  useEffect(() => {
+    setIsGoogleConnected(false);
+    setIsGoogleSigningIn(false);
+  }, []);
+
   // Load saved links for current island when integrations dropdown opens
   useEffect(() => {
     if (isIntegrationsOpen && selectedIsland) {
@@ -258,20 +261,29 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   // Check backend status and load accounts on mount
   useEffect(() => {
     let cancelled = false;
-    const loadGoogleAccounts = async () => {
+    const loadStatusAndAccounts = async () => {
       try {
-        const res = await fetch('/api/google/accounts');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled) return;
-        const accounts = data.accounts || [];
-        setGoogleAccounts(accounts);
-        setIsGoogleConnected(accounts.length > 0);
+        const [statusRes, accountsRes] = await Promise.allSettled([
+          fetch('/api/google/status'),
+          fetch('/api/google/accounts'),
+        ]);
+
+        if (!cancelled && statusRes.status === 'fulfilled' && statusRes.value.ok) {
+          const statusData = await statusRes.value.json();
+          const connected = statusData?.connected && !statusData?.requires_reauth;
+          setIsGoogleConnected(!!connected);
+        }
+
+        if (!cancelled && accountsRes.status === 'fulfilled' && accountsRes.value.ok) {
+          const data = await accountsRes.value.json();
+          const accounts = data.accounts || [];
+          setGoogleAccounts(accounts);
+        }
       } catch {
-        // Ignore network/backend issues; fall back to local state
+        // Ignore backend issues at startup
       }
     };
-    loadGoogleAccounts();
+    loadStatusAndAccounts();
     return () => {
       cancelled = true;
     };
@@ -292,7 +304,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
         const data = await res.json();
         console.log('Status check result:', data);
         if (cancelled) return false;
-        if (data?.connected) {
+        if (data?.connected && !data?.requires_reauth) {
           console.log('Connected! Updating UI...');
           setIsGoogleConnected(true);
           setIsGoogleSigningIn(false);
@@ -315,6 +327,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
               const accountsData = await accountsRes.json();
               const accounts = accountsData.accounts || [];
               setGoogleAccounts(accounts);
+              setIsGoogleConnected(true);
 
               // If there's a pending Gmail link, create it with the newly authenticated account
               if (pendingGmailLink && accounts.length > 0) {
@@ -335,6 +348,8 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
 
           return true;
         }
+        // Explicitly mark disconnected when status is false or requires reauth
+        setIsGoogleConnected(false);
       } catch (err) {
         console.error('Status check error:', err);
       }
@@ -369,6 +384,17 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
   const handleGoogleSignIn = () => {
     const run = async () => {
       try {
+        // Begin sign-in flow immediately
+        setIsGoogleSigningIn(true);
+        setIsGoogleConnected(false);
+
+        // Ensure backend session is cleared so status doesn't short-circuit to "connected"
+        try {
+          await fetch('/api/google/disconnect', { method: 'POST' });
+        } catch (cleanupErr) {
+          console.warn('Failed to pre-clear Google session before sign-in:', cleanupErr);
+        }
+
         console.log('Fetching Google auth URL...');
         const res = await fetch('/api/google/auth/url');
         console.log('Response status:', res.status);
@@ -384,9 +410,8 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
 
         if (data?.auth_url) {
           console.log('Opening auth URL:', data.auth_url);
-
+          // Try Tauri webview first, then fall back to browser popup
           try {
-            // Create a popup-style Tauri window for OAuth
             const webview = new WebviewWindow('google-oauth', {
               url: data.auth_url,
               title: 'Sign in with Google',
@@ -401,21 +426,33 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
 
             console.log('WebviewWindow created:', webview.label);
 
-            // Store reference for auto-close
             googleWindowRef.current = webview as any;
-
-            // Listen for window close
             webview.once('tauri://destroyed', () => {
               console.log('OAuth window closed');
               googleWindowRef.current = null;
             });
-
-            // Start polling for status
-            setIsGoogleSigningIn(true);
           } catch (windowError) {
-            console.error('Failed to create WebviewWindow:', windowError);
-            throw new Error('Failed to open OAuth window. Please try again.');
+            console.warn('WebviewWindow unavailable, falling back to window.open:', windowError);
+            const win = window.open(
+              data.auth_url,
+              'google-oauth',
+              'width=500,height=600,resizable=yes,scrollbars=yes'
+            );
+            if (!win) {
+              throw new Error('Failed to open OAuth window. Please allow popups and try again.');
+            }
+            googleWindowRef.current = win as any;
           }
+
+          // If the user closes the popup manually, stop polling after a short delay
+          const closer = setInterval(() => {
+            const w = googleWindowRef.current as any;
+            if (w && typeof w.closed === 'boolean' && w.closed) {
+              clearInterval(closer);
+              googleWindowRef.current = null;
+              setIsGoogleSigningIn(false);
+            }
+          }, 500);
         } else {
           throw new Error('Missing auth_url in response');
         }
@@ -447,7 +484,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     run();
   };
 
-  const googleStatusColor = isGoogleConnected ? 'bg-emerald-500' : 'bg-red-500';
+  const googleStatusColor = isGoogleConnected && !isGoogleSigningIn ? 'bg-emerald-500' : 'bg-red-500';
   const googleTitle = isGoogleConnected
     ? 'Google Authorisation is On. Click to manage.'
     : 'Google Authorisation is Off. Click to sign in.';
@@ -688,17 +725,17 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                       <div className="w-4 h-4 flex items-center justify-center shrink-0">
                         {isGmail ? (
                           <GmailIcon size={14} />
-                        ) : link.favicon_url ? (
+                        ) : (
                           <img
-                            src={link.favicon_url}
+                            src={link.favicon_url || FALLBACK_FAVICON}
                             alt=""
                             className="w-4 h-4 object-contain"
                             onError={(e) => {
-                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = FALLBACK_FAVICON;
+                              e.currentTarget.style.display = 'block';
                             }}
                           />
-                        ) : (
-                          <Link2 size={14} className="text-indigo-600" />
                         )}
                       </div>
                       <span className="truncate">{displayName}</span>
@@ -730,32 +767,42 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
             title={googleTitle}
           >
-            <div className={`w-2 h-2 rounded-full ${googleStatusColor}`} />
-            <span className="text-xs font-medium text-slate-600">Google</span>
+            <div className={`w-2.5 h-2.5 rounded-full ${googleStatusColor}`} />
+            <span className="text-xs font-medium text-slate-600">My Google Accounts</span>
           </button>
 
           {isGoogleMenuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setIsGoogleMenuOpen(false)} />
-              <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden">
-                <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-100 flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${googleStatusColor}`} />
-                  {isGoogleConnected ? 'Connected' : 'Not connected'}
-                </div>
-                {isGoogleConnected ? (
-                  <button
-                    onClick={handleGoogleSignOut}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    Sign Out
-                  </button>
+              <div className="absolute left-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden">
+                {googleAccounts.length > 0 ? (
+                  googleAccounts.map((account) => (
+                    <div
+                      key={account.email}
+                      className="px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 text-sm text-slate-700 truncate">
+                        <span className="truncate">{account.email}</span>
+                        <div className={`w-2.5 h-2.5 rounded-full ${googleStatusColor}`} />
+                      </div>
+                      <button
+                        onClick={isGoogleConnected ? handleGoogleSignOut : handleGoogleSignIn}
+                        className="text-xs font-medium text-slate-700 hover:text-slate-900"
+                      >
+                        {isGoogleConnected ? 'Sign Out' : 'Sign In'}
+                      </button>
+                    </div>
+                  ))
                 ) : (
-                  <button
-                    onClick={handleGoogleSignIn}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    Sign In
-                  </button>
+                  <>
+                    <div className="px-3 py-2 text-xs text-slate-500">No Google accounts</div>
+                    <button
+                      onClick={handleGoogleSignIn}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Sign In
+                    </button>
+                  </>
                 )}
               </div>
             </>
