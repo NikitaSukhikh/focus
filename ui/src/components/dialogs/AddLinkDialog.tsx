@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Link2, ExternalLink } from 'lucide-react';
+import { X, Link2, ExternalLink, Loader2 } from 'lucide-react';
 import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/url';
 
 interface AddLinkDialogProps {
@@ -13,6 +13,8 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isValidUrl, setIsValidUrl] = useState(true);
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [siteName, setSiteName] = useState('');
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
       setTitle('');
       setDescription('');
       setIsValidUrl(true);
+      setSiteName('');
     }
   }, [isOpen]);
 
@@ -35,11 +38,47 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
     setIsValidUrl(isLikelyHttpUrl(value, { allowEmpty: true }));
   };
 
+  const fetchMetadata = async (urlToFetch: string) => {
+    setIsFetchingMetadata(true);
+    try {
+      const params = new URLSearchParams({ url: urlToFetch });
+      const response = await fetch(`/api/metadata/url?${params.toString()}`);
+      if (response.ok) {
+        const metadata = await response.json();
+        console.log('[ADD LINK] Fetched metadata:', metadata);
+
+        // Auto-populate title if not already set
+        if (!title && (metadata.title || metadata.og_title)) {
+          setTitle(metadata.title || metadata.og_title || '');
+        }
+
+        // Auto-populate description if not already set
+        if (!description && (metadata.description || metadata.og_description)) {
+          setDescription(metadata.description || metadata.og_description || '');
+        }
+
+        // Store site name for display
+        if (metadata.site_name) {
+          setSiteName(metadata.site_name);
+        }
+      }
+    } catch (err) {
+      console.error('[ADD LINK] Failed to fetch metadata:', err);
+    } finally {
+      setIsFetchingMetadata(false);
+    }
+  };
+
   const handleUrlBlur = () => {
     if (url.trim()) {
       const normalized = normalizeUrl(url);
       setUrl(normalized);
       setIsValidUrl(isLikelyHttpUrl(normalized, { allowEmpty: true }));
+
+      // Fetch metadata after normalizing URL
+      if (isLikelyHttpUrl(normalized, { allowEmpty: false })) {
+        fetchMetadata(normalized);
+      }
     }
   };
 
@@ -127,11 +166,15 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
                     https://
                   </span>
                 )}
-                {url && isValidUrl && (
+                {isFetchingMetadata ? (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 size={16} className="text-blue-500 animate-spin" />
+                  </div>
+                ) : url && isValidUrl ? (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     <ExternalLink size={16} className="text-slate-400" />
                   </div>
-                )}
+                ) : null}
               </div>
               {!isValidUrl && (
                 <p className="mt-1 text-xs text-red-600">
