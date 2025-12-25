@@ -607,3 +607,89 @@ class GmailSearchQuery(BaseModel):
             }
         }
     )
+
+
+# ============================================================================
+# Authenticated Links Models
+# ============================================================================
+
+class AuthenticatedLinkRequest(BaseModel):
+    """Request to prepare an authenticated link."""
+
+    url: str = Field(
+        ...,
+        description="URL to prepare for authenticated opening"
+    )
+    link_id: Optional[str] = Field(
+        None,
+        description="Optional link ID from the database"
+    )
+    account_email: Optional[str] = Field(
+        None,
+        description="Optional specific account email to use"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "url": "https://mail.google.com/mail/u/0/#inbox/FMfcgzGpFXxXxXxX",
+                "link_id": "abc123",
+                "account_email": "user@example.com"
+            }
+        }
+    )
+
+
+class AccountInfo(BaseModel):
+    """Account information for authenticated link."""
+
+    email: str = Field(..., description="Account email")
+    scopes: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Available scopes"
+    )
+
+
+class AuthenticatedLinkResponse(BaseModel):
+    """Response with authenticated link information."""
+
+    authenticated_url: str = Field(
+        ...,
+        description="URL to open (may be same as original or authenticated)"
+    )
+    needs_auth: bool = Field(
+        ...,
+        description="Whether OAuth authentication is needed"
+    )
+    service: Optional[str] = Field(
+        None,
+        description="Detected service (gmail, gdrive, github, etc.)"
+    )
+    accounts: List[AccountInfo] = Field(
+        default_factory=list,
+        description="Available accounts for this service"
+    )
+    selected_account: Optional[str] = Field(
+        None,
+        description="Email of the account that will be/was used"
+    )
+    hint: Optional[str] = Field(
+        None,
+        description="Helpful hint for the user"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "authenticated_url": "https://mail.google.com/mail/u/0/#inbox/FMfcgzGpFXxXxXxX",
+                "needs_auth": False,
+                "service": "gmail",
+                "accounts": [
+                    {"email": "work@company.com", "scopes": []},
+                    {"email": "personal@gmail.com", "scopes": []}
+                ],
+                "selected_account": "work@company.com",
+                "hint": "Opening with account: work@company.com"
+            }
+        }
+    )

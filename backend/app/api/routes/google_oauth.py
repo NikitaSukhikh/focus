@@ -21,11 +21,15 @@ from app.models.google import (
     DriveSearchQuery,
     GmailThreadList,
     GmailSearchQuery,
+    AuthenticatedLinkRequest,
+    AuthenticatedLinkResponse,
+    AccountInfo,
 )
 from app.services.google.oauth_flow import oauth_service
 from app.services.google.token_store import token_store
 from app.services.google.drive_client import create_client as create_drive_client
 from app.services.google.gmail_client import create_client as create_gmail_client
+from app.services.authenticated_links import authenticated_links_service
 from app.api.deps import FeatureFlags, get_google_config
 from app.core.config import GoogleOAuthSettings
 from app.core.exceptions import AppError, BadRequestError, UnauthorizedError
@@ -495,6 +499,79 @@ async def get_connection_status(
             "Unable to check Google connection status right now.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_code="google_status_failed",
+            details={"error": str(e)},
+            log_level="error",
+        ) from e
+
+
+@router.post(
+    "/authenticated-link",
+    response_model=AuthenticatedLinkResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Prepare authenticated link for seamless opening",
+    description="Prepare a link for authenticated opening. Detects service (Gmail, Drive, GitHub) and validates credentials.",
+    tags=["Google OAuth"]
+)
+async def prepare_authenticated_link(
+    request: AuthenticatedLinkRequest
+) -> AuthenticatedLinkResponse:
+    """
+    Prepare an authenticated link for seamless opening.
+
+    This endpoint:
+    - Detects which service the link belongs to (Gmail, Drive, GitHub, etc.)
+    - Checks if user has valid credentials for that service
+    - Returns authenticated URL or indicates OAuth is needed
+    - Supports multi-account scenarios
+
+    Args:
+        request: Link preparation request
+
+    Returns:
+        AuthenticatedLinkResponse: Prepared link with authentication status
+
+    Raises:
+        400: Invalid request
+        500: Internal server error
+    """
+    try:
+        result = await authenticated_links_service.prepare_link(
+            url=request.url,
+            account_email=request.account_email
+        )
+
+        logger.info(
+            f"Prepared authenticated link for service: {result.get('service')}",
+            extra={
+                "service": result.get("service"),
+                "needs_auth": result.get("needs_auth"),
+                "has_accounts": len(result.get("accounts", []))
+            }
+        )
+
+        return AuthenticatedLinkResponse(
+            authenticated_url=result["authenticated_url"],
+            needs_auth=result["needs_auth"],
+            service=result.get("service"),
+            accounts=[AccountInfo(**acc) for acc in result.get("accounts", [])],
+            selected_account=result.get("selected_account"),
+            hint=result.get("hint")
+        )
+
+    except ValueError as e:
+        logger.warning(f"Invalid authenticated link request: {e}")
+        raise BadRequestError(
+            "Invalid link or request parameters.",
+            error_code="authenticated_link_invalid",
+            details={"error": str(e)},
+        )
+
+    except Exception as e:
+        logger.exception("Failed to prepare authenticated link", extra={"url": request.url})
+        raise AppError(
+            "Unable to prepare authenticated link right now.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="authenticated_link_failed",
             details={"error": str(e)},
             log_level="error",
         ) from e

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Plus, Search, Edit2, Trash2 } from 'lucide-react';
-import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Plus, Search, Edit2, Trash2, FilePlus } from 'lucide-react';
+import { CenterPaneHandle } from '../centerpane/CenterPane';
 import { GmailIcon } from '../../icons/GoogleServiceIcons';
 import { WebviewWindow } from '@tauri-apps/api/window';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
@@ -45,9 +45,16 @@ interface TopBarProps {
   onToggleConversation: () => void;
   isConversationOpen: boolean;
   sidebarWidth: number;
+  centerPaneRef: React.RefObject<CenterPaneHandle>;
 }
 
-export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth }: TopBarProps) {
+export interface TopBarHandle {
+  openAddLinkDialog: () => void;
+  openAddTelegramDialog: () => void;
+}
+
+const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
+  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef } = props;
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [isGoogleMenuOpen, setIsGoogleMenuOpen] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
@@ -110,33 +117,21 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
     }
   };
 
-  const handleAddFiles = async () => {
-    try {
-      // Use Tauri's file dialog to select files
-      const { open } = await import('@tauri-apps/api/dialog');
-      const selected = await open({
-        multiple: true,
-        title: 'Select files to add',
-      });
-
-      if (selected) {
-        const paths = Array.isArray(selected) ? selected : [selected];
-        // Emit the same event as OS file drops
-        const customEvent = new CustomEvent('os-file-drop-received', {
-          detail: { paths }
-        });
-        window.dispatchEvent(customEvent);
-      }
-    } catch (err) {
-      console.error('Failed to select files:', err);
-    }
-  };
 
   const handleIntegrationDragEnd = (_e: React.DragEvent<HTMLElement>) => {
     isDraggingRef.current = false;
     // Close dropdown after drag completes
     setTimeout(() => setIsIntegrationsOpen(false), 100);
   };
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    openAddLinkDialog: () => setIsAddLinkDialogOpen(true),
+    openAddTelegramDialog: () => {
+      // TODO: Implement Telegram dialog
+      console.log('Add Telegram account - coming soon');
+    },
+  }), []);
 
   useEffect(() => {
     if (!isIntegrationsOpen) return;
@@ -698,6 +693,43 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                   paddingRight: dropdownMaxHeight ? '0.35rem' : undefined,
                 }}
               >
+                {/* Action Buttons */}
+                <button
+                  onClick={() => {
+                    centerPaneRef.current?.addFiles();
+                    setIsIntegrationsOpen(false);
+                  }}
+                  className="w-full px-4 py-2 flex items-center gap-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <FilePlus size={16} />
+                  <span>Add Local Files</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsAddLinkDialogOpen(true);
+                    setIsIntegrationsOpen(false);
+                  }}
+                  className="w-full px-4 py-2 flex items-center gap-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <Plus size={16} />
+                  <span>Add Link</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    // TODO: Add Telegram account connection logic
+                    setIsIntegrationsOpen(false);
+                  }}
+                  className="w-full px-4 py-2 flex items-center gap-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <Plus size={16} />
+                  <span>Add Telegram account</span>
+                </button>
+
+                {/* Divider */}
+                <div className="my-1 border-t border-slate-200"></div>
+
                 {/* Instruction text */}
                 <div className="px-3.5 py-2 text-xs text-slate-500 whitespace-nowrap">
                   Drag and Drop to the Main Pane
@@ -706,9 +738,12 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
                 {/* Saved Links - Direct List */}
                 {savedLinks.map((link) => {
                   const isGmail = isGmailUrl(link.url);
-                  const displayName = isGmail && link.description?.includes('Gmail - ')
+                  let displayName = isGmail && link.description?.includes('Gmail - ')
                     ? link.description.replace('Gmail - ', '')
                     : link.name;
+
+                  // Clean up URLs by removing protocol
+                  displayName = displayName.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
                   return (
                     <div
@@ -747,19 +782,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
           )}
         </div>
 
-        {/* Internal Storage quick action */}
-        <div className="relative">
-          <button
-            type="button"
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer no-drag"
-            title="Internal Storage - Click to add files"
-            onClick={handleAddFiles}
-          >
-            <IntStorageIcon size={16} />
-            Add Files
-          </button>
-        </div>
-
+        {/* Google Accounts */}
         <div className="relative z-20">
           <button
             ref={googleTriggerRef}
@@ -852,28 +875,6 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
             </div>
           </>
         )}
-
-        {/* Add Link Button */}
-        <button
-          type="button"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-          title="Add a link/website"
-          onClick={() => setIsAddLinkDialogOpen(true)}
-        >
-          <Plus size={16} />
-          Add link
-        </button>
-
-        {/* Telegram Account Button */}
-        <button
-          type="button"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-500 bg-slate-100 rounded-lg cursor-not-allowed"
-          title="Add Telegram account (coming soon)"
-          disabled
-        >
-          <Plus size={16} />
-          Add Telegram account
-        </button>
       </div>
 
       {/* Center section - Island Name */}
@@ -1017,4 +1018,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen, onTogglePreview, isPrev
       )}
     </header>
   );
-}
+};
+
+export const TopBar = forwardRef(TopBarComponent);
+TopBar.displayName = 'TopBar';
