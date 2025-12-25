@@ -1,15 +1,14 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { Menu, Settings, Link2, MessageCircle, PanelRight, ChevronDown, Plus, Search, Edit2, Trash2, FilePlus } from 'lucide-react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { Menu, Settings, MessageCircle, PanelRight, ChevronDown, Plus, Search, Edit2, Trash2, FilePlus } from 'lucide-react';
 import { CenterPaneHandle } from '../centerpane/CenterPane';
 import { GmailIcon } from '../../icons/GoogleServiceIcons';
-import { WebviewWindow } from '@tauri-apps/api/window';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
 import { EditLinkDialog } from '../../dialogs/EditLinkDialog';
 import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
-import { internalStorageApi } from '../../../api/internalStorage';
 import { buildFaviconUrl, FALLBACK_FAVICON } from '../../../utils/favicon';
+import { openAuthWindow } from '../../../platform';
 
 interface GoogleAccount {
   email: string;
@@ -108,15 +107,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     e.dataTransfer.setData('application/json', JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
   };
-
-  const handleOpenInternalStorage = async () => {
-    try {
-      await internalStorageApi.open();
-    } catch (err) {
-      console.error('Failed to open internal storage:', err);
-    }
-  };
-
 
   const handleIntegrationDragEnd = (_e: React.DragEvent<HTMLElement>) => {
     isDraggingRef.current = false;
@@ -285,6 +275,41 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     };
   }, []);
 
+  // Helper function to create Gmail link with specific account
+  const createGmailLinkWithAccount = useCallback(async (url: string, title: string, description: string, accountEmail: string) => {
+    if (!selectedIsland) return;
+
+    try {
+      const favicon_url = buildFaviconUrl(url);
+      await objectsApi.create(selectedIsland.id, {
+        type: 'link',
+        title: title || accountEmail,
+        url,
+        description: description || `Gmail - ${accountEmail}`,
+        favicon_url,
+        x: 200,
+        y: 200,
+      });
+
+      // Reload saved links
+      const objects = await objectsApi.list(selectedIsland.id);
+      const links = objects.filter(obj => obj.type === 'link');
+      const mapped = links.map((link) => ({
+        id: link.id,
+        url: (link.metadata as any)?.url || link.title || '',
+        title: link.title,
+        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
+        description: link.description,
+        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
+        account_email: (link.metadata as any)?.account_email,
+      }));
+      setSavedLinks(mapped);
+    } catch (err) {
+      console.error('Failed to create Gmail link:', err);
+      alert('Failed to add Gmail link. Please try again.');
+    }
+  }, [selectedIsland, setSavedLinks]);
+
   // Poll status while signing in to detect completion
   useEffect(() => {
     if (!isGoogleSigningIn) return;
@@ -374,7 +399,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [isGoogleSigningIn]);
+  }, [isGoogleSigningIn, createGmailLinkWithAccount, pendingGmailLink]);
 
   const handleGoogleSignIn = () => {
     const run = async () => {
@@ -405,29 +430,26 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
         if (data?.auth_url) {
           console.log('Opening auth URL:', data.auth_url);
-          // Try Tauri webview first, then fall back to browser popup
+          // Use platform adapter to open OAuth window
           try {
-            const webview = new WebviewWindow('google-oauth', {
-              url: data.auth_url,
+            const authWin = await openAuthWindow(data.auth_url, {
               title: 'Sign in with Google',
               width: 500,
               height: 600,
-              resizable: true,
-              center: true,
-              alwaysOnTop: false,
-              decorations: true,
-              skipTaskbar: false,
+              label: 'google-oauth',
             });
 
-            console.log('WebviewWindow created:', webview.label);
+            googleWindowRef.current = authWin as any;
 
-            googleWindowRef.current = webview as any;
-            webview.once('tauri://destroyed', () => {
-              console.log('OAuth window closed');
-              googleWindowRef.current = null;
-            });
+            // Tauri webview supports events; browser fallback uses polling below
+            if (authWin && typeof (authWin as any).once === 'function') {
+              (authWin as any).once('tauri://destroyed', () => {
+                console.log('OAuth window closed');
+                googleWindowRef.current = null;
+              });
+            }
           } catch (windowError) {
-            console.warn('WebviewWindow unavailable, falling back to window.open:', windowError);
+            console.warn('Auth window unavailable, falling back to window.open:', windowError);
             const win = window.open(
               data.auth_url,
               'google-oauth',
@@ -483,40 +505,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const googleTitle = isGoogleConnected
     ? 'Google Authorisation is On. Click to manage.'
     : 'Google Authorisation is Off. Click to sign in.';
-
-  const createGmailLinkWithAccount = async (url: string, title: string, description: string, accountEmail: string) => {
-    if (!selectedIsland) return;
-
-    try {
-      const favicon_url = buildFaviconUrl(url);
-      await objectsApi.create(selectedIsland.id, {
-        type: 'link',
-        title: title || accountEmail,
-        url,
-        description: description || `Gmail - ${accountEmail}`,
-        favicon_url,
-        x: 200,
-        y: 200,
-      });
-
-      // Reload saved links
-      const objects = await objectsApi.list(selectedIsland.id);
-      const links = objects.filter(obj => obj.type === 'link');
-      const mapped = links.map((link) => ({
-        id: link.id,
-        url: (link.metadata as any)?.url || link.title || '',
-        title: link.title,
-        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
-        description: link.description,
-        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
-        account_email: (link.metadata as any)?.account_email,
-      }));
-      setSavedLinks(mapped);
-    } catch (err) {
-      console.error('Failed to create Gmail link:', err);
-      alert('Failed to add Gmail link. Please try again.');
-    }
-  };
 
   const handleAddLink = async (url: string, title: string, description: string) => {
     if (!selectedIsland) {

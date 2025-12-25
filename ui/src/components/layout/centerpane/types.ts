@@ -26,7 +26,7 @@ export interface DroppedIcon {
 }
 
 export interface CenterPaneProps {
-  onObjectClick?: (url?: string, title?: string, tileId?: string) => void;
+  onObjectClick?: (_url?: string, _title?: string, _tileId?: string) => void;
   onCanvasEmptyClick?: () => void;
 }
 
@@ -46,8 +46,8 @@ export interface IconTileProps {
   filePath?: string;
   isSelected?: boolean;
   onClick?: () => void;
-  onPositionChange?: (x: number, y: number) => void;
+  onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
-  onRename?: (newTitle: string) => void;
+  onRename?: (_newTitle: string) => void;
   onRefreshMetadata?: () => void;
 }

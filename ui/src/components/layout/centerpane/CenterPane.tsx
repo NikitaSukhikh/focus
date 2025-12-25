@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback, useMemo } from 'react';
-import { open } from '@tauri-apps/api/dialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
 import { buildFaviconUrl } from '../../../utils/favicon';
@@ -7,6 +6,7 @@ import { IconTile } from './IconTile';
 import { DroppedIcon, IconKind, CenterPaneProps, CenterPaneHandle } from './types';
 import { isGmailUrl } from './utils';
 import { clampToBoundaries as clampPosition, calculateContentHeight } from './boundaries';
+import { openFilePicker } from '../../../platform';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick } = props;
@@ -590,7 +590,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     if (!selectedIsland || !paneRef.current) return;
 
     try {
-      const selected = await open({
+      const selected = await openFilePicker({
         multiple: true,
         title: 'Select files to add',
       });
@@ -664,7 +664,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     } catch (err) {
       console.error('Failed to open file picker:', err);
     }
-  }, [selectedIsland, paneRef, setIconsByIsland]);
+  }, [selectedIsland, paneRef, setIconsByIsland, clampToBoundaries]);
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
