@@ -10,6 +10,8 @@ import { IconTileProps } from './types';
 import { authenticatedLinksService, AccountInfo } from '../../../services/authenticatedLinks';
 import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
 
+const HOVER_SAFE_PADDING = 12;
+
 export function IconTile({
   id,
   type,
@@ -312,7 +314,6 @@ export function IconTile({
           src={faviconUrl || FALLBACK_FAVICON}
           alt=""
           className="w-10 h-10 rounded object-contain"
-          style={{ pointerEvents: 'none' }}
           draggable={false}
           onError={(e) => {
             if (e.currentTarget.src !== FALLBACK_FAVICON) {
@@ -352,9 +353,10 @@ export function IconTile({
           transition: skipTransition ? 'none' : 'all 0.2s',
           opacity: isDragging ? 0 : 1,
           userSelect: 'none',
-          padding: 0,
+          padding: HOVER_SAFE_PADDING,
           border: 'none',
-          background: 'transparent'
+          background: 'transparent',
+          zIndex: isSelected ? 20 : isDragging ? 30 : 10
         } as any}
       >
         {type === 'link' ? (
@@ -362,6 +364,7 @@ export function IconTile({
             className={`w-full h-full transition-all flex flex-col items-center justify-center gap-2 px-1 ${
               isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.01]'
             }`}
+            style={{ pointerEvents: 'none' }}
           >
             <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
               {renderIcon()}
@@ -376,21 +379,22 @@ export function IconTile({
                   onKeyDown={handleRenameKeyDown}
                   onBlur={handleRenameSubmit}
                   className="w-full text-sm font-semibold text-slate-800 text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none"
+                  style={{ pointerEvents: 'auto' } as any}
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 />
               ) : (
                 <>
-                  <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`} draggable={false} onDragStart={(e) => e.preventDefault()}>
+                  <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
                     {title}
                   </div>
                   {description && (
-                    <div className="text-xs text-slate-500 line-clamp-3 mt-0.5 leading-snug text-center whitespace-pre-line" draggable={false} onDragStart={(e) => e.preventDefault()}>
+                    <div className="text-xs text-slate-500 line-clamp-3 mt-0.5 leading-snug text-center whitespace-pre-line">
                       {description}
                     </div>
                   )}
                   {url && !isGoogleService(url) && (
-                    <div className={`text-xs mt-1 text-center whitespace-normal break-words leading-snug line-clamp-2 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`} draggable={false} onDragStart={(e) => e.preventDefault()}>
+                    <div className={`text-xs mt-1 text-center whitespace-normal break-words leading-snug line-clamp-2 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}>
                       {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                     </div>
                   )}
@@ -399,7 +403,7 @@ export function IconTile({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-3" style={{ pointerEvents: 'none' }}>
             <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${
               isSelected ? 'opacity-80' : ''
             }`}>
@@ -414,6 +418,7 @@ export function IconTile({
                 onKeyDown={handleRenameKeyDown}
                 onBlur={handleRenameSubmit}
                 className="text-sm text-slate-700 w-full text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none"
+                style={{ pointerEvents: 'auto' } as any}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
