@@ -64,8 +64,8 @@ class AuthenticatedLinksService {
   async openLink(
     url: string,
     linkId?: string,
-    onNeedsAuth?: (service: string) => void | Promise<void>,
-    onAccountSelection?: (accounts: AccountInfo[], service: string) => Promise<string | null>
+    onNeedsAuth?: (_service: string) => void | Promise<void>,
+    onAccountSelection?: (_accounts: AccountInfo[], _service: string) => Promise<string | null>
   ): Promise<void> {
     try {
       // Prepare the link

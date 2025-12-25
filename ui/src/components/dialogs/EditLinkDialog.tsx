@@ -5,7 +5,7 @@ import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/
 interface EditLinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (url: string, title: string, description: string) => void;
+  onSave: (_url: string, _title: string, _description: string) => void;
   initialUrl: string;
   initialTitle: string;
   initialDescription: string;

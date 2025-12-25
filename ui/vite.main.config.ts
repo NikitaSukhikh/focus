@@ -1,0 +1,16 @@
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  build: {
+    lib: {
+      entry: 'src-electron/main.ts',
+      formats: ['es'],
+      fileName: () => 'main.js',
+    },
+    rollupOptions: {
+      external: ['electron', 'path'],
+    },
+    outDir: '.vite/build',
+    emptyOutDir: false,
+  },
+});
