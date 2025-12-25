@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { X, ExternalLink, Loader2 } from 'lucide-react';
+import { X, ExternalLink, Loader2, Minimize, Maximize, Maximize2 } from 'lucide-react';
 import { WebviewWindow, appWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
 
 interface PreviewPaneProps {
@@ -17,6 +17,7 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
   const [webview, setWebview] = useState<WebviewWindow | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
   const currentTileIdRef = useRef<string | undefined>();
   const containerRef = useRef<HTMLDivElement>(null);
   const positionIntervalRef = useRef<number | null>(null);
@@ -68,7 +69,6 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
       // Hide current webview if it exists
       if (webview && previousTileId) {
         webview.hide().catch(console.error);
-        // Stop positioning the hidden webview
         if (positionIntervalRef.current) {
           clearInterval(positionIntervalRef.current);
           positionIntervalRef.current = null;
@@ -88,11 +88,9 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
         // Show and reposition the cached webview
         cachedWebview.show().then(async () => {
           await positionWebview();
-
-          // Resume positioning updates
           positionIntervalRef.current = window.setInterval(() => {
             positionWebview();
-          }, 16); // ~60fps for smoother positioning
+          }, 100);
         }).catch((error) => {
           console.error('[PreviewPane] Error showing cached webview:', error);
           setLoadError('Failed to show cached preview');
@@ -117,13 +115,12 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
               height: 600,
               x: 0,
               y: 0,
-              decorations: false,
+              decorations: false, // No decorations - we'll add custom buttons
               resizable: false,
               skipTaskbar: true,
-              alwaysOnTop: true, // Keep on top to prevent it from going behind main window
               transparent: false,
               visible: false, // Start hidden to avoid flash
-              focus: false, // Don't steal focus from main window
+              focus: false,
             });
 
             newWebview.once('tauri://created', async () => {
@@ -157,10 +154,10 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
 
               setLoadError(null);
 
-              // Continuously update position to keep it aligned (faster for smoother tracking)
+              // Start positioning interval
               positionIntervalRef.current = window.setInterval(() => {
                 positionWebview();
-              }, 16); // ~60fps for smoother positioning
+              }, 100);
             });
 
             newWebview.once('tauri://error', (e) => {
@@ -191,12 +188,6 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
     }
   }, [isOpen, url, title, tileId]);
 
-  // Update webview position when it exists
-  useEffect(() => {
-    if (webview) {
-      positionWebview();
-    }
-  }, [webview]);
 
   // Clean up on unmount - close all cached webviews
   useEffect(() => {
@@ -222,11 +213,6 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
   // Clean up preview webviews when main window is closing
   useEffect(() => {
     const cleanup = async () => {
-      if (positionIntervalRef.current) {
-        clearInterval(positionIntervalRef.current);
-        positionIntervalRef.current = null;
-      }
-
       // Close all cached webviews
       const closePromises = Array.from(webviewCache.values()).map(cachedWebview =>
         cachedWebview.close().catch(console.error)
@@ -244,27 +230,6 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
     };
   }, []);
 
-  // Keep main window focused when interacting with preview pane
-  useEffect(() => {
-    const handleFocus = async () => {
-      // When preview pane area is interacted with, ensure main window stays in front
-      if (webview && isOpen) {
-        try {
-          await appWindow.setFocus();
-        } catch (error) {
-          // Ignore focus errors
-        }
-      }
-    };
-
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('mouseenter', handleFocus);
-      return () => {
-        container.removeEventListener('mouseenter', handleFocus);
-      };
-    }
-  }, [webview, isOpen]);
 
   const handleOpenExternal = async () => {
     if (!url) return;
@@ -282,6 +247,35 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
     externalWebview.once('tauri://error', () => {
       window.open(url, '_blank');
     });
+  };
+
+  const handleMinimize = async () => {
+    if (webview) {
+      await webview.minimize();
+    }
+  };
+
+  const handleMaximize = async () => {
+    if (webview) {
+      const maximized = await webview.isMaximized();
+      if (maximized) {
+        await webview.unmaximize();
+        setIsMaximized(false);
+      } else {
+        await webview.maximize();
+        setIsMaximized(true);
+      }
+    }
+  };
+
+  const handleCloseWebview = async () => {
+    if (webview && tileId) {
+      await webview.hide();
+      // Remove from cache
+      webviewCache.delete(tileId);
+      await webview.close();
+      setWebview(null);
+    }
   };
 
   if (!isOpen) return null;
@@ -304,13 +298,40 @@ export function PreviewPane({ isOpen, onClose, url, title, tileId }: PreviewPane
               <ExternalLink size={18} />
             </button>
           )}
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
-            title="Close preview"
-          >
-            <X size={18} />
-          </button>
+          {url && webview && (
+            <>
+              <button
+                onClick={handleMinimize}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
+                title="Minimize"
+              >
+                <Minimize size={18} />
+              </button>
+              <button
+                onClick={handleMaximize}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
+                title={isMaximized ? "Restore" : "Maximize"}
+              >
+                {isMaximized ? <Maximize2 size={18} /> : <Maximize size={18} />}
+              </button>
+              <button
+                onClick={handleCloseWebview}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
+                title="Close webview"
+              >
+                <X size={18} />
+              </button>
+            </>
+          )}
+          {!webview && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
+              title="Close preview"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
       </div>
 
