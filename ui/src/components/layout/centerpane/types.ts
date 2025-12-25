@@ -25,8 +25,16 @@ export interface DroppedIcon {
   filePath?: string; // For file objects - path to original file
 }
 
+export interface PreviewTarget {
+  url?: string;
+  title?: string;
+  tileId?: string;
+  filePath?: string;
+  type?: IconKind;
+}
+
 export interface CenterPaneProps {
-  onObjectClick?: (_url?: string, _title?: string, _tileId?: string) => void;
+  onObjectClick?: (_target: PreviewTarget) => void;
   onCanvasEmptyClick?: () => void;
 }
 

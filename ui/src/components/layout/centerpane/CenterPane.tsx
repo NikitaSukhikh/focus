@@ -704,7 +704,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               isSelected={selectedIconId === icon.id}
               onClick={() => {
                 setSelectedIconId(icon.id);
-                onObjectClick?.(icon.url, icon.title, icon.id);
+                onObjectClick?.({
+                  url: icon.url,
+                  title: icon.title,
+                  tileId: icon.id,
+                  filePath: icon.filePath,
+                  type: icon.type,
+                });
               }}
               onRename={(newTitle) => {
                 if (!selectedIsland) return;

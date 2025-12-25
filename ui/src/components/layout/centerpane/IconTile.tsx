@@ -286,6 +286,29 @@ export function IconTile({
       ? FileText
       : Grid3x3;
 
+  const getGoogleServiceIcon = (url: string) => {
+    if (!url) return null;
+    const urlLower = url.toLowerCase();
+
+    if (urlLower.includes('mail.google.com') || urlLower.includes('gmail.com')) {
+      return <GmailIcon size={48} />;
+    }
+    if (urlLower.includes('drive.google.com')) {
+      return <DriveIcon size={48} />;
+    }
+    if (urlLower.includes('docs.google.com/spreadsheets') || urlLower.includes('sheets.google.com')) {
+      return <SheetsIcon size={48} />;
+    }
+    if (urlLower.includes('docs.google.com/document') || urlLower.includes('docs.google.com')) {
+      return <DocsIcon size={48} />;
+    }
+    if (urlLower.includes('docs.google.com/presentation') || urlLower.includes('slides.google.com')) {
+      return <SlidesIcon size={48} />;
+    }
+
+    return null;
+  };
+
   const renderIcon = () => {
     // Show thumbnail for image files
     if (type === 'file' && thumbnailUrl) {
@@ -305,6 +328,14 @@ export function IconTile({
       const fileTypeInfo = detectFileType(filePath);
       const FileTypeIconComponent = getFileTypeIcon(fileTypeInfo.extension);
       return <FileTypeIconComponent size={48} />;
+    }
+
+    // Show custom icons for Google services
+    if (type === 'link' && url) {
+      const googleIcon = getGoogleServiceIcon(url);
+      if (googleIcon) {
+        return googleIcon;
+      }
     }
 
     // Show favicon for links (fallbacks to pixelated question mark)

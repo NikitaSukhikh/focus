@@ -126,4 +126,17 @@ export const objectsApi = {
     const data = await res.json();
     return data.objects || [];
   },
+
+  async updateMetadata(objectId: string, metadata: Record<string, unknown>): Promise<ObjectResponse> {
+    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metadata }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to update metadata: ${res.status} ${text}`);
+    }
+    return res.json();
+  },
 };
