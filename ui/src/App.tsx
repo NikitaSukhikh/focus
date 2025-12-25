@@ -60,7 +60,7 @@ export function App() {
   const [sidebarWidth, setSidebarWidth] = usePersistedNumber('ocean-sidebar-width', 220);
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isConversationOpen, setIsConversationOpen] = useState(true);
-  const [conversationWidth, setConversationWidth] = usePersistedNumber('ocean-conversation-width', 256);
+  const [conversationWidth, setConversationWidth] = usePersistedNumber('ocean-conversation-width', 320);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const [previewTitle, setPreviewTitle] = useState<string | undefined>();
@@ -259,29 +259,35 @@ export function App() {
                   }}
                   aria-hidden
                 />
-                <div
-                  className="flex h-full"
-                  style={
-                    isPreviewOpen
-                      ? { flex: 1, minWidth: 0 }
-                      : { width: isConversationOpen ? conversationWidth : 0 }
-                  }
-                >
-                  <PreviewPane
-                    isOpen={isPreviewOpen}
-                    onClose={() => setIsPreviewOpen(false)}
-                    url={previewUrl}
-                    title={previewTitle}
-                    tileId={previewTileId}
-                  />
-                  {isConversationOpen && (
-                    <AssistantPane
-                      isOpen={isConversationOpen}
-                      onClose={() => setIsConversationOpen(false)}
-                      width={conversationWidth}
-                      onResizeStart={startResizingConversation}
+                <div className="flex h-full flex-1 min-w-0">
+                  <div className="relative flex-1 min-w-0 h-full">
+                    <PreviewPane
+                      isOpen={isPreviewOpen}
+                      onClose={() => setIsPreviewOpen(false)}
+                      url={previewUrl}
+                      title={previewTitle}
+                      tileId={previewTileId}
                     />
-                  )}
+                    {isConversationOpen && (
+                      <div
+                        className="absolute left-0 bottom-0 drop-shadow-2xl"
+                        style={{
+                          width: `${conversationWidth}px`,
+                          height: '40%',
+                          minHeight: '300px',
+                          maxHeight: '70%',
+                          pointerEvents: 'auto',
+                        }}
+                      >
+                        <AssistantPane
+                          isOpen={isConversationOpen}
+                          onClose={() => setIsConversationOpen(false)}
+                          width={conversationWidth}
+                          onResizeStart={startResizingConversation}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
