@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback, useMemo } from 'react';
 import { open } from '@tauri-apps/api/dialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
@@ -6,6 +6,7 @@ import { buildFaviconUrl } from '../../../utils/favicon';
 import { IconTile } from './IconTile';
 import { DroppedIcon, IconKind, CenterPaneProps, CenterPaneHandle } from './types';
 import { isGmailUrl } from './utils';
+import { clampToBoundaries as clampPosition, calculateContentHeight } from './boundaries';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick } = props;
@@ -15,6 +16,66 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const paneRef = useRef<HTMLDivElement | null>(null);
 
   const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
+  const autoScrollIntervalRef = useRef<number | null>(null);
+  const dragStartScrollTopRef = useRef<number>(0);
+
+  // Clamp position to stay within pane boundaries
+  const clampToBoundaries = useCallback((x: number, y: number): { x: number; y: number } => {
+    if (!paneRef.current) return { x, y };
+
+    const rect = paneRef.current.getBoundingClientRect();
+    return clampPosition(x, y, rect.width);
+  }, []);
+
+  // Auto-scroll when dragging near edges
+  const handleAutoScroll = useCallback((clientY: number) => {
+    if (!paneRef.current) return;
+
+    const SCROLL_ZONE = 50; // pixels from edge to trigger scroll
+    const SCROLL_SPEED = 10; // pixels per frame
+
+    const rect = paneRef.current.getBoundingClientRect();
+    const distanceFromTop = clientY - rect.top;
+    const distanceFromBottom = rect.bottom - clientY;
+
+    // Clear existing interval
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+
+    // Scroll up when near top
+    if (distanceFromTop < SCROLL_ZONE && distanceFromTop > 0) {
+      autoScrollIntervalRef.current = window.setInterval(() => {
+        if (paneRef.current) {
+          paneRef.current.scrollTop = Math.max(0, paneRef.current.scrollTop - SCROLL_SPEED);
+        }
+      }, 16); // ~60fps
+    }
+    // Scroll down when near bottom
+    else if (distanceFromBottom < SCROLL_ZONE && distanceFromBottom > 0) {
+      autoScrollIntervalRef.current = window.setInterval(() => {
+        if (paneRef.current) {
+          paneRef.current.scrollTop += SCROLL_SPEED;
+        }
+      }, 16);
+    }
+  }, []);
+
+  // Stop auto-scroll
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+  }, []);
+
+  // Calculate dynamic content height based on bottommost tile
+  const contentHeight = useMemo(() => {
+    const currentIcons = selectedIsland ? iconsByIsland[selectedIsland.id] || [] : [];
+    const viewportHeight = paneRef.current?.getBoundingClientRect().height || 600;
+    return calculateContentHeight(currentIcons, viewportHeight);
+  }, [iconsByIsland, selectedIsland]);
 
   // Load existing objects as icons when island changes
   useEffect(() => {
@@ -136,6 +197,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     const iconId = e.dataTransfer.types.includes('application/x-icon-id');
     e.dataTransfer.dropEffect = iconId ? 'move' : 'copy';
     setIsDragOver(true);
+
+    // Store initial scroll position when drag enters
+    if (paneRef.current) {
+      dragStartScrollTopRef.current = paneRef.current.scrollTop;
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -144,17 +210,22 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     // Check if dragging existing icon or new integration
     const iconId = e.dataTransfer.types.includes('application/x-icon-id');
     e.dataTransfer.dropEffect = iconId ? 'move' : 'copy';
+
+    // Trigger auto-scroll when near edges
+    handleAutoScroll(e.clientY);
   };
 
   const handleDragLeave = () => {
     console.log('[DRAG] DragLeave event');
     setIsDragOver(false);
+    stopAutoScroll();
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+    stopAutoScroll();
 
     console.log('[DROP] Drop event triggered', {
       types: e.dataTransfer.types,
@@ -188,11 +259,17 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       const deltaX = e.clientX - dragStart.startCursorX;
       const deltaY = e.clientY - dragStart.startCursorY;
 
-      // Apply the same delta to the icon's original position
-      const x = dragStart.iconX + deltaX;
-      const y = dragStart.iconY + deltaY;
+      // Account for any scrolling that happened during the drag
+      const scrollDelta = paneRef.current.scrollTop - dragStartScrollTopRef.current;
 
-      console.log('[DROP] Icon ID:', iconId, 'Position:', { x, y }, 'Delta:', { deltaX, deltaY }, 'Original:', { iconX: dragStart.iconX, iconY: dragStart.iconY }, 'Cursor:', {
+      // Apply the same delta to the icon's original position
+      const targetX = dragStart.iconX + deltaX;
+      const targetY = dragStart.iconY + deltaY + scrollDelta;
+
+      // Clamp to boundaries
+      const { x, y } = clampToBoundaries(targetX, targetY);
+
+      console.log('[DROP] Icon ID:', iconId, 'Target:', { targetX, targetY }, 'Clamped:', { x, y }, 'Delta:', { deltaX, deltaY }, 'Original:', { iconX: dragStart.iconX, iconY: dragStart.iconY }, 'Cursor:', {
         start: { x: dragStart.startCursorX, y: dragStart.startCursorY },
         end: { x: e.clientX, y: e.clientY }
       });
@@ -220,10 +297,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         const dragData = JSON.parse(rawJson);
         if (dragData.source === 'saved-link' && dragData.linkId) {
           // This is an existing saved link - just update its position, don't create a duplicate
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
+          const targetX = e.clientX - rect.left;
+          const targetY = e.clientY - rect.top + paneRef.current.scrollTop;
 
-          console.log('[DROP] Saved link drag detected:', { linkId: dragData.linkId, x, y });
+          // Clamp to boundaries
+          const { x, y } = clampToBoundaries(targetX, targetY);
+
+          console.log('[DROP] Saved link drag detected:', { linkId: dragData.linkId, target: { targetX, targetY }, clamped: { x, y } });
 
           // Check if icon already exists in local state
           setIconsByIsland((prev) => {
@@ -279,11 +359,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     }
 
     // For new integrations, place at cursor position
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const targetX = e.clientX - rect.left;
+    const targetY = e.clientY - rect.top + paneRef.current.scrollTop;
+
+    // Clamp to boundaries
+    const { x, y } = clampToBoundaries(targetX, targetY);
 
     const uriFallback = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-    console.log('[DROP] New integration drop', { rawJson, uriFallback, x, y });
+    console.log('[DROP] New integration drop', { rawJson, uriFallback, target: { targetX, targetY }, clamped: { x, y } });
 
     // Build object payload for backend
     const buildPayload = (): ObjectCreatePayload => {
@@ -528,8 +611,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         // Offset each file slightly
         const offsetX = (index % 3) * 80;
         const offsetY = Math.floor(index / 3) * 80;
-        const x = centerX + offsetX;
-        const y = centerY + offsetY;
+        const targetX = centerX + offsetX;
+        const targetY = centerY + offsetY;
+
+        // Clamp to boundaries
+        const { x, y } = clampToBoundaries(targetX, targetY);
 
         const payload: ObjectCreatePayload = {
           type: 'file',
@@ -599,7 +685,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onDrop={handleDrop}
         onClick={handleCanvasClick}
       >
-        <div className="relative min-h-full">
+        <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
           {(selectedIsland && iconsByIsland[selectedIsland.id]?.length) ? null : (
             <div className="text-sm text-slate-500">Drop integrations or links here. Use the + button to add files.</div>
           )}

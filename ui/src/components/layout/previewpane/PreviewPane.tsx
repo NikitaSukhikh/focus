@@ -4,22 +4,13 @@ import { X } from 'lucide-react';
 interface PreviewPaneProps {
   isOpen: boolean;
   onClose: () => void;
-  width: number;
-  onResizeStart: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export function PreviewPane({ isOpen, onClose, width, onResizeStart }: PreviewPaneProps) {
+export function PreviewPane({ isOpen, onClose }: PreviewPaneProps) {
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Resize handle */}
-      <div
-        className="w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors"
-        onMouseDown={onResizeStart}
-      />
-
-      <aside className="bg-white border-l border-slate-200 flex flex-col h-full" style={{ width: `${width}px` }}>
+    <aside className="flex-1 min-w-0 bg-white flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200">
         <div className="flex items-center gap-2">
@@ -39,6 +30,5 @@ export function PreviewPane({ isOpen, onClose, width, onResizeStart }: PreviewPa
         <div className="text-sm text-slate-500">No preview available.</div>
       </div>
     </aside>
-    </>
   );
 }
