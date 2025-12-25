@@ -60,6 +60,9 @@ export function App() {
   const [isConversationOpen, setIsConversationOpen] = useState(true);
   const [conversationWidth, setConversationWidth] = usePersistedNumber('ocean-conversation-width', 256);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>();
+  const [previewTitle, setPreviewTitle] = useState<string | undefined>();
+  const [previewTileId, setPreviewTileId] = useState<string | undefined>();
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
 
@@ -208,14 +211,18 @@ export function App() {
         />
 
         <main
-          className="flex-1 flex transition-all duration-200"
-          style={{ marginLeft: isSidebarOpen ? sidebarWidth : 0 }}
+          className="flex-1 flex"
         >
           <div className="flex flex-1 min-w-0 h-full">
             <div className="flex-1 min-w-0 h-full">
               <CenterPane
                 ref={centerPaneRef}
-                onObjectClick={() => setIsPreviewOpen(true)}
+                onObjectClick={(url, title, tileId) => {
+                  setPreviewUrl(url);
+                  setPreviewTitle(title);
+                  setPreviewTileId(tileId);
+                  setIsPreviewOpen(true);
+                }}
                 onCanvasEmptyClick={handleCanvasEmptyClick}
               />
             </div>
@@ -242,6 +249,9 @@ export function App() {
                       <PreviewPane
                         isOpen={isPreviewOpen}
                         onClose={() => setIsPreviewOpen(false)}
+                        url={previewUrl}
+                        title={previewTitle}
+                        tileId={previewTileId}
                       />
                     </div>
                   )}

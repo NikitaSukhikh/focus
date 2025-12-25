@@ -655,10 +655,10 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   };
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4">
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4 relative">
       {/* Left section */}
       <div
-        className="flex items-center gap-3 transition-all duration-200"
+        className="flex items-center gap-3 transition-all duration-200 z-10"
         style={{ marginLeft: isSidebarOpen ? `${sidebarWidth}px` : '0' }}
       >
         {!isSidebarOpen && (
@@ -836,76 +836,42 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           )}
         </div>
 
-        {/* Account Context Menu */}
-        {accountContextMenu && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setAccountContextMenu(null)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setAccountContextMenu(null);
-              }}
-            />
-            <div
-              className="fixed z-50 w-44 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-              style={{ left: `${accountContextMenu.x}px`, top: `${accountContextMenu.y}px` }}
-            >
-              <button
-                onClick={async () => {
-                  const email = accountContextMenu.email;
-                  setAccountContextMenu(null);
-                  try {
-                    const res = await fetch(`/api/google/accounts/${encodeURIComponent(email)}`, { method: 'DELETE' });
-                    if (!res.ok) {
-                      const text = await res.text();
-                      throw new Error(text || 'Failed to remove Google account');
-                    }
-                    setGoogleAccounts((prev) => prev.filter((a) => a.email !== email));
-                    setIsGoogleConnected(false);
-                  } catch (err) {
-                    console.error('Failed to remove Google account', err);
-                    alert('Failed to remove Google account. Please try again.');
-                  }
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
-              >
-                Remove account
-              </button>
-            </div>
-          </>
-        )}
       </div>
 
-      {/* Center section - Island Name */}
-      <div className="flex-1 flex items-center justify-center px-4">
-        {selectedIsland ? (
-          isEditingIslandName ? (
-            <input
-              ref={islandNameInputRef}
-              type="text"
-              value={editingIslandName}
-              onChange={(e) => setEditingIslandName(e.target.value)}
-              onKeyDown={handleIslandNameKeyDown}
-              onBlur={handleIslandNameSubmit}
-              className="text-xl font-semibold text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center max-w-md"
-            />
+      {/* Center section - Island Name (absolute positioned) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0">
+        <div className="pointer-events-auto">
+          {selectedIsland ? (
+            isEditingIslandName ? (
+              <input
+                ref={islandNameInputRef}
+                type="text"
+                value={editingIslandName}
+                onChange={(e) => setEditingIslandName(e.target.value)}
+                onKeyDown={handleIslandNameKeyDown}
+                onBlur={handleIslandNameSubmit}
+                className="text-xl font-semibold text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center max-w-md"
+              />
+            ) : (
+              <h1
+                onDoubleClick={() => setIsEditingIslandName(true)}
+                className="text-xl font-semibold text-slate-900 cursor-pointer hover:text-blue-600 transition-colors"
+                title="Double-click to rename"
+              >
+                {selectedIsland.name}
+              </h1>
+            )
           ) : (
-            <h1
-              onDoubleClick={() => setIsEditingIslandName(true)}
-              className="text-xl font-semibold text-slate-900 cursor-pointer hover:text-blue-600 transition-colors"
-              title="Double-click to rename"
-            >
-              {selectedIsland.name}
-            </h1>
-          )
-        ) : (
-          <span className="text-xl font-semibold text-slate-400">No Island Selected</span>
-        )}
+            <span className="text-xl font-semibold text-slate-400">No Island Selected</span>
+          )}
+        </div>
       </div>
+
+      {/* Spacer */}
+      <div className="flex-1"></div>
 
       {/* Right section */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 z-10">
         {/* Search Bar */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -949,6 +915,46 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           <Settings size={20} />
         </button>
       </div>
+
+      {/* Account Context Menu */}
+      {accountContextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setAccountContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setAccountContextMenu(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-44 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
+            style={{ left: `${accountContextMenu.x}px`, top: `${accountContextMenu.y}px` }}
+          >
+            <button
+              onClick={async () => {
+                const email = accountContextMenu.email;
+                setAccountContextMenu(null);
+                try {
+                  const res = await fetch(`/api/google/accounts/${encodeURIComponent(email)}`, { method: 'DELETE' });
+                  if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || 'Failed to remove Google account');
+                  }
+                  setGoogleAccounts((prev) => prev.filter((a) => a.email !== email));
+                  setIsGoogleConnected(false);
+                } catch (err) {
+                  console.error('Failed to remove Google account', err);
+                  alert('Failed to remove Google account. Please try again.');
+                }
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              Remove account
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Add Link Dialog */}
       <AddLinkDialog
