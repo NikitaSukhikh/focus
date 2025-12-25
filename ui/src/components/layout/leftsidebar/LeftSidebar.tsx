@@ -83,7 +83,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
           border-r border-slate-700
           flex flex-col
           transition-transform duration-200 ease-in-out
-          z-30
+          z-[1100]
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         data-testid="left-sidebar"

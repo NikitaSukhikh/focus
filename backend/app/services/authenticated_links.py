@@ -173,7 +173,8 @@ class AuthenticatedLinksService:
     async def prepare_link(
         self,
         url: str,
-        account_email: Optional[str] = None
+        account_email: Optional[str] = None,
+        link_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Prepare a link for authenticated opening.
@@ -181,6 +182,7 @@ class AuthenticatedLinksService:
         Args:
             url: Original link URL
             account_email: Optional specific account to use
+            link_id: Optional link ID to retrieve/store account preference
 
         Returns:
             Dict with:
@@ -208,7 +210,7 @@ class AuthenticatedLinksService:
 
         # Route to appropriate handler
         if service in ['gmail', 'gdrive']:
-            return await self._prepare_google_link(url, service, account_email)
+            return await self._prepare_google_link(url, service, account_email, link_id)
         elif service == 'onedrive':
             return await self._prepare_onedrive_link(url, account_email)
         elif service in ['dropbox', 'box', 'icloud']:
@@ -231,7 +233,8 @@ class AuthenticatedLinksService:
         self,
         url: str,
         service: str,
-        account_email: Optional[str] = None
+        account_email: Optional[str] = None,
+        link_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Prepare Google service link (Gmail, Drive, Docs, Sheets, Slides).
@@ -240,6 +243,7 @@ class AuthenticatedLinksService:
             url: Original URL
             service: Service identifier ('gmail' or 'gdrive')
             account_email: Optional specific account to use
+            link_id: Optional link ID to retrieve preferred account
 
         Returns:
             Dict with preparation results
@@ -265,10 +269,11 @@ class AuthenticatedLinksService:
                 "auth_url": None  # Frontend will trigger OAuth flow
             }
 
-        # Select account
+        # Select account with priority: account_email param > stored preference > first account
         selected_account = None
+
         if account_email:
-            # Use specified account
+            # Use specified account (highest priority)
             selected_account = next(
                 (acc for acc in valid_accounts if acc['email'] == account_email),
                 None
@@ -276,8 +281,29 @@ class AuthenticatedLinksService:
             if not selected_account:
                 logger.warning(f"Specified account {account_email} not found or invalid")
 
+        if not selected_account and link_id:
+            # Try to get preferred account from link metadata
+            try:
+                from app.storage.repositories.objects_repo import objects_repository
+                from uuid import UUID
+
+                link_obj = await objects_repository.get_object_by_id(UUID(link_id))
+                if link_obj and link_obj.metadata:
+                    preferred_email = link_obj.metadata.get('preferred_account_email')
+                    if preferred_email:
+                        selected_account = next(
+                            (acc for acc in valid_accounts if acc['email'] == preferred_email),
+                            None
+                        )
+                        if selected_account:
+                            logger.info(f"Using preferred account from link metadata: {preferred_email}")
+                        else:
+                            logger.warning(f"Preferred account {preferred_email} not found or invalid")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve preferred account for link {link_id}: {e}")
+
         if not selected_account:
-            # Use first valid account
+            # Use first valid account as fallback
             selected_account = valid_accounts[0]
 
         account_email = selected_account['email']

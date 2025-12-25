@@ -16,6 +16,8 @@ async function createMainWindow() {
     show: true,
     // Show immediately instead of waiting
     title: "Ocean",
+    autoHideMenuBar: true,
+    // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
@@ -33,6 +35,7 @@ async function createMainWindow() {
     mainWindow.webContents.openDevTools({ mode: "detach" });
   }
   console.log("[Electron] Renderer loaded successfully");
+  mainWindow.setMenuBarVisibility(false);
   mainWindow.on("ready-to-show", () => {
     console.log("[Electron] Window ready to show");
     mainWindow?.show();

@@ -1,20 +1,11 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { Menu, Settings, MessageCircle, PanelRight, ChevronDown, Plus, Search, Edit2, Trash2, FilePlus } from 'lucide-react';
 import { CenterPaneHandle } from '../centerpane/CenterPane';
-import { GmailIcon } from '../../icons/GoogleServiceIcons';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
 import { EditLinkDialog } from '../../dialogs/EditLinkDialog';
-import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
 import { buildFaviconUrl, FALLBACK_FAVICON } from '../../../utils/favicon';
-import { openAuthWindow } from '../../../platform';
-
-interface GoogleAccount {
-  email: string;
-  scopes: string[];
-  connected_at: string;
-}
 
 const getLinkDisplayName = (url: string, title?: string) => {
   const trimmedTitle = title?.trim();
@@ -24,15 +15,6 @@ const getLinkDisplayName = (url: string, title?: string) => {
     return hostname || url;
   } catch {
     return trimmedTitle || url;
-  }
-};
-
-const isGmailUrl = (url: string): boolean => {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname === 'mail.google.com' || urlObj.hostname === 'gmail.com';
-  } catch {
-    return false;
   }
 };
 
@@ -55,12 +37,6 @@ export interface TopBarHandle {
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef } = props;
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
-  const [isGoogleMenuOpen, setIsGoogleMenuOpen] = useState(false);
-  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
-  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
-  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
-  const [isAccountSelectionOpen, setIsAccountSelectionOpen] = useState(false);
-  const [pendingGmailLink, setPendingGmailLink] = useState<{url: string; title: string; description: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined);
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
@@ -72,12 +48,9 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const [linkContextMenu, setLinkContextMenu] = useState<{ linkId: string; x: number; y: number } | null>(null);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [editingLinkData, setEditingLinkData] = useState<{ url: string; title: string; description: string }>({ url: '', title: '', description: '' });
-  const [accountContextMenu, setAccountContextMenu] = useState<{ email: string; x: number; y: number } | null>(null);
   const isDraggingRef = useRef(false);
   const integrationsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const integrationsDropdownRef = useRef<HTMLDivElement | null>(null);
-  const googleTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const googleWindowRef = useRef<Window | null>(null);
   const islandNameInputRef = useRef<HTMLInputElement | null>(null);
   const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
   const updateIsland = useIslandStore((state) => state.updateIsland);
@@ -110,8 +83,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
   const handleIntegrationDragEnd = (_e: React.DragEvent<HTMLElement>) => {
     isDraggingRef.current = false;
-    // Close dropdown after drag completes
-    setTimeout(() => setIsIntegrationsOpen(false), 100);
   };
 
   // Expose methods to parent via ref
@@ -146,15 +117,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       const insideDropdown = integrationsDropdownRef.current && integrationsDropdownRef.current.contains(target);
       const insideTrigger = integrationsTriggerRef.current && integrationsTriggerRef.current.contains(target);
 
-      // Check if clicking on a draggable element or its child
-      const isDraggableElement = target.draggable || target.closest('[draggable="true"]');
-
-      // Don't close if clicking on a draggable element (starting a drag)
-      if (isDraggableElement) {
-        return;
-      }
-
-      // Don't close if clicking inside the dropdown (could be starting a drag)
+      // Don't close if clicking inside the dropdown
       if (insideDropdown) {
         return;
       }
@@ -162,7 +125,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       if (insideTrigger) {
         return;
       }
-      // Close if clicking outside
+      // Close on any other click (including center pane, sidebar, etc.)
       setIsIntegrationsOpen(false);
     };
 
@@ -193,16 +156,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     return () => window.removeEventListener('keydown', handleShortcut, true);
   }, []);
 
-  // Persist Google connection state
-  useEffect(() => {
-    localStorage.setItem('googleConnected', String(isGoogleConnected));
-  }, [isGoogleConnected]);
-
-  // Always start disconnected until user completes an explicit OAuth flow
-  useEffect(() => {
-    setIsGoogleConnected(false);
-    setIsGoogleSigningIn(false);
-  }, []);
 
   // Load saved links for current island when integrations dropdown opens
   useEffect(() => {
@@ -244,267 +197,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     }
   }, [isEditingIslandName]);
 
-  // Check backend status and load accounts on mount
-  useEffect(() => {
-    let cancelled = false;
-    const loadStatusAndAccounts = async () => {
-      try {
-        const [statusRes, accountsRes] = await Promise.allSettled([
-          fetch('/api/google/status'),
-          fetch('/api/google/accounts'),
-        ]);
-
-        if (!cancelled && statusRes.status === 'fulfilled' && statusRes.value.ok) {
-          const statusData = await statusRes.value.json();
-          const connected = statusData?.connected && !statusData?.requires_reauth;
-          setIsGoogleConnected(!!connected);
-        }
-
-        if (!cancelled && accountsRes.status === 'fulfilled' && accountsRes.value.ok) {
-          const data = await accountsRes.value.json();
-          const accounts = data.accounts || [];
-          setGoogleAccounts(accounts);
-        }
-      } catch {
-        // Ignore backend issues at startup
-      }
-    };
-    loadStatusAndAccounts();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Helper function to create Gmail link with specific account
-  const createGmailLinkWithAccount = useCallback(async (url: string, title: string, description: string, accountEmail: string) => {
-    if (!selectedIsland) return;
-
-    try {
-      const favicon_url = buildFaviconUrl(url);
-      await objectsApi.create(selectedIsland.id, {
-        type: 'link',
-        title: title || accountEmail,
-        url,
-        description: description || `Gmail - ${accountEmail}`,
-        favicon_url,
-        x: 200,
-        y: 200,
-      });
-
-      // Reload saved links
-      const objects = await objectsApi.list(selectedIsland.id);
-      const links = objects.filter(obj => obj.type === 'link');
-      const mapped = links.map((link) => ({
-        id: link.id,
-        url: (link.metadata as any)?.url || link.title || '',
-        title: link.title,
-        name: getLinkDisplayName((link.metadata as any)?.url || link.title || '', link.title),
-        description: link.description,
-        favicon_url: (link.metadata as any)?.favicon_url || buildFaviconUrl((link.metadata as any)?.url || ''),
-        account_email: (link.metadata as any)?.account_email,
-      }));
-      setSavedLinks(mapped);
-    } catch (err) {
-      console.error('Failed to create Gmail link:', err);
-      alert('Failed to add Gmail link. Please try again.');
-    }
-  }, [selectedIsland, setSavedLinks]);
-
-  // Poll status while signing in to detect completion
-  useEffect(() => {
-    if (!isGoogleSigningIn) return;
-    let cancelled = false;
-
-    const checkStatus = async () => {
-      try {
-        const res = await fetch('/api/google/status');
-        if (!res.ok) {
-          console.log('Status check failed:', res.status);
-          return false;
-        }
-        const data = await res.json();
-        console.log('Status check result:', data);
-        if (cancelled) return false;
-        if (data?.connected && !data?.requires_reauth) {
-          console.log('Connected! Updating UI...');
-          setIsGoogleConnected(true);
-          setIsGoogleSigningIn(false);
-
-          // Auto-close the OAuth window
-          if (googleWindowRef.current) {
-            try {
-              googleWindowRef.current.close();
-            } catch (e) {
-              console.log('Window already closed');
-            }
-            googleWindowRef.current = null;
-          }
-
-          // Load all Google accounts to get the newly authenticated one
-          try {
-            const accountsRes = await fetch('/api/google/accounts');
-            if (accountsRes.ok) {
-              const accountsData = await accountsRes.json();
-              const accounts = accountsData.accounts || [];
-              setGoogleAccounts(accounts);
-              setIsGoogleConnected(true);
-
-              // If there's a pending Gmail link, create it with the newly authenticated account
-              if (pendingGmailLink && accounts.length > 0) {
-                // Get the most recently connected account (last in the list)
-                const newestAccount = accounts[accounts.length - 1];
-                await createGmailLinkWithAccount(
-                  pendingGmailLink.url,
-                  pendingGmailLink.title,
-                  pendingGmailLink.description,
-                  newestAccount.email
-                );
-                setPendingGmailLink(null);
-              }
-            }
-          } catch (err) {
-            console.error('Failed to load accounts after OAuth:', err);
-          }
-
-          return true;
-        }
-        // Explicitly mark disconnected when status is false or requires reauth
-        setIsGoogleConnected(false);
-      } catch (err) {
-        console.error('Status check error:', err);
-      }
-      return false;
-    };
-
-    // Check immediately
-    checkStatus();
-
-    // Then poll every 500ms
-    const interval = window.setInterval(async () => {
-      const connected = await checkStatus();
-      if (connected) {
-        window.clearInterval(interval);
-        return;
-      }
-    }, 500);
-
-    // Stop polling after 5 minutes (timeout)
-    const timeout = window.setTimeout(() => {
-      setIsGoogleSigningIn(false);
-      window.clearInterval(interval);
-    }, 300000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
-    };
-  }, [isGoogleSigningIn, createGmailLinkWithAccount, pendingGmailLink]);
-
-  const handleGoogleSignIn = () => {
-    const run = async () => {
-      try {
-        // Begin sign-in flow immediately
-        setIsGoogleSigningIn(true);
-        setIsGoogleConnected(false);
-
-        // Ensure backend session is cleared so status doesn't short-circuit to "connected"
-        try {
-          await fetch('/api/google/disconnect', { method: 'POST' });
-        } catch (cleanupErr) {
-          console.warn('Failed to pre-clear Google session before sign-in:', cleanupErr);
-        }
-
-        console.log('Fetching Google auth URL...');
-        const res = await fetch('/api/google/auth/url');
-        console.log('Response status:', res.status);
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('Error response:', errorText);
-          throw new Error(`Failed to fetch Google auth URL: ${res.status}`);
-        }
-
-        const data = await res.json();
-        console.log('Auth data received:', data);
-
-        if (data?.auth_url) {
-          console.log('Opening auth URL:', data.auth_url);
-          // Use platform adapter to open OAuth window
-          try {
-            const authWin = await openAuthWindow(data.auth_url, {
-              title: 'Sign in with Google',
-              width: 500,
-              height: 600,
-              label: 'google-oauth',
-            });
-
-            googleWindowRef.current = authWin as any;
-
-            // Tauri webview supports events; browser fallback uses polling below
-            if (authWin && typeof (authWin as any).once === 'function') {
-              (authWin as any).once('tauri://destroyed', () => {
-                console.log('OAuth window closed');
-                googleWindowRef.current = null;
-              });
-            }
-          } catch (windowError) {
-            console.warn('Auth window unavailable, falling back to window.open:', windowError);
-            const win = window.open(
-              data.auth_url,
-              'google-oauth',
-              'width=500,height=600,resizable=yes,scrollbars=yes'
-            );
-            if (!win) {
-              throw new Error('Failed to open OAuth window. Please allow popups and try again.');
-            }
-            googleWindowRef.current = win as any;
-          }
-
-          // If the user closes the popup manually, stop polling after a short delay
-          const closer = setInterval(() => {
-            const w = googleWindowRef.current as any;
-            if (w && typeof w.closed === 'boolean' && w.closed) {
-              clearInterval(closer);
-              googleWindowRef.current = null;
-              setIsGoogleSigningIn(false);
-            }
-          }, 500);
-        } else {
-          throw new Error('Missing auth_url in response');
-        }
-      } catch (err) {
-        console.error('Google sign-in error:', err);
-        const message = err instanceof Error ? err.message : 'Could not start Google sign-in. Please try again.';
-        alert(message);
-      } finally {
-        // keep menu open to show status while polling
-      }
-    };
-    run();
-  };
-
-  const handleGoogleSignOut = () => {
-    const run = async () => {
-      try {
-        const res = await fetch('/api/google/disconnect', { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to sign out');
-        setIsGoogleConnected(false);
-        setIsGoogleSigningIn(false);
-      } catch (err) {
-        console.error(err);
-        alert('Could not sign out from Google. Please try again.');
-      } finally {
-        setIsGoogleMenuOpen(false);
-      }
-    };
-    run();
-  };
-
-  const googleStatusColor = isGoogleConnected && !isGoogleSigningIn ? 'bg-emerald-500' : 'bg-red-500';
-  const googleTitle = isGoogleConnected
-    ? 'Google Authorisation is On. Click to manage.'
-    : 'Google Authorisation is Off. Click to sign in.';
 
   const handleAddLink = async (url: string, title: string, description: string) => {
     if (!selectedIsland) {
@@ -512,15 +204,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       return;
     }
 
-    // Check if it's a Gmail URL - always trigger OAuth for new Gmail links
-    if (isGmailUrl(url)) {
-      // Store pending link and trigger OAuth flow
-      setPendingGmailLink({ url, title, description });
-      handleGoogleSignIn();
-      return;
-    }
-
-    // Regular link handling
+    // Create link - auth will be handled per-tile when user opens it
     const favicon_url = buildFaviconUrl(url);
 
     try {
@@ -643,7 +327,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   };
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4 relative">
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4 relative z-[1000]">
       {/* Left section */}
       <div
         className="flex items-center gap-3 transition-all duration-200 z-10"
@@ -659,7 +343,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           </button>
         )}
         {/* Integrations Dropdown */}
-        <div className="relative z-30">
+        <div className="relative">
           <button
             ref={integrationsTriggerRef}
             onClick={() => setIsIntegrationsOpen(!isIntegrationsOpen)}
@@ -671,14 +355,21 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
           {isIntegrationsOpen && (
             <>
+              {/* Backdrop - allows drag events to pass through */}
+              <div
+                className="fixed inset-0 z-[100] pointer-events-none"
+              />
+
               {/* Dropdown menu */}
               <div
                 ref={integrationsDropdownRef}
-                className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20"
+                className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-[200]"
                 style={{
                   maxHeight: dropdownMaxHeight,
                   overflowY: dropdownMaxHeight ? 'auto' : undefined,
                   paddingRight: dropdownMaxHeight ? '0.35rem' : undefined,
+                  backgroundColor: '#ffffff',
+                  opacity: 1,
                 }}
               >
                 {/* Action Buttons */}
@@ -725,13 +416,8 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
                 {/* Saved Links - Direct List */}
                 {savedLinks.map((link) => {
-                  const isGmail = isGmailUrl(link.url);
-                  let displayName = isGmail && link.description?.includes('Gmail - ')
-                    ? link.description.replace('Gmail - ', '')
-                    : link.name;
-
                   // Clean up URLs by removing protocol
-                  displayName = displayName.replace(/^https?:\/\//, '').replace(/\/$/, '');
+                  let displayName = link.name.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
                   return (
                     <div
@@ -746,79 +432,21 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                       title={link.description || link.url}
                     >
                       <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                        {isGmail ? (
-                          <GmailIcon size={14} />
-                        ) : (
-                          <img
-                            src={link.favicon_url || FALLBACK_FAVICON}
-                            alt=""
-                            className="w-4 h-4 object-contain"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = FALLBACK_FAVICON;
-                              e.currentTarget.style.display = 'block';
-                            }}
-                          />
-                        )}
+                        <img
+                          src={link.favicon_url || FALLBACK_FAVICON}
+                          alt=""
+                          className="w-4 h-4 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = FALLBACK_FAVICON;
+                            e.currentTarget.style.display = 'block';
+                          }}
+                        />
                       </div>
                       <span className="truncate">{displayName}</span>
                     </div>
                   );
                 })}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Google Accounts */}
-        <div className="relative z-20">
-          <button
-            ref={googleTriggerRef}
-            onClick={() => setIsGoogleMenuOpen((prev) => !prev)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-            title={googleTitle}
-          >
-            <div className={`w-2.5 h-2.5 rounded-full ${googleStatusColor}`} />
-            <span className="text-xs font-medium text-slate-600">My Google Accounts</span>
-          </button>
-
-          {isGoogleMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setIsGoogleMenuOpen(false)} />
-              <div className="absolute left-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden">
-                {googleAccounts.length > 0 ? (
-                  googleAccounts.map((account) => (
-                    <div
-                      key={account.email}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setAccountContextMenu({ email: account.email, x: e.clientX, y: e.clientY });
-                      }}
-                      className="px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-sm text-slate-700 truncate">
-                        <span className="truncate">{account.email}</span>
-                        <div className={`w-2.5 h-2.5 rounded-full ${googleStatusColor}`} />
-                      </div>
-                      <button
-                      onClick={isGoogleConnected ? handleGoogleSignOut : handleGoogleSignIn}
-                      className="text-xs font-medium text-slate-700 hover:text-slate-900"
-                    >
-                      {isGoogleConnected ? 'Sign Out' : 'Sign In'}
-                    </button>
-                  </div>
-                ))
-              ) : (
-                  <>
-                    <div className="px-3 py-2 text-xs text-slate-500">No Google accounts</div>
-                    <button
-                      onClick={handleGoogleSignIn}
-                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      Sign In
-                    </button>
-                  </>
-                )}
               </div>
             </>
           )}
@@ -904,72 +532,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
         </button>
       </div>
 
-      {/* Account Context Menu */}
-      {accountContextMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setAccountContextMenu(null)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setAccountContextMenu(null);
-            }}
-          />
-          <div
-            className="fixed z-50 w-44 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{ left: `${accountContextMenu.x}px`, top: `${accountContextMenu.y}px` }}
-          >
-            <button
-              onClick={async () => {
-                const email = accountContextMenu.email;
-                setAccountContextMenu(null);
-                try {
-                  const res = await fetch(`/api/google/accounts/${encodeURIComponent(email)}`, { method: 'DELETE' });
-                  if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || 'Failed to remove Google account');
-                  }
-                  setGoogleAccounts((prev) => prev.filter((a) => a.email !== email));
-                  setIsGoogleConnected(false);
-                } catch (err) {
-                  console.error('Failed to remove Google account', err);
-                  alert('Failed to remove Google account. Please try again.');
-                }
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              Remove account
-            </button>
-          </div>
-        </>
-      )}
-
       {/* Add Link Dialog */}
       <AddLinkDialog
         isOpen={isAddLinkDialogOpen}
         onClose={() => setIsAddLinkDialogOpen(false)}
         onAdd={handleAddLink}
-      />
-
-      {/* Account Selection Dialog */}
-      <AccountSelectionDialog
-        isOpen={isAccountSelectionOpen}
-        onClose={() => setIsAccountSelectionOpen(false)}
-        accounts={googleAccounts}
-        onSelectAccount={(email) => {
-          if (pendingGmailLink) {
-            createGmailLinkWithAccount(
-              pendingGmailLink.url,
-              pendingGmailLink.title,
-              pendingGmailLink.description,
-              email
-            );
-            setPendingGmailLink(null);
-          }
-        }}
-        onAddNewAccount={() => {
-          handleGoogleSignIn();
-        }}
       />
 
       {/* Edit Link Dialog */}

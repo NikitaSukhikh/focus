@@ -29,6 +29,7 @@ async function createMainWindow() {
     minHeight: 600,
     show: true, // Show immediately instead of waiting
     title: 'Ocean',
+    autoHideMenuBar: true, // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
@@ -52,6 +53,9 @@ async function createMainWindow() {
   }
 
   console.log('[Electron] Renderer loaded successfully');
+
+  // Hide the menu bar
+  mainWindow.setMenuBarVisibility(false);
 
   mainWindow.on('ready-to-show', () => {
     console.log('[Electron] Window ready to show');
