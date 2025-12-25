@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { listen } from '@tauri-apps/api/event';
+import React, { useState, useEffect, useRef } from 'react';
 import './styles/globals.css';
-import { TopBar } from './components/layout/topbar';
+import { TopBar, TopBarHandle } from './components/layout/topbar';
 import { LeftSidebar } from './components/layout/leftsidebar';
-import { CenterPane } from './components/layout/centerpane';
+import { CenterPane, CenterPaneHandle } from './components/layout/centerpane';
 import { PreviewPane } from './components/layout/previewpane';
 import { AssistantPane } from './components/layout/assistantpane';
+import { QuickAddPopup } from './components/dialogs/QuickAddPopup';
 
 type ResizeHandler = React.MouseEventHandler<HTMLDivElement>;
 
@@ -60,6 +60,9 @@ export function App() {
   const [previewWidth, setPreviewWidth] = usePersistedNumber('ocean-preview-width', 320);
   const [isConversationOpen, setIsConversationOpen] = useState(true);
   const [conversationWidth, setConversationWidth] = usePersistedNumber('ocean-conversation-width', 256);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const centerPaneRef = useRef<CenterPaneHandle>(null);
+  const topBarRef = useRef<TopBarHandle>(null);
 
   useSidebarShortcut(() => setIsSidebarOpen((prev) => !prev));
 
@@ -91,27 +94,35 @@ export function App() {
     };
   }, []);
 
-  // Listen for OS file drop events from Tauri and dispatch to CenterPane
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    const handleQuickAdd = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isTextField =
+        target?.isContentEditable ||
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT';
+      const isModifierOnly = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
+      if (!isModifierOnly || isTextField) return;
+      // Check for "+" key (both regular and numpad)
+      if (e.key !== '+' && e.key !== '=') return;
 
-    listen<string[]>('os-file-drop', (event) => {
-      console.log('OS files dropped:', event.payload);
-      // Dispatch a custom DOM event that CenterPane can listen to
-      const customEvent = new CustomEvent('os-file-drop-received', {
-        detail: { paths: event.payload }
-      });
-      window.dispatchEvent(customEvent);
-    }).then((unlistenFn) => {
-      unlisten = unlistenFn;
-    });
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation?.();
+      e.returnValue = false;
+      setIsQuickAddOpen(true);
+    };
 
+    window.addEventListener('keydown', handleQuickAdd, true);
+    document.addEventListener('keydown', handleQuickAdd, true);
     return () => {
-      if (unlisten) {
-        unlisten();
-      }
+      window.removeEventListener('keydown', handleQuickAdd, true);
+      document.removeEventListener('keydown', handleQuickAdd, true);
     };
   }, []);
+
 
   const startResizingSidebar: ResizeHandler = (e) => {
     e.preventDefault();
@@ -185,9 +196,22 @@ export function App() {
     }
   };
 
+  const handleQuickAddFiles = () => {
+    centerPaneRef.current?.addFiles();
+  };
+
+  const handleQuickAddLink = () => {
+    topBarRef.current?.openAddLinkDialog();
+  };
+
+  const handleQuickAddTelegram = () => {
+    topBarRef.current?.openAddTelegramDialog();
+  };
+
   return (
     <div className="h-screen flex flex-col bg-slate-50">
       <TopBar
+        ref={topBarRef}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         isSidebarOpen={isSidebarOpen}
         onTogglePreview={() => setIsPreviewOpen(!isPreviewOpen)}
@@ -195,6 +219,7 @@ export function App() {
         onToggleConversation={() => setIsConversationOpen(!isConversationOpen)}
         isConversationOpen={isConversationOpen}
         sidebarWidth={sidebarWidth}
+        centerPaneRef={centerPaneRef}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -210,6 +235,7 @@ export function App() {
           style={{ marginLeft: isSidebarOpen ? sidebarWidth : 0 }}
         >
           <CenterPane
+            ref={centerPaneRef}
             onObjectClick={() => setIsPreviewOpen(true)}
             onCanvasEmptyClick={handleCanvasEmptyClick}
           />
@@ -227,6 +253,14 @@ export function App() {
           />
         </main>
       </div>
+
+      <QuickAddPopup
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        onAddFiles={handleQuickAddFiles}
+        onAddLink={handleQuickAddLink}
+        onAddTelegram={handleQuickAddTelegram}
+      />
     </div>
   );
 }

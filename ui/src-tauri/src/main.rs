@@ -19,27 +19,6 @@ fn main() {
                     }));
                     let _ = window.center();
                 }
-
-                // Handle file drop events from OS
-                let window_clone = window.clone();
-                window.on_window_event(move |event| {
-                    if let WindowEvent::FileDrop(file_drop_event) = event {
-                        match file_drop_event {
-                            tauri::FileDropEvent::Hovered(paths) => {
-                                println!("File drop hovered: {:?}", paths);
-                            }
-                            tauri::FileDropEvent::Dropped(paths) => {
-                                println!("Files dropped: {:?}", paths);
-                                // Emit event to frontend
-                                let _ = window_clone.emit("os-file-drop", paths);
-                            }
-                            tauri::FileDropEvent::Cancelled => {
-                                println!("File drop cancelled");
-                            }
-                            _ => {}
-                        }
-                    }
-                });
             }
             Ok(())
         })

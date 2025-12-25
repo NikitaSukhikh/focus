@@ -1,45 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Grid3x3, Link, FileText, Edit2, EyeOff } from 'lucide-react';
-import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
-import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
-import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
+import React, { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { open } from '@tauri-apps/api/dialog';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi, ObjectCreatePayload } from '../../../api/objects';
-import { buildFaviconUrl, FALLBACK_FAVICON } from '../../../utils/favicon';
-import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
-import { getFileTypeIcon } from '../../icons/FileTypeIcons';
+import { buildFaviconUrl } from '../../../utils/favicon';
+import { IconTile } from './IconTile';
+import { DroppedIcon, IconKind, CenterPaneProps, CenterPaneHandle } from './types';
+import { isGmailUrl } from './utils';
 
-type IconKind = 'link' | 'file' | 'gmail' | 'google_drive' | 'google_sheets' | 'google_docs' | 'google_slides' | 'text' | 'telegram' | 'intstorage' | 'unknown';
-
-const isGmailUrl = (url: string): boolean => {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname === 'mail.google.com' || urlObj.hostname === 'gmail.com';
-  } catch {
-    return false;
-  }
-};
-
-interface DroppedIcon {
-  id: string;
-  type: IconKind;
-  title: string;
-  x: number;
-  y: number;
-  serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
-  url?: string; // For link objects
-  description?: string; // For all objects
-  faviconUrl?: string;
-  service?: string;
-  filePath?: string; // For file objects - path to original file
-}
-
-interface CenterPaneProps {
-  onObjectClick?: () => void;
-  onCanvasEmptyClick?: () => void;
-}
-
-export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProps) {
+const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
+  const { onObjectClick, onCanvasEmptyClick } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [iconsByIsland, setIconsByIsland] = useState<Record<string, DroppedIcon[]>>({});
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
@@ -51,6 +20,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
   useEffect(() => {
     const islandId = selectedIsland?.id;
     if (!islandId) return;
+
     objectsApi
       .list(islandId)
       .then((objects) => {
@@ -67,58 +37,59 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
             const x = typeof meta.x === 'number' ? meta.x : 100 + (idx % 5) * 120;
             const y = typeof meta.y === 'number' ? meta.y : 100 + Math.floor(idx / 5) * 140;
 
-          // For Google Drive services, service key is in description
-          // For links, description is the actual description
-          const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
-          const description = obj.type !== 'google_drive' ? obj.description : undefined;
-          const url = obj.type === 'link' ? (meta.url as string) : undefined;
-          const service = meta.service as string | undefined;
-          const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
-          const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
+            // For Google Drive services, service key is in description
+            // For links, description is the actual description
+            const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
+            const description = obj.type !== 'google_drive' ? obj.description : undefined;
+            const url = obj.type === 'link' ? (meta.url as string) : undefined;
+            const service = meta.service as string | undefined;
+            const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
+            const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
 
-          // Check if it's a Gmail link
-          const isGmail = url && isGmailUrl(url);
+            // Check if it's a Gmail link
+            const isGmail = url && isGmailUrl(url);
 
-          // Extract email from description for Gmail links
-          const displayTitle = isGmail && description?.includes('Gmail - ')
-            ? description.replace('Gmail - ', '')
-            : obj.title;
+            // Extract email from description for Gmail links
+            const displayTitle = isGmail && description?.includes('Gmail - ')
+              ? description.replace('Gmail - ', '')
+              : obj.title;
 
-          let kind: IconKind =
-            obj.type === 'link'
-              ? (isGmail ? 'gmail' : 'link')
-              : obj.type === 'file'
-              ? 'file'
-              : obj.type === 'gmail'
-              ? 'gmail'
-              : service === 'telegram'
-              ? 'telegram'
-              : service === 'intstorage'
-              ? 'intstorage'
-              : obj.type === 'google_drive'
-              ? (
-                serviceKey === 'sheets' ? 'google_sheets' :
-                serviceKey === 'docs' ? 'google_docs' :
-                serviceKey === 'slides' ? 'google_slides' :
-                'google_drive'
-              )
-              : obj.type === 'text'
-              ? 'text'
-              : 'unknown';
-          return {
-            id: obj.id,
-            type: kind,
-            title: displayTitle,
-            x,
-            y,
-            serviceKey,
-            url,
-            service,
-            description,
-            faviconUrl,
-            filePath,
-          };
-        });
+            let kind: IconKind =
+              obj.type === 'link'
+                ? (isGmail ? 'gmail' : 'link')
+                : obj.type === 'file'
+                ? 'file'
+                : obj.type === 'gmail'
+                ? 'gmail'
+                : service === 'telegram'
+                ? 'telegram'
+                : service === 'intstorage'
+                ? 'intstorage'
+                : obj.type === 'google_drive'
+                ? (
+                  serviceKey === 'sheets' ? 'google_sheets' :
+                  serviceKey === 'docs' ? 'google_docs' :
+                  serviceKey === 'slides' ? 'google_slides' :
+                  'google_drive'
+                )
+                : obj.type === 'text'
+                ? 'text'
+                : 'unknown';
+
+            return {
+              id: obj.id,
+              type: kind,
+              title: displayTitle,
+              x,
+              y,
+              serviceKey,
+              url,
+              service,
+              description,
+              faviconUrl,
+              filePath,
+            };
+          });
         setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
       })
       .catch((err) => {
@@ -130,8 +101,6 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIconId && selectedIsland) {
-        // Don't delete if user is editing something (icon rename)
-
         // Don't delete if target is an input or textarea
         const target = e.target as HTMLElement;
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
@@ -159,158 +128,9 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedIconId, selectedIsland]);
 
-  // Listen for OS file drop events
-  useEffect(() => {
-    const handleOSFileDrop = (event: Event) => {
-      const customEvent = event as CustomEvent<{ paths: string[] }>;
-      const paths = customEvent.detail?.paths || [];
-
-      console.log('[OS FILE DROP] Event received:', {
-        hasIsland: !!selectedIsland,
-        hasPane: !!paneRef.current,
-        pathCount: paths.length,
-        paths
-      });
-
-      if (!selectedIsland || !paneRef.current || paths.length === 0) {
-        console.log('[OS FILE DROP] Aborting - missing requirements');
-        return;
-      }
-
-      console.log('[OS FILE DROP] Processing files:', paths);
-
-      // Create file objects at center of pane for each dropped file
-      const rect = paneRef.current.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-
-      paths.forEach((filePath, index) => {
-        // Extract filename from path
-        const filename = filePath.split(/[\\/]/).pop() || 'Unknown File';
-
-        console.log('[OS FILE DROP] Processing file:', { filePath, filename });
-
-        // Offset each file slightly so they don't all stack on top of each other
-        const offsetX = (index % 3) * 80;
-        const offsetY = Math.floor(index / 3) * 80;
-        const x = centerX + offsetX;
-        const y = centerY + offsetY;
-
-        // Create file object payload
-        const payload: ObjectCreatePayload = {
-          type: 'file',
-          title: filename,
-          file_path: filePath,
-          x,
-          y,
-        };
-
-        // Optimistically add icon
-        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
-        const optimisticIcon: DroppedIcon = {
-          id: tempId,
-          type: 'file',
-          title: filename,
-          x,
-          y,
-          filePath: filePath,
-        };
-
-        console.log('[OS FILE DROP] Creating optimistic icon:', { tempId, filename, x, y, filePath });
-
-        setIconsByIsland((prev) => {
-          const newState = {
-            ...prev,
-            [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
-          };
-          console.log('[OS FILE DROP] Updated icons state:', newState);
-          return newState;
-        });
-
-        // Create object in backend
-        objectsApi
-          .create(selectedIsland.id, payload)
-          .then((created) => {
-            // Replace temp ID with real ID from backend
-            const meta = (created.metadata || {}) as Record<string, any>;
-            const createdFilePath = meta.file_path as string;
-
-            setIconsByIsland((prev) => ({
-              ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
-              ),
-            }));
-          })
-          .catch((err) => {
-            console.error('Failed to create file object:', err);
-            // Remove optimistic icon on error
-            setIconsByIsland((prev) => ({
-              ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
-            }));
-          });
-      });
-    };
-
-    window.addEventListener('os-file-drop-received', handleOSFileDrop);
-    return () => window.removeEventListener('os-file-drop-received', handleOSFileDrop);
-  }, [selectedIsland, paneRef]);
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-    setShowContextMenu(true);
-  };
-
-  const handleCloseContextMenu = () => {
-    setShowContextMenu(false);
-  };
-
-  const handleRename = () => {
-    setIsEditing(true);
-    setShowContextMenu(false);
-  };
-
-  const handleDelete = async () => {
-    if (selectedIsland) {
-      await deleteIsland(selectedIsland.id);
-    }
-    setShowContextMenu(false);
-  };
-
-  const handleDoubleClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditingName(e.target.value);
-  };
-
-  const handleNameSubmit = async () => {
-    if (selectedIsland && editingName.trim() && editingName.trim() !== islandName) {
-      await updateIsland(selectedIsland.id, editingName.trim());
-    } else {
-      setEditingName(islandName);
-    }
-    setIsEditing(false);
-  };
-
-  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleNameSubmit();
-    } else if (e.key === 'Escape') {
-      setEditingName(islandName);
-      setIsEditing(false);
-    }
-  };
-
-  const handleNameBlur = () => {
-    handleNameSubmit();
-  };
-
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.log('[DRAG] DragEnter event', e.dataTransfer.types);
     // Check if dragging existing icon or new integration
     const iconId = e.dataTransfer.types.includes('application/x-icon-id');
@@ -320,6 +140,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     // Check if dragging existing icon or new integration
     const iconId = e.dataTransfer.types.includes('application/x-icon-id');
     e.dataTransfer.dropEffect = iconId ? 'move' : 'copy';
@@ -332,9 +153,14 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
 
-    console.log('[DROP] Drop event triggered');
+    console.log('[DROP] Drop event triggered', {
+      types: e.dataTransfer.types,
+      files: e.dataTransfer.files.length,
+      items: e.dataTransfer.items?.length,
+    });
 
     if (!paneRef.current || !selectedIsland) {
       console.log('[DROP] Missing paneRef or selectedIsland', { paneRef: paneRef.current, selectedIsland });
@@ -450,78 +276,6 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
         // Not a saved link or malformed JSON, continue to normal drop handling
         console.log('[DROP] Failed to parse drag data or not a saved link:', err);
       }
-    }
-
-    // Check for OS file drops (from file manager)
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      console.log('[DROP] OS files dropped via drag handler:', files);
-      console.warn('[DROP] Note: fileDropEnabled is false in Tauri config, so files should come via os-file-drop event instead');
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-
-      Array.from(files).forEach((file, index) => {
-        // Get file path if available (Electron/Tauri provide this)
-        const filePath = (file as any).path || file.name;
-        const filename = file.name;
-        console.log('[DROP] Processing file:', { filename, filePath, hasPath: !!(file as any).path });
-
-        // Offset each file slightly so they don't all stack on top of each other
-        const offsetX = (index % 3) * 80;
-        const offsetY = Math.floor(index / 3) * 80;
-        const x = centerX + offsetX;
-        const y = centerY + offsetY;
-
-        // Create file object payload
-        const payload: ObjectCreatePayload = {
-          type: 'file',
-          title: filename,
-          file_path: filePath,
-          x,
-          y,
-        };
-
-        // Optimistically add icon
-        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
-        const optimisticIcon: DroppedIcon = {
-          id: tempId,
-          type: 'file',
-          title: filename,
-          x,
-          y,
-          filePath: filePath,
-        };
-
-        setIconsByIsland((prev) => ({
-          ...prev,
-          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
-        }));
-
-        // Create object in backend
-        objectsApi
-          .create(selectedIsland.id, payload)
-          .then((created) => {
-            // Replace temp ID with real ID from backend
-            const meta = (created.metadata || {}) as Record<string, any>;
-            const createdFilePath = meta.file_path as string;
-
-            setIconsByIsland((prev) => ({
-              ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
-              ),
-            }));
-          })
-          .catch((err) => {
-            console.error('Failed to create file object:', err);
-            // Remove optimistic icon on error
-            setIconsByIsland((prev) => ({
-              ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
-            }));
-          });
-      });
-      return;
     }
 
     // For new integrations, place at cursor position
@@ -749,6 +503,88 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
     onCanvasEmptyClick?.();
   };
 
+  const handleAddFiles = useCallback(async () => {
+    if (!selectedIsland || !paneRef.current) return;
+
+    try {
+      const selected = await open({
+        multiple: true,
+        title: 'Select files to add',
+      });
+
+      if (!selected) return;
+
+      const filePaths = Array.isArray(selected) ? selected : [selected];
+      console.log('[FILE PICKER] Selected files:', filePaths);
+
+      // Get center position for file placement
+      const rect = paneRef.current.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      filePaths.forEach((filePath, index) => {
+        const filename = filePath.split(/[\\/]/).pop() || 'Unknown File';
+
+        // Offset each file slightly
+        const offsetX = (index % 3) * 80;
+        const offsetY = Math.floor(index / 3) * 80;
+        const x = centerX + offsetX;
+        const y = centerY + offsetY;
+
+        const payload: ObjectCreatePayload = {
+          type: 'file',
+          title: filename,
+          file_path: filePath,
+          x,
+          y,
+        };
+
+        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
+        const optimisticIcon: DroppedIcon = {
+          id: tempId,
+          type: 'file',
+          title: filename,
+          x,
+          y,
+          filePath: filePath,
+        };
+
+        setIconsByIsland((prev) => ({
+          ...prev,
+          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
+        }));
+
+        objectsApi
+          .create(selectedIsland.id, payload)
+          .then((created) => {
+            const meta = (created.metadata || {}) as Record<string, any>;
+            const createdFilePath = meta.file_path as string;
+
+            setIconsByIsland((prev) => ({
+              ...prev,
+              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
+              ),
+            }));
+          })
+          .catch((err) => {
+            console.error('Failed to create file object:', err);
+            setIconsByIsland((prev) => ({
+              ...prev,
+              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+            }));
+          });
+      });
+    } catch (err) {
+      console.error('Failed to open file picker:', err);
+    }
+  }, [selectedIsland, paneRef, setIconsByIsland]);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    addFiles: handleAddFiles,
+  }), [handleAddFiles]);
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
       {/* Canvas - Freeform icons */}
@@ -765,7 +601,7 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
       >
         <div className="relative min-h-full">
           {(selectedIsland && iconsByIsland[selectedIsland.id]?.length) ? null : (
-            <div className="text-sm text-slate-500">Drop integrations or links here.</div>
+            <div className="text-sm text-slate-500">Drop integrations or links here. Use the + button to add files.</div>
           )}
           {(iconsByIsland[selectedIsland?.id ?? ''] || []).map((icon) => (
             <IconTile
@@ -810,314 +646,43 @@ export function CenterPane({ onObjectClick, onCanvasEmptyClick }: CenterPaneProp
                   console.error('Failed to clear object position:', err);
                 });
               }}
+              onRefreshMetadata={async () => {
+                if (!selectedIsland || icon.type !== 'link' || !icon.url) return;
+
+                try {
+                  // Fetch metadata from backend
+                  const params = new URLSearchParams({ url: icon.url });
+                  const response = await fetch(`/api/metadata/url?${params.toString()}`);
+                  if (response.ok) {
+                    const metadata = await response.json();
+                    console.log('[CENTER PANE] Fetched metadata for refresh:', metadata);
+
+                    const newTitle = metadata.title || metadata.og_title || icon.url;
+                    const newDescription = metadata.description || metadata.og_description || '';
+                    const newFaviconUrl = metadata.favicon_url || icon.faviconUrl || buildFaviconUrl(icon.url);
+
+                    // Update local state
+                    setIconsByIsland((prev) => ({
+                      ...prev,
+                      [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+                        i.id === icon.id ? { ...i, title: newTitle, description: newDescription, faviconUrl: newFaviconUrl } : i
+                      ),
+                    }));
+
+                    // Update backend
+                    await objectsApi.updateLink(icon.id, icon.url, newTitle, newDescription, newFaviconUrl);
+                  }
+                } catch (err) {
+                  console.error('[CENTER PANE] Failed to refresh metadata:', err);
+                }
+              }}
             />
           ))}
         </div>
       </div>
     </div>
   );
-}
+};
 
-interface IconTileProps {
-  id: string;
-  type: IconKind;
-  title: string;
-  x: number;
-  y: number;
-  url?: string;
-  description?: string;
-  faviconUrl?: string;
-  filePath?: string;
-  isSelected?: boolean;
-  onClick?: () => void;
-  onPositionChange?: (_x: number, _y: number) => void;
-  onDelete?: () => void;
-  onRename?: (_newTitle: string) => void;
-}
-
-function IconTile({ id, type, title, x, y, url, description, faviconUrl, filePath, isSelected, onClick, onPositionChange: _onPositionChange, onDelete, onRename }: IconTileProps) {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [skipTransition, setSkipTransition] = React.useState(false);
-  const [showContextMenu, setShowContextMenu] = React.useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
-  const [isRenaming, setIsRenaming] = React.useState(false);
-  const [renamingValue, setRenamingValue] = React.useState(title);
-  const [thumbnailUrl, setThumbnailUrl] = React.useState<string | null>(null);
-  const renameInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Load thumbnail for image files
-  React.useEffect(() => {
-    console.log('[ICON TILE] Checking thumbnail for:', { type, filePath, title });
-    if (type === 'file' && filePath && canShowImageThumbnail(filePath)) {
-      // Build thumbnail URL
-      const params = new URLSearchParams({
-        file_path: filePath,
-        max_width: '256',
-        max_height: '256',
-        quality: '85',
-      });
-      const url = `/api/thumbnails/image?${params.toString()}`;
-      console.log('[ICON TILE] Setting thumbnail URL:', url);
-      setThumbnailUrl(url);
-    } else {
-      console.log('[ICON TILE] No thumbnail needed:', {
-        isFile: type === 'file',
-        hasFilePath: !!filePath,
-        canShowThumbnail: filePath ? canShowImageThumbnail(filePath) : false
-      });
-      setThumbnailUrl(null);
-    }
-  }, [type, filePath, title]);
-
-  const handleDragStart = (e: React.DragEvent) => {
-    // Store current icon position and cursor position
-    const startCursorX = e.clientX;
-    const startCursorY = e.clientY;
-
-    // Set drag data including start positions
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('application/x-icon-id', id);
-    e.dataTransfer.setData('application/x-drag-start', JSON.stringify({
-      startCursorX,
-      startCursorY,
-      iconX: x,
-      iconY: y
-    }));
-
-    // Create a custom drag image from the current element
-    const dragImage = (e.target as HTMLElement).cloneNode(true) as HTMLElement;
-    dragImage.style.opacity = '0.5';
-    document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, 64, 64); // Center of 128px wide element
-
-    // Remove the drag image after the browser captures it
-    requestAnimationFrame(() => {
-      document.body.removeChild(dragImage);
-    });
-
-    // Hide the original icon immediately
-    setIsDragging(true);
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    // Disable transition and wait for position update before showing icon
-    setSkipTransition(true);
-
-    // Delay making icon visible until after position update has been applied
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsDragging(false);
-        // Re-enable transitions after a short delay
-        setTimeout(() => {
-          setSkipTransition(false);
-        }, 50);
-      });
-    });
-
-    // Remove focus to prevent blue ring after drop
-    (e.target as HTMLElement).blur();
-  };
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-    setShowContextMenu(true);
-  };
-
-  const handleCloseContextMenu = () => {
-    setShowContextMenu(false);
-  };
-
-  const handleRenameClick = () => {
-    setShowContextMenu(false);
-    setIsRenaming(true);
-    setRenamingValue(title);
-    setTimeout(() => {
-      renameInputRef.current?.focus();
-      renameInputRef.current?.select();
-    }, 0);
-  };
-
-  const handleDeleteClick = () => {
-    setShowContextMenu(false);
-    if (onDelete) {
-      onDelete();
-    }
-  };
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (type === 'link' && url) {
-      window.open(url, '_blank');
-    }
-  };
-
-  const handleRenameSubmit = () => {
-    const newTitle = renamingValue.trim();
-    if (newTitle && newTitle !== title && onRename) {
-      onRename(newTitle);
-    }
-    setIsRenaming(false);
-  };
-
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleRenameSubmit();
-    } else if (e.key === 'Escape') {
-      setIsRenaming(false);
-      setRenamingValue(title);
-    }
-  };
-
-  React.useEffect(() => {
-    setRenamingValue(title);
-  }, [title]);
-
-  const Icon =
-    type === 'link'
-      ? Link
-      : type === 'file'
-      ? FileText
-      : type === 'gmail'
-      ? GmailIcon
-      : type === 'google_drive'
-      ? DriveIcon
-      : type === 'google_sheets'
-      ? SheetsIcon
-      : type === 'google_docs'
-      ? DocsIcon
-      : type === 'google_slides'
-      ? SlidesIcon
-      : type === 'telegram'
-      ? TelegramIcon
-      : type === 'intstorage'
-      ? IntStorageIcon
-      : type === 'text'
-      ? FileText
-      : Grid3x3;
-
-  const renderIcon = () => {
-    // Show thumbnail for image files
-    if (type === 'file' && thumbnailUrl) {
-      return (
-        <img
-          src={thumbnailUrl}
-          alt={title}
-          className="w-12 h-12 rounded-md object-cover bg-white border border-slate-200"
-          onError={() => setThumbnailUrl(null)}
-        />
-      );
-    }
-
-    // Show file type icon for non-image files
-    if (type === 'file' && filePath) {
-      const fileTypeInfo = detectFileType(filePath);
-      const FileTypeIconComponent = getFileTypeIcon(fileTypeInfo.extension);
-      return <FileTypeIconComponent size={48} />;
-    }
-
-    // Show favicon for links (fallbacks to pixelated question mark)
-    if (type === 'link') {
-      return (
-        <img
-          src={faviconUrl || FALLBACK_FAVICON}
-          alt=""
-          className="w-12 h-12 rounded-md object-contain bg-white border border-slate-200"
-          onError={(e) => {
-            if (e.currentTarget.src !== FALLBACK_FAVICON) {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = FALLBACK_FAVICON;
-            }
-          }}
-        />
-      );
-    }
-
-    // Default icon
-    return <Icon size={48} />;
-  };
-
-  return (
-    <>
-      <button
-        data-icon-tile
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onClick={onClick}
-        onDoubleClick={handleDoubleClick}
-        onContextMenu={handleContextMenu}
-        title={description || (type === 'link' && url ? url : title)}
-        className={`
-          group absolute
-          text-center w-32 cursor-grab active:cursor-grabbing
-          ${isDragging ? 'invisible' : ''}
-        `}
-        style={{
-          top: y,
-          left: x,
-          transform: 'translate(-50%, -50%)',
-          transition: skipTransition ? 'none' : 'all 0.2s',
-          opacity: isDragging ? 0 : 1
-        }}
-      >
-        <div className="flex flex-col items-center gap-3">
-          <div className={`p-4 rounded-2xl bg-white shadow-md text-slate-600 group-hover:shadow-lg group-hover:bg-blue-50 group-hover:text-blue-600 transition-all ${
-            isSelected
-              ? 'border-2 border-blue-500 shadow-lg'
-              : 'border border-slate-200 group-hover:border-blue-400'
-          }`}>
-            {renderIcon()}
-          </div>
-          {isRenaming ? (
-            <input
-              ref={renameInputRef}
-              type="text"
-              value={renamingValue}
-              onChange={(e) => setRenamingValue(e.target.value)}
-              onKeyDown={handleRenameKeyDown}
-              onBlur={handleRenameSubmit}
-              className="text-sm text-slate-700 w-full text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <div className="text-sm text-slate-700 truncate w-full px-1">{title}</div>
-          )}
-        </div>
-      </button>
-
-      {showContextMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-50"
-            onClick={handleCloseContextMenu}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              handleCloseContextMenu();
-            }}
-          />
-          <div
-            className="fixed z-50 w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }}
-          >
-            <button
-              onClick={handleRenameClick}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
-            >
-              <Edit2 size={14} />
-              Rename
-            </button>
-            <button
-              onClick={handleDeleteClick}
-              className="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-2"
-            >
-              <EyeOff size={14} />
-              Remove
-            </button>
-          </div>
-        </>
-      )}
-    </>
-  );
-}
+export const CenterPane = forwardRef(CenterPaneComponent);
+CenterPane.displayName = 'CenterPane';
