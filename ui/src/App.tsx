@@ -6,6 +6,8 @@ import { CenterPane, CenterPaneHandle } from './components/layout/centerpane';
 import { PreviewPane } from './components/layout/previewpane';
 import { AssistantPane } from './components/layout/assistantpane';
 import { QuickAddPopup } from './components/dialogs/QuickAddPopup';
+import { PreviewTarget } from './components/layout/centerpane/types';
+import { detectFileType } from './utils/fileTypes';
 
 type ResizeHandler = React.MouseEventHandler<HTMLDivElement>;
 
@@ -125,6 +127,16 @@ export function App() {
     };
   }, []);
 
+  const toFileUrl = (filePath: string): string => {
+    if (!filePath) return '';
+    if (/^file:\/\//i.test(filePath)) {
+      return filePath;
+    }
+    const normalized = filePath.replace(/\\/g, '/');
+    const needsLeadingSlash = normalized.startsWith('/') ? '' : '/';
+    return `file://${needsLeadingSlash}${encodeURI(normalized)}`;
+  };
+
 
   const startResizingSidebar: ResizeHandler = (e) => {
     e.preventDefault();
@@ -217,10 +229,21 @@ export function App() {
             <div className="flex-1 min-w-0 h-full">
               <CenterPane
                 ref={centerPaneRef}
-                onObjectClick={(url, title, tileId) => {
-                  setPreviewUrl(url);
+                onObjectClick={(target: PreviewTarget) => {
+                  const { url, title, tileId, filePath, type } = target || {};
                   setPreviewTitle(title);
                   setPreviewTileId(tileId);
+
+                  if (filePath && type === 'file') {
+                    const { category } = detectFileType(filePath);
+                    if (category === 'pdf') {
+                      setPreviewUrl(toFileUrl(filePath));
+                      setIsPreviewOpen(true);
+                      return;
+                    }
+                  }
+
+                  setPreviewUrl(url);
                   setIsPreviewOpen(true);
                 }}
                 onCanvasEmptyClick={handleCanvasEmptyClick}
@@ -237,24 +260,20 @@ export function App() {
                   aria-hidden
                 />
                 <div
-                  className="flex h-full min-w-0"
+                  className="flex h-full"
                   style={
                     isPreviewOpen
-                      ? { flex: 1 }
+                      ? { flex: 1, minWidth: 0 }
                       : { width: isConversationOpen ? conversationWidth : 0 }
                   }
                 >
-                  {isPreviewOpen && (
-                    <div className="flex-1 min-w-0 h-full">
-                      <PreviewPane
-                        isOpen={isPreviewOpen}
-                        onClose={() => setIsPreviewOpen(false)}
-                        url={previewUrl}
-                        title={previewTitle}
-                        tileId={previewTileId}
-                      />
-                    </div>
-                  )}
+                  <PreviewPane
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                    url={previewUrl}
+                    title={previewTitle}
+                    tileId={previewTileId}
+                  />
                   {isConversationOpen && (
                     <AssistantPane
                       isOpen={isConversationOpen}

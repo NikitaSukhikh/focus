@@ -97,7 +97,10 @@ export function AssistantPane({ isOpen, onClose, width, onResizeStart }: Assista
         onMouseDown={onResizeStart}
       />
 
-      <aside className="bg-slate-50 border-l border-slate-200 flex flex-col h-full relative" style={{ width: `${width}px` }}>
+      <aside
+        className="bg-slate-50 border-l border-slate-200 flex flex-col h-full relative flex-none"
+        style={{ width: `${width}px`, flex: '0 0 auto' }}
+      >
       {/* Header */}
       <div className="bg-white border-b border-slate-200 relative z-10">
         <div className="flex items-center justify-between p-4">

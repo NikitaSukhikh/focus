@@ -537,7 +537,8 @@ async def prepare_authenticated_link(
     try:
         result = await authenticated_links_service.prepare_link(
             url=request.url,
-            account_email=request.account_email
+            account_email=request.account_email,
+            link_id=request.link_id
         )
 
         logger.info(

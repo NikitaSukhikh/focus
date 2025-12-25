@@ -93,6 +93,11 @@ class AuthenticatedLinksService {
         const selectedEmail = await onAccountSelection(result.accounts, result.service);
 
         if (selectedEmail) {
+          // Save preferred account to link metadata
+          if (linkId) {
+            await this.savePreferredAccount(linkId, selectedEmail);
+          }
+
           // Retry with selected account
           const retryResult = await this.prepareLink({
             url,
@@ -220,6 +225,20 @@ class AuthenticatedLinksService {
       }
     } else if (service === 'github') {
       console.warn('[AuthLinks] GitHub OAuth not yet implemented');
+    }
+  }
+
+  /**
+   * Save preferred account for a link
+   */
+  async savePreferredAccount(linkId: string, accountEmail: string): Promise<void> {
+    try {
+      const { objectsApi } = await import('../api/objects');
+      await objectsApi.updateMetadata(linkId, { preferred_account_email: accountEmail });
+      console.log(`[AuthLinks] Saved preferred account ${accountEmail} for link ${linkId}`);
+    } catch (error) {
+      console.error('[AuthLinks] Failed to save preferred account:', error);
+      // Don't throw - this is non-critical
     }
   }
 }
