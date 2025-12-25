@@ -57,7 +57,6 @@ export function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = usePersistedNumber('ocean-sidebar-width', 220);
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
-  const [previewWidth, setPreviewWidth] = usePersistedNumber('ocean-preview-width', 320);
   const [isConversationOpen, setIsConversationOpen] = useState(true);
   const [conversationWidth, setConversationWidth] = usePersistedNumber('ocean-conversation-width', 256);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -146,28 +145,6 @@ export function App() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  const startResizingPreview: ResizeHandler = (e) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = previewWidth;
-    const minWidth = 280;
-    const maxWidth = 600;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startX - moveEvent.clientX;
-      const nextWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
-      setPreviewWidth(nextWidth);
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
   const startResizingConversation: ResizeHandler = (e) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -234,23 +211,52 @@ export function App() {
           className="flex-1 flex transition-all duration-200"
           style={{ marginLeft: isSidebarOpen ? sidebarWidth : 0 }}
         >
-          <CenterPane
-            ref={centerPaneRef}
-            onObjectClick={() => setIsPreviewOpen(true)}
-            onCanvasEmptyClick={handleCanvasEmptyClick}
-          />
-          <PreviewPane
-            isOpen={isPreviewOpen}
-            onClose={() => setIsPreviewOpen(false)}
-            width={previewWidth}
-            onResizeStart={startResizingPreview}
-          />
-          <AssistantPane
-            isOpen={isConversationOpen}
-            onClose={() => setIsConversationOpen(false)}
-            width={conversationWidth}
-            onResizeStart={startResizingConversation}
-          />
+          <div className="flex flex-1 min-w-0 h-full">
+            <div className="flex-1 min-w-0 h-full">
+              <CenterPane
+                ref={centerPaneRef}
+                onObjectClick={() => setIsPreviewOpen(true)}
+                onCanvasEmptyClick={handleCanvasEmptyClick}
+              />
+            </div>
+
+            {(isPreviewOpen || isConversationOpen) && (
+              <>
+                <div
+                  className="shrink-0 h-full"
+                  style={{
+                    borderLeft: '10px double #cbd5e1',
+                  }}
+                  aria-hidden
+                />
+                <div
+                  className="flex h-full min-w-0"
+                  style={
+                    isPreviewOpen
+                      ? { flex: 1 }
+                      : { width: isConversationOpen ? conversationWidth : 0 }
+                  }
+                >
+                  {isPreviewOpen && (
+                    <div className="flex-1 min-w-0 h-full">
+                      <PreviewPane
+                        isOpen={isPreviewOpen}
+                        onClose={() => setIsPreviewOpen(false)}
+                      />
+                    </div>
+                  )}
+                  {isConversationOpen && (
+                    <AssistantPane
+                      isOpen={isConversationOpen}
+                      onClose={() => setIsConversationOpen(false)}
+                      width={conversationWidth}
+                      onResizeStart={startResizingConversation}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </main>
       </div>
 
