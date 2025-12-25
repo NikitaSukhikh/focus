@@ -3,7 +3,7 @@ import { Grid3x3, Link, FileText, Edit2, EyeOff, Copy, RefreshCw, ExternalLink }
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
-import { buildFaviconUrl, FALLBACK_FAVICON } from '../../../utils/favicon';
+import { FALLBACK_FAVICON } from '../../../utils/favicon';
 import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
 import { getFileTypeIcon } from '../../icons/FileTypeIcons';
 import { IconTileProps } from './types';
@@ -40,7 +40,7 @@ export function IconTile({
   const [accountSelectionData, setAccountSelectionData] = useState<{
     accounts: AccountInfo[];
     service: string;
-    resolve: (email: string | null) => void;
+    resolve: (_email: string | null) => void;
   } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 

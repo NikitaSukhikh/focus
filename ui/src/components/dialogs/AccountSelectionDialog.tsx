@@ -12,7 +12,7 @@ interface AccountSelectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   accounts: GoogleAccount[];
-  onSelectAccount: (email: string) => void;
+  onSelectAccount: (_email: string) => void;
   onAddNewAccount: () => void;
 }
 

@@ -11,9 +11,9 @@ export interface IslandItemProps {
   count: number;
   isActive?: boolean;
   isEditing?: boolean;
-  onRename: (id: string, newName: string) => void;
-  onDuplicate: (id: string) => void;
-  onDelete: (id: string) => void;
+  onRename: (_id: string, _newName: string) => void;
+  onDuplicate: (_id: string) => void;
+  onDelete: (_id: string) => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onClick: () => void;

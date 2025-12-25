@@ -5,7 +5,7 @@ import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/
 interface AddLinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (url: string, title: string, description: string) => void;
+  onAdd: (_url: string, _title: string, _description: string) => void;
 }
 
 export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
@@ -14,7 +14,6 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
   const [description, setDescription] = useState('');
   const [isValidUrl, setIsValidUrl] = useState(true);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
-  const [siteName, setSiteName] = useState('');
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,7 +28,6 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
       setTitle('');
       setDescription('');
       setIsValidUrl(true);
-      setSiteName('');
     }
   }, [isOpen]);
 
@@ -57,10 +55,6 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
           setDescription(metadata.description || metadata.og_description || '');
         }
 
-        // Store site name for display
-        if (metadata.site_name) {
-          setSiteName(metadata.site_name);
-        }
       }
     } catch (err) {
       console.error('[ADD LINK] Failed to fetch metadata:', err);

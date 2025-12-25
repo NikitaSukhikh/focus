@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { FilePlus, Plus } from 'lucide-react';
 
 interface QuickAddPopupProps {
@@ -22,11 +22,14 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTel
   const [selectedIndex, setSelectedIndex] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  const actions: Action[] = [
-    { type: 'files', label: 'Add Local Files', icon: <FilePlus size={16} />, handler: onAddFiles },
-    { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink },
-    { type: 'telegram', label: 'Add Telegram account', icon: <Plus size={16} />, handler: onAddTelegram },
-  ];
+  const actions: Action[] = useMemo(
+    () => [
+      { type: 'files', label: 'Add Local Files', icon: <FilePlus size={16} />, handler: onAddFiles },
+      { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink },
+      { type: 'telegram', label: 'Add Telegram account', icon: <Plus size={16} />, handler: onAddTelegram },
+    ],
+    [onAddFiles, onAddLink, onAddTelegram]
+  );
 
   useEffect(() => {
     if (!isOpen) {
