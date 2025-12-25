@@ -21,10 +21,71 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
   const pendingUrlRef = useRef<string | undefined>(undefined);
   const cachedUrlsRef = useRef<Set<string>>(new Set());
   const skipSpinnerRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<number | null>(null);
+  const MAX_RETRIES = 4;
+  const RETRY_DELAY_MS = 600;
+
+  const safeLoadURL = async (targetUrl: string) => {
+    const view = webviewRef.current as any;
+    if (!view || !targetUrl) return;
+    try {
+      // Setting src avoids promise rejections from loadURL on redirects/abort.
+      if ('src' in view) {
+        view.src = targetUrl;
+        return;
+      } else {
+        await view.loadURL(targetUrl);
+        return;
+      }
+    } catch (err: any) {
+      const code = err?.code ?? err?.errno;
+      if (code === -3) {
+        // Abort/redirect; ignore.
+        return;
+      }
+      console.error('[PreviewPane] Failed to load URL:', err);
+      setLoadError('Failed to load URL');
+      setIsLoading(false);
+    }
+  };
+
+  // Suppress top-level unhandled rejections from the webview navigation to avoid noisy ERR_ABORTED logs.
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason: any = event.reason;
+      const code = reason?.code ?? reason?.errno;
+      if (code === -3) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, []);
+
+  const clearRetryTimeout = () => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleRetry = () => {
+    clearRetryTimeout();
+    retryTimeoutRef.current = window.setTimeout(() => {
+      const targetUrl = currentUrlRef.current;
+      if (targetUrl) {
+        void safeLoadURL(targetUrl);
+      }
+    }, RETRY_DELAY_MS);
+  };
 
   const markLoadComplete = () => {
     setIsLoading(false);
     skipSpinnerRef.current = false;
+    retryCountRef.current = 0;
+    clearRetryTimeout();
+    setLoadError(null);
   };
 
   // Setup event listeners and handle webview ready state
@@ -41,6 +102,7 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
       if (loadedUrl) {
         cachedUrlsRef.current.add(loadedUrl);
       }
+      setLoadError(null);
       markLoadComplete();
     };
     const handleFail = (_event: any, errorCode: number, errorDescription: string) => {
@@ -50,11 +112,20 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
         return;
       }
 
+      // If the load fails, try a couple of quiet retries before showing error
+      const transientFailure = errorCode === 0 || !errorDescription;
+      if (retryCountRef.current < MAX_RETRIES && currentUrlRef.current) {
+        retryCountRef.current += 1;
+        scheduleRetry();
+        return;
+      }
+
       setIsLoading(false);
-      setLoadError(errorDescription || `Failed to load (${errorCode})`);
+      setLoadError(errorDescription || `Failed to load (${errorCode || 'unknown'})`);
     };
     const handleDomReady = () => {
       isReadyRef.current = true;
+      setLoadError(null);
       markLoadComplete();
 
       // Load pending URL if there is one
@@ -64,13 +135,7 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
         currentUrlRef.current = urlToLoad;
         skipSpinnerRef.current = cachedUrlsRef.current.has(urlToLoad);
 
-        try {
-          view.loadURL(urlToLoad);
-        } catch (err) {
-          console.error('[PreviewPane] Failed to load pending URL:', err);
-          setLoadError('Failed to load URL');
-          setIsLoading(false);
-        }
+        void safeLoadURL(urlToLoad);
       }
     };
 
@@ -86,6 +151,7 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
       view.removeEventListener('did-finish-load', handleLoadStop);
       view.removeEventListener('did-fail-load', handleFail);
       view.removeEventListener('dom-ready', handleDomReady);
+      clearRetryTimeout();
     };
   }, []);
 
@@ -102,6 +168,8 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
 
     // Only navigate if URL actually changed
     if (url !== currentUrlRef.current) {
+      clearRetryTimeout();
+      retryCountRef.current = 0;
       const isCached = cachedUrlsRef.current.has(url);
       skipSpinnerRef.current = isCached;
       setIsLoading(!isCached);
@@ -110,13 +178,7 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
       // If webview is ready, load immediately
       if (isReadyRef.current) {
         currentUrlRef.current = url;
-        try {
-          view.loadURL(url);
-        } catch (err) {
-          console.error('[PreviewPane] Failed to load URL:', err);
-          setLoadError('Failed to load URL');
-          setIsLoading(false);
-        }
+        void safeLoadURL(url);
       } else {
         // Otherwise, queue it for when dom-ready fires
         pendingUrlRef.current = url;
@@ -128,6 +190,7 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
     if (!isOpen) {
       setIsLoading(false);
       setLoadError(null);
+      clearRetryTimeout();
     }
   }, [isOpen]);
 
@@ -182,8 +245,7 @@ export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
           ref={webviewRef}
           src="about:blank"
           partition="persist:ocean-webview"
-          allowpopups
-          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          allowpopups="true"
           style={{
             flex: 1,
             width: '100%',

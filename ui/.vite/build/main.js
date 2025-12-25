@@ -1,11 +1,29 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell, session } from "electron";
 import path, { dirname } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = dirname(__filename$1);
 const isMac = process.platform === "darwin";
 let mainWindow = null;
+const logWebviewStorageInfo = async () => {
+  try {
+    const webviewSession = session.fromPartition("persist:ocean-webview");
+    const storagePath = webviewSession.getStoragePath();
+    const cookies = await webviewSession.cookies.get({});
+    console.log(
+      "[Electron] Webview storage",
+      JSON.stringify({
+        partition: "persist:ocean-webview",
+        storagePath,
+        cookieCount: cookies.length
+      })
+    );
+  } catch (err) {
+    console.warn("[Electron] Failed to inspect webview storage", err);
+  }
+};
 const PRELOAD_PATH = path.join(__dirname$1, "preload.js");
+const PRELOAD_URL = pathToFileURL(PRELOAD_PATH).toString();
 async function createMainWindow() {
   console.log("[Electron] Creating main window...");
   mainWindow = new BrowserWindow({
@@ -19,7 +37,8 @@ async function createMainWindow() {
     autoHideMenuBar: true,
     // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
-      preload: PRELOAD_PATH,
+      // preload is ESM-built; use file URL so Electron treats it as an ES module
+      preload: PRELOAD_URL,
       contextIsolation: true,
       sandbox: false,
       // Must be false to enable webview tag
@@ -49,6 +68,7 @@ app.whenReady().then(() => {
     console.error("[Electron] Failed to create main window:", err);
     app.quit();
   });
+  void logWebviewStorageInfo();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow().catch((err) => {

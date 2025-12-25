@@ -1,6 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell, session } from 'electron';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname } from 'path';
 
 // ES module compatibility - define __dirname
@@ -11,6 +11,24 @@ const isMac = process.platform === 'darwin';
 
 let mainWindow: BrowserWindow | null = null;
 
+const logWebviewStorageInfo = async () => {
+  try {
+    const webviewSession = session.fromPartition('persist:ocean-webview');
+    const storagePath = webviewSession.getStoragePath();
+    const cookies = await webviewSession.cookies.get({});
+    console.log(
+      '[Electron] Webview storage',
+      JSON.stringify({
+        partition: 'persist:ocean-webview',
+        storagePath,
+        cookieCount: cookies.length,
+      })
+    );
+  } catch (err) {
+    console.warn('[Electron] Failed to inspect webview storage', err);
+  }
+};
+
 // Electron Forge's Vite plugin provides these globals
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -18,6 +36,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 // Vite plugin defines MAIN_WINDOW_PRELOAD_VITE_ENTRY for preload script
 // This path is injected by Electron Forge at build time
 const PRELOAD_PATH = path.join(__dirname, 'preload.js');
+const PRELOAD_URL = pathToFileURL(PRELOAD_PATH).toString();
 
 async function createMainWindow() {
   console.log('[Electron] Creating main window...');
@@ -31,7 +50,8 @@ async function createMainWindow() {
     title: 'Ocean',
     autoHideMenuBar: true, // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
-      preload: PRELOAD_PATH,
+      // preload is ESM-built; use file URL so Electron treats it as an ES module
+      preload: PRELOAD_URL,
       contextIsolation: true,
       sandbox: false, // Must be false to enable webview tag
       nodeIntegration: false,
@@ -72,6 +92,9 @@ app.whenReady().then(() => {
     console.error('[Electron] Failed to create main window:', err);
     app.quit();
   });
+
+  // Log where the webview's persistent storage lives so we can verify cookies survive restarts.
+  void logWebviewStorageInfo();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
