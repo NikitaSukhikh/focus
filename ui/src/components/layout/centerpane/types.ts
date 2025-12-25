@@ -26,7 +26,7 @@ export interface DroppedIcon {
 }
 
 export interface CenterPaneProps {
-  onObjectClick?: () => void;
+  onObjectClick?: (url?: string, title?: string, tileId?: string) => void;
   onCanvasEmptyClick?: () => void;
 }
 
