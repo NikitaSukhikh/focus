@@ -314,6 +314,8 @@ export function IconTile({
     type === 'link' ? (videoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE) : undefined;
   const tileHeight =
     type === 'link' ? (videoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE) : undefined;
+  const [firstTextLine, ...otherTextLines] = (content || '').split(/\r?\n/);
+  const remainingText = otherTextLines.join('\n');
 
   const getGoogleServiceIcon = (url: string) => {
     if (!url) return null;
@@ -529,13 +531,18 @@ export function IconTile({
             }}
           >
             <div
-              className={`whitespace-pre-wrap leading-relaxed ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}
+              className={`leading-relaxed ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}
               style={{
                 fontSize: '16px',
                 lineHeight: '1.6',
               }}
             >
-              {content}
+              <div className="font-semibold">{firstTextLine}</div>
+              {remainingText && (
+                <div className="whitespace-pre-wrap" style={{ lineHeight: '1.6' }}>
+                  {remainingText}
+                </div>
+              )}
             </div>
           </div>
         ) : (

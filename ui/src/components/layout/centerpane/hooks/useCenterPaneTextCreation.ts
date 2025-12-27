@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon } from '../types';
+import { autoWrapText } from '../utils';
 
 interface TextCreationParams {
   selectedIsland: any;
@@ -37,6 +38,7 @@ export const useCenterPaneTextCreation = ({
       return;
     }
 
+    const formattedContent = autoWrapText(content, 22);
     const { x, y } = pendingTextPosition;
     const clamped = clampToBoundaries(x, y);
 
@@ -44,7 +46,7 @@ export const useCenterPaneTextCreation = ({
       const created = await objectsApi.create(selectedIsland.id, {
         type: 'text',
         title,
-        content,
+        content: formattedContent,
         x: clamped.x,
         y: clamped.y,
       });
@@ -56,8 +58,8 @@ export const useCenterPaneTextCreation = ({
         title: created.title,
         x: clamped.x,
         y: clamped.y,
-        description: content.substring(0, 100), // Preview snippet
-        content: content,
+        description: formattedContent.substring(0, 100), // Preview snippet
+        content: formattedContent,
       };
 
       setIconsByIsland((prev) => {

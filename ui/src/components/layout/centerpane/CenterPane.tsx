@@ -56,20 +56,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         }
       }
     },
-    {
-      label: 'Add note',
-      action: () => {
-        if (contextMenu && paneRef.current) {
-          logic.openAddTextDialog(contextMenu.x, contextMenu.y);
-        }
-      }
-    },
-    {
-      label: 'Add Telegram account',
-      action: () => {
-        window.dispatchEvent(new CustomEvent('centerpane:add-telegram'));
-      }
-    }
   ], [logic, contextMenu, paneRef]);
 
   useEffect(() => {
@@ -108,8 +94,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
     if (!paneRef.current) return;
     const rect = paneRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + paneRef.current.scrollLeft;
-    const y = e.clientY - rect.top + paneRef.current.scrollTop;
+    const x = e.clientX - rect.left + paneRef.current.scrollLeft - 26;
+    const y = e.clientY - rect.top + paneRef.current.scrollTop - 34;
     setContextMenu({ x, y, index: 0 });
   };
 
@@ -257,55 +243,57 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
           )}
 
           {(logic.iconsByIsland[logic.selectedIsland?.id ?? ''] || []).map((icon) => (
-            <IconTile
-              key={icon.id}
-              id={icon.id}
-              type={icon.type}
-              title={icon.title}
-              x={icon.x}
-              y={icon.y}
-              url={icon.url}
-              description={icon.description}
-              faviconUrl={icon.faviconUrl}
-              filePath={icon.filePath}
-              content={icon.content}
-              isSelected={logic.selectedIconIds.includes(icon.id)}
-              onClick={(event) => {
-                const isToggle = event.metaKey || event.ctrlKey;
-                if (isToggle) {
-                  const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
-                  const next = isAlreadySelected
-                    ? logic.selectedIconIds.filter((id) => id !== icon.id)
-                    : [...logic.selectedIconIds, icon.id];
-                  logic.setSelectedIconIds(next);
-                  if (next.length === 1) {
-                    const single = icon;
+            logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
+              <IconTile
+                key={icon.id}
+                id={icon.id}
+                type={icon.type}
+                title={icon.title}
+                x={icon.x}
+                y={icon.y}
+                url={icon.url}
+                description={icon.description}
+                faviconUrl={icon.faviconUrl}
+                filePath={icon.filePath}
+                content={icon.content}
+                isSelected={logic.selectedIconIds.includes(icon.id)}
+                onClick={(event) => {
+                  const isToggle = event.metaKey || event.ctrlKey;
+                  if (isToggle) {
+                    const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
+                    const next = isAlreadySelected
+                      ? logic.selectedIconIds.filter((id) => id !== icon.id)
+                      : [...logic.selectedIconIds, icon.id];
+                    logic.setSelectedIconIds(next);
+                    if (next.length === 1) {
+                      const single = icon;
+                      onObjectClick?.({
+                        url: single.url,
+                        title: single.title,
+                        tileId: single.id,
+                        filePath: single.filePath,
+                        type: single.type,
+                        content: single.content,
+                      });
+                    }
+                  } else {
+                    logic.setSelectedIconId(icon.id);
                     onObjectClick?.({
-                      url: single.url,
-                      title: single.title,
-                      tileId: single.id,
-                      filePath: single.filePath,
-                      type: single.type,
-                      content: single.content,
+                      url: icon.url,
+                      title: icon.title,
+                      tileId: icon.id,
+                      filePath: icon.filePath,
+                      type: icon.type,
+                      content: icon.content,
                     });
                   }
-                } else {
-                  logic.setSelectedIconId(icon.id);
-                  onObjectClick?.({
-                    url: icon.url,
-                    title: icon.title,
-                    tileId: icon.id,
-                    filePath: icon.filePath,
-                    type: icon.type,
-                    content: icon.content,
-                  });
-                }
-              }}
-              onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
-              onDelete={() => logic.handleIconDelete(icon.id)}
-              onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
-              onEdit={(x, y, content, id) => logic.openInlineEditor(x, y, content, id)}
-            />
+                }}
+                onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
+                onDelete={() => logic.handleIconDelete(icon.id)}
+                onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
+                onEdit={(x, y, content, id) => logic.openInlineEditor(x, y, content, id)}
+              />
+            )
           ))}
         </div>
       </div>
