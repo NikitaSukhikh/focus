@@ -6,12 +6,15 @@ import { FONT_ROLES } from '../../../styles/fontManager';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
+import { useIslandStore } from '../../../stores/islandStore';
+import { Loader2 } from 'lucide-react';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick } = props;
   const paneRef = useRef<HTMLDivElement | null>(null);
 
   const logic = useCenterPaneLogic(paneRef);
+  const isDuplicating = useIslandStore((state) => state.isDuplicating);
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -119,6 +122,37 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onClick={(e) => logic.handleCanvasClick(e, onCanvasEmptyClick)}
         onContextMenu={handleCanvasContextMenu}
       >
+        {/* Loading Spinner Overlay */}
+        {isDuplicating && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: Z_INDEX.OVERLAY_DIALOG,
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <Loader2 size={48} className="animate-spin" style={{ color: 'var(--primary-color)' }} />
+            <div
+              style={{
+                ...FONT_ROLES.paneTitle,
+                color: 'white',
+                marginTop: '16px',
+                textAlign: 'center',
+              }}
+            >
+              Please wait until all elements get loaded
+            </div>
+          </div>
+        )}
         <div className="relative" style={{ minHeight: `${logic.contentHeight}px` }}>
           {(logic.selectedIsland && logic.iconsByIsland[logic.selectedIsland.id]?.length) ? null : (
             <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>Drop integrations or links here. Use the + button to add files.</div>

@@ -9,6 +9,7 @@ import { PreviewTarget } from './components/layout/centerpane/types';
 import { detectFileType } from './utils/fileTypes';
 import { Z_INDEX } from './constants/zIndex';
 import { PANEL_DIMENSIONS } from './constants/panelDimensions';
+import { useIslandStore } from './stores/islandStore';
 
 type ResizeHandler = React.MouseEventHandler<HTMLDivElement>;
 
@@ -75,7 +76,15 @@ export function App() {
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
 
+  const selectedIslandId = useIslandStore((state) => state.selectedIslandId);
+
   useSidebarShortcut(() => setIsSidebarOpen((prev) => !prev));
+
+  // Clear preview when switching islands
+  useEffect(() => {
+    setPreviewData({});
+    setIsPreviewOpen(false);
+  }, [selectedIslandId]);
 
   useEffect(() => {
     const handleToggleConversation = (e: KeyboardEvent) => {

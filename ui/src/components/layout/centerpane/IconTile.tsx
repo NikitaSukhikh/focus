@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid3x3, Link, FileText, Edit2, Trash2, Copy, RefreshCw, ExternalLink } from 'lucide-react';
+import { Grid3x3, Link, FileText, Edit2, Trash2, Copy, RefreshCw, ExternalLink, Share2 } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
@@ -10,6 +10,7 @@ import { getFileTypeIcon } from '../../icons/FileTypeIcons';
 import { IconTileProps } from './types';
 import { authenticatedLinksService, AccountInfo } from '../../../services/authenticatedLinks';
 import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
+import { ShareDialog } from '../../dialogs/ShareDialog';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
 
 const HOVER_SAFE_PADDING = 12;
@@ -47,6 +48,7 @@ export function IconTile({
     service: string;
     resolve: (_email: string | null) => void;
   } | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   // Load thumbnail for image files
@@ -177,6 +179,11 @@ export function IconTile({
     if (onRefreshMetadata) {
       onRefreshMetadata();
     }
+  };
+
+  const handleShareClick = () => {
+    setShowContextMenu(false);
+    setShowShareDialog(true);
   };
 
   const openLinkExternally = async () => {
@@ -399,7 +406,6 @@ export function IconTile({
           background: 'transparent',
           width: type === 'link' ? `${tileWidth}px` : undefined,
           height: type === 'link' ? `${tileHeight}px` : undefined,
-          width: type === 'link' ? `${tileWidth}px` : undefined,
           zIndex: isSelected ? Z_INDEX.CONTENT_SELECTED : isDragging ? Z_INDEX.CONTENT_DRAGGING : Z_INDEX.CONTENT_DEFAULT
         } as any}
       >
@@ -538,6 +544,24 @@ export function IconTile({
               top: `${contextMenuPosition.y}px`
             }}
           >
+            {(filePath || url) && (
+              <button
+                onClick={handleShareClick}
+                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              >
+                <Share2 size={16} />
+                Share
+              </button>
+            )}
+            {(filePath || url) && (
+              <button
+                onClick={handleCopyPathClick}
+                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              >
+                <Copy size={14} />
+                Copy path/URL
+              </button>
+            )}
             {type === 'link' && url && (
               <button
                 onClick={() => {
@@ -549,15 +573,6 @@ export function IconTile({
               >
                 <ExternalLink size={18} />
                 Open in external browser
-              </button>
-            )}
-            {(filePath || url) && (
-              <button
-                onClick={handleCopyPathClick}
-                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
-              >
-                <Copy size={14} />
-                Copy path
               </button>
             )}
             {type === 'link' && url && (
@@ -598,6 +613,16 @@ export function IconTile({
           }))}
           onSelectAccount={handleAccountSelect}
           onAddNewAccount={handleAddNewAccount}
+        />
+      )}
+
+      {showShareDialog && (
+        <ShareDialog
+          isOpen={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          url={url || ''}
+          title={title}
+          filePath={filePath}
         />
       )}
     </>
