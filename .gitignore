@@ -61,5 +61,12 @@ venv/
 storage/local_files/data/
 storage/local_files/cache/
 
+# Test data and downloads
+backend/app/assistant/backend/data/gdrive_downloads/
+backend/app/assistant/backend/data/uploads/
+backend/app/assistant/backend/generated_invoices/
+backend/app/assistant/backend/invoices/
+*.pdf
+
 # Claude Code files
 .claude
