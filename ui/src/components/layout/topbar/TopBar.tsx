@@ -1,8 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, Settings, MessageCircle, PanelRight, ChevronDown, Search, Edit2, Trash2 } from 'lucide-react';
-import { GmailIcon } from '../../icons/GoogleServiceIcons';
-import { EditLinkDialog } from '../../dialogs/EditLinkDialog';
-import { FALLBACK_FAVICON } from '../../../utils/favicon';
+import { Menu, Settings, MessageCircle, PanelRight, Search } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { useTopBarLogic } from './useTopBarLogic';
@@ -48,99 +45,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             <Menu size={20} />
           </button>
         )}
-        {/* Integrations Dropdown */}
-        <div className="relative">
-          <button
-            ref={logic.integrationsTriggerRef}
-            onClick={() => logic.setIsIntegrationsOpen(!logic.isIntegrationsOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer"
-            style={{
-              ...FONT_ROLES.topbarControl,
-              color: 'var(--color-text-primary)',
-              transition: 'all var(--transition-base)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--glass-bg)';
-              e.currentTarget.style.color = 'var(--primary-color)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--color-text-primary)';
-            }}
-          >
-            Integrations
-            <ChevronDown size={16} className={`transition-transform ${logic.isIntegrationsOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {logic.isIntegrationsOpen && (
-            <>
-              {/* Backdrop - allows drag events to pass through */}
-              <div
-                className="fixed inset-0 pointer-events-none"
-                style={{ zIndex: Z_INDEX.DROPDOWN_BACKDROP }}
-              />
-
-              {/* Dropdown menu */}
-              <div
-                ref={logic.integrationsDropdownRef}
-                className="absolute left-0 top-full mt-1 w-52 glass-panel py-1"
-                style={{
-                  zIndex: Z_INDEX.DROPDOWN_MENU,
-                  maxHeight: logic.dropdownMaxHeight,
-                  overflowY: logic.dropdownMaxHeight ? 'auto' : undefined,
-                  paddingRight: logic.dropdownMaxHeight ? '0.35rem' : undefined,
-                }}
-              >
-                {/* Instruction text */}
-                <div
-                  className="px-3.5 py-2 text-slate-500 whitespace-nowrap"
-                  style={FONT_ROLES.topbarMeta}
-                >
-                  Links on Canvas
-                </div>
-
-                {/* Saved Links - Read-only List */}
-                {logic.savedLinks.map((link) => {
-                  // Clean up URLs by removing protocol
-                  const displayName = link.name.replace(/^https?:\/\//, '').replace(/\/$/, '');
-                  const isGmail =
-                    (link.url || '').toLowerCase().includes('mail.google.com') ||
-                    (link.url || '').toLowerCase().includes('gmail.com');
-
-                  const iconNode = isGmail ? (
-                    <GmailIcon size={16} />
-                  ) : (
-                    <img
-                      src={link.favicon_url || FALLBACK_FAVICON}
-                      alt=""
-                      className="w-4 h-4 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = FALLBACK_FAVICON;
-                        e.currentTarget.style.display = 'block';
-                      }}
-                    />
-                  );
-
-                  return (
-                    <div
-                      key={link.id}
-                      onContextMenu={(e) => logic.handleLinkContextMenu(e, link.id)}
-                      className="w-full px-4 py-2 flex items-center gap-2 cursor-pointer text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                      title={link.description || link.url}
-                    >
-                      <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                        {iconNode}
-                      </div>
-                      <span className="truncate" style={FONT_ROLES.topbarControl}>{displayName}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
       </div>
 
       {/* Center section - Island Name (absolute positioned) */}
@@ -288,51 +192,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
         </button>
       </div>
 
-      {/* Edit Link Dialog */}
-      <EditLinkDialog
-        isOpen={!!logic.editingLinkId}
-        onClose={() => logic.setEditingLinkId(null)}
-        onSave={logic.handleSaveEditedLink}
-        initialUrl={logic.editingLinkData.url}
-        initialTitle={logic.editingLinkData.title}
-        initialDescription={logic.editingLinkData.description}
-      />
-
-      {/* Link Context Menu */}
-      {logic.linkContextMenu && (
-        <>
-          <div
-            className="fixed inset-0"
-            style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
-            onClick={() => logic.setLinkContextMenu(null)}
-          />
-          <div
-            className="fixed w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{
-              zIndex: Z_INDEX.CONTEXT_MENU,
-              left: `${logic.linkContextMenu.x}px`,
-              top: `${logic.linkContextMenu.y}px`
-            }}
-          >
-            <button
-              onClick={() => logic.handleEditLink(logic.linkContextMenu!.linkId)}
-              className="w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
-              style={FONT_ROLES.topbarControl}
-            >
-              <Edit2 size={14} />
-              Edit
-            </button>
-            <button
-              onClick={() => logic.handleDeleteLink(logic.linkContextMenu!.linkId)}
-              className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-              style={FONT_ROLES.topbarControl}
-            >
-              <Trash2 size={14} />
-              Delete
-            </button>
-          </div>
-        </>
-      )}
     </header>
   );
 };

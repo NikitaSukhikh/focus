@@ -13,20 +13,11 @@
 
 import { CenterPaneHandle } from '../centerpane/types';
 import { useIslandStore } from '../../../stores/islandStore';
-import { useIntegrationsDropdown } from './hooks/useIntegrationsDropdown';
-import { useSavedLinks } from './hooks/useSavedLinks';
 import { useIslandNameEditor } from './hooks/useIslandNameEditor';
-import { useLinkContextMenu } from './hooks/useLinkContextMenu';
 
 export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>) => {
   const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
   const updateIsland = useIslandStore((state) => state.updateIsland);
-
-  // Integrations dropdown management
-  const dropdown = useIntegrationsDropdown();
-
-  // Saved links management
-  const links = useSavedLinks(selectedIsland?.id, dropdown.isIntegrationsOpen);
 
   // Island name editor
   const islandEditor = useIslandNameEditor({
@@ -34,28 +25,9 @@ export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>
     updateIsland,
   });
 
-  // Link context menu
-  const contextMenu = useLinkContextMenu({
-    savedLinks: links.savedLinks,
-    handleUpdateLink: links.handleUpdateLink,
-    handleDeleteLink: links.handleDeleteLink,
-  });
-
   return {
     // Island state
     selectedIsland,
-
-    // Integrations dropdown
-    isIntegrationsOpen: dropdown.isIntegrationsOpen,
-    setIsIntegrationsOpen: dropdown.setIsIntegrationsOpen,
-    searchQuery: dropdown.searchQuery,
-    setSearchQuery: dropdown.setSearchQuery,
-    dropdownMaxHeight: dropdown.dropdownMaxHeight,
-    integrationsTriggerRef: dropdown.integrationsTriggerRef,
-    integrationsDropdownRef: dropdown.integrationsDropdownRef,
-
-    // Saved links
-    savedLinks: links.savedLinks,
 
     // Island name editor
     isEditingIslandName: islandEditor.isEditingIslandName,
@@ -65,16 +37,5 @@ export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>
     islandNameInputRef: islandEditor.islandNameInputRef,
     handleIslandNameSubmit: islandEditor.handleIslandNameSubmit,
     handleIslandNameKeyDown: islandEditor.handleIslandNameKeyDown,
-
-    // Link context menu
-    linkContextMenu: contextMenu.linkContextMenu,
-    setLinkContextMenu: contextMenu.setLinkContextMenu,
-    editingLinkId: contextMenu.editingLinkId,
-    setEditingLinkId: contextMenu.setEditingLinkId,
-    editingLinkData: contextMenu.editingLinkData,
-    handleLinkContextMenu: contextMenu.handleLinkContextMenu,
-    handleDeleteLink: contextMenu.handleDeleteLinkClick,
-    handleEditLink: contextMenu.handleEditLink,
-    handleSaveEditedLink: contextMenu.handleSaveEditedLink,
   };
 };

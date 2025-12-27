@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Edit2, Trash2, Copy } from 'lucide-react';
+import { Edit2, Trash2, Copy, ChevronDown } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { IslandItemProps } from './types';
@@ -7,7 +7,6 @@ import { IslandItemProps } from './types';
 export function IslandItem({
   id,
   name,
-  count,
   isActive,
   isEditing,
   onRename,
@@ -15,7 +14,10 @@ export function IslandItem({
   onDelete,
   onStartEdit,
   onCancelEdit,
-  onClick
+  onClick,
+  showLinksToggle = false,
+  isLinksExpanded = false,
+  onToggleLinks
 }: IslandItemProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -112,7 +114,13 @@ export function IslandItem({
   return (
     <>
       <div
-        onClick={onClick}
+        onClick={(e) => {
+          if (isActive && showLinksToggle) {
+            onToggleLinks?.();
+          } else {
+            onClick();
+          }
+        }}
         onContextMenu={handleContextMenu}
         onDoubleClick={(e) => {
           e.stopPropagation();
@@ -140,7 +148,7 @@ export function IslandItem({
           }
         }}
       >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               {isEditing ? (
                 <input
@@ -150,6 +158,7 @@ export function IslandItem({
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleSubmit}
                   onKeyDown={handleKeyDown}
+                  onClick={(e) => e.stopPropagation()}
                   className="w-full px-2 py-0.5 rounded outline-none"
                   style={{
                     ...FONT_ROLES.sidebarItem,
@@ -163,7 +172,14 @@ export function IslandItem({
                 <span className="block truncate" style={FONT_ROLES.sidebarItem}>{name}</span>
               )}
             </div>
-            <span className="ml-2 shrink-0" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>{count}</span>
+
+            {/* Links toggle chevron */}
+            {showLinksToggle && (
+              <ChevronDown
+                size={14}
+                className={`shrink-0 transition-transform text-slate-400 ${isLinksExpanded ? 'rotate-0' : '-rotate-90'}`}
+              />
+            )}
           </div>
         </div>
 

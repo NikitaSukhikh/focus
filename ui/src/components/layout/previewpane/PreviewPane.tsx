@@ -180,7 +180,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: Pre
             ref={webviewRef}
             src="about:blank"
             partition="persist:ocean-webview"
-            allowpopups={true}
+            allowpopups="true"
             style={{
               flex: 1,
               width: '100%',

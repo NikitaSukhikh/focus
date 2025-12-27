@@ -13,7 +13,7 @@
  * but orchestrates other specialized hooks following the separation of concerns pattern.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useWebviewState } from './hooks/useWebviewState';
 import { useWebviewNavigation } from './hooks/useWebviewNavigation';
 import { useWebviewEventHandlers } from './hooks/useWebviewEventHandlers';
@@ -32,7 +32,8 @@ export const usePreviewPaneLogic = (
   const externalFallback = useExternalBrowserFallback();
 
   // Preloader for frequently visited pages
-  const frequentPages = state.cache.getFrequentPages();
+  // Memoize to prevent array reference changes on every render
+  const frequentPages = useMemo(() => state.cache.getFrequentPages(), [state.cache]);
   useWebviewPreloader(webviewRef, {
     enabled: isOpen,
     frequentPages,

@@ -128,11 +128,23 @@ export const useWebviewEventHandlers = (
       }
     };
 
+    const handleNewWindow = (e: any) => {
+      // Prevent new windows from opening in external browser
+      // Instead, navigate within the same webview
+      e.preventDefault();
+      const targetUrl = e.url;
+      if (targetUrl) {
+        // Navigate to the URL in the same webview instead of opening externally
+        void state.safeLoadURL(targetUrl);
+      }
+    };
+
     view.addEventListener('did-start-loading', handleLoadStart);
     view.addEventListener('did-stop-loading', handleLoadStop);
     view.addEventListener('did-finish-load', handleLoadStop);
     view.addEventListener('did-fail-load', handleFail);
     view.addEventListener('dom-ready', handleDomReady);
+    view.addEventListener('new-window', handleNewWindow);
 
     return () => {
       view.removeEventListener('did-start-loading', handleLoadStart);
@@ -140,6 +152,7 @@ export const useWebviewEventHandlers = (
       view.removeEventListener('did-finish-load', handleLoadStop);
       view.removeEventListener('did-fail-load', handleFail);
       view.removeEventListener('dom-ready', handleDomReady);
+      view.removeEventListener('new-window', handleNewWindow);
       state.clearRetryTimeout();
     };
   }, [webviewRef, state]);

@@ -185,11 +185,78 @@ export const useCenterPaneDragDrop = ({
       return;
     }
 
-    // Handle new integration drop
-    const rawJson = e.dataTransfer.getData('application/json');
     const targetX = e.clientX - rect.left;
     const targetY = e.clientY - rect.top + paneRef.current.scrollTop;
     const { x, y } = clampToBoundaries(targetX, targetY);
+
+    // Handle file drops
+    if (e.dataTransfer.files.length > 0) {
+      console.log('[DROP] Handling file drop:', e.dataTransfer.files);
+      const files = Array.from(e.dataTransfer.files);
+
+      files.forEach((file, index) => {
+        // Get file path from file object
+        const filePath = (file as any).path || file.name;
+        const filename = file.name;
+
+        console.log('[DROP] Processing file:', { filename, filePath });
+
+        // Stagger multiple files in a grid
+        const offsetX = (index % 3) * 80;
+        const offsetY = Math.floor(index / 3) * 80;
+        const fileX = x + offsetX;
+        const fileY = y + offsetY;
+        const { x: clampedX, y: clampedY } = clampToBoundaries(fileX, fileY);
+
+        const payload: ObjectCreatePayload = {
+          type: 'file',
+          title: filename,
+          file_path: filePath,
+          x: clampedX,
+          y: clampedY,
+        };
+
+        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
+        const optimisticIcon: DroppedIcon = {
+          id: tempId,
+          type: 'file',
+          title: filename,
+          x: clampedX,
+          y: clampedY,
+          filePath: filePath,
+        };
+
+        setIconsByIsland((prev) => ({
+          ...prev,
+          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
+        }));
+
+        objectsApi
+          .create(selectedIsland.id, payload)
+          .then((created) => {
+            const meta = (created.metadata || {}) as Record<string, any>;
+            const createdFilePath = meta.file_path as string;
+
+            setIconsByIsland((prev) => ({
+              ...prev,
+              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
+              ),
+            }));
+          })
+          .catch((err) => {
+            console.error('Failed to create file object:', err);
+            setIconsByIsland((prev) => ({
+              ...prev,
+              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+            }));
+          });
+      });
+      return;
+    }
+
+    // Handle new integration drop
+    const rawJson = e.dataTransfer.getData('application/json');
 
     const uriFallback = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
 
@@ -386,6 +453,11 @@ export const useCenterPaneDragDrop = ({
             ],
           };
         });
+
+        // Notify other components that a link was created
+        if (created.type === 'link') {
+          window.dispatchEvent(new CustomEvent('link:created', { detail: { linkId: created.id } }));
+        }
       })
       .catch((err) => {
         console.error('Failed to create object from drop:', err);

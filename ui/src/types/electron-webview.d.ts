@@ -10,7 +10,7 @@ declare class HTMLWebViewElement extends HTMLElement {
 declare global {
   namespace React {
     interface WebViewHTMLAttributes<T> extends HTMLAttributes<T> {
-      allowpopups?: boolean;
+      allowpopups?: string;
       src?: string;
       partition?: string;
       preload?: string;

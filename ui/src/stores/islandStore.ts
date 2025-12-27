@@ -6,6 +6,7 @@ interface IslandStore {
   islands: Island[];
   selectedIslandId: string | null;
   initialized: boolean;
+  isDuplicating: boolean;
 
   initialize: () => Promise<void>;
   loadIslands: (_preferredSelectedId?: string | null) => Promise<void>;
@@ -16,6 +17,7 @@ interface IslandStore {
   createIsland: (_name: string) => Promise<Island | null>;
   updateIsland: (_id: string, _name: string) => Promise<void>;
   deleteIsland: (_id: string) => Promise<void>;
+  setDuplicating: (_isDuplicating: boolean) => void;
 }
 
 export const useIslandStore = create<IslandStore>((set, get) => ({
@@ -24,6 +26,7 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
   islands: [],
   selectedIslandId: null,
   initialized: false,
+  isDuplicating: false,
 
   initialize: async () => {
     const { initialized } = get();
@@ -174,5 +177,9 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
       // Restore previous state on failure
       set({ islands: previousIslands, selectedIslandId });
     }
+  },
+
+  setDuplicating: (isDuplicating: boolean) => {
+    set({ isDuplicating });
   },
 }));

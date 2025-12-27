@@ -92,6 +92,18 @@ export const useSavedLinks = (selectedIslandId: string | undefined, isDropdownOp
     }
   }, [isDropdownOpen, selectedIslandId]);
 
+  // Listen for link creation events and reload
+  useEffect(() => {
+    const handleLinkCreated = () => {
+      if (isDropdownOpen) {
+        reloadSavedLinks();
+      }
+    };
+
+    window.addEventListener('link:created', handleLinkCreated);
+    return () => window.removeEventListener('link:created', handleLinkCreated);
+  }, [isDropdownOpen, selectedIslandId]);
+
   return {
     savedLinks,
     handleDeleteLink,
