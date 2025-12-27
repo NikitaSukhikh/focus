@@ -33,10 +33,8 @@ const logWebviewStorageInfo = async () => {
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
-// Vite plugin defines MAIN_WINDOW_PRELOAD_VITE_ENTRY for preload script
-// This path is injected by Electron Forge at build time
-const PRELOAD_PATH = path.join(__dirname, 'preload.js');
-const PRELOAD_URL = pathToFileURL(PRELOAD_PATH).toString();
+// In both dev and production, preload.cjs is built to the same directory as main.js
+const PRELOAD_PATH = path.join(__dirname, 'preload.cjs');
 
 async function createMainWindow() {
   console.log('[Electron] Creating main window...');
@@ -50,8 +48,8 @@ async function createMainWindow() {
     title: 'Ocean',
     autoHideMenuBar: true, // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
-      // preload is ESM-built; use file URL so Electron treats it as an ES module
-      preload: PRELOAD_URL,
+      // Use the Vite/Webpack-provided preload entry point
+      preload: PRELOAD_PATH,
       contextIsolation: true,
       sandbox: false, // Must be false to enable webview tag
       nodeIntegration: false,
@@ -149,6 +147,141 @@ ipcMain.handle('desktop:open-external', async (_event, targetUrl: string) => {
   await shell.openExternal(targetUrl);
 });
 
+ipcMain.handle('desktop:show-item-in-folder', async (_event, filePath: string) => {
+  if (typeof filePath !== 'string' || !filePath.trim()) {
+    return;
+  }
+  shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle('desktop:arrange-windows-side-by-side', async (_event) => {
+  try {
+    const { screen, BrowserWindow } = await import('electron');
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    // Get screen dimensions
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+    // Calculate dimensions - full height, half width for side-by-side layout
+    const halfWidth = Math.floor(screenWidth / 2);
+
+    // Don't resize Ocean window - keep it as is
+    // Only position the File Explorer window
+
+    // On Windows, use PowerShell to position and configure File Explorer
+    if (process.platform === 'win32') {
+      const psScript = `
+        Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public class Win32 {
+            [DllImport("user32.dll")]
+            public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+          }
+"@
+        $shell = New-Object -ComObject Shell.Application
+        $windows = $shell.Windows()
+        foreach ($window in $windows) {
+          if ($window.Name -eq "File Explorer") {
+            $hwnd = $window.HWND
+
+            # Position window on left half, full height
+            [Win32]::SetWindowPos($hwnd, 0, 0, 0, ${halfWidth}, ${screenHeight}, 0x0040)
+
+            # Hide navigation pane for cleaner view
+            try {
+              $window.Document.Application.ShowNavigationPane = $$false
+            } catch {}
+
+            break
+          }
+        }
+      `;
+
+      try {
+        await execAsync(`powershell -Command "${psScript.replace(/"/g, '\\"')}"`);
+        console.log('[Electron] Windows arranged side-by-side with navigation pane hidden');
+      } catch (err) {
+        console.warn('[Electron] Failed to configure File Explorer:', err);
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[Electron] Failed to arrange windows:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('desktop:write-file-to-clipboard', async (_event, filePath: string) => {
+  if (typeof filePath !== 'string' || !filePath.trim()) {
+    return false;
+  }
+  try {
+    const { clipboard, nativeImage } = await import('electron');
+    const fs = await import('fs');
+    const path = await import('path');
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.error('[Electron] File not found:', filePath);
+      return false;
+    }
+
+    // For images, write as image to clipboard
+    const ext = path.extname(filePath).toLowerCase();
+    if (['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'].includes(ext)) {
+      const image = nativeImage.createFromPath(filePath);
+      clipboard.writeImage(image);
+      console.log('[Electron] Image copied to clipboard:', filePath);
+      return true;
+    }
+
+    // For other files (including PDFs), try clipboard.write() with multiple formats
+    try {
+      // Normalize path to use backslashes on Windows
+      const normalizedPath = filePath.replace(/\//g, '\\');
+
+      clipboard.write({
+        text: normalizedPath,
+        bookmark: filePath
+      });
+
+      // Also try FileNameW format for file managers
+      const fileList = normalizedPath + '\0\0';
+      const buffer = Buffer.from(fileList, 'ucs2');
+      clipboard.writeBuffer('FileNameW', buffer);
+
+      console.log('[Electron] File copied to clipboard (multi-format):', filePath);
+      return true;
+    } catch (clipErr) {
+      console.warn('[Electron] Multi-format clipboard failed, trying FileNameW only:', clipErr);
+      const fileList = filePath + '\0\0';
+      const buffer = Buffer.from(fileList, 'ucs2');
+      clipboard.writeBuffer('FileNameW', buffer);
+      return true;
+    }
+  } catch (err) {
+    console.error('[Electron] Failed to copy file to clipboard:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('desktop:clear-clipboard', async () => {
+  try {
+    const { clipboard } = await import('electron');
+    clipboard.clear();
+    console.log('[Electron] Clipboard cleared');
+    return true;
+  } catch (err) {
+    console.error('[Electron] Failed to clear clipboard:', err);
+    return false;
+  }
+});
+
 ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: string; title?: string; width?: number; height?: number }) => {
   const targetUrl = payload?.url;
   if (!targetUrl) return;
@@ -174,6 +307,71 @@ ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: strin
 
   authWindow.setMenuBarVisibility(false);
   await authWindow.loadURL(targetUrl);
+});
+
+ipcMain.handle('desktop:close-file-explorer', async () => {
+  try {
+    if (process.platform === 'win32') {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+
+      // Close messaging apps and File Explorer windows more aggressively
+      const psScript = `
+        Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public class Win32 {
+            [DllImport("user32.dll")]
+            public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+            [DllImport("user32.dll")]
+            public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+          }
+"@
+
+        # Close browser windows (Chrome/Edge) with messaging apps
+        $browsers = Get-Process | Where-Object {
+          ($_.ProcessName -eq "chrome" -or $_.ProcessName -eq "msedge") -and
+          $_.MainWindowTitle -match "WhatsApp|Telegram|Facebook|Twitter|LinkedIn|Gmail|Reddit|Instagram"
+        }
+        foreach ($browser in $browsers) {
+          try {
+            $browser.CloseMainWindow() | Out-Null
+          } catch {}
+        }
+
+        # Close desktop messaging apps
+        $apps = Get-Process | Where-Object {
+          $_.ProcessName -match "WhatsApp|Telegram" -and $_.MainWindowHandle -ne 0
+        }
+        foreach ($app in $apps) {
+          try {
+            $app.CloseMainWindow() | Out-Null
+          } catch {}
+        }
+
+        # Close File Explorer windows using Shell.Application COM
+        $shell = New-Object -ComObject Shell.Application
+        $windows = $shell.Windows()
+        for ($i = $windows.Count - 1; $i -ge 0; $i--) {
+          $window = $windows.Item($i)
+          if ($window.Name -eq "File Explorer") {
+            try {
+              $window.Quit()
+            } catch {}
+          }
+        }
+      `;
+
+      const result = await execAsync(`powershell -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"')}"`);
+      console.log('[Electron] External windows closed', result.stdout, result.stderr);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('[Electron] Failed to close external windows:', err);
+    return false;
+  }
 });
 
 // TODO: Implement preview overlay in Electron (either <webview> or frameless child window) once renderer wiring is ready.

@@ -66,6 +66,9 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
         return { ...prev, [selectedIsland.id]: [...current, newIcon] };
       });
 
+      // Notify other components that a link was created
+      window.dispatchEvent(new CustomEvent('link:created', { detail: { linkId: created.id } }));
+
       setIsAddLinkDialogOpen(false);
       setPendingLinkPosition(null);
     } catch (err) {

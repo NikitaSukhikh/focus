@@ -9,12 +9,6 @@ interface FailedLoadAttempt {
 
 const MAX_FAILED_ATTEMPTS = 2;
 const PROBLEMATIC_PATTERNS = [
-  /mail\.google\.com/i,
-  /gmail\.com/i,
-  /drive\.google\.com/i,
-  /docs\.google\.com/i,
-  /sheets\.google\.com/i,
-  /slides\.google\.com/i,
   /github\.com/i,
   /gitlab\.com/i,
   /bitbucket\.org/i,

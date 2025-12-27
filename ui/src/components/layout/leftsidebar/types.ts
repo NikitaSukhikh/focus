@@ -8,7 +8,6 @@ export interface LeftSidebarProps {
 export interface IslandItemProps {
   id: string;
   name: string;
-  count: number;
   isActive?: boolean;
   isEditing?: boolean;
   onRename: (_id: string, _newName: string) => void;
@@ -17,4 +16,7 @@ export interface IslandItemProps {
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onClick: () => void;
+  showLinksToggle?: boolean;
+  isLinksExpanded?: boolean;
+  onToggleLinks?: () => void;
 }
