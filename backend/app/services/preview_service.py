@@ -176,6 +176,9 @@ class PreviewService:
                 # Parse HTML
                 soup = BeautifulSoup(response.text, 'html.parser')
 
+                # Track the final resolved URL after redirects
+                metadata['resolved_url'] = str(response.url)
+
                 # Extract title
                 title_tag = soup.find('title')
                 if title_tag:
@@ -195,14 +198,59 @@ class PreviewService:
                             metadata['og_image'] = content
                         elif property_name == 'site_name':
                             metadata['site_name'] = content
+                        elif property_name == 'image:secure_url' and 'og_image' not in metadata:
+                            metadata['og_image'] = content
+
+                # Twitter card image as fallback
+                twitter_image = soup.find('meta', attrs={'name': 'twitter:image'}) or soup.find('meta', attrs={'name': 'twitter:image:src'})
+                if twitter_image and twitter_image.get('content') and 'og_image' not in metadata:
+                    metadata['og_image'] = twitter_image.get('content')
+
+                # Amazon and other sites sometimes expose image via link rel="image_src"
+                if 'og_image' not in metadata:
+                    link_image = soup.find('link', rel=lambda x: x and 'image_src' in str(x).lower())
+                    if link_image and link_image.get('href'):
+                        metadata['og_image'] = link_image.get('href')
+
+                # Amazon-specific fallback: parse landing image attributes
+                if 'og_image' not in metadata:
+                    landing_img = soup.find('img', id='landingImage')
+                    if landing_img:
+                        data_old = landing_img.get('data-old-hires')
+                        if data_old:
+                            metadata['og_image'] = data_old
+                        else:
+                            data_dyn = landing_img.get('data-a-dynamic-image')
+                            if data_dyn:
+                                try:
+                                    import json
+                                    dyn_images = json.loads(data_dyn)
+                                    if isinstance(dyn_images, dict):
+                                        first_url = next(iter(dyn_images.keys()), None)
+                                        if first_url:
+                                            metadata['og_image'] = first_url
+                                except Exception:
+                                    pass
 
                 # Extract meta description
                 desc_tag = soup.find('meta', attrs={'name': 'description'})
                 if desc_tag:
                     metadata['description'] = desc_tag.get('content', '')
 
-                # Extract favicon
-                favicon = soup.find('link', rel=lambda x: x and 'icon' in x.lower())
+                # Extract favicon - try multiple approaches
+                favicon = None
+
+                # Try finding link with rel containing 'icon' (case-insensitive)
+                favicon = soup.find('link', rel=lambda x: x and 'icon' in str(x).lower())
+
+                # If not found, try shortcut icon specifically
+                if not favicon:
+                    favicon = soup.find('link', rel='shortcut icon')
+
+                # If still not found, try apple-touch-icon
+                if not favicon:
+                    favicon = soup.find('link', rel='apple-touch-icon')
+
                 if favicon and favicon.get('href'):
                     favicon_url = favicon.get('href')
                     # Make absolute URL if relative
@@ -210,6 +258,12 @@ class PreviewService:
                         from urllib.parse import urljoin
                         favicon_url = urljoin(url, favicon_url)
                     metadata['favicon_url'] = favicon_url
+                else:
+                    # Fallback: try /favicon.ico on the domain
+                    from urllib.parse import urlparse, urljoin
+                    parsed = urlparse(response.url)  # Use final URL after redirects
+                    base_url = f"{parsed.scheme}://{parsed.netloc}"
+                    metadata['favicon_url'] = urljoin(base_url, '/favicon.ico')
 
                 logger.debug(
                     f"Fetched URL metadata for {url}",

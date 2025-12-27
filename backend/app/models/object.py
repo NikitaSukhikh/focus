@@ -58,7 +58,7 @@ class ObjectBase(BaseModel):
     title: str = Field(
         ...,
         min_length=1,
-        max_length=200,
+        max_length=400,
         description="Object title/name"
     )
     description: Optional[str] = Field(
@@ -486,7 +486,7 @@ class ObjectUpdate(BaseModel):
     title: Optional[str] = Field(
         None,
         min_length=1,
-        max_length=200,
+        max_length=400,
         description="Object title"
     )
     description: Optional[str] = Field(

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { X, Link2, ExternalLink, Loader2 } from 'lucide-react';
 import { Z_INDEX } from '../../constants/zIndex';
 import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/url';
+import { truncateLinkTitle } from '../../utils/text';
 
 interface AddLinkDialogProps {
   isOpen: boolean;
@@ -47,15 +48,11 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
         const metadata = await response.json();
         console.log('[ADD LINK] Fetched metadata:', metadata);
 
-        // Auto-populate title if not already set
-        if (!title && (metadata.title || metadata.og_title)) {
-          setTitle(metadata.title || metadata.og_title || '');
-        }
+        // Always populate title from metadata (clear old data)
+        setTitle(truncateLinkTitle(metadata.title || metadata.og_title || ''));
 
-        // Auto-populate description if not already set
-        if (!description && (metadata.description || metadata.og_description)) {
-          setDescription(metadata.description || metadata.og_description || '');
-        }
+        // Always populate description from metadata (clear old data)
+        setDescription(metadata.description || metadata.og_description || '');
 
       }
     } catch (err) {
@@ -88,7 +85,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd }: AddLinkDialogProps) {
     if (!isValid) return;
 
     // Normalize URL before submitting
-    const trimmedTitle = title.trim() || normalizedUrl;
+    const trimmedTitle = truncateLinkTitle(title.trim() || normalizedUrl);
     const trimmedDescription = description.trim();
 
     onAdd(normalizedUrl, trimmedTitle, trimmedDescription);
