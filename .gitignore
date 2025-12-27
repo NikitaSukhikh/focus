@@ -14,13 +14,6 @@ backend/pandoc-*.msi
 *.exe
 *.nupkg
 
-# Fonts (use from CDN or package)
-*.woff
-*.woff2
-*.ttf
-*.otf
-*.eot
-
 # Misc
 .DS_Store
 .env
