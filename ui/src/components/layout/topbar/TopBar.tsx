@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, Settings, MessageCircle, PanelRight, Search } from 'lucide-react';
+import { Menu, Settings, MessageCircle, PanelRight, Search, Grid3x3, Slash } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { useTopBarLogic } from './useTopBarLogic';
@@ -8,7 +8,7 @@ import { TopBarProps, TopBarHandle } from './types';
 export type { TopBarHandle } from './types';
 
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
-  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef } = props;
+  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
 
@@ -119,6 +119,39 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             }}
           />
         </div>
+
+        <button
+          onClick={onToggleGrid}
+          className="p-2 rounded-lg transition-colors relative"
+          style={{
+            background: isGridMode ? 'var(--glass-bg)' : 'transparent',
+            color: isGridMode ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+            border: isGridMode ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+            boxShadow: isGridMode ? '0 0 10px var(--shadow)' : 'none',
+          }}
+          onMouseEnter={(e) => {
+            if (!isGridMode) {
+              e.currentTarget.style.background = 'var(--glass-bg)';
+              e.currentTarget.style.color = 'var(--primary-color)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isGridMode) {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+            }
+          }}
+          title={isGridMode ? 'Grids' : 'Grid-Free'}
+        >
+          {isGridMode ? (
+            <Grid3x3 size={20} />
+          ) : (
+            <span className="relative inline-block w-5 h-5">
+              <Grid3x3 size={20} className="absolute inset-0 opacity-75" />
+              <Slash size={18} className="absolute inset-0 opacity-85" />
+            </span>
+          )}
+        </button>
 
         <button
           onClick={onTogglePreview}

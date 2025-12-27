@@ -26,6 +26,7 @@ export function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isConversationOpen, setIsConversationOpen] = useState(true);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isGridMode, setIsGridMode] = useState(false);
   const [previewData, setPreviewData] = useState<{
     url?: string;
     title?: string;
@@ -147,6 +148,8 @@ export function App() {
         isConversationOpen={isConversationOpen}
         sidebarWidth={sidebarWidth}
         centerPaneRef={centerPaneRef}
+        onToggleGrid={() => setIsGridMode((prev) => !prev)}
+        isGridMode={isGridMode}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -164,6 +167,7 @@ export function App() {
             <div className="flex-1 min-w-0 h-full">
               <CenterPane
                 ref={centerPaneRef}
+                showGrid={isGridMode}
                 onObjectClick={(target: PreviewTarget) => {
                   const { url, title, tileId, filePath, type, content } = target || {};
 

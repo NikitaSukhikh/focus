@@ -9,6 +9,8 @@ export interface TopBarProps {
   isConversationOpen: boolean;
   sidebarWidth: number;
   centerPaneRef: React.RefObject<CenterPaneHandle>;
+  onToggleGrid: () => void;
+  isGridMode: boolean;
 }
 
 export interface TopBarHandle {
