@@ -1,3 +1,5 @@
+import { truncateLinkTitle } from '../utils/text';
+
 const API_BASE = '/api';
 
 export type ObjectType = 'link' | 'file' | 'google_drive' | 'gmail' | 'text';
@@ -52,10 +54,14 @@ export const objectsApi = {
   },
 
   async create(islandId: string, payload: ObjectCreatePayload): Promise<ObjectResponse> {
+    const safePayload: ObjectCreatePayload = {
+      ...payload,
+      title: payload.title ? truncateLinkTitle(payload.title) : payload.title,
+    };
     const res = await fetch(`${API_BASE}/islands/${islandId}/objects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(safePayload),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -78,10 +84,11 @@ export const objectsApi = {
   },
 
   async updateTitle(objectId: string, title: string): Promise<ObjectResponse> {
+    const safeTitle = truncateLinkTitle(title);
     const res = await fetch(`${API_BASE}/objects/${objectId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ title: safeTitle }),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -91,11 +98,12 @@ export const objectsApi = {
   },
 
   async updateLink(objectId: string, url: string, title: string, description: string, favicon_url: string): Promise<ObjectResponse> {
+    const safeTitle = truncateLinkTitle(title);
     const res = await fetch(`${API_BASE}/objects/${objectId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title,
+        title: safeTitle,
         description,
         metadata: { url, favicon_url }
       }),

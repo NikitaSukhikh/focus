@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
+import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 import { isGmailUrl } from '../utils';
 
@@ -22,6 +23,18 @@ interface LinkCreationParams {
 export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: LinkCreationParams) => {
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [pendingLinkPosition, setPendingLinkPosition] = useState<{ x: number; y: number } | null>(null);
+
+  const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) => {
+    const targetUrl = resolvedUrl || originalUrl;
+    const urlLower = (targetUrl || '').toLowerCase();
+    const isAmazon = urlLower.includes('amazon.') || urlLower.includes('amzn.to') || urlLower.includes('a.co/');
+
+    if (isAmazon && metadata?.og_image) {
+      return metadata.og_image;
+    }
+
+    return metadata?.favicon_url || buildFaviconUrl(targetUrl);
+  };
 
   const openAddLinkDialog = (x: number, y: number) => {
     setPendingLinkPosition({ x, y });
@@ -57,7 +70,7 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
         x,
         y,
         url,
-        description,
+        description: created.description,
         faviconUrl: isGmail ? undefined : favicon_url,
       };
 
@@ -68,6 +81,45 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
 
       // Notify other components that a link was created
       window.dispatchEvent(new CustomEvent('link:created', { detail: { linkId: created.id } }));
+
+      // Auto-refresh metadata after 100ms to update title/description/favicon
+      setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({ url });
+          const response = await fetch(`/api/metadata/url?${params.toString()}`);
+          if (response.ok) {
+            const metadata = await response.json();
+            console.log('[AUTO-REFRESH] Received metadata:', metadata);
+            const resolvedUrl = metadata.resolved_url || url;
+            const updatedTitle = truncateLinkTitle(metadata.title || metadata.og_title || created.title);
+            const updatedDescription = metadata.description || metadata.og_description || created.description;
+            const updatedFavicon = pickFavicon(metadata, resolvedUrl, url) || favicon_url;
+            console.log('[AUTO-REFRESH] Using favicon:', updatedFavicon);
+
+            // Update the icon in state
+            setIconsByIsland((prev) => {
+              const current = prev[selectedIsland.id] || [];
+              const updated = current.map((icon) =>
+                icon.id === created.id
+                  ? {
+                      ...icon,
+                      title: updatedTitle,
+                      description: updatedDescription,
+                      faviconUrl: updatedFavicon,
+                      url: resolvedUrl,
+                    }
+                  : icon
+              );
+              return { ...prev, [selectedIsland.id]: updated };
+            });
+
+            // Persist to backend
+            await objectsApi.updateLink(created.id, resolvedUrl, updatedTitle, updatedDescription, updatedFavicon);
+          }
+        } catch (err) {
+          console.error('[AUTO-REFRESH] Failed to refresh metadata:', err);
+        }
+      }, 100);
 
       setIsAddLinkDialogOpen(false);
       setPendingLinkPosition(null);

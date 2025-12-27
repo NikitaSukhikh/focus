@@ -4,6 +4,7 @@ import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../ic
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { FALLBACK_FAVICON } from '../../../utils/favicon';
+import { truncateDisplayUrl } from '../../../utils/text';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
 import { getFileTypeIcon } from '../../icons/FileTypeIcons';
@@ -136,7 +137,7 @@ export function IconTile({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setContextMenuPosition({ x: e.clientX, y: e.clientY - 140 });
     setShowContextMenu(true);
   };
 
@@ -355,13 +356,21 @@ export function IconTile({
       }
     }
 
-    // Show favicon for links (fallbacks to pixelated question mark)
+    // Show product/og image or favicon for links
     if (type === 'link') {
+      const size = 40; // base favicon size
+      const urlLower = (url || '').toLowerCase();
+      const isAmazonProduct = urlLower.includes('amazon.') || urlLower.includes('amzn.to') || urlLower.includes('a.co/');
+      const faviconLower = (faviconUrl || '').toLowerCase();
+      const looksLikeFavicon = faviconLower.endsWith('.ico') || faviconLower.includes('favicon');
+      const isProductImage = isAmazonProduct && faviconUrl && !looksLikeFavicon;
+      const dimension = isProductImage ? size * 2 : size;
       return (
         <img
           src={faviconUrl || FALLBACK_FAVICON}
           alt=""
-          className="w-10 h-10 rounded object-contain"
+          style={{ width: `${dimension}px`, height: `${dimension}px` }}
+          className="rounded object-contain"
           draggable={false}
           onError={(e) => {
             if (e.currentTarget.src !== FALLBACK_FAVICON) {
@@ -490,8 +499,8 @@ export function IconTile({
                     </div>
                   )}
                   {url && !isGoogleService(url) && (
-                    <div className={`text-xs mt-1 text-center whitespace-normal break-words leading-snug line-clamp-2 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}>
-                      {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    <div className={`text-xs mt-1 text-center whitespace-pre-line break-words leading-snug line-clamp-2 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}>
+                      {truncateDisplayUrl(url)}
                     </div>
                   )}
                 </>

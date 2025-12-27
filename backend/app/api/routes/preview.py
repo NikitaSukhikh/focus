@@ -37,6 +37,7 @@ class UrlMetadataResponse(BaseModel):
     og_title: str | None = None
     og_description: str | None = None
     og_image: str | None = None
+    resolved_url: str | None = None
 
 
 # ============================================================================
@@ -274,6 +275,8 @@ async def fetch_url_metadata(
                 f"Generated Google Drive metadata",
                 extra={"url": url, "title": drive_metadata.title}
             )
+            # Ensure resolved_url is set so the caller can persist the canonical URL
+            drive_metadata.resolved_url = url
             return drive_metadata
 
         # Regular URL metadata fetching
@@ -291,7 +294,8 @@ async def fetch_url_metadata(
             site_name=metadata.get("site_name"),
             og_title=metadata.get("og_title"),
             og_description=metadata.get("og_description"),
-            og_image=metadata.get("og_image")
+            og_image=metadata.get("og_image"),
+            resolved_url=metadata.get("resolved_url") or url
         )
 
     except Exception as e:

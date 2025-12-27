@@ -19,6 +19,7 @@ from sqlalchemy import (
     JSON,
     func,
     Index,
+    event,
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base, relationship
@@ -58,7 +59,7 @@ class Object(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     island_id = Column(String, ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True)
     type = Column(String(50), nullable=False)
-    title = Column(String(200), nullable=False)
+    title = Column(String(400), nullable=False)
     description = Column(Text, nullable=True)
     tags = Column(JSON, nullable=False, default=list, server_default="[]")
     metadata_json = Column("metadata", JSON, nullable=False, default=dict, server_default="{}")
@@ -117,8 +118,16 @@ settings.database.ensure_database_directory()
 engine: AsyncEngine = create_async_engine(
     settings.database.url,
     echo=settings.database.echo,
-    connect_args={"check_same_thread": False},
+    connect_args={"check_same_thread": False, "timeout": 30},
 )
+
+# Improve SQLite concurrency: WAL mode + busy timeout to mitigate "database is locked"
+@event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):  # type: ignore[unused-argument]
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA busy_timeout=5000;")  # wait up to 5s if locked
+    cursor.close()
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
