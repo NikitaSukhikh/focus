@@ -12,10 +12,11 @@ import { useIslandStore } from '../../../stores/islandStore';
 import { Loader2 } from 'lucide-react';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
-  const { onObjectClick, onCanvasEmptyClick, showGrid } = props;
+  const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
+  const zoom = zoomProp ?? 1;
   const paneRef = useRef<HTMLDivElement | null>(null);
 
-  const logic = useCenterPaneLogic(paneRef);
+  const logic = useCenterPaneLogic(paneRef, zoom);
   const isDuplicating = useIslandStore((state) => state.isDuplicating);
 
   // Expose methods to parent via ref
@@ -39,7 +40,36 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     };
   }, [logic.dragGhost]);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number; canvasX: number; canvasY: number } | null>(null);
+  useEffect(() => {
+    const handleKeyZoom = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        onZoomIn?.();
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        onZoomOut?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyZoom, true);
+    return () => window.removeEventListener('keydown', handleKeyZoom, true);
+  }, [onZoomIn, onZoomOut]);
+
+  const toCanvasCoords = (clientX: number, clientY: number) => {
+    if (!paneRef.current) return { x: clientX, y: clientY };
+    const rect = paneRef.current.getBoundingClientRect();
+    const scrollLeft = paneRef.current.scrollLeft;
+    const scrollTop = paneRef.current.scrollTop;
+    return {
+      x: (clientX - rect.left + scrollLeft) / Math.max(zoom, 0.01),
+      y: (clientY - rect.top + scrollTop) / Math.max(zoom, 0.01),
+    };
+  };
 
   const menuItems = useMemo(() => [
     {
@@ -52,7 +82,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       label: 'Add link',
       action: () => {
         if (contextMenu && paneRef.current) {
-          logic.openAddLinkDialog(contextMenu.x, contextMenu.y);
+          logic.openAddLinkDialog(contextMenu.canvasX, contextMenu.canvasY);
         }
       }
     },
@@ -91,12 +121,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     if (target.closest('[data-icon-tile]')) return;
     e.preventDefault();
     e.stopPropagation();
-
-    if (!paneRef.current) return;
-    const rect = paneRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + paneRef.current.scrollLeft - 26;
-    const y = e.clientY - rect.top + paneRef.current.scrollTop - 34;
-    setContextMenu({ x, y, index: 0 });
+    setContextMenu(null);
+    onOpenQuickAdd?.();
   };
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -107,13 +133,23 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     e.stopPropagation();
 
     if (!paneRef.current) return;
-    const rect = paneRef.current.getBoundingClientRect();
 
     // Calculate position and apply offset to align cursor with caret
-    const x = e.clientX - rect.left - 26;
-    const y = e.clientY - rect.top - 34;
+    const base = toCanvasCoords(e.clientX, e.clientY);
+    const x = base.x - 26 / Math.max(zoom, 0.01);
+    const y = base.y - 34 / Math.max(zoom, 0.01);
 
     logic.openInlineEditor(x, y);
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      onZoomIn?.();
+    } else if (e.deltaY > 0) {
+      onZoomOut?.();
+    }
   };
 
   return (
@@ -135,6 +171,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onClick={(e) => logic.handleCanvasClick(e, onCanvasEmptyClick)}
         onContextMenu={handleCanvasContextMenu}
         onDoubleClick={handleCanvasDoubleClick}
+        onWheel={handleWheel}
       >
         {/* Loading Spinner Overlay */}
         {isDuplicating && (
@@ -168,56 +205,120 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
           </div>
         )}
         <div className="relative" style={{ minHeight: `${logic.contentHeight}px` }}>
-          {(logic.selectedIsland && logic.iconsByIsland[logic.selectedIsland.id]?.length) ? null : (
-            <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>Drop integrations or links here. Use the + button to add files.</div>
-          )}
+          <div
+            className="relative"
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
+              width: `${100 / Math.max(zoom, 0.01)}%`,
+              minHeight: `${logic.contentHeight / Math.max(zoom, 0.01)}px`,
+            }}
+          >
+            {(logic.selectedIsland && logic.iconsByIsland[logic.selectedIsland.id]?.length) ? null : (
+              <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>Drop integrations or links here. Use the + button to add files.</div>
+            )}
 
-          {logic.dragGhost && (
-            <div
-              style={{
-                position: 'absolute',
-                left: logic.dragGhost.x,
-                top: logic.dragGhost.y,
-                transform: 'translate(-50%, -50%)',
-                width: `${ghostSize.width}px`,
-                height: `${ghostSize.height}px`,
-                border: '2px dashed rgba(59,130,246,0.5)',
-                borderRadius: '12px',
-                background: 'rgba(59,130,246,0.08)',
-                boxShadow: '0 8px 18px rgba(59,130,246,0.15)',
-                pointerEvents: 'none',
-                zIndex: Z_INDEX.CONTENT_DRAGGING,
-              }}
-            />
-          )}
+            {logic.dragGhost && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: logic.dragGhost.x,
+                  top: logic.dragGhost.y,
+                  transform: 'translate(-50%, -50%)',
+                  width: `${ghostSize.width}px`,
+                  height: `${ghostSize.height}px`,
+                  border: '2px dashed rgba(59,130,246,0.5)',
+                  borderRadius: '12px',
+                  background: 'rgba(59,130,246,0.08)',
+                  boxShadow: '0 8px 18px rgba(59,130,246,0.15)',
+                  pointerEvents: 'none',
+                  zIndex: Z_INDEX.CONTENT_DRAGGING,
+                }}
+              />
+            )}
 
-          {showGrid && (
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                zIndex: Z_INDEX.BASE,
-                backgroundImage: `
-                  linear-gradient(to right, rgba(126,136,151,0.18) 1px, transparent 1px),
-                  linear-gradient(to bottom, rgba(126,136,151,0.18) 1px, transparent 1px)
-                `,
-                backgroundSize: '32px 32px',
-                mixBlendMode: 'normal',
-              }}
-            />
-          )}
+            {showGrid && (
+              <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  zIndex: Z_INDEX.BASE,
+                  backgroundImage: `
+                    linear-gradient(to right, rgba(126,136,151,0.18) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(126,136,151,0.18) 1px, transparent 1px)
+                  `,
+                  backgroundSize: '32px 32px',
+                  mixBlendMode: 'normal',
+                }}
+              />
+            )}
 
-          {/* Inline Text Editor */}
-          {logic.inlineEditorState.isActive && (
-            <InlineTextEditor
-              x={logic.inlineEditorState.x}
-              y={logic.inlineEditorState.y}
-              content={logic.inlineEditorState.content}
-              onContentChange={logic.updateInlineContent}
-              onSave={logic.saveInlineNote}
-              onCancel={logic.cancelInlineEdit}
-            />
-          )}
+            {/* Inline Text Editor */}
+            {logic.inlineEditorState.isActive && (
+              <InlineTextEditor
+                x={logic.inlineEditorState.x}
+                y={logic.inlineEditorState.y}
+                content={logic.inlineEditorState.content}
+                onContentChange={logic.updateInlineContent}
+                onSave={logic.saveInlineNote}
+                onCancel={logic.cancelInlineEdit}
+              />
+            )}
+
+            {(logic.iconsByIsland[logic.selectedIsland?.id ?? ''] || []).map((icon) => (
+              logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
+                <IconTile
+                  key={icon.id}
+                  id={icon.id}
+                  type={icon.type}
+                  title={icon.title}
+                  x={icon.x}
+                  y={icon.y}
+                  url={icon.url}
+                  description={icon.description}
+                  faviconUrl={icon.faviconUrl}
+                  filePath={icon.filePath}
+                  content={icon.content}
+                  isSelected={logic.selectedIconIds.includes(icon.id)}
+                  onClick={(event) => {
+                    const isToggle = event.metaKey || event.ctrlKey;
+                    if (isToggle) {
+                      const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
+                      const next = isAlreadySelected
+                        ? logic.selectedIconIds.filter((id) => id !== icon.id)
+                        : [...logic.selectedIconIds, icon.id];
+                      logic.setSelectedIconIds(next);
+                      if (next.length === 1) {
+                        const single = icon;
+                        onObjectClick?.({
+                          url: single.url,
+                          title: single.title,
+                          tileId: single.id,
+                          filePath: single.filePath,
+                          type: single.type,
+                          content: single.content,
+                        });
+                      }
+                    } else {
+                      logic.setSelectedIconId(icon.id);
+                      onObjectClick?.({
+                        url: icon.url,
+                        title: icon.title,
+                        tileId: icon.id,
+                        filePath: icon.filePath,
+                        type: icon.type,
+                        content: icon.content,
+                      });
+                    }
+                  }}
+                  onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
+                  onDelete={() => logic.handleIconDelete(icon.id)}
+                  onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
+                  onEdit={(x, y, content, id) => logic.openInlineEditor(x, y, content, id)}
+                />
+              )
+            ))}
+          </div>
 
           {contextMenu && (
             <>
@@ -257,60 +358,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               </div>
             </>
           )}
-
-          {(logic.iconsByIsland[logic.selectedIsland?.id ?? ''] || []).map((icon) => (
-            logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
-              <IconTile
-                key={icon.id}
-                id={icon.id}
-                type={icon.type}
-                title={icon.title}
-                x={icon.x}
-                y={icon.y}
-                url={icon.url}
-                description={icon.description}
-                faviconUrl={icon.faviconUrl}
-                filePath={icon.filePath}
-                content={icon.content}
-                isSelected={logic.selectedIconIds.includes(icon.id)}
-                onClick={(event) => {
-                  const isToggle = event.metaKey || event.ctrlKey;
-                  if (isToggle) {
-                    const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
-                    const next = isAlreadySelected
-                      ? logic.selectedIconIds.filter((id) => id !== icon.id)
-                      : [...logic.selectedIconIds, icon.id];
-                    logic.setSelectedIconIds(next);
-                    if (next.length === 1) {
-                      const single = icon;
-                      onObjectClick?.({
-                        url: single.url,
-                        title: single.title,
-                        tileId: single.id,
-                        filePath: single.filePath,
-                        type: single.type,
-                        content: single.content,
-                      });
-                    }
-                  } else {
-                    logic.setSelectedIconId(icon.id);
-                    onObjectClick?.({
-                      url: icon.url,
-                      title: icon.title,
-                      tileId: icon.id,
-                      filePath: icon.filePath,
-                      type: icon.type,
-                      content: icon.content,
-                    });
-                  }
-                }}
-                onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
-                onDelete={() => logic.handleIconDelete(icon.id)}
-                onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
-                onEdit={(x, y, content, id) => logic.openInlineEditor(x, y, content, id)}
-              />
-            )
-          ))}
         </div>
       </div>
 

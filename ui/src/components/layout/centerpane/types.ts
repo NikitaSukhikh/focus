@@ -41,6 +41,10 @@ export interface CenterPaneProps {
   onObjectClick?: (_target: PreviewTarget) => void;
   onCanvasEmptyClick?: () => void;
   showGrid?: boolean;
+  zoom?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onOpenQuickAdd?: () => void;
 }
 
 export interface CenterPaneHandle {

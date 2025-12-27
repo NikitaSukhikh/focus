@@ -27,6 +27,7 @@ interface DragDropParams {
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
   getIconById: (id: string) => DroppedIcon | undefined;
   setDragGhost: (ghost: { id: string; x: number; y: number; type: IconKind } | null) => void;
+  zoom: number;
 }
 
 export const useCenterPaneDragDrop = ({
@@ -37,6 +38,7 @@ export const useCenterPaneDragDrop = ({
   clampToBoundaries,
   getIconById,
   setDragGhost,
+  zoom,
 }: DragDropParams) => {
   const autoScrollIntervalRef = useRef<number | null>(null);
   const dragStartScrollTopRef = useRef<number>(0);
@@ -110,8 +112,8 @@ export const useCenterPaneDragDrop = ({
       } catch {
         // ignore
       }
-      const deltaX = e.clientX - dragStart.startCursorX;
-      const deltaY = e.clientY - dragStart.startCursorY;
+      const deltaX = (e.clientX - dragStart.startCursorX) / Math.max(zoom, 0.01);
+      const deltaY = (e.clientY - dragStart.startCursorY) / Math.max(zoom, 0.01);
       const scrollDelta = paneRef.current.scrollTop - dragStartScrollTopRef.current;
       const targetX = dragStart.iconX + deltaX;
       const targetY = dragStart.iconY + deltaY + scrollDelta;
@@ -185,8 +187,8 @@ export const useCenterPaneDragDrop = ({
       return;
     }
 
-    const targetX = e.clientX - rect.left;
-    const targetY = e.clientY - rect.top + paneRef.current.scrollTop;
+    const targetX = (e.clientX - rect.left) / Math.max(zoom, 0.01);
+    const targetY = (e.clientY - rect.top + paneRef.current.scrollTop) / Math.max(zoom, 0.01);
     const { x, y } = clampToBoundaries(targetX, targetY);
 
     // Handle file drops
