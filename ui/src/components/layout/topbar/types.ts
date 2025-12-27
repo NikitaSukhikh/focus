@@ -11,6 +11,9 @@ export interface TopBarProps {
   centerPaneRef: React.RefObject<CenterPaneHandle>;
   onToggleGrid: () => void;
   isGridMode: boolean;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  zoom: number;
 }
 
 export interface TopBarHandle {

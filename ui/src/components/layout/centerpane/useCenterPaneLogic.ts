@@ -22,7 +22,7 @@ import { useCenterPaneLinkCreation } from './hooks/useCenterPaneLinkCreation';
 import { useCenterPaneTextCreation } from './hooks/useCenterPaneTextCreation';
 import { useInlineTextEditor } from './hooks/useInlineTextEditor';
 
-export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>) => {
+export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>, zoom: number = 1) => {
   // State management
   const {
     isDragOver,
@@ -43,8 +43,9 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   const clampToBoundaries = useCallback((x: number, y: number): { x: number; y: number } => {
     if (!paneRef.current) return { x, y };
     const rect = paneRef.current.getBoundingClientRect();
-    return clampPosition(x, y, rect.width);
-  }, [paneRef]);
+    const logicalWidth = rect.width / Math.max(zoom, 0.01);
+    return clampPosition(x, y, logicalWidth);
+  }, [paneRef, zoom]);
 
   // Drag & drop handlers
   const dragDropHandlers = useCenterPaneDragDrop({
@@ -58,6 +59,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
       return (iconsByIsland[selectedIsland.id] || []).find((i) => i.id === id);
     },
     setDragGhost,
+    zoom,
   });
 
   // Icon action handlers

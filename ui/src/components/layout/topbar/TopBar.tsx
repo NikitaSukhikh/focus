@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, Settings, MessageCircle, PanelRight, Search, Grid3x3, Slash } from 'lucide-react';
+import { Menu, X, Settings, MessageCircle, PanelRight, Search, Grid3x3, Slash, ZoomIn, ZoomOut } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { useTopBarLogic } from './useTopBarLogic';
@@ -8,7 +8,7 @@ import { TopBarProps, TopBarHandle } from './types';
 export type { TopBarHandle } from './types';
 
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
-  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode } = props;
+  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
 
@@ -20,31 +20,42 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       {/* Left section */}
       <div
         className="flex items-center gap-3 transition-all duration-200"
-        style={{ marginLeft: isSidebarOpen ? `${sidebarWidth}px` : '0', zIndex: Z_INDEX.BASE_RAISED }}
+        style={{ marginLeft: '0', zIndex: Z_INDEX.BASE_RAISED }}
       >
-        {!isSidebarOpen && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-2 rounded-lg transition-colors"
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 rounded-lg transition-colors"
+          style={{
+            color: 'var(--color-text-secondary)',
+            transition: 'all var(--transition-base)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--glass-bg)';
+            e.currentTarget.style.color = 'var(--primary-color)';
+            e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+          title={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+        >
+          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <div className="flex items-center gap-2 mr-2">
+          <span
             style={{
-              color: 'var(--color-text-secondary)',
-              transition: 'all var(--transition-base)',
+              ...FONT_ROLES.topbarTitle,
+              fontWeight: 800,
+              fontSize: '22px',
+              color: 'var(--primary-color)',
+              letterSpacing: '0.02em',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--glass-bg)';
-              e.currentTarget.style.color = 'var(--primary-color)';
-              e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-            title="Open sidebar"
           >
-            <Menu size={20} />
-          </button>
-        )}
+            Ocean
+          </span>
+        </div>
       </div>
 
       {/* Center section - Island Name (absolute positioned) */}
@@ -120,9 +131,26 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           />
         </div>
 
+        <div className="flex items-center gap-0 px-1 py-0.5 rounded-lg" style={{ background: 'var(--glass-bg)' }}>
+          <button
+            disabled
+            className="px-[10px] py-1 rounded-md transition-colors translate-x-[6px]"
+            style={{
+              color: 'var(--color-text-secondary)',
+              opacity: 0.5,
+            }}
+            title="Zoom control"
+          >
+            <ZoomOut size={18} className="opacity-75" />
+          </button>
+          <div style={{ ...FONT_ROLES.topbarControl, color: 'var(--color-text-primary)' }} className="px-1.5 select-none min-w-[48px] text-center">
+            {(zoom * 100).toFixed(0)}%
+          </div>
+        </div>
+
         <button
           onClick={onToggleGrid}
-          className="p-2 rounded-lg transition-colors relative"
+          className="p-2 rounded-lg transition-colors relative flex items-center justify-center"
           style={{
             background: isGridMode ? 'var(--glass-bg)' : 'transparent',
             color: isGridMode ? 'var(--primary-color)' : 'var(--color-text-secondary)',
@@ -202,26 +230,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           title="Toggle conversation"
         >
           <MessageCircle size={20} />
-        </button>
-        <button
-          className="p-2 rounded-lg transition-colors"
-          style={{
-            color: 'var(--color-text-secondary)',
-            transition: 'all var(--transition-base)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--glass-bg)';
-            e.currentTarget.style.color = 'var(--primary-color)';
-            e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-          title="Settings"
-        >
-          <Settings size={20} />
         </button>
       </div>
 

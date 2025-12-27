@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { ChevronLeft, Plus, Edit2, Trash2, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Plus, Edit2, Trash2, ChevronDown, Settings } from 'lucide-react';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
 import { Z_INDEX } from '../../../constants/zIndex';
@@ -172,6 +172,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         id="left-sidebar"
         style={{
           width: `${width}px`,
+          top: '56px',
+          height: 'calc(100% - 56px)',
           zIndex: Z_INDEX.SIDEBAR,
           background: 'var(--background-light)',
           borderRight: '1px solid var(--color-border-strong)',
@@ -303,13 +305,45 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
             </div>
           )}
         </div>
+
+        {/* Footer */}
+        <div
+          className="px-4 py-3 border-t border-slate-200 flex items-center justify-start"
+          style={{ background: 'var(--background-light)' }}
+        >
+          <button
+            className="p-2 rounded-lg transition-colors"
+            style={{
+              color: 'var(--color-text-secondary)',
+              transition: 'all var(--transition-base)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--glass-bg)';
+              e.currentTarget.style.color = 'var(--primary-color)';
+              e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+            title="Settings"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
       </aside>
 
       {/* Resize handle */}
       {isOpen && (
         <div
-          className="fixed top-0 h-full w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors"
-          style={{ zIndex: Z_INDEX.RESIZE_HANDLE, left: `${width}px` }}
+          className="fixed w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors"
+          style={{
+            zIndex: Z_INDEX.RESIZE_HANDLE,
+            left: `${width}px`,
+            top: '56px',
+            height: 'calc(100% - 56px)',
+          }}
           onMouseDown={onResizeStart}
         />
       )}
