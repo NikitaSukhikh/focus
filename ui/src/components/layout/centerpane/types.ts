@@ -13,6 +13,12 @@ export type IconKind =
   | 'intstorage'
   | 'unknown';
 
+export interface ArrowSegment {
+  id: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+}
+
 export interface DroppedIcon {
   id: string;
   type: IconKind;

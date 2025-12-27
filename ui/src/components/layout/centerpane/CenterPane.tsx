@@ -10,6 +10,7 @@ import { AddTextDialog } from '../../dialogs/AddTextDialog';
 import { InlineTextEditor } from './InlineTextEditor';
 import { useIslandStore } from '../../../stores/islandStore';
 import { Loader2 } from 'lucide-react';
+import { useArrowDrawing } from './hooks/useArrowDrawing';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
@@ -70,6 +71,29 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       y: (clientY - rect.top + scrollTop) / Math.max(zoom, 0.01),
     };
   };
+
+  const {
+    selectedArrowId,
+    setSelectedArrowId,
+    clearArrowSelection,
+    handleCanvasMouseDown,
+    handleCanvasMouseMove,
+    handleCanvasMouseUp,
+    allArrowSegments,
+    svgWidth,
+    svgHeight,
+    contentHeightWithArrows,
+  } = useArrowDrawing({
+    zoom,
+    paneRef,
+    selectedIslandId: logic.selectedIsland?.id,
+    arrowsByIsland: logic.arrowsByIsland,
+    setArrowsByIsland: logic.setArrowsByIsland,
+    contentHeight: logic.contentHeight,
+    toCanvasCoords,
+    contextMenuOpen: !!contextMenu,
+    isTargetBlocked: (el) => Boolean(el.closest('[data-icon-tile]') || el.closest('[data-inline-editor]')),
+  });
 
   const menuItems = useMemo(() => [
     {
@@ -168,10 +192,16 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onDragOver={logic.handleDragOver}
         onDragLeave={logic.handleDragLeave}
         onDrop={logic.handleDrop}
-        onClick={(e) => logic.handleCanvasClick(e, onCanvasEmptyClick)}
+        onClick={(e) => {
+          clearArrowSelection();
+          logic.handleCanvasClick(e, onCanvasEmptyClick);
+        }}
         onContextMenu={handleCanvasContextMenu}
         onDoubleClick={handleCanvasDoubleClick}
         onWheel={handleWheel}
+        onMouseDown={handleCanvasMouseDown}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseUp={handleCanvasMouseUp}
       >
         {/* Loading Spinner Overlay */}
         {isDuplicating && (
@@ -204,14 +234,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
             </div>
           </div>
         )}
-        <div className="relative" style={{ minHeight: `${logic.contentHeight}px` }}>
+        <div className="relative" style={{ minHeight: `${contentHeightWithArrows}px` }}>
           <div
             className="relative"
             style={{
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
               width: `${100 / Math.max(zoom, 0.01)}%`,
-              minHeight: `${logic.contentHeight / Math.max(zoom, 0.01)}px`,
+              minHeight: `${contentHeightWithArrows / Math.max(zoom, 0.01)}px`,
             }}
           >
             {(logic.selectedIsland && logic.iconsByIsland[logic.selectedIsland.id]?.length) ? null : (
@@ -235,6 +265,56 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   zIndex: Z_INDEX.CONTENT_DRAGGING,
                 }}
               />
+            )}
+
+            {(allArrowSegments.length > 0) && (
+              <svg
+                aria-hidden
+                width={svgWidth}
+                height={svgHeight}
+                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  pointerEvents: 'auto',
+                  overflow: 'visible',
+                  zIndex: Z_INDEX.CONTENT_DEFAULT - 1,
+                }}
+              >
+                <defs>
+                  <marker
+                    id="center-pane-arrowhead"
+                    markerWidth="12"
+                    markerHeight="12"
+                    refX="10"
+                    refY="6"
+                    orient="auto"
+                    markerUnits="userSpaceOnUse"
+                  >
+                    <path d="M0 0 L12 6 L0 12 L3 6 Z" fill="var(--primary-color)" />
+                  </marker>
+                </defs>
+                {allArrowSegments.map((segment) => (
+                  <line
+                    key={segment.id}
+                    x1={segment.start.x}
+                    y1={segment.start.y}
+                    x2={segment.end.x}
+                    y2={segment.end.y}
+                    stroke="var(--primary-color)"
+                    strokeOpacity={1}
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    markerEnd="url(#center-pane-arrowhead)"
+                    style={{ cursor: 'pointer', pointerEvents: 'stroke' as any }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedArrowId(segment.id);
+                      logic.setSelectedIconIds([]);
+                    }}
+                  />
+                ))}
+              </svg>
             )}
 
             {showGrid && (

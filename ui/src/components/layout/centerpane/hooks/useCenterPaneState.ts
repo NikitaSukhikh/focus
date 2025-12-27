@@ -16,13 +16,14 @@ import { useIslandStore } from '../../../../stores/islandStore';
 import { useDeletedTilesStore } from '../../../../stores/deletedTilesStore';
 import { objectsApi } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
-import { DroppedIcon, IconKind } from '../types';
+import { DroppedIcon, IconKind, ArrowSegment } from '../types';
 import { isGmailUrl } from '../utils';
 import { calculateContentHeight } from '../boundaries';
 
 export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | null>) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [iconsByIsland, setIconsByIsland] = useState<Record<string, DroppedIcon[]>>({});
+  const [arrowsByIsland, setArrowsByIsland] = useState<Record<string, ArrowSegment[]>>({});
   const [selectedIconIds, setSelectedIconIds] = useState<string[]>([]);
   const [dragGhost, setDragGhost] = useState<{
     id: string;
@@ -50,6 +51,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
     objectsApi
       .list(islandId)
       .then((objects) => {
+        const arrows: ArrowSegment[] = [];
         const mapped: DroppedIcon[] = objects
           .filter((obj) => {
             const meta = (obj.metadata || {}) as Record<string, any>;
@@ -111,7 +113,23 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               content: obj.type === 'text' ? (meta.content as string) : undefined,
             };
           });
+        objects.forEach((obj) => {
+          const meta = (obj.metadata || {}) as Record<string, any>;
+          const hasArrowFlag = meta.arrow === true;
+          const startX = meta.start_x;
+          const startY = meta.start_y;
+          const endX = meta.end_x;
+          const endY = meta.end_y;
+          if (hasArrowFlag && [startX, startY, endX, endY].every((v) => typeof v === 'number')) {
+            arrows.push({
+              id: obj.id,
+              start: { x: startX, y: startY },
+              end: { x: endX, y: endY },
+            });
+          }
+        });
         setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
+        setArrowsByIsland((prev) => ({ ...prev, [islandId]: arrows }));
       })
       .catch((err) => {
         console.error('Failed to load objects for island', islandId, err);
@@ -211,6 +229,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
     setIsDragOver,
     iconsByIsland,
     setIconsByIsland,
+    arrowsByIsland,
+    setArrowsByIsland,
     selectedIconId: selectedIconIds[0] ?? null,
     setSelectedIconId: (id: string | null) => setSelectedIconIds(id ? [id] : []),
     selectedIconIds,
