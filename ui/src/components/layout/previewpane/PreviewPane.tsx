@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { X, ExternalLink } from 'lucide-react';
+import { Z_INDEX } from '../../../constants/zIndex';
 import { openExternalUrl } from '../../../platform';
+import { usePreviewPaneLogic } from './usePreviewPaneLogic';
+import { FONT_ROLES } from '../../../styles/fontManager';
+import { getVideoEmbed } from '../../../utils/videoEmbeds';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -10,273 +14,197 @@ interface PreviewPaneProps {
   url?: string;
   title?: string;
   tileId?: string;
+  filePath?: string;
+  type?: string;
 }
 
-export function PreviewPane({ isOpen, onClose, url, title }: PreviewPaneProps) {
+export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: PreviewPaneProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const currentUrlRef = useRef<string | undefined>(undefined);
-  const isReadyRef = useRef(false);
-  const pendingUrlRef = useRef<string | undefined>(undefined);
-  const cachedUrlsRef = useRef<Set<string>>(new Set());
-  const skipSpinnerRef = useRef(false);
-  const retryCountRef = useRef(0);
-  const retryTimeoutRef = useRef<number | null>(null);
-  const MAX_RETRIES = 4;
-  const RETRY_DELAY_MS = 600;
-
-  const safeLoadURL = async (targetUrl: string) => {
-    const view = webviewRef.current as any;
-    if (!view || !targetUrl) return;
-    try {
-      // Setting src avoids promise rejections from loadURL on redirects/abort.
-      if ('src' in view) {
-        view.src = targetUrl;
-        return;
-      } else {
-        await view.loadURL(targetUrl);
-        return;
-      }
-    } catch (err: any) {
-      const code = err?.code ?? err?.errno;
-      if (code === -3) {
-        // Abort/redirect; ignore.
-        return;
-      }
-      console.error('[PreviewPane] Failed to load URL:', err);
-      setLoadError('Failed to load URL');
-      setIsLoading(false);
-    }
-  };
-
-  // Suppress top-level unhandled rejections from the webview navigation to avoid noisy ERR_ABORTED logs.
-  useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const reason: any = event.reason;
-      const code = reason?.code ?? reason?.errno;
-      if (code === -3) {
-        event.preventDefault();
-      }
-    };
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-  }, []);
-
-  const clearRetryTimeout = () => {
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-  };
-
-  const scheduleRetry = () => {
-    clearRetryTimeout();
-    retryTimeoutRef.current = window.setTimeout(() => {
-      const targetUrl = currentUrlRef.current;
-      if (targetUrl) {
-        void safeLoadURL(targetUrl);
-      }
-    }, RETRY_DELAY_MS);
-  };
-
-  const markLoadComplete = () => {
-    setIsLoading(false);
-    skipSpinnerRef.current = false;
-    retryCountRef.current = 0;
-    clearRetryTimeout();
-    setLoadError(null);
-  };
-
-  // Setup event listeners and handle webview ready state
-  useEffect(() => {
-    const view = webviewRef.current as any;
-    if (!view) return;
-
-    const handleLoadStart = () => {
-      setIsLoading(true);
-      setLoadError(null);
-    };
-    const handleLoadStop = () => {
-      const loadedUrl = view?.getURL?.() as string | undefined;
-      if (loadedUrl) {
-        cachedUrlsRef.current.add(loadedUrl);
-      }
-      setLoadError(null);
-      markLoadComplete();
-    };
-    const handleFail = (_event: any, errorCode: number, errorDescription: string) => {
-      // Ignore certain non-critical errors (like -3 ERR_ABORTED from redirects)
-      if (errorCode === -3) {
-        markLoadComplete();
-        return;
-      }
-
-      // If the load fails, try a couple of quiet retries before showing error
-      const transientFailure = errorCode === 0 || !errorDescription;
-      if (retryCountRef.current < MAX_RETRIES && currentUrlRef.current) {
-        retryCountRef.current += 1;
-        scheduleRetry();
-        return;
-      }
-
-      setIsLoading(false);
-      setLoadError(errorDescription || `Failed to load (${errorCode || 'unknown'})`);
-    };
-    const handleDomReady = () => {
-      isReadyRef.current = true;
-      setLoadError(null);
-      markLoadComplete();
-
-      // Load pending URL if there is one
-      if (pendingUrlRef.current && pendingUrlRef.current !== currentUrlRef.current) {
-        const urlToLoad = pendingUrlRef.current;
-        pendingUrlRef.current = undefined;
-        currentUrlRef.current = urlToLoad;
-        skipSpinnerRef.current = cachedUrlsRef.current.has(urlToLoad);
-
-        void safeLoadURL(urlToLoad);
-      }
-    };
-
-    view.addEventListener('did-start-loading', handleLoadStart);
-    view.addEventListener('did-stop-loading', handleLoadStop);
-    view.addEventListener('did-finish-load', handleLoadStop);
-    view.addEventListener('did-fail-load', handleFail);
-    view.addEventListener('dom-ready', handleDomReady);
-
-    return () => {
-      view.removeEventListener('did-start-loading', handleLoadStart);
-      view.removeEventListener('did-stop-loading', handleLoadStop);
-      view.removeEventListener('did-finish-load', handleLoadStop);
-      view.removeEventListener('did-fail-load', handleFail);
-      view.removeEventListener('dom-ready', handleDomReady);
-      clearRetryTimeout();
-    };
-  }, []);
-
-  // Navigate to URL when it changes
-  useEffect(() => {
-    const view = webviewRef.current as any;
-    if (!view || !url) return;
-
-    const viewUrl = typeof view.getURL === 'function' ? view.getURL() : undefined;
-    if (viewUrl === url) {
-      markLoadComplete();
-      return;
-    }
-
-    // Only navigate if URL actually changed
-    if (url !== currentUrlRef.current) {
-      clearRetryTimeout();
-      retryCountRef.current = 0;
-      const isCached = cachedUrlsRef.current.has(url);
-      skipSpinnerRef.current = isCached;
-      setIsLoading(!isCached);
-      setLoadError(null);
-
-      // If webview is ready, load immediately
-      if (isReadyRef.current) {
-        currentUrlRef.current = url;
-        void safeLoadURL(url);
-      } else {
-        // Otherwise, queue it for when dom-ready fires
-        pendingUrlRef.current = url;
-      }
-    }
-  }, [url]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setIsLoading(false);
-      setLoadError(null);
-      clearRetryTimeout();
-    }
-  }, [isOpen]);
 
   const collapsed = !isOpen;
 
+  // Check if this is an image file
+  const isImageFile = type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath);
+
+  // Check if this is a document file (DOCX, DOC and ODT are supported)
+  const isDocumentFile = type === 'file' && filePath && /\.(docx|doc|odt)$/i.test(filePath);
+
+  // Build image preview URL
+  const imagePreviewUrl = isImageFile && filePath
+    ? `/api/thumbnails/full-image?${new URLSearchParams({ file_path: filePath }).toString()}`
+    : null;
+
+  // Build document preview URL
+  const documentPreviewUrl = isDocumentFile && filePath
+    ? `/api/thumbnails/document-preview?${new URLSearchParams({ file_path: filePath }).toString()}`
+    : null;
+
+  const videoEmbed = getVideoEmbed(url);
+
+  // Only use webview logic when not showing an image or document
+  const hasNonWebviewPreview = imagePreviewUrl || documentPreviewUrl || videoEmbed;
+  // Always keep webview logic active when pane is open to prevent state loss
+  const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
+
   return (
     <aside
-      className="flex-1 bg-white flex flex-col h-full transition-[flex,width,opacity] duration-150"
+      className="glass-panel flex flex-col h-full w-full transition-opacity duration-150"
       style={{
-        minWidth: collapsed ? 0 : '360px',
-        flex: collapsed ? '0 0 auto' : '1 1 0%',
-        width: collapsed ? 0 : 'auto',
         opacity: collapsed ? 0 : 1,
         pointerEvents: collapsed ? 'none' : 'auto',
-        overflow: collapsed ? 'hidden' : 'visible'
+        background: 'var(--background-light)',
       }}
       aria-hidden={collapsed}
     >
-      <div className="flex items-center justify-between p-4 border-b border-slate-200">
-        <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-lg font-semibold text-slate-900">Preview</h2>
-          {title && <span className="text-sm text-slate-500 truncate">- {title}</span>}
-        </div>
-        <div className="flex items-center gap-2">
-          {url && (
+      <div className="flex flex-col" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--primary-color)' }}>Preview</h2>
+            {title && <span className="truncate" style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-muted)' }}>- {title}</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            {url && (
+              <button
+                onClick={() => url && openExternalUrl(url)}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{
+                  color: 'var(--color-text-secondary)',
+                  transition: 'all var(--transition-base)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--glass-bg)';
+                  e.currentTarget.style.color = 'var(--primary-color)';
+                  e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--color-text-secondary)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                title="Open in external browser"
+              >
+                <ExternalLink size={18} />
+              </button>
+            )}
             <button
-              onClick={() => url && openExternalUrl(url)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
-              title="Open in external browser"
+              onClick={onClose}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{
+                color: 'var(--color-text-secondary)',
+                transition: 'all var(--transition-base)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title="Close preview"
             >
-              <ExternalLink size={18} />
+              <X size={18} />
             </button>
-          )}
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
-            title="Close preview"
-          >
-            <X size={18} />
-          </button>
+          </div>
         </div>
+
       </div>
 
-      <div className="flex-1 overflow-hidden bg-slate-50 relative flex flex-col">
-        {!url && (
-          <div className="absolute inset-0 flex items-center justify-center z-30">
-            <div className="text-sm text-slate-500">No preview available.</div>
+      <div className="flex-1 overflow-auto relative flex flex-col custom-scroll" style={{ background: 'var(--background-dark)', overflowX: 'auto', overflowY: 'auto' }}>
+        {!url && !imagePreviewUrl && !documentPreviewUrl && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW_EMPTY }}>
+            <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>No preview available.</div>
           </div>
         )}
-        {/* eslint-disable-next-line react/no-unknown-property */}
-        <webview
-          ref={webviewRef}
-          src="about:blank"
-          partition="persist:ocean-webview"
-          allowpopups="true"
-          style={{
-            flex: 1,
-            width: '100%',
-            minHeight: 0,
-            visibility: url ? 'visible' : 'hidden'
-          }}
-        />
-        {url && loadError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white z-20">
-            <div className="text-sm text-red-600">{loadError}</div>
-            <div className="text-xs text-slate-400 max-w-md text-center break-all">
-              {url}
+
+        {/* Image preview */}
+        {imagePreviewUrl && (
+          <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
+            <img
+              src={imagePreviewUrl}
+              alt={title || 'Image preview'}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+            />
+          </div>
+        )}
+
+        {/* Document preview */}
+        {documentPreviewUrl && (
+          <iframe
+            src={documentPreviewUrl}
+            title={title || 'Document preview'}
+            className="flex-1 w-full border-0"
+            sandbox="allow-same-origin"
+          />
+        )}
+
+        {/* Video embed preview (YouTube/Vimeo) */}
+        {videoEmbed && (
+          <div
+            className="w-full flex justify-center"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: Z_INDEX.CONTENT_PREVIEW,
+              background: 'var(--background-dark)',
+            }}
+          >
+            <div style={{ position: 'relative', width: '100%', maxWidth: '100%', paddingTop: '56.25%' }}>
+              <iframe
+                src={videoEmbed.embedUrl}
+                title={title || 'Video preview'}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  border: '0',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                  background: '#000'
+                }}
+              />
             </div>
-            <button
-              onClick={() => {
-                setLoadError(null);
-                const view = webviewRef.current as any;
-                if (view && isReadyRef.current && typeof view.reload === 'function') {
-                  view.reload();
-                } else if (url) {
-                  // If not ready, try loading the URL again
-                  pendingUrlRef.current = url;
-                  currentUrlRef.current = undefined;
-                }
-              }}
-              className="mt-2 px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              Retry
-            </button>
           </div>
         )}
+
+        {/* Web preview */}
+        <>
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <webview
+            ref={webviewRef}
+            src="about:blank"
+            partition="persist:ocean-webview"
+            allowpopups={true}
+            style={{
+              flex: 1,
+              width: '100%',
+              minHeight: 0,
+              display: hasNonWebviewPreview ? 'none' : 'flex',
+              visibility: url ? 'visible' : 'hidden'
+            }}
+          />
+          {url && logic.loadError && !hasNonWebviewPreview && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW }}>
+              <div className="text-red-600" style={FONT_ROLES.paneBody}>{logic.loadError}</div>
+              <div className="text-slate-400 max-w-md text-center break-all" style={FONT_ROLES.paneBodyMuted}>
+                {url}
+              </div>
+              <button
+                onClick={logic.handleRetry}
+                className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                style={FONT_ROLES.paneBody}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </>
       </div>
     </aside>
   );

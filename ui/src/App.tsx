@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './styles/globals.css';
 import { TopBar, TopBarHandle } from './components/layout/topbar';
 import { LeftSidebar } from './components/layout/leftsidebar';
 import { CenterPane, CenterPaneHandle } from './components/layout/centerpane';
@@ -8,6 +7,8 @@ import { AssistantPane } from './components/layout/assistantpane';
 import { QuickAddPopup } from './components/dialogs/QuickAddPopup';
 import { PreviewTarget } from './components/layout/centerpane/types';
 import { detectFileType } from './utils/fileTypes';
+import { Z_INDEX } from './constants/zIndex';
+import { PANEL_DIMENSIONS } from './constants/panelDimensions';
 
 type ResizeHandler = React.MouseEventHandler<HTMLDivElement>;
 
@@ -57,14 +58,20 @@ const useSidebarShortcut = (toggleSidebar: () => void) => {
 
 export function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = usePersistedNumber('ocean-sidebar-width', 220);
+  const [sidebarWidth, setSidebarWidth] = usePersistedNumber(
+    PANEL_DIMENSIONS.SIDEBAR.STORAGE_KEY,
+    PANEL_DIMENSIONS.SIDEBAR.DEFAULT_WIDTH
+  );
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isConversationOpen, setIsConversationOpen] = useState(true);
-  const [conversationWidth, setConversationWidth] = usePersistedNumber('ocean-conversation-width', 320);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>();
-  const [previewTitle, setPreviewTitle] = useState<string | undefined>();
-  const [previewTileId, setPreviewTileId] = useState<string | undefined>();
+  const [previewData, setPreviewData] = useState<{
+    url?: string;
+    title?: string;
+    tileId?: string;
+    filePath?: string;
+    type?: string;
+  }>({});
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
 
@@ -127,6 +134,19 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleAddTelegram = () => {
+      // TODO: Implement Telegram account dialog
+      console.log('Add Telegram account - coming soon');
+    };
+
+    window.addEventListener('centerpane:add-telegram', handleAddTelegram);
+
+    return () => {
+      window.removeEventListener('centerpane:add-telegram', handleAddTelegram);
+    };
+  }, []);
+
   const toFileUrl = (filePath: string): string => {
     if (!filePath) return '';
     if (/^file:\/\//i.test(filePath)) {
@@ -142,8 +162,8 @@ export function App() {
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = sidebarWidth;
-    const minWidth = 200;
-    const maxWidth = 400;
+    const minWidth = PANEL_DIMENSIONS.SIDEBAR.MIN_WIDTH;
+    const maxWidth = PANEL_DIMENSIONS.SIDEBAR.MAX_WIDTH;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
@@ -160,31 +180,13 @@ export function App() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  const startResizingConversation: ResizeHandler = (e) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = conversationWidth;
-    const minWidth = 200;
-    const maxWidth = 500;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startX - moveEvent.clientX;
-      const nextWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
-      setConversationWidth(nextWidth);
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
 
   const handleCanvasEmptyClick = () => {
     if (isSidebarOpen) {
       setIsSidebarOpen(false);
+    }
+    if (isPreviewOpen) {
+      setIsPreviewOpen(false);
     }
   };
 
@@ -201,7 +203,7 @@ export function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="h-screen flex flex-col" style={{ background: 'var(--background-dark)' }}>
       <TopBar
         ref={topBarRef}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -223,7 +225,7 @@ export function App() {
         />
 
         <main
-          className="flex-1 flex"
+          className="flex-1 flex relative"
         >
           <div className="flex flex-1 min-w-0 h-full">
             <div className="flex-1 min-w-0 h-full">
@@ -231,67 +233,77 @@ export function App() {
                 ref={centerPaneRef}
                 onObjectClick={(target: PreviewTarget) => {
                   const { url, title, tileId, filePath, type } = target || {};
-                  setPreviewTitle(title);
-                  setPreviewTileId(tileId);
 
                   if (filePath && type === 'file') {
                     const { category } = detectFileType(filePath);
                     if (category === 'pdf') {
-                      setPreviewUrl(toFileUrl(filePath));
+                      setPreviewData({
+                        url: toFileUrl(filePath),
+                        title,
+                        tileId,
+                        filePath,
+                        type,
+                      });
                       setIsPreviewOpen(true);
                       return;
                     }
                   }
 
-                  setPreviewUrl(url);
+                  setPreviewData({
+                    url,
+                    title,
+                    tileId,
+                    filePath,
+                    type,
+                  });
                   setIsPreviewOpen(true);
                 }}
                 onCanvasEmptyClick={handleCanvasEmptyClick}
               />
             </div>
 
-            {(isPreviewOpen || isConversationOpen) && (
-              <>
-                <div
-                  className="shrink-0 h-full"
-                  style={{
-                    borderLeft: '10px double #cbd5e1',
-                  }}
-                  aria-hidden
+            {isPreviewOpen && (
+              <div
+                className="absolute right-0 top-0 h-full"
+                style={{
+                  width: '33.333%',
+                  maxWidth: '800px',
+                  minWidth: '360px',
+                  zIndex: Z_INDEX.CONTENT_PREVIEW,
+                  borderLeft: '2px solid var(--color-border-subtle)',
+                }}
+              >
+                <PreviewPane
+                  isOpen={isPreviewOpen}
+                  onClose={() => setIsPreviewOpen(false)}
+                  url={previewData.url}
+                  title={previewData.title}
+                  tileId={previewData.tileId}
+                  filePath={previewData.filePath}
+                  type={previewData.type}
                 />
-                <div className="flex h-full flex-1 min-w-0">
-                  <div className="relative flex-1 min-w-0 h-full">
-                    <PreviewPane
-                      isOpen={isPreviewOpen}
-                      onClose={() => setIsPreviewOpen(false)}
-                      url={previewUrl}
-                      title={previewTitle}
-                      tileId={previewTileId}
-                    />
-                    {isConversationOpen && (
-                      <div
-                        className="absolute left-0 bottom-0 drop-shadow-2xl"
-                        style={{
-                          width: `${conversationWidth}px`,
-                          height: '40%',
-                          minHeight: '300px',
-                          maxHeight: '70%',
-                          pointerEvents: 'auto',
-                        }}
-                      >
-                        <AssistantPane
-                          isOpen={isConversationOpen}
-                          onClose={() => setIsConversationOpen(false)}
-                          width={conversationWidth}
-                          onResizeStart={startResizingConversation}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
+              </div>
             )}
           </div>
+          {isConversationOpen && (
+            <div
+              className="absolute left-1/2 bottom-0 drop-shadow-2xl"
+              style={{
+                width: `${PANEL_DIMENSIONS.ASSISTANT.DEFAULT_WIDTH}px`,
+                height: `${PANEL_DIMENSIONS.ASSISTANT.HEIGHT}px`,
+                pointerEvents: 'auto',
+                transform: 'translateX(-50%)',
+                zIndex: Z_INDEX.ASSISTANT_PANE,
+              }}
+            >
+              <AssistantPane
+                isOpen={isConversationOpen}
+                onClose={() => setIsConversationOpen(false)}
+                width={PANEL_DIMENSIONS.ASSISTANT.DEFAULT_WIDTH}
+                onResizeStart={() => {}}
+              />
+            </div>
+          )}
         </main>
       </div>
 

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { X, MessageCircle } from 'lucide-react';
+import { Z_INDEX } from '../../../constants/zIndex';
 import { Message } from '../../../features/assistant/models/assistant';
 import { MessageList } from '../../../features/assistant/components/MessageList';
 import { AssistantInput } from '../../../features/assistant/components/AssistantInput';
+import { FONT_ROLES } from '../../../styles/fontManager';
 
 interface AssistantPaneProps {
   isOpen: boolean;
@@ -34,19 +36,46 @@ export function AssistantPane({ isOpen, onClose, width, onResizeStart }: Assista
       />
 
       <aside
-        className="bg-slate-50 border-l border-slate-200 flex flex-col h-full relative flex-none"
-        style={{ width: `${width}px`, flex: '0 0 auto' }}
+        className="glass-panel flex flex-col h-full relative flex-none pb-6"
+        style={{
+          width: `${width}px`,
+          flex: '0 0 auto',
+          background: 'var(--background-light)',
+          borderLeft: '1px solid var(--color-border-strong)',
+        }}
       >
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 relative z-10">
+      <div className="relative" style={{ zIndex: Z_INDEX.BASE_RAISED, borderBottom: '1px solid var(--color-border-subtle)' }}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2 flex-1 text-left -m-2 p-2">
-            <MessageCircle size={18} className="text-blue-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Assistant</h2>
+            <MessageCircle size={18} style={{ color: 'var(--primary-color)' }} />
+            <h2
+              style={{
+                ...FONT_ROLES.paneTitle,
+                color: 'var(--primary-color)',
+                textShadow: '0 0 10px var(--glow)',
+              }}
+            >
+              Surfer
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
+            className="p-1.5 rounded-lg transition-colors"
+            style={{
+              color: 'var(--color-text-secondary)',
+              transition: 'all var(--transition-base)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--glass-bg)';
+              e.currentTarget.style.color = 'var(--primary-color)';
+              e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
             title="Close assistant"
           >
             <X size={18} />

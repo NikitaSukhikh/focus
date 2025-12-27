@@ -12,12 +12,14 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import io
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,8 @@ class GDriveOAuthManager:
         client_secret: Optional[str] = None,
         credentials_path: Optional[str] = None,
         token_path: Optional[str] = None,
-        scopes: Optional[list] = None
+        scopes: Optional[list] = None,
+        token_repository = None
     ):
         """
         Initialize OAuth manager.
@@ -44,8 +47,9 @@ class GDriveOAuthManager:
             client_id: Google OAuth Client ID
             client_secret: Google OAuth Client Secret
             credentials_path: Path to credentials JSON file
-            token_path: Path to store/load access tokens
+            token_path: Path to store/load access tokens (DEPRECATED - use database)
             scopes: List of OAuth scopes
+            token_repository: AssistantTokenRepository instance (for DI)
         """
         self.client_id = client_id or os.getenv('GOOGLE_CLIENT_ID')
         self.client_secret = client_secret or os.getenv('GOOGLE_CLIENT_SECRET')
@@ -58,7 +62,7 @@ class GDriveOAuthManager:
             or (str(default_creds) if default_creds.exists() else None)
         )
 
-        # Default token storage path
+        # Default token storage path (DEPRECATED - kept for migration)
         if token_path is None:
             token_dir = Path(__file__).parent.parent.parent.parent / 'data' / 'gdrive_tokens'
             token_dir.mkdir(parents=True, exist_ok=True)
@@ -77,27 +81,185 @@ class GDriveOAuthManager:
         else:
             self.scopes = scopes
 
+        # Token repository (database-backed)
+        if token_repository is None:
+            try:
+                from app.storage.repositories.assistant_token_repo import assistant_token_repository
+                self._token_repository = assistant_token_repository
+            except ImportError:
+                logger.warning("Failed to import assistant_token_repository, falling back to file-based storage")
+                self._token_repository = None
+        else:
+            self._token_repository = token_repository
+
         self._credentials: Optional[Credentials] = None
         self._service = None
+        self._current_email: Optional[str] = None  # Currently active account email
 
-    def get_credentials(self) -> Optional[Credentials]:
+        # Auto-migrate on first initialization
+        self._migrate_if_needed()
+
+    def _migrate_if_needed(self):
+        """Migrate token.json to database if needed."""
+        if not self._token_repository:
+            return
+
+        try:
+            # Check if token.json exists
+            if not os.path.exists(self.token_path):
+                logger.debug("No token.json to migrate")
+                return
+
+            # Load from token.json
+            logger.info(f"Migrating token.json to database: {self.token_path}")
+            with open(self.token_path, 'r') as f:
+                token_data = json.load(f)
+
+            # Create temporary credentials to fetch user email
+            temp_creds = Credentials(
+                token=token_data.get('token'),
+                refresh_token=token_data.get('refresh_token'),
+                token_uri=token_data.get('token_uri'),
+                client_id=token_data.get('client_id'),
+                client_secret=token_data.get('client_secret'),
+                scopes=token_data.get('scopes', self.scopes)
+            )
+
+            # Get user email
+            try:
+                from googleapiclient.discovery import build
+                service = build('oauth2', 'v2', credentials=temp_creds)
+                user_info = service.userinfo().get().execute()
+                user_email = user_info.get('email')
+            except Exception as e:
+                logger.error(f"Failed to fetch user email during migration: {e}")
+                user_email = None
+
+            if not user_email:
+                logger.error("Migration skipped: could not determine user email")
+                return
+
+            # Check if this email already has tokens in database
+            has_db_tokens = asyncio.run(self._token_repository.has_tokens(user_email))
+            if has_db_tokens:
+                logger.info(f"Database already has tokens for {user_email}, skipping migration")
+                # Still backup the file
+                backup_path = self.token_path + '.backup'
+                if not os.path.exists(backup_path):
+                    os.rename(self.token_path, backup_path)
+                    logger.info(f"Backup saved to: {backup_path}")
+                return
+
+            # Parse expiry
+            expiry_str = token_data.get('expiry')
+            if expiry_str:
+                try:
+                    expiry = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+                except:
+                    expiry = None
+            else:
+                expiry = None
+
+            # Save to database
+            success = asyncio.run(self._token_repository.save_tokens(
+                user_email=user_email,
+                access_token=token_data.get('token'),
+                refresh_token=token_data.get('refresh_token'),
+                token_uri=token_data.get('token_uri'),
+                client_id=token_data.get('client_id'),
+                client_secret=token_data.get('client_secret'),
+                scopes=token_data.get('scopes', self.scopes),
+                expires_at=expiry
+            ))
+
+            if success:
+                # Rename token.json to backup
+                backup_path = self.token_path + '.backup'
+                os.rename(self.token_path, backup_path)
+                logger.info(f"Migration complete for {user_email}. Backup saved to: {backup_path}")
+            else:
+                logger.error("Migration failed: could not save to database")
+
+        except Exception as e:
+            logger.error(f"Migration error: {e}", exc_info=True)
+
+    def set_account(self, email: str):
+        """Set the active account by email."""
+        self._current_email = email
+        self._credentials = None  # Clear cached credentials
+        self._service = None
+
+    def get_current_account(self) -> Optional[str]:
+        """Get the currently active account email."""
+        return self._current_email
+
+    def list_accounts(self) -> List[str]:
+        """List all connected assistant accounts."""
+        if not self._token_repository:
+            return []
+        try:
+            accounts = asyncio.run(self._token_repository.get_all_accounts())
+            return [acc['email'] for acc in accounts]
+        except Exception as e:
+            logger.error(f"Failed to list accounts: {e}")
+            return []
+
+    def get_credentials(self, email: Optional[str] = None) -> Optional[Credentials]:
         """
-        Get valid OAuth credentials.
+        Get valid OAuth credentials for a specific email or current account.
+
+        Args:
+            email: Optional email to get credentials for. If None, uses current account or first available.
 
         Returns:
             Valid Google OAuth credentials or None
         """
-        # Return cached credentials if valid
-        if self._credentials and self._credentials.valid:
+        # Determine which email to use
+        target_email = email or self._current_email
+
+        # Return cached credentials if valid and for the same email
+        if self._credentials and self._credentials.valid and self._current_email == target_email:
             return self._credentials
 
-        # Try to load from token file
-        if os.path.exists(self.token_path):
+        # Try to load from database first
+        if self._token_repository:
+            try:
+                # If no target email, get first available account
+                if not target_email:
+                    accounts = asyncio.run(self._token_repository.get_all_accounts())
+                    if accounts and len(accounts) > 0:
+                        target_email = accounts[0]['email']
+                        logger.info(f"Using first available account: {target_email}")
+
+                if target_email:
+                    token_data = asyncio.run(self._token_repository.get_tokens(target_email))
+                    if token_data:
+                        # Parse expiry from token_data
+                        expiry = token_data.get('expires_at')
+
+                        # Create credentials from database
+                        self._credentials = Credentials(
+                            token=token_data.get('access_token'),
+                            refresh_token=token_data.get('refresh_token'),
+                            token_uri=token_data.get('token_uri'),
+                            client_id=token_data.get('client_id'),
+                            client_secret=token_data.get('client_secret'),
+                            scopes=token_data.get('scopes', self.scopes),
+                            expiry=expiry
+                        )
+                        self._current_email = target_email
+                        logger.info(f"Loaded credentials from database for {target_email}")
+            except Exception as e:
+                logger.warning(f"Failed to load credentials from database: {e}")
+                self._credentials = None
+
+        # Fallback to file if database not available or failed
+        if not self._credentials and os.path.exists(self.token_path):
             try:
                 self._credentials = Credentials.from_authorized_user_file(
                     self.token_path, self.scopes
                 )
-                logger.info("Loaded credentials from token file")
+                logger.info("Loaded credentials from token file (fallback)")
             except Exception as e:
                 logger.warning(f"Failed to load credentials from token file: {e}")
                 self._credentials = None
@@ -705,18 +867,70 @@ class GDriveOAuthManager:
             "- Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars."
         )
 
+    def _get_user_email(self) -> Optional[str]:
+        """Get user email from credentials using Google userinfo API."""
+        if not self._credentials:
+            return None
+
+        try:
+            from googleapiclient.discovery import build
+            service = build('oauth2', 'v2', credentials=self._credentials)
+            user_info = service.userinfo().get().execute()
+            return user_info.get('email')
+        except Exception as e:
+            logger.error(f"Failed to fetch user email: {e}")
+            return None
+
     def _save_credentials(self):
-        """Save credentials to token file."""
+        """Save credentials to database (and file as fallback)."""
         if self._credentials:
+            # Get user email
+            user_email = self._get_user_email()
+            if not user_email:
+                logger.error("Cannot save credentials: user email not available")
+                return
+
+            # Save to database first
+            if self._token_repository:
+                try:
+                    # Parse credentials to dict
+                    cred_dict = json.loads(self._credentials.to_json())
+
+                    # Parse expiry
+                    expiry_str = cred_dict.get('expiry')
+                    if expiry_str:
+                        try:
+                            expiry = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+                        except:
+                            expiry = None
+                    else:
+                        expiry = None
+
+                    # Save to database
+                    asyncio.run(self._token_repository.save_tokens(
+                        user_email=user_email,
+                        access_token=cred_dict.get('token'),
+                        refresh_token=cred_dict.get('refresh_token'),
+                        token_uri=cred_dict.get('token_uri'),
+                        client_id=cred_dict.get('client_id'),
+                        client_secret=cred_dict.get('client_secret'),
+                        scopes=cred_dict.get('scopes', self.scopes),
+                        expires_at=expiry
+                    ))
+                    logger.info(f"Saved credentials to database for {user_email}")
+                except Exception as e:
+                    logger.error(f"Failed to save credentials to database: {e}")
+
+            # Also save to file as fallback
             try:
                 token_dir = Path(self.token_path).parent
                 token_dir.mkdir(parents=True, exist_ok=True)
 
                 with open(self.token_path, 'w') as token_file:
                     token_file.write(self._credentials.to_json())
-                logger.info(f"Saved credentials to {self.token_path}")
+                logger.debug(f"Saved credentials to file (fallback): {self.token_path}")
             except Exception as e:
-                logger.error(f"Failed to save credentials: {e}")
+                logger.error(f"Failed to save credentials to file: {e}")
 
     def get_drive_service(self):
         """
@@ -798,25 +1012,38 @@ class GDriveOAuthManager:
                 "error": str(e)
             }
 
-    def revoke_credentials(self):
-        """Revoke and delete stored credentials."""
-        if self._credentials:
+    def revoke_credentials(self, email: Optional[str] = None):
+        """Revoke and delete stored credentials for a specific account or current account."""
+        target_email = email or self._current_email
+
+        if self._credentials and self._current_email == target_email:
             try:
                 self._credentials.revoke(Request())
-                logger.info("Revoked credentials")
+                logger.info(f"Revoked credentials for {target_email}")
             except Exception as e:
                 logger.warning(f"Failed to revoke credentials: {e}")
 
-        # Delete token file
-        if os.path.exists(self.token_path):
+        # Delete from database
+        if self._token_repository and target_email:
+            try:
+                asyncio.run(self._token_repository.delete_tokens(target_email))
+                logger.info(f"Deleted tokens from database for {target_email}")
+            except Exception as e:
+                logger.error(f"Failed to delete tokens from database: {e}")
+
+        # Delete token file (fallback) - only if revoking current account
+        if self._current_email == target_email and os.path.exists(self.token_path):
             try:
                 os.remove(self.token_path)
                 logger.info(f"Deleted token file: {self.token_path}")
             except Exception as e:
                 logger.error(f"Failed to delete token file: {e}")
 
-        self._credentials = None
-        self._service = None
+        # Clear cached credentials if revoking current account
+        if self._current_email == target_email:
+            self._credentials = None
+            self._service = None
+            self._current_email = None
 
     def get_file_metadata(self, file_id: str) -> Dict[str, Any]:
         """

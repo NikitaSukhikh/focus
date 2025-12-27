@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { FilePlus, Plus } from 'lucide-react';
+import { Z_INDEX } from '../../constants/zIndex';
 
 interface QuickAddPopupProps {
   isOpen: boolean;
@@ -86,15 +87,16 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTel
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 z-40"
+        className="fixed inset-0 bg-black/20"
+        style={{ zIndex: Z_INDEX.OVERLAY_BACKDROP }}
         onClick={onClose}
       />
 
       {/* Popup */}
       <div
         ref={popupRef}
-        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden"
-        style={{ width: '280px' }}
+        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden"
+        style={{ zIndex: Z_INDEX.OVERLAY_DIALOG, width: '280px' }}
         tabIndex={-1}
       >
         <div className="p-2">

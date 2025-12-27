@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, session } from "electron";
+import { app, session, BrowserWindow, ipcMain, dialog, shell } from "electron";
 import path, { dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 const __filename$1 = fileURLToPath(import.meta.url);
@@ -68,6 +68,18 @@ app.whenReady().then(() => {
     console.error("[Electron] Failed to create main window:", err);
     app.quit();
   });
+  const webviewSession = session.fromPartition("persist:ocean-webview");
+  webviewSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = { ...details.responseHeaders };
+    delete headers["x-frame-options"];
+    delete headers["X-Frame-Options"];
+    if (headers["content-security-policy"]) {
+      headers["content-security-policy"] = headers["content-security-policy"].map(
+        (value) => value.replace(/frame-ancestors[^;]*(;|$)/g, "")
+      );
+    }
+    callback({ responseHeaders: headers });
+  });
   void logWebviewStorageInfo();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -84,7 +96,10 @@ app.on("window-all-closed", () => {
   }
 });
 ipcMain.handle("desktop:open-dialog", async (_event, options) => {
-  const browserWindow = BrowserWindow.getFocusedWindow() || mainWindow || void 0;
+  const browserWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (!browserWindow) {
+    throw new Error("No browser window available");
+  }
   return dialog.showOpenDialog(browserWindow, {
     properties: ["openFile", "multiSelections"],
     ...options

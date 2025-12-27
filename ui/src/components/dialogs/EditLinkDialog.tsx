@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Link2, ExternalLink } from 'lucide-react';
+import { Z_INDEX } from '../../constants/zIndex';
 import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/url';
 
 interface EditLinkDialogProps {
@@ -70,16 +72,22 @@ export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTit
 
   const showHttpsPrefix = !/^https?:\/\//i.test(url);
 
-  return (
+  const dialogContent = (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
+        style={{ zIndex: Z_INDEX.MODAL_BACKDROP }}
         onClick={onClose}
       />
 
       {/* Dialog */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="fixed inset-0 flex items-center justify-center p-4"
+        style={{
+          zIndex: Z_INDEX.MODAL_DIALOG,
+        }}
+      >
         <div
           className="bg-white rounded-xl shadow-2xl w-full max-w-md"
           onClick={(e) => e.stopPropagation()}
@@ -192,4 +200,6 @@ export function EditLinkDialog({ isOpen, onClose, onSave, initialUrl, initialTit
       </div>
     </>
   );
+
+  return ReactDOM.createPortal(dialogContent, document.body);
 }
