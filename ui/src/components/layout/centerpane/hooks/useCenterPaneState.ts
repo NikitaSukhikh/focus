@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useIslandStore } from '../../../../stores/islandStore';
+import { useDeletedTilesStore } from '../../../../stores/deletedTilesStore';
 import { objectsApi } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind } from '../types';
@@ -31,6 +32,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
   } | null>(null);
 
   const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
+  const addDeletedTile = useDeletedTilesStore((state) => state.addDeletedTile);
+  const getLastDeletedTile = useDeletedTilesStore((state) => state.getLastDeletedTile);
+  const removeLastDeletedTile = useDeletedTilesStore((state) => state.removeLastDeletedTile);
 
   const contentHeight = useMemo(() => {
     const currentIcons = selectedIsland ? iconsByIsland[selectedIsland.id] || [] : [];
@@ -104,6 +108,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               description,
               faviconUrl,
               filePath,
+              content: obj.type === 'text' ? (meta.content as string) : undefined,
             };
           });
         setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
@@ -125,6 +130,18 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
         console.log('[DELETE] Removing icon from canvas:', primarySelectedId);
 
+        // Find the tile to save to history
+        const tileToDelete = (iconsByIsland[selectedIsland.id] || []).find((i) => i.id === primarySelectedId);
+        if (tileToDelete) {
+          addDeletedTile({
+            ...tileToDelete,
+            islandId: selectedIsland.id,
+          });
+        }
+
+        // Dispatch event before deleting to notify preview pane
+        window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: primarySelectedId } }));
+
         setIconsByIsland((prev) => ({
           ...prev,
           [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== primarySelectedId),
@@ -139,7 +156,55 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIconIds, selectedIsland]);
+  }, [selectedIconIds, selectedIsland, iconsByIsland, addDeletedTile]);
+
+  // Handle Ctrl+Z (undo delete)
+  useEffect(() => {
+    const handleUndo = (e: KeyboardEvent) => {
+      // Check for Ctrl+Z or Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+        e.preventDefault();
+
+        const lastDeletedTile = getLastDeletedTile();
+        if (!lastDeletedTile) return;
+
+        // Only restore if the tile belongs to the current island
+        if (!selectedIsland || lastDeletedTile.islandId !== selectedIsland.id) return;
+
+        // Restore the tile
+        setIconsByIsland((prev) => ({
+          ...prev,
+          [lastDeletedTile.islandId]: [...(prev[lastDeletedTile.islandId] || []), {
+            id: lastDeletedTile.id,
+            type: lastDeletedTile.type,
+            title: lastDeletedTile.title,
+            x: lastDeletedTile.x,
+            y: lastDeletedTile.y,
+            url: lastDeletedTile.url,
+            description: lastDeletedTile.description,
+            faviconUrl: lastDeletedTile.faviconUrl,
+            filePath: lastDeletedTile.filePath,
+            serviceKey: lastDeletedTile.serviceKey,
+            service: lastDeletedTile.service,
+          }],
+        }));
+
+        // Restore position in backend
+        objectsApi.updatePosition(lastDeletedTile.id, lastDeletedTile.x, lastDeletedTile.y).catch((err) => {
+          console.error('Failed to restore tile position:', err);
+        });
+
+        // Remove from deleted tiles history
+        removeLastDeletedTile();
+      }
+    };
+
+    window.addEventListener('keydown', handleUndo);
+    return () => window.removeEventListener('keydown', handleUndo);
+  }, [selectedIsland, getLastDeletedTile, removeLastDeletedTile, setIconsByIsland]);
 
   return {
     isDragOver,

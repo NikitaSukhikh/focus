@@ -40,6 +40,21 @@ export function WordIcon({ size = 48, className = '' }: FileIconProps) {
   );
 }
 
+// OpenDocument Text Icon
+export function OdtIcon({ size = 48, className = '' }: FileIconProps) {
+  return (
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+      <FileText size={size} className="text-amber-600" />
+      <div
+        className="absolute bottom-0 right-0 bg-amber-600 text-white text-xs font-bold px-1 rounded"
+        style={{ fontSize: size * 0.2 }}
+      >
+        ODT
+      </div>
+    </div>
+  );
+}
+
 // Excel Icon
 export function ExcelIcon({ size = 48, className = '' }: FileIconProps) {
   return (
@@ -97,7 +112,8 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
   const ext = extension.toLowerCase();
 
   if (ext === 'pdf') return PdfIcon;
-  if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return WordIcon;
+  if (['doc', 'docx', 'rtf'].includes(ext)) return WordIcon;
+  if (ext === 'odt') return OdtIcon;
   if (['xls', 'xlsx', 'ods'].includes(ext)) return ExcelIcon;
   if (['ppt', 'pptx', 'odp'].includes(ext)) return PowerPointIcon;
   if (

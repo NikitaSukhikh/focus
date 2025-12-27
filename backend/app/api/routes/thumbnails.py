@@ -238,10 +238,18 @@ async def get_document_preview(
 
         logger.debug(f"Serving document preview: {html_path}")
 
-        return FileResponse(
-            path=html_path,
-            media_type="text/html",
-            filename=f"{path.stem}_preview.html",
+        # Read HTML content and return as Response to avoid download prompt
+        from fastapi.responses import Response
+        from pathlib import Path as PathLib
+
+        html_content = PathLib(html_path).read_text(encoding='utf-8')
+
+        return Response(
+            content=html_content,
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": "inline"
+            }
         )
 
     except HTTPException:

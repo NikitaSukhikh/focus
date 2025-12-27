@@ -22,6 +22,7 @@ chardet==5.2.0
 Pillow==11.1.0
 python-docx==1.1.2
 pypandoc==1.14
+pywin32==311; sys_platform == 'win32'
 
 # Google integrations
 google-auth==2.37.0

@@ -24,13 +24,16 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [pendingLinkPosition, setPendingLinkPosition] = useState<{ x: number; y: number } | null>(null);
 
+  const looksLikeFavicon = (src?: string) => {
+    const s = (src || '').toLowerCase();
+    return s.endsWith('.ico') || s.includes('favicon');
+  };
+
   const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) => {
     const targetUrl = resolvedUrl || originalUrl;
-    const urlLower = (targetUrl || '').toLowerCase();
-    const isAmazon = urlLower.includes('amazon.') || urlLower.includes('amzn.to') || urlLower.includes('a.co/');
-
-    if (isAmazon && metadata?.og_image) {
-      return metadata.og_image;
+    const candidateImage = metadata?.og_image || metadata?.thumbnail_url || metadata?.image;
+    if (candidateImage && !looksLikeFavicon(candidateImage)) {
+      return candidateImage;
     }
 
     return metadata?.favicon_url || buildFaviconUrl(targetUrl);
