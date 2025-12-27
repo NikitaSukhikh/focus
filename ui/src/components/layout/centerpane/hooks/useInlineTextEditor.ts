@@ -12,6 +12,7 @@
 import { useState, useCallback } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon } from '../types';
+import { autoWrapText } from '../utils';
 
 interface InlineEditorParams {
   selectedIsland: any;
@@ -71,15 +72,24 @@ export const useInlineTextEditor = ({
 
     const { x, y, content, editingId } = editorState;
     const clamped = clampToBoundaries(x, y);
-    const title = generateTitleFromContent(content);
+    const formattedContent = autoWrapText(content, 22);
+    const title = generateTitleFromContent(formattedContent);
 
     try {
       if (editingId) {
-        // Update existing note
-        await objectsApi.update(editingId, {
-          title,
-          content,
+        // Update existing note - update both title and content in metadata
+        const response = await fetch(`/api/objects/${editingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            metadata: { content: formattedContent },
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error('Failed to update text note');
+        }
 
         setIconsByIsland((prev) => {
           const current = prev[selectedIsland.id] || [];
@@ -87,7 +97,7 @@ export const useInlineTextEditor = ({
             ...prev,
             [selectedIsland.id]: current.map((icon) =>
               icon.id === editingId
-                ? { ...icon, title, content, description: content.substring(0, 100) }
+                ? { ...icon, title, content: formattedContent, description: formattedContent.substring(0, 100) }
                 : icon
             ),
           };
@@ -97,7 +107,7 @@ export const useInlineTextEditor = ({
         const created = await objectsApi.create(selectedIsland.id, {
           type: 'text',
           title,
-          content,
+          content: formattedContent,
           x: clamped.x,
           y: clamped.y,
         });
@@ -108,8 +118,8 @@ export const useInlineTextEditor = ({
           title: created.title,
           x: clamped.x,
           y: clamped.y,
-          description: content.substring(0, 100),
-          content: content,
+          description: formattedContent.substring(0, 100),
+          content: formattedContent,
         };
 
         setIconsByIsland((prev) => {
