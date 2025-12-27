@@ -90,7 +90,6 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         position: 'absolute',
         left: x,
         top: y,
-        border: 'none',
         outline: 'none',
         resize: 'none',
         padding: '6px 8px',
