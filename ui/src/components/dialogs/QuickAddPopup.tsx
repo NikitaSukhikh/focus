@@ -7,10 +7,9 @@ interface QuickAddPopupProps {
   onClose: () => void;
   onAddFiles: () => void;
   onAddLink: () => void;
-  onAddTelegram: () => void;
 }
 
-type ActionType = 'files' | 'link' | 'telegram';
+type ActionType = 'files' | 'link';
 
 interface Action {
   type: ActionType;
@@ -19,7 +18,7 @@ interface Action {
   handler: () => void;
 }
 
-export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTelegram }: QuickAddPopupProps) {
+export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink }: QuickAddPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -27,9 +26,8 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTel
     () => [
       { type: 'files', label: 'Add Local Files', icon: <FilePlus size={16} />, handler: onAddFiles },
       { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink },
-      { type: 'telegram', label: 'Add Telegram account', icon: <Plus size={16} />, handler: onAddTelegram },
     ],
-    [onAddFiles, onAddLink, onAddTelegram]
+    [onAddFiles, onAddLink]
   );
 
   useEffect(() => {
@@ -75,12 +73,6 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTel
     };
   }, [isOpen, selectedIndex, actions, onClose]);
 
-  useEffect(() => {
-    if (isOpen && popupRef.current) {
-      popupRef.current.focus();
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return (
@@ -97,7 +89,6 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTel
         ref={popupRef}
         className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden"
         style={{ zIndex: Z_INDEX.OVERLAY_DIALOG, width: '280px' }}
-        tabIndex={-1}
       >
         <div className="p-2">
           {actions.map((action, index) => (
@@ -107,11 +98,15 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddTel
                 action.handler();
                 onClose();
               }}
-              className={`w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm rounded transition-colors ${
+              className={`w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm rounded transition-colors focus:outline-none focus-visible:outline-none ${
                 index === selectedIndex
                   ? 'bg-blue-500 text-white'
                   : 'text-slate-700 hover:bg-slate-100'
               }`}
+              style={{ outline: 'none', boxShadow: 'none' }}
+              tabIndex={-1}
+              onMouseDown={(e) => e.preventDefault()}
+              onFocus={(e) => e.currentTarget.blur()}
             >
               {action.icon}
               <span className="font-medium">{action.label}</span>

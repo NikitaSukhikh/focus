@@ -56,7 +56,7 @@ export function AssistantPane({ isOpen, onClose, width, onResizeStart }: Assista
                 textShadow: '0 0 10px var(--glow)',
               }}
             >
-              Surfer
+              Assistant
             </h2>
           </div>
           <button

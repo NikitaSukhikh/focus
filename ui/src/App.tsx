@@ -27,6 +27,7 @@ export function App() {
   const [isConversationOpen, setIsConversationOpen] = useState(true);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isGridMode, setIsGridMode] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [previewData, setPreviewData] = useState<{
     url?: string;
     title?: string;
@@ -136,6 +137,14 @@ export function App() {
     topBarRef.current?.openAddTelegramDialog();
   };
 
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(2, parseFloat((prev + 0.1).toFixed(2))));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => Math.max(0.5, parseFloat((prev - 0.1).toFixed(2))));
+  };
+
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--background-dark)' }}>
       <TopBar
@@ -150,6 +159,9 @@ export function App() {
         centerPaneRef={centerPaneRef}
         onToggleGrid={() => setIsGridMode((prev) => !prev)}
         isGridMode={isGridMode}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        zoom={zoom}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -168,6 +180,10 @@ export function App() {
               <CenterPane
                 ref={centerPaneRef}
                 showGrid={isGridMode}
+                zoom={zoom}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onOpenQuickAdd={() => setIsQuickAddOpen(true)}
                 onObjectClick={(target: PreviewTarget) => {
                   const { url, title, tileId, filePath, type, content } = target || {};
 
@@ -201,58 +217,58 @@ export function App() {
               />
             </div>
 
-            {isPreviewOpen && (
-              <div
-                className="absolute right-0 top-0 h-full"
-                style={{
-                  width: '33.333%',
-                  maxWidth: '800px',
-                  minWidth: '360px',
-                  zIndex: Z_INDEX.CONTENT_PREVIEW,
-                  borderLeft: '2px solid var(--color-border-subtle)',
-                }}
-              >
-                <PreviewPane
-                  isOpen={isPreviewOpen}
-                  onClose={() => setIsPreviewOpen(false)}
-                  url={previewData.url}
-                  title={previewData.title}
-                  tileId={previewData.tileId}
-                  filePath={previewData.filePath}
-                  type={previewData.type}
-                  content={previewData.content}
-                />
-              </div>
-            )}
-          </div>
-          {isConversationOpen && (
+          {isPreviewOpen && (
             <div
-              className="absolute left-1/2 bottom-0 drop-shadow-2xl"
+              className="absolute right-0 top-0 h-full"
               style={{
-                width: `${PANEL_DIMENSIONS.ASSISTANT.DEFAULT_WIDTH}px`,
-                height: `${PANEL_DIMENSIONS.ASSISTANT.HEIGHT}px`,
-                pointerEvents: 'auto',
-                transform: 'translateX(-50%)',
-                zIndex: Z_INDEX.ASSISTANT_PANE,
+                width: '33.333%',
+                maxWidth: '800px',
+                minWidth: '360px',
+                zIndex: Z_INDEX.CONTENT_PREVIEW,
+                borderLeft: '2px solid var(--color-border-subtle)',
               }}
             >
-              <AssistantPane
-                isOpen={isConversationOpen}
-                onClose={() => setIsConversationOpen(false)}
-                width={PANEL_DIMENSIONS.ASSISTANT.DEFAULT_WIDTH}
-                onResizeStart={() => {}}
+              <PreviewPane
+                isOpen={isPreviewOpen}
+                onClose={() => setIsPreviewOpen(false)}
+                url={previewData.url}
+                title={previewData.title}
+                tileId={previewData.tileId}
+                filePath={previewData.filePath}
+                type={previewData.type}
+                content={previewData.content}
               />
             </div>
           )}
-        </main>
-      </div>
+        </div>
+        {isConversationOpen && (
+          <div
+            className="absolute right-0 bottom-0 drop-shadow-2xl"
+            style={{
+              width: '33.333%',
+              maxWidth: '800px',
+              minWidth: '360px',
+              height: `${PANEL_DIMENSIONS.ASSISTANT.HEIGHT}px`,
+              pointerEvents: 'auto',
+              zIndex: Z_INDEX.ASSISTANT_PANE,
+            }}
+          >
+            <AssistantPane
+              isOpen={isConversationOpen}
+              onClose={() => setIsConversationOpen(false)}
+              width={PANEL_DIMENSIONS.ASSISTANT.DEFAULT_WIDTH}
+              onResizeStart={() => {}}
+            />
+          </div>
+        )}
+      </main>
+    </div>
 
       <QuickAddPopup
         isOpen={isQuickAddOpen}
         onClose={() => setIsQuickAddOpen(false)}
         onAddFiles={handleQuickAddFiles}
         onAddLink={handleQuickAddLink}
-        onAddTelegram={handleQuickAddTelegram}
       />
     </div>
   );
