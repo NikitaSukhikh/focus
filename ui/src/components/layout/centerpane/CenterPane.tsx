@@ -12,7 +12,7 @@ import { useIslandStore } from '../../../stores/islandStore';
 import { Loader2 } from 'lucide-react';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
-  const { onObjectClick, onCanvasEmptyClick } = props;
+  const { onObjectClick, onCanvasEmptyClick, showGrid } = props;
   const paneRef = useRef<HTMLDivElement | null>(null);
 
   const logic = useCenterPaneLogic(paneRef);
@@ -187,6 +187,22 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                 boxShadow: '0 8px 18px rgba(59,130,246,0.15)',
                 pointerEvents: 'none',
                 zIndex: Z_INDEX.CONTENT_DRAGGING,
+              }}
+            />
+          )}
+
+          {showGrid && (
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                zIndex: Z_INDEX.BASE,
+                backgroundImage: `
+                  linear-gradient(to right, rgba(126,136,151,0.18) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgba(126,136,151,0.18) 1px, transparent 1px)
+                `,
+                backgroundSize: '32px 32px',
+                mixBlendMode: 'normal',
               }}
             />
           )}

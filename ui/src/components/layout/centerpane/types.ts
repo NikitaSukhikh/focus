@@ -40,6 +40,7 @@ export interface PreviewTarget {
 export interface CenterPaneProps {
   onObjectClick?: (_target: PreviewTarget) => void;
   onCanvasEmptyClick?: () => void;
+  showGrid?: boolean;
 }
 
 export interface CenterPaneHandle {
