@@ -38,6 +38,10 @@ lerna-debug.log*
 logs/
 *.log
 
+# Lock files (optional - uncomment if you want to ignore them)
+package-lock.json
+Cargo.lock
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
