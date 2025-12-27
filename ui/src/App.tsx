@@ -10,52 +10,12 @@ import { detectFileType } from './utils/fileTypes';
 import { Z_INDEX } from './constants/zIndex';
 import { PANEL_DIMENSIONS } from './constants/panelDimensions';
 import { useIslandStore } from './stores/islandStore';
+import { usePersistedIsland } from './stores/hooks/usePersistedIsland';
+import { useAppShortcuts } from './hooks/useAppShortcuts';
+import { useTelegramEventListener } from './hooks/useTelegramEventListener';
+import { usePersistedNumber } from './hooks/usePersistedNumber';
 
 type ResizeHandler = React.MouseEventHandler<HTMLDivElement>;
-
-const usePersistedNumber = (storageKey: string, fallback: number) => {
-  const [value, setValue] = useState(() => {
-    const saved = localStorage.getItem(storageKey);
-    return saved ? parseInt(saved, 10) : fallback;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, value.toString());
-  }, [storageKey, value]);
-
-  return [value, setValue] as const;
-};
-
-const useSidebarShortcut = (toggleSidebar: () => void) => {
-  useEffect(() => {
-    const handleShortcut = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      const isTextField =
-        target?.isContentEditable ||
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT';
-      const isModifierOnly = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
-      const isSidebarHotkey = isModifierOnly && e.code === 'KeyL';
-
-      if (!isSidebarHotkey || isTextField) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation?.();
-      e.returnValue = false;
-      toggleSidebar();
-    };
-
-    window.addEventListener('keydown', handleShortcut, true);
-    document.addEventListener('keydown', handleShortcut, true);
-    return () => {
-      window.removeEventListener('keydown', handleShortcut, true);
-      document.removeEventListener('keydown', handleShortcut, true);
-    };
-  }, [toggleSidebar]);
-};
 
 export function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -72,13 +32,28 @@ export function App() {
     tileId?: string;
     filePath?: string;
     type?: string;
+    content?: string;
   }>({});
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
 
   const selectedIslandId = useIslandStore((state) => state.selectedIslandId);
 
-  useSidebarShortcut(() => setIsSidebarOpen((prev) => !prev));
+  usePersistedIsland();
+
+  // Setup all keyboard shortcuts
+  useAppShortcuts({
+    toggleSidebar: () => setIsSidebarOpen((prev) => !prev),
+    toggleConversation: () => setIsConversationOpen((prev) => !prev),
+    togglePreview: () => setIsPreviewOpen((prev) => !prev),
+    toggleQuickAdd: () => setIsQuickAddOpen((prev) => !prev),
+  });
+
+  // Setup custom event listeners
+  useTelegramEventListener(() => {
+    // TODO: Implement Telegram account dialog
+    console.log('Add Telegram account - coming soon');
+  });
 
   // Clear preview when switching islands
   useEffect(() => {
@@ -86,74 +61,23 @@ export function App() {
     setIsPreviewOpen(false);
   }, [selectedIslandId]);
 
+  // Close preview when tile is deleted
   useEffect(() => {
-    const handleToggleConversation = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      const isTextField =
-        target?.isContentEditable ||
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT';
-      const isModifierOnly = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
-      if (!isModifierOnly || isTextField) return;
-      if (e.code !== 'KeyO') return;
+    const handleTileDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tileId: string }>;
+      const deletedTileId = customEvent.detail.tileId;
 
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation?.();
-      e.returnValue = false;
-      setIsConversationOpen((prev) => !prev);
+      setPreviewData((currentPreviewData) => {
+        if (currentPreviewData.tileId === deletedTileId) {
+          setIsPreviewOpen(false);
+          return {};
+        }
+        return currentPreviewData;
+      });
     };
 
-    window.addEventListener('keydown', handleToggleConversation, true);
-    document.addEventListener('keydown', handleToggleConversation, true);
-    return () => {
-      window.removeEventListener('keydown', handleToggleConversation, true);
-      document.removeEventListener('keydown', handleToggleConversation, true);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleQuickAdd = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      const isTextField =
-        target?.isContentEditable ||
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT';
-      const isModifierOnly = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
-      if (!isModifierOnly || isTextField) return;
-      // Check for "+" key (both regular and numpad)
-      if (e.key !== '+' && e.key !== '=') return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation?.();
-      e.returnValue = false;
-      setIsQuickAddOpen(true);
-    };
-
-    window.addEventListener('keydown', handleQuickAdd, true);
-    document.addEventListener('keydown', handleQuickAdd, true);
-    return () => {
-      window.removeEventListener('keydown', handleQuickAdd, true);
-      document.removeEventListener('keydown', handleQuickAdd, true);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleAddTelegram = () => {
-      // TODO: Implement Telegram account dialog
-      console.log('Add Telegram account - coming soon');
-    };
-
-    window.addEventListener('centerpane:add-telegram', handleAddTelegram);
-
-    return () => {
-      window.removeEventListener('centerpane:add-telegram', handleAddTelegram);
-    };
+    window.addEventListener('tile:deleted', handleTileDeleted);
+    return () => window.removeEventListener('tile:deleted', handleTileDeleted);
   }, []);
 
   const toFileUrl = (filePath: string): string => {
@@ -241,7 +165,7 @@ export function App() {
               <CenterPane
                 ref={centerPaneRef}
                 onObjectClick={(target: PreviewTarget) => {
-                  const { url, title, tileId, filePath, type } = target || {};
+                  const { url, title, tileId, filePath, type, content } = target || {};
 
                   if (filePath && type === 'file') {
                     const { category } = detectFileType(filePath);
@@ -252,6 +176,7 @@ export function App() {
                         tileId,
                         filePath,
                         type,
+                        content,
                       });
                       setIsPreviewOpen(true);
                       return;
@@ -264,6 +189,7 @@ export function App() {
                     tileId,
                     filePath,
                     type,
+                    content,
                   });
                   setIsPreviewOpen(true);
                 }}
@@ -290,6 +216,7 @@ export function App() {
                   tileId={previewData.tileId}
                   filePath={previewData.filePath}
                   type={previewData.type}
+                  content={previewData.content}
                 />
               </div>
             )}

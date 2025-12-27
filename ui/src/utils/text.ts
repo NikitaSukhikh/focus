@@ -21,3 +21,16 @@ export const truncateDisplayUrl = (url: string, maxLength = 30, lineLength = 20)
   }
   return chunks.join('\n');
 };
+
+export const truncateDisplayPath = (path: string, maxLength = 30, lineLength = 20): string => {
+  const safe = (path ?? '').toString();
+  const truncated = safe.length <= maxLength ? safe : `${safe.slice(0, maxLength)}...`;
+
+  if (truncated.length <= lineLength) return truncated;
+
+  const chunks: string[] = [];
+  for (let i = 0; i < truncated.length; i += lineLength) {
+    chunks.push(truncated.slice(i, i + lineLength));
+  }
+  return chunks.join('\n');
+};
