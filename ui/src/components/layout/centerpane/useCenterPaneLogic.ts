@@ -29,6 +29,8 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     setIsDragOver,
     iconsByIsland,
     setIconsByIsland,
+    arrowsByIsland,
+    setArrowsByIsland,
     selectedIconId,
     setSelectedIconId,
     selectedIconIds,
@@ -105,6 +107,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     // State
     isDragOver,
     iconsByIsland,
+    arrowsByIsland,
     selectedIconId,
     selectedIconIds,
     selectedIsland,
@@ -113,6 +116,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     setSelectedIconIds,
     dragGhost,
     setDragGhost,
+    setArrowsByIsland,
 
     // Drag & Drop
     handleDragEnter: dragDropHandlers.handleDragEnter,
