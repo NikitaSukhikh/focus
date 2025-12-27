@@ -14,6 +14,13 @@ backend/pandoc-*.msi
 *.exe
 *.nupkg
 
+# Fonts (use from CDN or package)
+*.woff
+*.woff2
+*.ttf
+*.otf
+*.eot
+
 # Misc
 .DS_Store
 .env
@@ -44,12 +51,18 @@ logs/
 **/dist
 
 # Python
-__pycache__/, *.pyc
-.venv/, venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
 
 # Database
 *.db
 storage/local_files/data/
+storage/local_files/cache/
 
 # Claude Code files
 .claude
