@@ -15,7 +15,9 @@ const config: ForgeConfig = {
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        authors: 'Ocean Team',
+      },
     },
     {
       name: '@electron-forge/maker-zip',

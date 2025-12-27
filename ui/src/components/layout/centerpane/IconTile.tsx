@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid3x3, Link, FileText, Edit2, EyeOff, Copy, RefreshCw, ExternalLink } from 'lucide-react';
+import { Grid3x3, Link, FileText, Edit2, Trash2, Copy, RefreshCw, ExternalLink } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { FALLBACK_FAVICON } from '../../../utils/favicon';
+import { Z_INDEX } from '../../../constants/zIndex';
 import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
 import { getFileTypeIcon } from '../../icons/FileTypeIcons';
 import { IconTileProps } from './types';
 import { authenticatedLinksService, AccountInfo } from '../../../services/authenticatedLinks';
 import { AccountSelectionDialog } from '../../dialogs/AccountSelectionDialog';
+import { getVideoEmbed } from '../../../utils/videoEmbeds';
 
 const HOVER_SAFE_PADDING = 12;
+const EMBED_LINK_WIDTH = 360;
+const EMBED_LINK_HEIGHT = 240;
+const NON_EMBED_LINK_SIZE = 192;
 
 export function IconTile({
   id,
@@ -285,6 +290,11 @@ export function IconTile({
       : type === 'text'
       ? FileText
       : Grid3x3;
+  const videoEmbed = type === 'link' ? getVideoEmbed(url) : null;
+  const tileWidth =
+    type === 'link' ? (videoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE) : undefined;
+  const tileHeight =
+    type === 'link' ? (videoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE) : undefined;
 
   const getGoogleServiceIcon = (url: string) => {
     if (!url) return null;
@@ -316,7 +326,7 @@ export function IconTile({
         <img
           src={thumbnailUrl}
           alt={title}
-          className="w-12 h-12 rounded-md object-cover"
+          className="w-24 h-24 rounded-md object-cover shadow-sm"
           draggable={false}
           onError={() => setThumbnailUrl(null)}
         />
@@ -367,13 +377,13 @@ export function IconTile({
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onClick={onClick}
+        onClick={(event) => onClick?.(event)}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         title={description || (type === 'link' && url ? url : title)}
         className={`
           group absolute select-none
-          ${type === 'link' ? 'w-48 h-48 flex items-center justify-center' : 'text-center w-32'} cursor-grab active:cursor-grabbing
+          ${type === 'link' ? 'flex items-center justify-center' : 'text-center w-32'} cursor-grab active:cursor-grabbing
           outline-none focus:outline-none
           ${isDragging ? 'invisible' : ''}
         `}
@@ -387,10 +397,59 @@ export function IconTile({
           padding: HOVER_SAFE_PADDING,
           border: 'none',
           background: 'transparent',
-          zIndex: isSelected ? 20 : isDragging ? 30 : 10
+          width: type === 'link' ? `${tileWidth}px` : undefined,
+          height: type === 'link' ? `${tileHeight}px` : undefined,
+          width: type === 'link' ? `${tileWidth}px` : undefined,
+          zIndex: isSelected ? Z_INDEX.CONTENT_SELECTED : isDragging ? Z_INDEX.CONTENT_DRAGGING : Z_INDEX.CONTENT_DEFAULT
         } as any}
       >
         {type === 'link' ? (
+          videoEmbed ? (
+            <div className="w-full h-full flex flex-col gap-3">
+              <div
+                className="w-full rounded-lg overflow-hidden bg-black shadow-inner"
+                style={{
+                  aspectRatio: '16 / 9',
+                  boxShadow: '0 6px 14px rgba(0,0,0,0.18)',
+                  flexShrink: 0,
+                }}
+              >
+                <iframe
+                  src={videoEmbed.embedUrl}
+                  title={title || 'Video'}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 0,
+                    display: 'block',
+                    background: '#000',
+                  }}
+                />
+              </div>
+              <div className="w-full min-w-0 flex flex-col items-center gap-1 px-1">
+                {isRenaming ? (
+                  <input
+                    ref={renameInputRef}
+                    type="text"
+                    value={renamingValue}
+                    onChange={(e) => setRenamingValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    className="w-full text-sm font-semibold text-slate-800 text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none"
+                    style={{ pointerEvents: 'auto' } as any}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+                    {title}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
           <div
             className={`w-full h-full transition-all flex flex-col items-center justify-center gap-2 px-1 ${
               isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.01]'
@@ -414,11 +473,11 @@ export function IconTile({
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 />
-              ) : (
-                <>
-                  <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
-                    {title}
-                  </div>
+                ) : (
+                  <>
+                    <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+                      {title}
+                    </div>
                   {description && (
                     <div className="text-xs text-slate-500 line-clamp-3 mt-0.5 leading-snug text-center whitespace-pre-line">
                       {description}
@@ -433,6 +492,7 @@ export function IconTile({
               )}
             </div>
           </div>
+          )
         ) : (
           <div className="flex flex-col items-center gap-3" style={{ pointerEvents: 'none' }}>
             <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${
@@ -462,7 +522,8 @@ export function IconTile({
       {showContextMenu && (
         <>
           <div
-            className="fixed inset-0 z-50"
+            className="fixed inset-0"
+            style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
             onClick={handleCloseContextMenu}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -470,8 +531,12 @@ export function IconTile({
             }}
           />
           <div
-            className="fixed z-50 w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }}
+            className="fixed w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
+            style={{
+              zIndex: Z_INDEX.CONTEXT_MENU,
+              left: `${contextMenuPosition.x}px`,
+              top: `${contextMenuPosition.y}px`
+            }}
           >
             {type === 'link' && url && (
               <button
@@ -513,10 +578,10 @@ export function IconTile({
             </button>
             <button
               onClick={handleDeleteClick}
-              className="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
             >
-              <EyeOff size={14} />
-              Remove
+              <Trash2 size={14} />
+              Delete
             </button>
           </div>
         </>

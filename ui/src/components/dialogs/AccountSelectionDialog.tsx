@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Plus } from 'lucide-react';
+import { Z_INDEX } from '../../constants/zIndex';
 import { GmailIcon } from '../icons/GoogleServiceIcons';
 
 interface GoogleAccount {
@@ -29,12 +30,13 @@ export function AccountSelectionDialog({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
+        style={{ zIndex: Z_INDEX.MODAL_BACKDROP }}
         onClick={onClose}
       />
 
       {/* Dialog */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: Z_INDEX.MODAL_DIALOG }}>
         <div
           className="bg-white rounded-xl shadow-2xl w-full max-w-md"
           onClick={(e) => e.stopPropagation()}

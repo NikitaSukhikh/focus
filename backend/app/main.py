@@ -175,6 +175,9 @@ app.include_router(islands.router, prefix="/api/islands", tags=["Islands"])
 # Objects endpoints
 app.include_router(objects.router, prefix="/api", tags=["Objects"])
 
+# Thumbnails endpoints (must be before preview router to avoid route conflicts)
+app.include_router(thumbnails.router, prefix="/api/thumbnails", tags=["Thumbnails"])
+
 # Preview endpoints
 app.include_router(preview.router, prefix="/api", tags=["Preview"])
 
@@ -183,9 +186,6 @@ app.include_router(google_oauth.router, prefix="/api/google", tags=["Google"])
 
 # Internal Storage endpoints
 app.include_router(internal_storage.router, prefix="/api/internal-storage", tags=["Internal Storage"])
-
-# Thumbnails endpoints
-app.include_router(thumbnails.router, prefix="/api/thumbnails", tags=["Thumbnails"])
 
 # TODO: Add AI Assistant router when implemented
 # from app.api.routes import assistant

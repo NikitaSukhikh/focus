@@ -1,3 +1,5 @@
+import type React from 'react';
+
 export type IconKind =
   | 'link'
   | 'file'
@@ -53,7 +55,7 @@ export interface IconTileProps {
   faviconUrl?: string;
   filePath?: string;
   isSelected?: boolean;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent) => void;
   onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
   onRename?: (_newTitle: string) => void;

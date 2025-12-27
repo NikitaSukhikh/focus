@@ -8,5 +8,10 @@ Write-Host ""
 
 Set-Location (Join-Path $PSScriptRoot "ui")
 
+Write-Host "Syncing CSS tokens with current theme..." -ForegroundColor Cyan
+Write-Host "Optional but recommended - syncs tokens.css to prevent flash" -ForegroundColor Gray
+npm run sync-tokens
+Write-Host ""
+
 Write-Host "Launching Electron app..." -ForegroundColor Cyan
 npm run dev

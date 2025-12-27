@@ -93,6 +93,25 @@ app.whenReady().then(() => {
     app.quit();
   });
 
+  // Configure webview session to handle sites that block embedding
+  const webviewSession = session.fromPartition('persist:ocean-webview');
+  webviewSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = { ...details.responseHeaders };
+
+    // Remove headers that prevent embedding
+    delete headers['x-frame-options'];
+    delete headers['X-Frame-Options'];
+
+    // Modify CSP to allow framing
+    if (headers['content-security-policy']) {
+      headers['content-security-policy'] = headers['content-security-policy'].map(
+        (value) => value.replace(/frame-ancestors[^;]*(;|$)/g, '')
+      );
+    }
+
+    callback({ responseHeaders: headers });
+  });
+
   // Log where the webview's persistent storage lives so we can verify cookies survive restarts.
   void logWebviewStorageInfo();
 
@@ -113,7 +132,10 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('desktop:open-dialog', async (_event, options) => {
-  const browserWindow = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
+  const browserWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (!browserWindow) {
+    throw new Error('No browser window available');
+  }
   return dialog.showOpenDialog(browserWindow, {
     properties: ['openFile', 'multiSelections'],
     ...options,

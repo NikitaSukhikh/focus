@@ -92,6 +92,24 @@ class GoogleToken(Base):
     requires_reauth = Column(Boolean, nullable=False, default=False, server_default="0")
 
 
+class AssistantToken(Base):
+    """Assistant OAuth tokens table for Google services."""
+
+    __tablename__ = "assistant_tokens"
+
+    user_id = Column(String(100), primary_key=True)
+    access_token = Column(Text, nullable=False)
+    refresh_token = Column(Text, nullable=True)
+    token_uri = Column(String(255), nullable=True)
+    client_id = Column(String(255), nullable=True)
+    client_secret = Column(Text, nullable=True)
+    scopes = Column(JSON, nullable=False, default=list, server_default="[]")
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    requires_reauth = Column(Boolean, nullable=False, default=False, server_default="0")
+
+
 # Engine and session configuration
 settings = get_settings()
 settings.database.ensure_database_directory()

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
+import { Z_INDEX } from '../../../constants/zIndex';
+import { FONT_ROLES } from '../../../styles/fontManager';
 import { IslandItem } from './IslandItem';
 import { LeftSidebarProps } from './types';
 import { mapObjectToPayload, generateUniqueName } from './utils';
@@ -79,31 +81,62 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
       <aside
         className={`
           fixed top-0 left-0 h-full
-          bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900
-          border-r border-slate-700
+          glass-panel
           flex flex-col
           transition-transform duration-200 ease-in-out
-          z-[1100]
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         data-testid="left-sidebar"
         id="left-sidebar"
-        style={{ width: `${width}px` }}
+        style={{
+          width: `${width}px`,
+          zIndex: Z_INDEX.SIDEBAR,
+          background: 'var(--background-light)',
+          borderRight: '1px solid var(--color-border-strong)',
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-slate-100">Islands</h2>
+        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--primary-color)' }}>Islands</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={handleAddIsland}
-              className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-300 hover:text-slate-100 transition-colors"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{
+                color: 'var(--color-text-secondary)',
+                transition: 'all var(--transition-base)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               title="New Island"
             >
               <Plus size={18} />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-300 hover:text-slate-100 transition-colors"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{
+                color: 'var(--color-text-secondary)',
+                transition: 'all var(--transition-base)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               title="Close sidebar"
             >
               <ChevronLeft size={18} />
@@ -114,7 +147,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         {/* Islands List */}
         <div className="flex-1 overflow-y-auto sidebar-scroll p-3">
           {islands.length === 0 ? (
-            <div className="text-sm text-slate-400 text-center py-4">
+            <div className="text-center py-4" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>
               No islands yet. Click + to create one.
             </div>
           ) : (
@@ -143,8 +176,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
       {/* Resize handle */}
       {isOpen && (
         <div
-          className="fixed top-0 h-full w-1 cursor-col-resize z-40 hover:bg-blue-500/50 transition-colors"
-          style={{ left: `${width}px` }}
+          className="fixed top-0 h-full w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors"
+          style={{ zIndex: Z_INDEX.RESIZE_HANDLE, left: `${width}px` }}
           onMouseDown={onResizeStart}
         />
       )}

@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 
 from app.services.thumbnails.file_thumbnail import file_thumbnail_service
+from app.services.documents.document_preview import document_preview_service
 from app.core.logging import get_logger
 
 
@@ -119,4 +120,135 @@ async def check_thumbnail(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check thumbnail",
+        )
+
+
+@router.get(
+    "/full-image",
+    response_class=FileResponse,
+    summary="Get full-size image for preview",
+    description="Serve the full-size image file for preview display.",
+)
+async def get_full_image(
+    file_path: str = Query(..., description="Absolute path to the image file"),
+):
+    """
+    Serve the full-size image file for preview.
+
+    Args:
+        file_path: Absolute path to the image file
+
+    Returns:
+        FileResponse: The full-size image
+
+    Raises:
+        HTTPException: If file not found or not a supported image
+    """
+    try:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {file_path}",
+            )
+
+        if not path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {file_path}",
+            )
+
+        # Check if file is an image
+        if not file_thumbnail_service.is_image(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported image format",
+            )
+
+        # Determine media type from file extension
+        import mimetypes
+        media_type, _ = mimetypes.guess_type(file_path)
+        if not media_type or not media_type.startswith('image/'):
+            media_type = 'image/jpeg'
+
+        logger.debug(f"Serving full image: {file_path}")
+
+        return FileResponse(
+            path=str(path),
+            media_type=media_type,
+            filename=path.name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve full image: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to serve image",
+        )
+
+
+@router.get(
+    "/document-preview",
+    response_class=FileResponse,
+    summary="Get document preview as HTML",
+    description="Convert and serve document files (docx, doc, odt) as HTML for preview.",
+)
+async def get_document_preview(
+    file_path: str = Query(..., description="Absolute path to the document file"),
+):
+    """
+    Convert a document file to HTML and serve for preview.
+
+    Args:
+        file_path: Absolute path to the document file
+
+    Returns:
+        FileResponse: HTML preview of the document
+
+    Raises:
+        HTTPException: If file not found or not a supported document
+    """
+    try:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {file_path}",
+            )
+
+        if not path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {file_path}",
+            )
+
+        # Check if file is a supported document
+        if not document_preview_service.is_document(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported document format",
+            )
+
+        # Convert document to HTML
+        html_path = document_preview_service.convert_docx_to_html(file_path)
+
+        logger.debug(f"Serving document preview: {html_path}")
+
+        return FileResponse(
+            path=html_path,
+            media_type="text/html",
+            filename=f"{path.stem}_preview.html",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate document preview: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate document preview",
         )
