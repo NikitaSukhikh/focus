@@ -19,6 +19,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
   onCancel,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -38,6 +39,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
     // Escape to cancel
     if (e.key === 'Escape') {
       e.preventDefault();
+      isSavingRef.current = true;
       onCancel();
       return;
     }
@@ -45,18 +47,33 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
     // Ctrl/Cmd + Enter to save
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
+      isSavingRef.current = true;
       onSave();
+      // Blur to exit edit mode after explicit save
+      requestAnimationFrame(() => {
+        textareaRef.current?.blur();
+      });
       return;
     }
   };
 
   const handleBlur = () => {
-    // Auto-save on blur if there's content
-    if (content.trim()) {
-      onSave();
-    } else {
-      onCancel();
-    }
+    // Prevent double-save if already saving
+    if (isSavingRef.current) return;
+
+    // Use setTimeout to ensure blur happens after any click events
+    setTimeout(() => {
+      if (isSavingRef.current) return;
+
+      isSavingRef.current = true;
+
+      // Auto-save on blur if there's content
+      if (content.trim()) {
+        onSave();
+      } else {
+        onCancel();
+      }
+    }, 0);
   };
 
   return (
@@ -76,13 +93,16 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         border: 'none',
         outline: 'none',
         resize: 'none',
-        padding: '0',
+        padding: '6px 8px',
         margin: '0',
         fontFamily: 'inherit',
         fontSize: '16px',
         fontWeight: 500,
         lineHeight: '1.6',
-        background: 'transparent',
+        background: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        border: '1px solid var(--color-border-strong)',
         color: 'var(--color-text-primary)',
         width: 'auto',
         minWidth: '200px',
