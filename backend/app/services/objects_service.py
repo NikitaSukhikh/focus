@@ -100,7 +100,7 @@ class ObjectsService:
 
     # Configuration
     MAX_OBJECTS_PER_ISLAND = 500  # Maximum objects per island
-    MAX_TITLE_LENGTH = 200
+    MAX_TITLE_LENGTH = 400
     MIN_TITLE_LENGTH = 1
     MAX_TAG_LENGTH = 50
     MAX_TAGS_COUNT = 20

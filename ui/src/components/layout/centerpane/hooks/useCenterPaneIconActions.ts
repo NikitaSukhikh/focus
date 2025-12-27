@@ -11,6 +11,7 @@
 
 import { objectsApi } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
+import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 
 interface IconActionsParams {
@@ -19,6 +20,18 @@ interface IconActionsParams {
 }
 
 export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: IconActionsParams) => {
+  const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) => {
+    const targetUrl = resolvedUrl || originalUrl;
+    const urlLower = (targetUrl || '').toLowerCase();
+    const isAmazon = urlLower.includes('amazon.') || urlLower.includes('amzn.to') || urlLower.includes('a.co/');
+
+    if (isAmazon && metadata?.og_image) {
+      return metadata.og_image;
+    }
+
+    return metadata?.favicon_url || buildFaviconUrl(targetUrl);
+  };
+
   const handleIconRename = (iconId: string, newTitle: string) => {
     if (!selectedIsland) return;
     setIconsByIsland((prev) => ({
@@ -53,18 +66,23 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
         const metadata = await response.json();
         console.log('[CENTER PANE] Fetched metadata for refresh:', metadata);
 
-        const newTitle = metadata.title || metadata.og_title || url;
+        const resolvedUrl = metadata.resolved_url || url;
+        const rawTitle = metadata.title || metadata.og_title || resolvedUrl;
+        const newTitle = truncateLinkTitle(rawTitle);
         const newDescription = metadata.description || metadata.og_description || '';
-        const newFaviconUrl = metadata.favicon_url || buildFaviconUrl(url);
+        const newFaviconUrl = pickFavicon(metadata, resolvedUrl, url);
+        console.log('[CENTER PANE] Using favicon URL:', newFaviconUrl);
 
         setIconsByIsland((prev) => ({
           ...prev,
           [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-            i.id === iconId ? { ...i, title: newTitle, description: newDescription, faviconUrl: newFaviconUrl } : i
+            i.id === iconId
+              ? { ...i, title: newTitle, description: newDescription, faviconUrl: newFaviconUrl, url: resolvedUrl }
+              : i
           ),
         }));
 
-        await objectsApi.updateLink(iconId, url, newTitle, newDescription, newFaviconUrl);
+        await objectsApi.updateLink(iconId, resolvedUrl, newTitle, newDescription, newFaviconUrl);
       }
     } catch (err) {
       console.error('[CENTER PANE] Failed to refresh metadata:', err);
