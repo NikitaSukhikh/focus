@@ -6,6 +6,8 @@ import { FONT_ROLES } from '../../../styles/fontManager';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
+import { AddTextDialog } from '../../dialogs/AddTextDialog';
+import { InlineTextEditor } from './InlineTextEditor';
 import { useIslandStore } from '../../../stores/islandStore';
 import { Loader2 } from 'lucide-react';
 
@@ -51,6 +53,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       action: () => {
         if (contextMenu && paneRef.current) {
           logic.openAddLinkDialog(contextMenu.x, contextMenu.y);
+        }
+      }
+    },
+    {
+      label: 'Add note',
+      action: () => {
+        if (contextMenu && paneRef.current) {
+          logic.openAddTextDialog(contextMenu.x, contextMenu.y);
         }
       }
     },
@@ -103,6 +113,23 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     setContextMenu({ x, y, index: 0 });
   };
 
+  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-icon-tile]')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!paneRef.current) return;
+    const rect = paneRef.current.getBoundingClientRect();
+
+    // Calculate position and apply offset to align cursor with caret
+    const x = e.clientX - rect.left - 26;
+    const y = e.clientY - rect.top - 34;
+
+    logic.openInlineEditor(x, y);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full" style={{ background: 'var(--background-dark)' }}>
       {/* Canvas - Freeform icons */}
@@ -121,6 +148,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onDrop={logic.handleDrop}
         onClick={(e) => logic.handleCanvasClick(e, onCanvasEmptyClick)}
         onContextMenu={handleCanvasContextMenu}
+        onDoubleClick={handleCanvasDoubleClick}
       >
         {/* Loading Spinner Overlay */}
         {isDuplicating && (
@@ -131,7 +159,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backgroundColor: 'rgba(107, 107, 107, 0.5)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -174,6 +202,18 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                 pointerEvents: 'none',
                 zIndex: Z_INDEX.CONTENT_DRAGGING,
               }}
+            />
+          )}
+
+          {/* Inline Text Editor */}
+          {logic.inlineEditorState.isActive && (
+            <InlineTextEditor
+              x={logic.inlineEditorState.x}
+              y={logic.inlineEditorState.y}
+              content={logic.inlineEditorState.content}
+              onContentChange={logic.updateInlineContent}
+              onSave={logic.saveInlineNote}
+              onCancel={logic.cancelInlineEdit}
             />
           )}
 
@@ -228,6 +268,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               description={icon.description}
               faviconUrl={icon.faviconUrl}
               filePath={icon.filePath}
+              content={icon.content}
               isSelected={logic.selectedIconIds.includes(icon.id)}
               onClick={(event) => {
                 const isToggle = event.metaKey || event.ctrlKey;
@@ -245,6 +286,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                       tileId: single.id,
                       filePath: single.filePath,
                       type: single.type,
+                      content: single.content,
                     });
                   }
                 } else {
@@ -255,12 +297,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                     tileId: icon.id,
                     filePath: icon.filePath,
                     type: icon.type,
+                    content: icon.content,
                   });
                 }
               }}
               onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
               onDelete={() => logic.handleIconDelete(icon.id)}
               onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
+              onEdit={(x, y, content, id) => logic.openInlineEditor(x, y, content, id)}
             />
           ))}
         </div>
@@ -329,6 +373,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         isOpen={logic.isAddLinkDialogOpen}
         onClose={logic.closeAddLinkDialog}
         onAdd={logic.handleAddLink}
+      />
+
+      {/* Add Text Dialog */}
+      <AddTextDialog
+        isOpen={logic.isAddTextDialogOpen}
+        onClose={logic.closeAddTextDialog}
+        onAdd={logic.handleAddText}
       />
     </div>
   );

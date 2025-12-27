@@ -20,6 +20,8 @@ interface IslandStore {
   setDuplicating: (_isDuplicating: boolean) => void;
 }
 
+const STORAGE_KEY = 'ocean:selectedIslandId';
+
 export const useIslandStore = create<IslandStore>((set, get) => ({
   // Track latest fetch to avoid older responses overwriting newer state (e.g., create followed by initial load).
   _fetchVersion: 0,
@@ -32,7 +34,9 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
     const { initialized } = get();
     if (!initialized) {
       set({ initialized: true });
-      await get().loadIslands();
+      // Try to restore the last selected island from localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      await get().loadIslands(stored || undefined);
     }
   },
 

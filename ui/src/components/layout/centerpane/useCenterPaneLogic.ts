@@ -19,6 +19,8 @@ import { useCenterPaneDragDrop } from './hooks/useCenterPaneDragDrop';
 import { useCenterPaneIconActions } from './hooks/useCenterPaneIconActions';
 import { useCenterPaneFileHandling } from './hooks/useCenterPaneFileHandling';
 import { useCenterPaneLinkCreation } from './hooks/useCenterPaneLinkCreation';
+import { useCenterPaneTextCreation } from './hooks/useCenterPaneTextCreation';
+import { useInlineTextEditor } from './hooks/useInlineTextEditor';
 
 export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>) => {
   // State management
@@ -78,6 +80,20 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     setIconsByIsland,
   });
 
+  // Text creation
+  const textCreation = useCenterPaneTextCreation({
+    selectedIsland,
+    setIconsByIsland,
+    clampToBoundaries,
+  });
+
+  // Inline text editor
+  const inlineEditor = useInlineTextEditor({
+    selectedIsland,
+    setIconsByIsland,
+    clampToBoundaries,
+  });
+
   // Canvas click with proper parameters
   const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>, onCanvasEmptyClick?: () => void) => {
     iconActions.handleCanvasClick(event, onCanvasEmptyClick, setSelectedIconIds);
@@ -118,5 +134,18 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     openAddLinkDialog: linkCreation.openAddLinkDialog,
     handleAddLink: linkCreation.handleAddLink,
     closeAddLinkDialog: linkCreation.closeAddLinkDialog,
+
+    // Text creation
+    isAddTextDialogOpen: textCreation.isAddTextDialogOpen,
+    openAddTextDialog: textCreation.openAddTextDialog,
+    handleAddText: textCreation.handleAddText,
+    closeAddTextDialog: textCreation.closeAddTextDialog,
+
+    // Inline text editor
+    inlineEditorState: inlineEditor.editorState,
+    openInlineEditor: inlineEditor.openInlineEditor,
+    updateInlineContent: inlineEditor.updateContent,
+    saveInlineNote: inlineEditor.saveNote,
+    cancelInlineEdit: inlineEditor.cancelEdit,
   };
 };

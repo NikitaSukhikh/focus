@@ -4,7 +4,7 @@ import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../ic
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
 import { FALLBACK_FAVICON } from '../../../utils/favicon';
-import { truncateDisplayUrl } from '../../../utils/text';
+import { truncateDisplayUrl, truncateDisplayPath } from '../../../utils/text';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { detectFileType, canShowImageThumbnail } from '../../../utils/fileTypes';
 import { getFileTypeIcon } from '../../icons/FileTypeIcons';
@@ -29,12 +29,14 @@ export function IconTile({
   description,
   faviconUrl,
   filePath,
+  content,
   isSelected,
   onClick,
   onPositionChange: _onPositionChange,
   onDelete,
   onRename,
-  onRefreshMetadata
+  onRefreshMetadata,
+  onEdit
 }: IconTileProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [skipTransition, setSkipTransition] = useState(false);
@@ -214,6 +216,13 @@ export function IconTile({
 
   const handleDoubleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Handle text editing
+    if (type === 'text' && content !== undefined && onEdit) {
+      onEdit(x, y, content, id);
+      return;
+    }
+
     await openLinkExternally();
   };
 
@@ -241,6 +250,8 @@ export function IconTile({
       handleAccountDialogClose();
     }
   };
+
+  const hoverScaleClass = isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.02]';
 
   const isGoogleService = (url: string): boolean => {
     if (!url) return false;
@@ -359,12 +370,10 @@ export function IconTile({
     // Show product/og image or favicon for links
     if (type === 'link') {
       const size = 40; // base favicon size
-      const urlLower = (url || '').toLowerCase();
-      const isAmazonProduct = urlLower.includes('amazon.') || urlLower.includes('amzn.to') || urlLower.includes('a.co/');
       const faviconLower = (faviconUrl || '').toLowerCase();
       const looksLikeFavicon = faviconLower.endsWith('.ico') || faviconLower.includes('favicon');
-      const isProductImage = isAmazonProduct && faviconUrl && !looksLikeFavicon;
-      const dimension = isProductImage ? size * 2 : size;
+      const isLargeImage = faviconUrl && !looksLikeFavicon && !faviconLower.startsWith('data:image');
+      const dimension = isLargeImage ? size * 2 : size;
       return (
         <img
           src={faviconUrl || FALLBACK_FAVICON}
@@ -396,31 +405,35 @@ export function IconTile({
         onClick={(event) => onClick?.(event)}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        title={description || (type === 'link' && url ? url : title)}
+        title={
+          description ||
+          (type === 'file' && filePath ? filePath : undefined) ||
+          (type === 'link' && url ? url : title)
+        }
         className={`
           group absolute select-none
-          ${type === 'link' ? 'flex items-center justify-center' : 'text-center w-32'} cursor-grab active:cursor-grabbing
+          ${type === 'link' ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing
           outline-none focus:outline-none
           ${isDragging ? 'invisible' : ''}
         `}
         style={{
           top: y,
           left: x,
-          transform: 'translate(-50%, -50%)',
+          transform: type === 'text' ? 'translate(0, 0)' : 'translate(-50%, -50%)',
           transition: skipTransition ? 'none' : 'all 0.2s',
           opacity: isDragging ? 0 : 1,
           userSelect: 'none',
-          padding: HOVER_SAFE_PADDING,
+          padding: type === 'text' ? 0 : HOVER_SAFE_PADDING,
           border: 'none',
           background: 'transparent',
-          width: type === 'link' ? `${tileWidth}px` : undefined,
-          height: type === 'link' ? `${tileHeight}px` : undefined,
+          width: type === 'link' ? `${tileWidth}px` : type === 'text' ? 'auto' : undefined,
+          height: type === 'link' ? `${tileHeight}px` : type === 'text' ? 'auto' : undefined,
           zIndex: isSelected ? Z_INDEX.CONTENT_SELECTED : isDragging ? Z_INDEX.CONTENT_DRAGGING : Z_INDEX.CONTENT_DEFAULT
         } as any}
       >
         {type === 'link' ? (
           videoEmbed ? (
-            <div className="w-full h-full flex flex-col gap-3">
+            <div className={`w-full h-full flex flex-col gap-3 transition-transform duration-150 ${hoverScaleClass}`}>
               <div
                 className="w-full rounded-lg overflow-hidden bg-black shadow-inner"
                 style={{
@@ -466,9 +479,7 @@ export function IconTile({
             </div>
           ) : (
           <div
-            className={`w-full h-full transition-all flex flex-col items-center justify-center gap-2 px-1 ${
-              isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.01]'
-            }`}
+            className={`w-full h-full transition-transform duration-150 flex flex-col items-center justify-center gap-2 px-1 ${hoverScaleClass}`}
             style={{ pointerEvents: 'none' }}
           >
             <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
@@ -508,8 +519,27 @@ export function IconTile({
             </div>
           </div>
           )
+        ) : type === 'text' && content ? (
+          <div
+            className={`transition-transform duration-150 ${hoverScaleClass}`}
+            style={{
+              pointerEvents: 'none',
+              maxWidth: '600px',
+              textAlign: 'left',
+            }}
+          >
+            <div
+              className={`whitespace-pre-wrap leading-relaxed ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}
+              style={{
+                fontSize: '16px',
+                lineHeight: '1.6',
+              }}
+            >
+              {content}
+            </div>
+          </div>
         ) : (
-          <div className="flex flex-col items-center gap-3" style={{ pointerEvents: 'none' }}>
+          <div className={`flex flex-col items-center gap-3 transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none' }}>
             <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${
               isSelected ? 'opacity-80' : ''
             }`}>
@@ -528,7 +558,14 @@ export function IconTile({
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <div className="text-sm text-slate-700 truncate w-full px-1">{title}</div>
+              <>
+                <div className="text-sm text-slate-700 truncate w-full px-1">{title}</div>
+                {filePath && (
+                  <div className="text-xs text-center whitespace-pre-line break-words leading-snug line-clamp-2 text-slate-400">
+                    {truncateDisplayPath(filePath)}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

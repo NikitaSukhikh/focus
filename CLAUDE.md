@@ -9,4 +9,4 @@ Don't write summaries anywhere including conversation with Claude after task is 
 Stay modular and concise. Don't be verbose unless being explicitly asked.
 
 While implementing functionality or business logic, always follow pattern 'Single Responsibility'. One hook for one functionality.
-Create orchetrator files to orchestrate hooks.
+Create orchetrator files if needed to orchestrate hooks.

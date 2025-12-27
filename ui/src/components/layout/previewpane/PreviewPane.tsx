@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { openExternalUrl } from '../../../platform';
@@ -16,10 +16,13 @@ interface PreviewPaneProps {
   tileId?: string;
   filePath?: string;
   type?: string;
+  content?: string;
 }
 
-export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: PreviewPaneProps) {
+export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content }: PreviewPaneProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [documentLoading, setDocumentLoading] = useState(false);
 
   const collapsed = !isOpen;
 
@@ -45,6 +48,46 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: Pre
   const hasNonWebviewPreview = imagePreviewUrl || documentPreviewUrl || videoEmbed;
   // Always keep webview logic active when pane is open to prevent state loss
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
+
+  // Reset document error state when preview changes
+  useEffect(() => {
+    setDocumentError(null);
+    setDocumentLoading(!!isDocumentFile);
+
+    // Set a timeout to clear loading state if iframe doesn't fire onLoad
+    // This handles cases where iframe loads but onLoad doesn't trigger
+    if (isDocumentFile) {
+      const timer = setTimeout(() => {
+        setDocumentLoading(false);
+      }, 2000); // Give it 2 seconds to load
+
+      return () => clearTimeout(timer);
+    }
+  }, [documentPreviewUrl, isDocumentFile]);
+
+  // Handle document preview load
+  const handleDocumentLoad = () => {
+    setDocumentLoading(false);
+    setDocumentError(null);
+  };
+
+  // Handle document preview error
+  const handleDocumentError = async () => {
+    setDocumentLoading(false);
+    if (documentPreviewUrl) {
+      try {
+        const response = await fetch(documentPreviewUrl);
+        if (!response.ok) {
+          const errorText = await response.text();
+          setDocumentError(errorText || 'Failed to load document preview');
+        } else {
+          setDocumentError('Failed to render document preview');
+        }
+      } catch (err) {
+        setDocumentError('Failed to load document preview');
+      }
+    }
+  };
 
   return (
     <aside
@@ -113,9 +156,26 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: Pre
       </div>
 
       <div className="flex-1 overflow-auto relative flex flex-col custom-scroll" style={{ background: 'var(--background-dark)', overflowX: 'auto', overflowY: 'auto' }}>
-        {!url && !imagePreviewUrl && !documentPreviewUrl && (
+        {!url && !imagePreviewUrl && !documentPreviewUrl && !content && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW_EMPTY }}>
             <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>No preview available.</div>
+          </div>
+        )}
+
+        {/* Text note preview */}
+        {type === 'text' && content && (
+          <div className="flex-1 overflow-auto bg-white">
+            <div className="p-8 max-w-4xl mx-auto">
+              <h1 className="text-3xl font-bold mb-6" style={{ ...FONT_ROLES.paneTitle, fontSize: '28px' }}>
+                {title || 'Untitled Note'}
+              </h1>
+              <div
+                className="whitespace-pre-wrap text-gray-800 leading-loose"
+                style={{ ...FONT_ROLES.paneBody, fontSize: '18px', lineHeight: '1.8' }}
+              >
+                {content}
+              </div>
+            </div>
           </div>
         )}
 
@@ -132,12 +192,37 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: Pre
 
         {/* Document preview */}
         {documentPreviewUrl && (
-          <iframe
-            src={documentPreviewUrl}
-            title={title || 'Document preview'}
-            className="flex-1 w-full border-0"
-            sandbox="allow-same-origin"
-          />
+          <div className="flex-1 w-full relative">
+            {documentLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW }}>
+                <div style={{ ...FONT_ROLES.paneBody, color: 'var(--color-text-muted)' }}>Loading document...</div>
+              </div>
+            )}
+            {documentError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW }}>
+                <div className="text-red-600" style={FONT_ROLES.paneBody}>Document Preview Error</div>
+                <div className="text-slate-600 max-w-md text-center break-all px-4" style={FONT_ROLES.paneBodyMuted}>
+                  {documentError}
+                </div>
+                <div className="text-slate-400 max-w-md text-center break-all px-4 text-xs" style={FONT_ROLES.paneBodyMuted}>
+                  {filePath}
+                </div>
+              </div>
+            )}
+            {!documentError && (
+              <iframe
+                src={documentPreviewUrl}
+                title={title || 'Document preview'}
+                className="w-full h-full border-0"
+                onLoad={handleDocumentLoad}
+                onError={handleDocumentError}
+                onContextMenu={(e) => {
+                  // Allow default context menu behavior
+                  e.stopPropagation();
+                }}
+              />
+            )}
+          </div>
         )}
 
         {/* Video embed preview (YouTube/Vimeo) */}
@@ -180,7 +265,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type }: Pre
             ref={webviewRef}
             src="about:blank"
             partition="persist:ocean-webview"
-            allowpopups="true"
+            allowpopups={true as any}
             style={{
               flex: 1,
               width: '100%',

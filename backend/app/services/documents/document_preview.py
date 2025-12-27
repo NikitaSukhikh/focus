@@ -118,8 +118,8 @@ class DocumentPreviewService:
 
         # Convert document to HTML
         try:
-            # Handle .doc and .odt files by converting to .docx first
-            if path.suffix.lower() in ['.doc', '.odt']:
+            # Handle .odt files by converting to .docx first using pandoc
+            if path.suffix.lower() == '.odt':
                 if not PANDOC_AVAILABLE:
                     raise ValueError(
                         f"Cannot preview {path.suffix} files. Pandoc is not installed. "
@@ -130,14 +130,11 @@ class DocumentPreviewService:
                 # Convert to .docx using pandoc
                 temp_docx_path = self.cache_dir / f"{cache_key}_temp.docx"
                 try:
-                    # Determine the input format
-                    input_format = 'doc' if path.suffix.lower() == '.doc' else 'odt'
-
-                    # Ask pandoc to convert to docx, explicitly passing the source format
+                    # Ask pandoc to convert to docx
                     pypandoc.convert_file(
                         str(path),
                         'docx',
-                        format=input_format,
+                        format='odt',
                         outputfile=str(temp_docx_path),
                     )
 
@@ -154,6 +151,99 @@ class DocumentPreviewService:
                     # Clean up temp file
                     if temp_docx_path.exists():
                         temp_docx_path.unlink()
+
+            # Handle .doc files by trying Word COM automation (Windows only)
+            elif path.suffix.lower() == '.doc':
+                temp_docx_path = self.cache_dir / f"{cache_key}_temp.docx"
+                conversion_successful = False
+
+                try:
+                    # Try using Word COM automation on Windows
+                    try:
+                        import win32com.client
+                        import pythoncom
+
+                        pythoncom.CoInitialize()
+                        try:
+                            word = win32com.client.Dispatch("Word.Application")
+                            word.Visible = False
+
+                            # Open the .doc file
+                            doc_com = word.Documents.Open(str(path.absolute()))
+
+                            # Save as .docx (FileFormat=16 is for docx)
+                            doc_com.SaveAs2(str(temp_docx_path.absolute()), FileFormat=16)
+                            doc_com.Close()
+                            word.Quit()
+
+                            conversion_successful = True
+                        finally:
+                            pythoncom.CoUninitialize()
+
+                    except (ImportError, Exception) as word_error:
+                        # If Word COM fails, try LibreOffice
+                        import subprocess
+
+                        libreoffice_paths = [
+                            r"C:\Program Files\LibreOffice\program\soffice.exe",
+                            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+                        ]
+
+                        soffice_path = None
+                        for lo_path in libreoffice_paths:
+                            if Path(lo_path).exists():
+                                soffice_path = lo_path
+                                break
+
+                        if soffice_path:
+                            result = subprocess.run(
+                                [
+                                    soffice_path,
+                                    '--headless',
+                                    '--convert-to', 'docx',
+                                    '--outdir', str(self.cache_dir),
+                                    str(path)
+                                ],
+                                capture_output=True,
+                                text=True,
+                                timeout=30
+                            )
+
+                            converted_file = self.cache_dir / f"{path.stem}.docx"
+                            if converted_file.exists():
+                                temp_docx_path = converted_file
+                                conversion_successful = True
+
+                        if not conversion_successful:
+                            raise ValueError(
+                                f"Preview of old .doc files requires Microsoft Word or LibreOffice. "
+                                f"Please install one of them, or convert the file to .docx format."
+                            )
+
+                    if not temp_docx_path.exists() or not zipfile.is_zipfile(temp_docx_path):
+                        raise ValueError(
+                            f"Failed to convert .doc file to .docx format. "
+                            f"The file may be corrupted or in an unsupported format."
+                        )
+
+                    doc = Document(temp_docx_path)
+
+                except subprocess.TimeoutExpired:
+                    if temp_docx_path.exists():
+                        temp_docx_path.unlink()
+                    raise ValueError("Conversion timeout - file may be too large or corrupted")
+                except Exception as e:
+                    if temp_docx_path and temp_docx_path.exists():
+                        temp_docx_path.unlink()
+                    if "requires Microsoft Word or LibreOffice" in str(e) or "Failed to convert" in str(e):
+                        raise
+                    else:
+                        raise ValueError(f"Failed to convert .doc file: {e}")
+                else:
+                    # Clean up temp file
+                    if temp_docx_path and temp_docx_path.exists():
+                        temp_docx_path.unlink()
+
             else:
                 # .docx files can be opened directly
                 doc = Document(path)
@@ -195,19 +285,19 @@ class DocumentPreviewService:
             '<meta charset="utf-8">',
             f'<title>{filename}</title>',
             '<style>',
-            'body { font-family: "Segoe UI", Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #333; background: #f9fafb; }',
+            'body { font-family: "Segoe UI", Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #333; background: #f9fafb; user-select: text; -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; }',
             'h1 { font-size: 2em; margin-bottom: 0.5em; color: #1e40af; }',
             'h2 { font-size: 1.5em; margin-top: 1em; margin-bottom: 0.5em; color: #1e40af; }',
             'h3 { font-size: 1.2em; margin-top: 0.8em; margin-bottom: 0.4em; color: #3b82f6; }',
-            'p { margin: 0.5em 0; }',
+            'p { margin: 0.5em 0; user-select: text; cursor: text; }',
             'table { border-collapse: collapse; width: 100%; margin: 1em 0; background: white; }',
-            'td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }',
+            'td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; user-select: text; }',
             'th { background-color: #f1f5f9; font-weight: 600; }',
             'ul, ol { margin: 0.5em 0; padding-left: 2em; }',
             'li { margin: 0.3em 0; }',
             'strong { font-weight: 600; }',
             'em { font-style: italic; }',
-            '.document-container { background: white; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 8px; }',
+            '.document-container { background: white; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 8px; user-select: text; }',
             '</style>',
             '</head>',
             '<body>',
@@ -248,11 +338,15 @@ class DocumentPreviewService:
         # Detect heading level
         if paragraph.style and paragraph.style.name:
             style_name = paragraph.style.name.lower()
-            if 'heading 1' in style_name:
+            if 'title' in style_name or 'heading 1' in style_name:
                 return f'<h1>{self._escape_html(text)}</h1>'
-            elif 'heading 2' in style_name:
+            elif 'heading 2' in style_name or 'subtitle' in style_name:
                 return f'<h2>{self._escape_html(text)}</h2>'
             elif 'heading 3' in style_name:
+                return f'<h3>{self._escape_html(text)}</h3>'
+            elif 'heading 4' in style_name:
+                return f'<h3>{self._escape_html(text)}</h3>'
+            elif 'heading 5' in style_name or 'heading 6' in style_name:
                 return f'<h3>{self._escape_html(text)}</h3>'
 
         # Process runs for formatting
