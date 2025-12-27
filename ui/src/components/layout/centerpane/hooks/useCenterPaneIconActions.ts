@@ -13,6 +13,7 @@ import { objectsApi } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
+import { useDeletedTilesStore } from '../../../../stores/deletedTilesStore';
 
 interface IconActionsParams {
   selectedIsland: any;
@@ -20,15 +21,19 @@ interface IconActionsParams {
 }
 
 export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: IconActionsParams) => {
+  const addDeletedTile = useDeletedTilesStore((state) => state.addDeletedTile);
+
+  const looksLikeFavicon = (src?: string) => {
+    const s = (src || '').toLowerCase();
+    return s.endsWith('.ico') || s.includes('favicon');
+  };
+
   const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) => {
     const targetUrl = resolvedUrl || originalUrl;
-    const urlLower = (targetUrl || '').toLowerCase();
-    const isAmazon = urlLower.includes('amazon.') || urlLower.includes('amzn.to') || urlLower.includes('a.co/');
-
-    if (isAmazon && metadata?.og_image) {
-      return metadata.og_image;
+    const candidateImage = metadata?.og_image || metadata?.thumbnail_url || metadata?.image;
+    if (candidateImage && !looksLikeFavicon(candidateImage)) {
+      return candidateImage;
     }
-
     return metadata?.favicon_url || buildFaviconUrl(targetUrl);
   };
 
@@ -47,10 +52,28 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
 
   const handleIconDelete = (iconId: string) => {
     if (!selectedIsland) return;
-    setIconsByIsland((prev) => ({
-      ...prev,
-      [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== iconId),
-    }));
+
+    // Find the tile to save to history
+    const tileToDelete = (setIconsByIsland as any).__currentValue?.[selectedIsland.id]?.find((i: DroppedIcon) => i.id === iconId);
+
+    setIconsByIsland((prev) => {
+      const tile = (prev[selectedIsland.id] || []).find((i) => i.id === iconId);
+      if (tile) {
+        addDeletedTile({
+          ...tile,
+          islandId: selectedIsland.id,
+        });
+      }
+
+      // Dispatch event before deleting to notify preview pane
+      window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: iconId } }));
+
+      return {
+        ...prev,
+        [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== iconId),
+      };
+    });
+
     objectsApi.delete(iconId).catch((err) => {
       console.error('Failed to delete object:', err);
     });

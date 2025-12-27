@@ -25,6 +25,7 @@ export interface DroppedIcon {
   faviconUrl?: string;
   service?: string;
   filePath?: string; // For file objects - path to original file
+  content?: string; // For text type objects - stores note content
 }
 
 export interface PreviewTarget {
@@ -33,6 +34,7 @@ export interface PreviewTarget {
   tileId?: string;
   filePath?: string;
   type?: IconKind;
+  content?: string; // For text type objects - note content for preview
 }
 
 export interface CenterPaneProps {
@@ -54,10 +56,12 @@ export interface IconTileProps {
   description?: string;
   faviconUrl?: string;
   filePath?: string;
+  content?: string;
   isSelected?: boolean;
   onClick?: (event: React.MouseEvent) => void;
   onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
   onRename?: (_newTitle: string) => void;
   onRefreshMetadata?: () => void;
+  onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
 }
