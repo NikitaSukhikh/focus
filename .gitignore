@@ -9,6 +9,10 @@ node_modules
 # Production
 /dist
 /build
+ui/out/
+backend/pandoc-*.msi
+*.exe
+*.nupkg
 
 # Misc
 .DS_Store
@@ -24,6 +28,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+logs/
+*.log
 
 # Editor
 .vscode/*
@@ -40,6 +46,10 @@ lerna-debug.log*
 # Python
 __pycache__/, *.pyc
 .venv/, venv/
+
+# Database
+*.db
+storage/local_files/data/
 
 # Claude Code files
 .claude

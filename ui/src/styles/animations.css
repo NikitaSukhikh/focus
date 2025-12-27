@@ -1,0 +1,105 @@
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    text-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow), 0 0 30px var(--glow);
+  }
+  50% {
+    text-shadow: 0 0 20px var(--glow), 0 0 30px var(--glow), 0 0 40px var(--glow),
+      0 0 50px var(--glow);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes glow-box {
+  0%,
+  100% {
+    box-shadow: 0 0 15px var(--shadow), 0 0 30px var(--shadow);
+  }
+  50% {
+    box-shadow: 0 0 25px var(--glow), 0 0 50px var(--shadow), 0 0 75px var(--shadow);
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.anim-fade-in {
+  animation: fade-in var(--transition-base);
+}
+
+.anim-slide-up {
+  animation: slide-up var(--transition-base);
+}
+
+.anim-scale-in {
+  animation: scale-in var(--transition-fast);
+}
+
+.anim-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.anim-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.anim-glow-box {
+  animation: glow-box 3s ease-in-out infinite;
+}

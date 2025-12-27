@@ -1,0 +1,76 @@
+/*
+ * CSS Design Tokens
+ *
+ * These tokens provide initial CSS variable values that are loaded before JavaScript runs.
+ * They are automatically overridden by the theme switcher in main.tsx based on CURRENT_APP_STYLE.
+ *
+ * To update these values to match your default theme:
+ * 1. Set CURRENT_APP_STYLE in ui/src/config/appStyle.ts
+ * 2. Run: npm run sync-tokens (or manually update this file to match the theme)
+ *
+ * Current tokens: DEFAULT_STYLE (white/black)
+ */
+
+:root {
+  /* Primary Colors */
+  --primary-color: #2196f3;
+  --primary-dark: #1976d2;
+  --primary-light: #64b5f6;
+
+  /* Backgrounds */
+  --background-dark: #ffffff;
+  --background-light: #f5f5f5;
+  --color-surface-page: #ffffff;
+  --color-surface-panel: rgba(255, 255, 255, 0.9);
+  --color-surface-muted: rgba(245, 245, 245, 0.8);
+
+  /* Text */
+  --text-color: #212121;
+  --color-text-primary: #212121;
+  --color-text-secondary: rgba(0, 0, 0, 0.7);
+  --color-text-muted: rgba(0, 0, 0, 0.5);
+
+  /* Borders */
+  --color-border-strong: rgba(0, 0, 0, 0.2);
+  --color-border-subtle: rgba(0, 0, 0, 0.1);
+
+  /* Accents */
+  --accent-color: #ff9800;
+  --color-accent: #2196f3;
+  --color-accent-strong: #1976d2;
+  --secondary-color: #757575;
+
+  /* Status Colors */
+  --success-color: #4caf50;
+  --success: #4caf50;
+  --error-color: #f44336;
+  --error: #f44336;
+  --warning-color: #ff9800;
+  --warning: #ff9800;
+  --info-color: #2196f3;
+  --info: #2196f3;
+
+  /* Radii */
+  --border-radius: 8px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Shadows & Glow */
+  --shadow: rgba(0, 0, 0, 0.2);
+  --glow: rgba(33, 150, 243, 0.3);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-strong: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --glow-text: 0 0 0px transparent;
+  --glow-box: 0 0 0px transparent;
+
+  /* Motion */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Glass-morphism */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-blur: blur(10px);
+}

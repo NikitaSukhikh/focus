@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "description": "Electron + React + TypeScript UI for Ocean desktop application",
+  "author": "Ocean Team",
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "electron-forge start",
     "build": "electron-forge make",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\"",
+    "sync-tokens": "node scripts/syncTokens.mjs"
   },
   "engines": {
     "node": ">=20",

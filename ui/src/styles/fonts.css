@@ -1,0 +1,55 @@
+:root {
+  --font-sans: 'Inter', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    system-ui, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Orbitron', 'Rajdhani', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Share Tech Mono', 'JetBrains Mono', 'SFMono-Regular', Consolas,
+    'Liberation Mono', Menlo, monospace;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/inter/Inter-Variable-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/orbitron/Orbitron-Variable-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/rajdhani/Rajdhani-400-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/rajdhani/Rajdhani-600-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/rajdhani/Rajdhani-700-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Share Tech Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/share-tech-mono/ShareTechMono-400-latin.woff2') format('woff2');
+}

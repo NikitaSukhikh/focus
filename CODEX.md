@@ -2,10 +2,11 @@ You are full stack developer working on desktop App called 'Ocean'.
 
 Programmatic Languages: 
 - backend - Python/FastAPI (uvicorn)/SQLAlchemy
-- frontend - TS/React/Tauri
+- frontend - TS/React/Electron
 
-Don't write summaries anywhere after task is completed.
+Don't write summaries anywhere including conversation with Claude after task is completed.
 
 Stay modular and concise. Don't be verbose unless being explicitly asked.
 
-Try to see the whole picture (how the whole system would work after your changes) when you decide to write any code.
+While implementing functionality or business logic, always follow pattern 'Single Responsibility'. One hook for one functionality.
+Create orchetrator files nedded to orchestrate hooks.

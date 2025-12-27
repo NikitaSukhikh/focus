@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Edit2, Trash2, Copy } from 'lucide-react';
+import { Z_INDEX } from '../../../constants/zIndex';
+import { FONT_ROLES } from '../../../styles/fontManager';
 import { IslandItemProps } from './types';
 
 export function IslandItem({
@@ -116,15 +118,27 @@ export function IslandItem({
           e.stopPropagation();
           onStartEdit();
         }}
-        className={`
-          w-full text-left px-3 py-2.5 rounded-lg
-          transition-all duration-150 cursor-pointer
-          ${
-            isActive
-              ? 'bg-slate-700 text-slate-100'
-              : 'text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'
+        className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 cursor-pointer"
+        style={{
+          background: isActive ? 'var(--glass-bg)' : 'transparent',
+          color: isActive ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+          border: isActive ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+          boxShadow: isActive ? '0 0 15px var(--shadow)' : 'none',
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.background = 'var(--glass-bg)';
+            e.currentTarget.style.color = 'var(--color-text-primary)';
+            e.currentTarget.style.borderColor = 'var(--color-border-subtle)';
           }
-        `}
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+            e.currentTarget.style.borderColor = 'transparent';
+          }
+        }}
       >
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
@@ -136,13 +150,20 @@ export function IslandItem({
                   onChange={(e) => setEditValue(e.target.value)}
                   onBlur={handleSubmit}
                   onKeyDown={handleKeyDown}
-                  className="w-full text-sm font-medium bg-slate-600 text-slate-100 px-2 py-0.5 rounded outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-0.5 rounded outline-none"
+                  style={{
+                    ...FONT_ROLES.sidebarItem,
+                    background: 'var(--background-dark)',
+                    color: 'var(--text-color)',
+                    border: '1px solid var(--primary-color)',
+                    boxShadow: '0 0 10px var(--shadow)',
+                  }}
                 />
               ) : (
-                <span className="block text-sm font-medium truncate">{name}</span>
+                <span className="block truncate" style={FONT_ROLES.sidebarItem}>{name}</span>
               )}
             </div>
-            <span className="text-xs text-slate-400 ml-2 shrink-0">{count}</span>
+            <span className="ml-2 shrink-0" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>{count}</span>
           </div>
         </div>
 
@@ -152,26 +173,33 @@ export function IslandItem({
           {/* Menu */}
           <div
             ref={menuRef}
-            className="fixed z-50 w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }}
+            className="fixed w-40 glass-panel py-1"
+            style={{
+              zIndex: Z_INDEX.CONTEXT_MENU,
+              left: `${contextMenuPosition.x}px`,
+              top: `${contextMenuPosition.y}px`,
+            }}
           >
             <button
               onClick={handleRenameClick}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              style={FONT_ROLES.sidebarItem}
             >
               <Edit2 size={14} />
               Rename
             </button>
             <button
               onClick={handleDuplicateClick}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              style={FONT_ROLES.sidebarItem}
             >
               <Copy size={14} />
               Duplicate
             </button>
             <button
               onClick={handleDeleteClick}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+              style={FONT_ROLES.sidebarItem}
             >
               <Trash2 size={14} />
               Delete
