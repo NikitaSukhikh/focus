@@ -10,6 +10,7 @@ from pathlib import Path
 
 from app.services.thumbnails.file_thumbnail import file_thumbnail_service
 from app.services.documents.document_preview import document_preview_service
+from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file, format_duration
 from app.core.logging import get_logger
 
 
@@ -285,6 +286,133 @@ async def get_full_image(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to serve image",
+        )
+
+
+@router.get(
+    "/audio-file",
+    response_class=FileResponse,
+    summary="Get audio file for playback",
+    description="Serve audio file for playback in the audio player.",
+)
+async def get_audio_file(
+    file_path: str = Query(..., description="Absolute path to the audio file"),
+):
+    """
+    Serve an audio file for playback.
+
+    Args:
+        file_path: Absolute path to the audio file
+
+    Returns:
+        FileResponse: The audio file
+
+    Raises:
+        HTTPException: If file not found or not a supported audio format
+    """
+    try:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {file_path}",
+            )
+
+        if not path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {file_path}",
+            )
+
+        # Check if file is an audio file
+        if not is_audio_file(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported audio format",
+            )
+
+        # Determine media type from file extension
+        import mimetypes
+        media_type, _ = mimetypes.guess_type(file_path)
+        if not media_type or not media_type.startswith('audio/'):
+            media_type = 'audio/mpeg'
+
+        logger.debug(f"Serving audio file: {file_path}")
+
+        return FileResponse(
+            path=str(path),
+            media_type=media_type,
+            filename=path.name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve audio file: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to serve audio file",
+        )
+
+
+@router.get(
+    "/audio-metadata",
+    summary="Get audio file metadata",
+    description="Extract metadata from audio files including duration, bitrate, and tags.",
+)
+async def get_audio_metadata_endpoint(
+    file_path: str = Query(..., description="Absolute path to the audio file"),
+):
+    """
+    Extract metadata from an audio file.
+
+    Args:
+        file_path: Absolute path to the audio file
+
+    Returns:
+        dict: Audio metadata including duration, bitrate, sample rate, and tags
+
+    Raises:
+        HTTPException: If file not found or not a supported audio format
+    """
+    try:
+        if not is_audio_file(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported audio format",
+            )
+
+        metadata = get_audio_metadata(file_path)
+
+        # Add formatted duration
+        metadata["duration_formatted"] = format_duration(metadata.get("duration", 0))
+
+        # Add human-readable file size
+        file_size = metadata.get("file_size", 0)
+        metadata["file_size_human"] = file_thumbnail_service.get_human_readable_size(file_size)
+
+        logger.debug(f"Serving audio metadata for: {file_path}")
+
+        return metadata
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {file_path}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except ValueError as e:
+        logger.error(f"Invalid audio file: {file_path}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Failed to get audio metadata: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get audio metadata",
         )
 
 

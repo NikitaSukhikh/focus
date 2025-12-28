@@ -2,7 +2,7 @@
  * File type detection and utilities
  */
 
-export type FileCategory = 'image' | 'pdf' | 'document' | 'text' | 'unknown';
+export type FileCategory = 'image' | 'audio' | 'pdf' | 'document' | 'text' | 'unknown';
 
 export interface FileTypeInfo {
   category: FileCategory;
@@ -24,6 +24,26 @@ const IMAGE_EXTENSIONS = new Set([
   'ico',
   'heic',
   'heif',
+]);
+
+// Audio file extensions
+const AUDIO_EXTENSIONS = new Set([
+  'mp3',
+  'wav',
+  'flac',
+  'ogg',
+  'oga',
+  'm4a',
+  'aac',
+  'wma',
+  'opus',
+  'aiff',
+  'aif',
+  'aifc',
+  'alac',
+  'ape',
+  'wv',
+  'mka',
 ]);
 
 // PDF file extensions
@@ -104,6 +124,14 @@ export function detectFileType(filePath: string): FileTypeInfo {
     };
   }
 
+  if (AUDIO_EXTENSIONS.has(extension)) {
+    return {
+      category: 'audio',
+      extension,
+      mimeType: getAudioMimeType(extension),
+    };
+  }
+
   if (PDF_EXTENSIONS.has(extension)) {
     return {
       category: 'pdf',
@@ -132,6 +160,32 @@ export function detectFileType(filePath: string): FileTypeInfo {
     category: 'unknown',
     extension,
   };
+}
+
+/**
+ * Get MIME type for audio extensions
+ */
+function getAudioMimeType(extension: string): string {
+  const mimeTypes: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    flac: 'audio/flac',
+    ogg: 'audio/ogg',
+    oga: 'audio/ogg',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    wma: 'audio/x-ms-wma',
+    opus: 'audio/opus',
+    aiff: 'audio/aiff',
+    aif: 'audio/aiff',
+    aifc: 'audio/aiff',
+    alac: 'audio/x-alac',
+    ape: 'audio/x-ape',
+    wv: 'audio/x-wavpack',
+    mka: 'audio/x-matroska',
+  };
+
+  return mimeTypes[extension] || 'audio/mpeg';
 }
 
 /**

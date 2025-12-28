@@ -5,6 +5,7 @@ import { openExternalUrl } from '../../../platform';
 import { usePreviewPaneLogic } from './usePreviewPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
+import { AudioPlayer } from '../../media/AudioPlayer';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -38,6 +39,9 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   // Check if this is an image file
   const isImageFile = type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath);
 
+  // Check if this is an audio file
+  const isAudioFile = type === 'file' && filePath && /\.(mp3|wav|flac|ogg|oga|m4a|aac|wma|opus|aiff|aif|aifc|alac|ape|wv|mka)$/i.test(filePath);
+
   // Check if this is a document file (DOCX, DOC and ODT are supported)
   const isDocumentFile = type === 'file' && filePath && /\.(docx|doc|odt)$/i.test(filePath);
 
@@ -53,8 +57,8 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
 
   const videoEmbed = getVideoEmbed(url);
 
-  // Only use webview logic when not showing an image or document
-  const hasNonWebviewPreview = imagePreviewUrl || documentPreviewUrl || videoEmbed;
+  // Only use webview logic when not showing an image, audio, or document
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed;
   // Always keep webview logic active when pane is open to prevent state loss
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
   const textPreviewBody = (() => {
@@ -207,7 +211,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
       </div>
 
       <div className="flex-1 overflow-auto relative flex flex-col custom-scroll" style={{ background: 'var(--background-dark)', overflowX: 'auto', overflowY: 'auto' }}>
-        {!url && !imagePreviewUrl && !documentPreviewUrl && !content && (
+        {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW_EMPTY }}>
             <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>No preview available.</div>
           </div>
@@ -228,6 +232,11 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
               </div>
             </div>
           </div>
+        )}
+
+        {/* Audio preview */}
+        {isAudioFile && filePath && (
+          <AudioPlayer filePath={filePath} title={title} />
         )}
 
         {/* Image preview */}
