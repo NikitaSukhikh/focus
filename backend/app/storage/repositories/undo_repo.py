@@ -41,6 +41,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == False))
+            # Timestamp + id ordering guarantees deterministic stacks when events share timestamps
             .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
             .limit(1)
         )
@@ -52,6 +53,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True))
+            # Timestamp + id ordering guarantees deterministic stacks when events share timestamps
             .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
             .limit(1)
         )
@@ -105,6 +107,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(UndoEvent.island_id == island_id)
+            # Stable ordering avoids accidental reordering during trimming
             .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
         )
         result = await self.session.execute(stmt)
@@ -133,6 +136,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(UndoEvent.island_id == island_id)
+            # Stable ordering for paginated reads
             .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
             .offset(skip)
             .limit(limit)
