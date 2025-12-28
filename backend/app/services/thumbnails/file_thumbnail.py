@@ -11,6 +11,13 @@ import hashlib
 from PIL import Image, ImageOps
 import mimetypes
 
+# Register HEIF support for Pillow
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass  # HEIF support not available
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
