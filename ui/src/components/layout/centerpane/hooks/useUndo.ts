@@ -1,7 +1,7 @@
 /**
- * Unified Undo Hook
+ * Undo Hook
  *
- * Purpose: Provides a single, unified undo system for all center pane events
+ * Purpose: Provides a single undo system for all center pane events
  * Responsibilities:
  * - Managing Ctrl+Z keyboard handler
  * - Processing undo events in strict chronological order (by timestamp)
@@ -14,17 +14,17 @@ import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon, ArrowSegment } from '../types';
 
-interface UseUnifiedUndoProps {
+interface UseUndoProps {
   selectedIslandId?: string;
   setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   setArrowsByIsland: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
 }
 
-export const useUnifiedUndo = ({
+export const useUndo = ({
   selectedIslandId,
   setIconsByIsland,
   setArrowsByIsland,
-}: UseUnifiedUndoProps) => {
+}: UseUndoProps) => {
   const getLastEvent = useUndoHistoryStore((state) => state.getLastEvent);
   const removeLastEvent = useUndoHistoryStore((state) => state.removeLastEvent);
 
@@ -45,7 +45,7 @@ export const useUnifiedUndo = ({
         const lastEvent = getLastEvent(selectedIslandId);
         if (!lastEvent) return;
 
-        console.log('[UNIFIED UNDO] Processing event:', lastEvent.type, lastEvent);
+        console.log('[UNDO] Processing event:', lastEvent.type, lastEvent);
 
         // Process the event based on type
         switch (lastEvent.type) {
@@ -74,7 +74,7 @@ export const useUnifiedUndo = ({
 
             // Restore position in backend
             objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
-              console.error('[UNIFIED UNDO] Failed to restore tile position:', err);
+              console.error('[UNDO] Failed to restore tile position:', err);
             });
 
             removeLastEvent(selectedIslandId);
@@ -91,7 +91,7 @@ export const useUnifiedUndo = ({
 
             // Delete from backend
             objectsApi.delete(arrow.id).catch((err) => {
-              console.error('[UNIFIED UNDO] Failed to delete arrow:', err);
+              console.error('[UNDO] Failed to delete arrow:', err);
             });
 
             window.dispatchEvent(
@@ -149,7 +149,7 @@ export const useUnifiedUndo = ({
                   new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } })
                 );
               } catch (err) {
-                console.error('[UNIFIED UNDO] Failed to restore arrow:', err);
+                console.error('[UNDO] Failed to restore arrow:', err);
                 // Remove the temp arrow on failure
                 setArrowsByIsland((prev) => ({
                   ...prev,
@@ -172,7 +172,7 @@ export const useUnifiedUndo = ({
 
             // Delete from backend
             objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
-              console.error('[UNIFIED UNDO] Failed to delete text note:', err);
+              console.error('[UNDO] Failed to delete text note:', err);
             });
 
             window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: text.id } }));
@@ -182,7 +182,7 @@ export const useUnifiedUndo = ({
           }
 
           default:
-            console.warn('[UNIFIED UNDO] Unknown event type:', lastEvent);
+            console.warn('[UNDO] Unknown event type:', lastEvent);
         }
       }
     };

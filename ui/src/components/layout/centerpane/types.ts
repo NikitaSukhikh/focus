@@ -57,7 +57,7 @@ export interface CenterPaneHandle {
   addFiles: () => Promise<void>;
 }
 
-export interface IconTileProps {
+export interface TileProps {
   id: string;
   type: IconKind;
   title: string;
