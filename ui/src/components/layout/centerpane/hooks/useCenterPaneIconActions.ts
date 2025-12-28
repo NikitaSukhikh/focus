@@ -13,7 +13,7 @@ import { objectsApi } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
-import { useDeletedTilesStore } from '../../../../stores/deletedTilesStore';
+import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface IconActionsParams {
   selectedIsland: any;
@@ -21,7 +21,7 @@ interface IconActionsParams {
 }
 
 export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: IconActionsParams) => {
-  const addDeletedTile = useDeletedTilesStore((state) => state.addDeletedTile);
+  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const looksLikeFavicon = (src?: string) => {
     const s = (src || '').toLowerCase();
@@ -53,15 +53,27 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
   const handleIconDelete = (iconId: string) => {
     if (!selectedIsland) return;
 
-    // Find the tile to save to history
-    const tileToDelete = (setIconsByIsland as any).__currentValue?.[selectedIsland.id]?.find((i: DroppedIcon) => i.id === iconId);
-
     setIconsByIsland((prev) => {
       const tile = (prev[selectedIsland.id] || []).find((i) => i.id === iconId);
       if (tile) {
-        addDeletedTile({
-          ...tile,
+        // Add to unified undo history
+        addEvent({
+          type: 'tile_delete' as const,
           islandId: selectedIsland.id,
+          tile: {
+            id: tile.id,
+            type: tile.type,
+            title: tile.title,
+            x: tile.x,
+            y: tile.y,
+            url: tile.url,
+            description: tile.description,
+            faviconUrl: tile.faviconUrl,
+            filePath: tile.filePath,
+            serviceKey: tile.serviceKey,
+            service: tile.service,
+            content: tile.content,
+          },
         });
       }
 
