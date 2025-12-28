@@ -223,10 +223,11 @@ export function FullWindowPreview({
 
         {/* Content */}
         <div
-          className="flex-1 overflow-auto custom-scroll"
+          className="flex-1 flex flex-col min-h-0 custom-scroll"
           style={{
             background: 'var(--background-dark)',
-            minHeight: 0
+            minHeight: 0,
+            overflow: 'hidden'
           }}
         >
           {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && (
@@ -358,7 +359,13 @@ export function FullWindowPreview({
           )}
 
           {/* Web preview */}
-          <>
+          <div
+            className="flex-1 min-h-0"
+            style={{
+              display: hasNonWebviewPreview ? 'none' : 'flex',
+              position: 'relative'
+            }}
+          >
             {/* eslint-disable-next-line react/no-unknown-property */}
             <webview
               ref={webviewRef}
@@ -366,10 +373,10 @@ export function FullWindowPreview({
               partition="persist:ocean-webview"
               allowpopups={true as any}
               style={{
+                flex: 1,
                 width: '100%',
                 height: '100%',
                 minHeight: 0,
-                display: hasNonWebviewPreview ? 'none' : 'block',
                 visibility: url ? 'visible' : 'hidden'
               }}
             />
@@ -388,7 +395,7 @@ export function FullWindowPreview({
                 </button>
               </div>
             )}
-          </>
+          </div>
         </div>
       </div>
     </>

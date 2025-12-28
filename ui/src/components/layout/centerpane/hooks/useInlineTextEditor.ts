@@ -11,9 +11,9 @@
 
 import { useState, useCallback } from 'react';
 import { objectsApi } from '../../../../api/objects';
+import { undoApi } from '../../../../api/undo';
 import { DroppedIcon } from '../types';
 import { autoWrapText } from '../utils';
-import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface InlineEditorParams {
   selectedIsland: any;
@@ -40,7 +40,6 @@ export const useInlineTextEditor = ({
     y: 0,
     content: '',
   });
-  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const openInlineEditor = useCallback((x: number, y: number, content = '', editingId?: string) => {
     setEditorState({
@@ -129,18 +128,21 @@ export const useInlineTextEditor = ({
           return { ...prev, [selectedIsland.id]: [...current, newIcon] };
         });
 
-        // Add to unified undo history
-        addEvent({
-          type: 'text_create' as const,
-          islandId: selectedIsland.id,
-          text: {
-            id: created.id,
-            title: created.title,
-            content: formattedContent,
-            x: clamped.x,
-            y: clamped.y,
-          },
-        });
+        // Add to backend undo history
+        undoApi
+          .createEvent(selectedIsland.id, {
+            event_type: 'text_create',
+            event_data: {
+              text: {
+                id: created.id,
+                title: created.title,
+                content: formattedContent,
+                x: clamped.x,
+                y: clamped.y,
+              },
+            },
+          })
+          .catch((err) => console.error('Failed to create undo event:', err));
       }
 
       setEditorState({ isActive: false, x: 0, y: 0, content: '' });
