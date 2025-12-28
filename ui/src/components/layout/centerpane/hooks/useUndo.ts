@@ -9,7 +9,7 @@
  * - Handling tile restoration/deletion, arrow restoration/deletion, and text creation/deletion
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { undoApi } from '../../../../api/undo';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon, ArrowSegment } from '../types';
@@ -27,6 +27,42 @@ export const useUndo = ({
   setArrowsByIsland,
 }: UseUndoProps) => {
   const clearLocalHistory = useUndoHistoryStore((state) => state.clearHistory);
+  // Track current arrow IDs when they get recreated so redo/undo can target the right object even if the original ID was deleted.
+  const arrowIdAliasRef = useRef<Map<string, string>>(new Map());
+
+  // Reset mapping when switching islands to avoid cross-island ID reuse.
+  useEffect(() => {
+    arrowIdAliasRef.current.clear();
+  }, [selectedIslandId]);
+
+  const resolveArrowId = (
+    currentArrows: ArrowSegment[],
+    eventArrow?: { id: string; start: { x: number; y: number }; end: { x: number; y: number } }
+  ): string | null => {
+    if (!eventArrow) return null;
+    const aliasId = arrowIdAliasRef.current.get(eventArrow.id);
+    if (aliasId) {
+      const aliased = currentArrows.find((a) => a.id === aliasId);
+      if (aliased) return aliased.id;
+    }
+
+    const byId = currentArrows.find((a) => a.id === eventArrow.id);
+    if (byId) return byId.id;
+
+    const coordsMatch = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+
+    const byCoords = currentArrows.find(
+      (a) => coordsMatch(a.start, eventArrow.start) && coordsMatch(a.end, eventArrow.end)
+    );
+
+    if (byCoords) {
+      arrowIdAliasRef.current.set(eventArrow.id, byCoords.id);
+      return byCoords.id;
+    }
+
+    return null;
+  };
 
   // Clear undo history on mount/unmount and before unload so no stale events persist across sessions.
   useEffect(() => {
@@ -68,7 +104,8 @@ export const useUndo = ({
   useEffect(() => {
     const handleUndoRedo = (e: KeyboardEvent) => {
       // Check for Ctrl+Z or Cmd+Z (undo) or Ctrl+Shift+Z or Cmd+Shift+Z (redo)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && key === 'z') {
         const target = e.target as HTMLElement;
         // Don't interfere with native undo in input fields
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
@@ -176,6 +213,51 @@ export const useUndo = ({
                   break;
                 }
 
+                case 'text_move': {
+                  // Redo text move = apply the new position again
+                  const { text, to } = lastRedoEvent.event_data;
+                  if (!text) {
+                    console.warn('[REDO] Missing text data for text_move event');
+                    break;
+                  }
+
+                  const targetX = typeof to?.x === 'number' ? to.x : text.x;
+                  const targetY = typeof to?.y === 'number' ? to.y : text.y;
+
+                  setIconsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const existing = current.find((icon) => icon.id === text.id);
+
+                    if (existing) {
+                      return {
+                        ...prev,
+                        [selectedIslandId]: current.map((icon) =>
+                          icon.id === text.id ? { ...icon, x: targetX, y: targetY } : icon
+                        ),
+                      };
+                    }
+
+                    const fallbackText: DroppedIcon = {
+                      id: text.id,
+                      type: 'text',
+                      title: text.title,
+                      x: targetX,
+                      y: targetY,
+                      content: text.content,
+                    };
+
+                    return {
+                      ...prev,
+                      [selectedIslandId]: [...current, fallbackText],
+                    };
+                  });
+
+                  objectsApi.updatePosition(text.id, targetX, targetY).catch((err) => {
+                    console.error('[REDO] Failed to move text note:', err);
+                  });
+                  break;
+                }
+
                 case 'tile_delete': {
                   // Redo tile deletion = delete the tile again
                   const { tile } = lastRedoEvent.event_data;
@@ -231,6 +313,7 @@ export const useUndo = ({
                           a.id === tempId ? { ...a, id: created.id } : a
                         ),
                       }));
+                      arrowIdAliasRef.current.set(arrow.id, created.id);
 
                       window.dispatchEvent(
                         new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } })
@@ -263,24 +346,34 @@ export const useUndo = ({
                       ? to.end
                       : arrow.end;
 
+                  let updatedArrowId = arrow.id;
                   setArrowsByIsland((prev) => {
                     const current = prev[selectedIslandId] || [];
-                    const existing = current.find((a) => a.id === arrow.id);
+                    const resolvedId = resolveArrowId(current, arrow) || arrow.id;
+                    updatedArrowId = resolvedId;
+                    const existing = current.find((a) => a.id === resolvedId);
 
                     if (existing) {
+                      if (resolvedId !== arrow.id) {
+                        arrowIdAliasRef.current.set(arrow.id, resolvedId);
+                      }
                       return {
                         ...prev,
                         [selectedIslandId]: current.map((a) =>
-                          a.id === arrow.id ? { ...a, start: targetStart, end: targetEnd } : a
+                          a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
                         ),
                       };
                     }
 
                     const fallbackArrow: ArrowSegment = {
-                      id: arrow.id,
+                      id: resolvedId,
                       start: targetStart,
                       end: targetEnd,
                     };
+
+                    if (resolvedId !== arrow.id) {
+                      arrowIdAliasRef.current.set(arrow.id, resolvedId);
+                    }
 
                     return {
                       ...prev,
@@ -289,7 +382,7 @@ export const useUndo = ({
                   });
 
                   objectsApi
-                    .updateMetadata(arrow.id, {
+                    .updateMetadata(updatedArrowId, {
                       arrow: true,
                       start_x: targetStart.x,
                       start_y: targetStart.y,
@@ -305,17 +398,26 @@ export const useUndo = ({
                 case 'arrow_delete': {
                   // Redo arrow deletion = delete the arrow again
                   const { arrow } = lastRedoEvent.event_data;
-              setArrowsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== arrow.id),
-              }));
-
-                  objectsApi.delete(arrow.id).catch((err) => {
-                    console.error('[REDO] Failed to delete arrow:', err);
+                  let deletedArrowId: string | null = null;
+                  setArrowsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const resolvedId = resolveArrowId(current, arrow);
+                    deletedArrowId = resolvedId || arrow.id;
+                    arrowIdAliasRef.current.delete(arrow.id);
+                    return {
+                      ...prev,
+                      [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
+                    };
                   });
 
+                  if (deletedArrowId) {
+                    objectsApi.delete(deletedArrowId).catch((err) => {
+                      console.error('[REDO] Failed to delete arrow:', err);
+                    });
+                  }
+
                   window.dispatchEvent(
-                    new CustomEvent('arrow:deleted', { detail: { arrowId: arrow.id, undo: false } })
+                    new CustomEvent('arrow:deleted', { detail: { arrowId: deletedArrowId || arrow.id, undo: false } })
                   );
                   break;
                 }
@@ -448,6 +550,51 @@ export const useUndo = ({
                   break;
                 }
 
+                case 'text_move': {
+                  // Undo text move = restore the previous position
+                  const { text, from } = lastEvent.event_data;
+                  if (!text) {
+                    console.warn('[UNDO] Missing text data for text_move event');
+                    break;
+                  }
+
+                  const targetX = typeof from?.x === 'number' ? from.x : text.x;
+                  const targetY = typeof from?.y === 'number' ? from.y : text.y;
+
+                  setIconsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const existing = current.find((icon) => icon.id === text.id);
+
+                    if (existing) {
+                      return {
+                        ...prev,
+                        [selectedIslandId]: current.map((icon) =>
+                          icon.id === text.id ? { ...icon, x: targetX, y: targetY } : icon
+                        ),
+                      };
+                    }
+
+                    const fallbackText: DroppedIcon = {
+                      id: text.id,
+                      type: 'text',
+                      title: text.title,
+                      x: targetX,
+                      y: targetY,
+                      content: text.content,
+                    };
+
+                    return {
+                      ...prev,
+                      [selectedIslandId]: [...current, fallbackText],
+                    };
+                  });
+
+                  objectsApi.updatePosition(text.id, targetX, targetY).catch((err) => {
+                    console.error('[UNDO] Failed to move text note:', err);
+                  });
+                  break;
+                }
+
                 case 'tile_delete': {
                   // Undo tile deletion = restore the tile
                   const { tile } = lastEvent.event_data;
@@ -481,18 +628,27 @@ export const useUndo = ({
                 case 'arrow_create': {
                   // Undo arrow creation = delete the arrow
                   const { arrow } = lastEvent.event_data;
-              setArrowsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== arrow.id),
-              }));
-
-                  // Delete from backend
-                  objectsApi.delete(arrow.id).catch((err) => {
-                    console.error('[UNDO] Failed to delete arrow:', err);
+                  let deletedArrowId: string | null = null;
+                  setArrowsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const resolvedId = resolveArrowId(current, arrow);
+                    deletedArrowId = resolvedId || arrow.id;
+                    arrowIdAliasRef.current.delete(arrow.id);
+                    return {
+                      ...prev,
+                      [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
+                    };
                   });
 
+                  // Delete from backend regardless of local presence to keep server state consistent
+                  if (deletedArrowId) {
+                    objectsApi.delete(deletedArrowId).catch((err) => {
+                      console.error('[UNDO] Failed to delete arrow:', err);
+                    });
+                  }
+
                   window.dispatchEvent(
-                    new CustomEvent('arrow:deleted', { detail: { arrowId: arrow.id, undo: true } })
+                    new CustomEvent('arrow:deleted', { detail: { arrowId: deletedArrowId || arrow.id, undo: true } })
                   );
                   break;
                 }
@@ -514,24 +670,34 @@ export const useUndo = ({
                       ? from.end
                       : arrow.end;
 
+                  let updatedArrowId = arrow.id;
                   setArrowsByIsland((prev) => {
                     const current = prev[selectedIslandId] || [];
-                    const existing = current.find((a) => a.id === arrow.id);
+                    const resolvedId = resolveArrowId(current, arrow) || arrow.id;
+                    updatedArrowId = resolvedId;
+                    const existing = current.find((a) => a.id === resolvedId);
 
                     if (existing) {
+                      if (resolvedId !== arrow.id) {
+                        arrowIdAliasRef.current.set(arrow.id, resolvedId);
+                      }
                       return {
                         ...prev,
                         [selectedIslandId]: current.map((a) =>
-                          a.id === arrow.id ? { ...a, start: targetStart, end: targetEnd } : a
+                          a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
                         ),
                       };
                     }
 
                     const fallbackArrow: ArrowSegment = {
-                      id: arrow.id,
+                      id: resolvedId,
                       start: targetStart,
                       end: targetEnd,
                     };
+
+                    if (resolvedId !== arrow.id) {
+                      arrowIdAliasRef.current.set(arrow.id, resolvedId);
+                    }
 
                     return {
                       ...prev,
@@ -540,7 +706,7 @@ export const useUndo = ({
                   });
 
                   objectsApi
-                    .updateMetadata(arrow.id, {
+                    .updateMetadata(updatedArrowId, {
                       arrow: true,
                       start_x: targetStart.x,
                       start_y: targetStart.y,
@@ -595,6 +761,7 @@ export const useUndo = ({
                           a.id === tempId ? { ...a, id: created.id } : a
                         ),
                       }));
+                      arrowIdAliasRef.current.set(arrow.id, created.id);
 
                       window.dispatchEvent(
                         new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } })

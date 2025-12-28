@@ -72,7 +72,7 @@ async def create_undo_event(
     )
 
     # Trim old events
-    trimmed = await undo_repo.trim_old_events(island_id, max_events)
+    trimmed = await undo_repo.trim_to_limit(island_id, max_events)
     if trimmed > 0:
         logger.debug(f"Trimmed {trimmed} old events")
 
