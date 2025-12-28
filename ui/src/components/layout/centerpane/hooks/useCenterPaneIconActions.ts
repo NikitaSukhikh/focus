@@ -57,24 +57,39 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
       const tile = (prev[selectedIsland.id] || []).find((i) => i.id === iconId);
       if (tile) {
         // Add to unified undo history
-        addEvent({
-          type: 'tile_delete' as const,
-          islandId: selectedIsland.id,
-          tile: {
-            id: tile.id,
-            type: tile.type,
-            title: tile.title,
-            x: tile.x,
-            y: tile.y,
-            url: tile.url,
-            description: tile.description,
-            faviconUrl: tile.faviconUrl,
-            filePath: tile.filePath,
-            serviceKey: tile.serviceKey,
-            service: tile.service,
-            content: tile.content,
-          },
-        });
+        // Text tiles use text_delete event, all other tiles use tile_delete
+        if (tile.type === 'text') {
+          addEvent({
+            type: 'text_delete' as const,
+            islandId: selectedIsland.id,
+            text: {
+              id: tile.id,
+              title: tile.title,
+              content: tile.content || '',
+              x: tile.x,
+              y: tile.y,
+            },
+          });
+        } else {
+          addEvent({
+            type: 'tile_delete' as const,
+            islandId: selectedIsland.id,
+            tile: {
+              id: tile.id,
+              type: tile.type,
+              title: tile.title,
+              x: tile.x,
+              y: tile.y,
+              url: tile.url,
+              description: tile.description,
+              faviconUrl: tile.faviconUrl,
+              filePath: tile.filePath,
+              serviceKey: tile.serviceKey,
+              service: tile.service,
+              content: tile.content,
+            },
+          });
+        }
       }
 
       // Dispatch event before deleting to notify preview pane

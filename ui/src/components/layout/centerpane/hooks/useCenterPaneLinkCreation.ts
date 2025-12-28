@@ -14,6 +14,7 @@ import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 import { isGmailUrl } from '../utils';
+import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface LinkCreationParams {
   selectedIsland: any;
@@ -23,6 +24,7 @@ interface LinkCreationParams {
 export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: LinkCreationParams) => {
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [pendingLinkPosition, setPendingLinkPosition] = useState<{ x: number; y: number } | null>(null);
+  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const looksLikeFavicon = (src?: string) => {
     const s = (src || '').toLowerCase();
@@ -80,6 +82,22 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
       setIconsByIsland((prev) => {
         const current = prev[selectedIsland.id] || [];
         return { ...prev, [selectedIsland.id]: [...current, newIcon] };
+      });
+
+      // Add to unified undo history
+      addEvent({
+        type: 'tile_create' as const,
+        islandId: selectedIsland.id,
+        tile: {
+          id: created.id,
+          type: isGmail ? 'gmail' : 'link',
+          title: created.title,
+          x,
+          y,
+          url,
+          description: created.description,
+          faviconUrl: isGmail ? undefined : favicon_url,
+        },
       });
 
       // Notify other components that a link was created
