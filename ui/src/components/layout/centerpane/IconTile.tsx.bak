@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid3x3, Link, FileText, Edit2, Trash2, Copy, RefreshCw, ExternalLink, Share2 } from 'lucide-react';
+import { Grid3x3, Link, FileText, Edit2, Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2 } from 'lucide-react';
 import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../icons/GoogleServiceIcons';
 import { TelegramIcon } from '../../../features/telegram/TelegramIcon';
 import { IntStorageIcon } from '../../../features/intstorage/IntStorageIcon';
@@ -214,6 +214,23 @@ export function IconTile({
   const handleShareClick = () => {
     setShowContextMenu(false);
     setShowShareDialog(true);
+  };
+
+  const handleOpenFullWindow = () => {
+    setShowContextMenu(false);
+
+    // Dispatch custom event to open full window preview
+    const event = new CustomEvent('open:fullwindow', {
+      detail: {
+        url,
+        title,
+        tileId: id,
+        filePath,
+        type,
+        content,
+      },
+    });
+    window.dispatchEvent(event);
   };
 
   const openLinkExternally = async () => {
@@ -663,13 +680,22 @@ export function IconTile({
             }}
           />
           <div
-            className="fixed w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
+            className="fixed w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
             style={{
               zIndex: Z_INDEX.CONTEXT_MENU,
               left: `${contextMenuPosition.x}px`,
               top: `${contextMenuPosition.y}px`
             }}
           >
+            {(filePath || url || content) && (
+              <button
+                onClick={handleOpenFullWindow}
+                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+              >
+                <Maximize2 size={16} />
+                Open in full window
+              </button>
+            )}
             {(filePath || url) && (
               <button
                 onClick={handleShareClick}

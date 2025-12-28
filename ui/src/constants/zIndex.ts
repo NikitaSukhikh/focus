@@ -42,6 +42,7 @@ export const Z_INDEX = {
   // Modal layer - dialogs and popups
   MODAL_BACKDROP: 1200,
   MODAL_DIALOG: 1300,
+  MODAL: 1300,
 
   // Context menu layer - context menus
   CONTEXT_MENU_BACKDROP: 1400,
