@@ -10,6 +10,7 @@ export type UndoEventType =
   | 'tile_create'
   | 'tile_move'
   | 'tile_delete'
+  | 'text_move'
   | 'arrow_move'
   | 'arrow_create'
   | 'arrow_delete'
@@ -25,6 +26,7 @@ export interface UndoEventCreate {
 export interface UndoEventResponse {
   id: string;
   island_id: string;
+  sequence: number;
   event_type: UndoEventType;
   event_data: Record<string, any>;
   timestamp: string;

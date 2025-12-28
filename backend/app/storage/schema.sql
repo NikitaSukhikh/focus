@@ -40,3 +40,16 @@ CREATE TABLE IF NOT EXISTS google_tokens (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Undo / Redo event log (monotonic per-island sequence)
+CREATE TABLE IF NOT EXISTS undo_events (
+    id TEXT PRIMARY KEY,
+    island_id TEXT NOT NULL REFERENCES islands(id) ON DELETE CASCADE,
+    sequence INTEGER NOT NULL DEFAULT 0,
+    event_type TEXT NOT NULL,
+    event_data JSON NOT NULL,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_undone INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_undo_events_island_sequence ON undo_events (island_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_undo_events_island_undone ON undo_events (island_id, is_undone, sequence);
