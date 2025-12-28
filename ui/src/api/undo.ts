@@ -8,7 +8,9 @@ const API_BASE = '/api';
 
 export type UndoEventType =
   | 'tile_create'
+  | 'tile_move'
   | 'tile_delete'
+  | 'arrow_move'
   | 'arrow_create'
   | 'arrow_delete'
   | 'text_create'

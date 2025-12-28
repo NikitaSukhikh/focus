@@ -18,6 +18,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const zoom = zoomProp ?? 1;
   const paneRef = useRef<HTMLDivElement | null>(null);
+  const textPreviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const logic = useCenterPaneLogic(paneRef, zoom);
   const isDuplicating = useIslandStore((state) => state.isDuplicating);
@@ -82,6 +83,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     handleCanvasMouseDown,
     handleCanvasMouseMove,
     handleCanvasMouseUp,
+    handleArrowPointerDown,
     allArrowSegments,
     svgWidth,
     svgHeight,
@@ -168,6 +170,37 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
     logic.openInlineEditor(x, y);
   };
+
+  const clearTextPreviewTimeout = () => {
+    if (textPreviewTimeoutRef.current) {
+      clearTimeout(textPreviewTimeoutRef.current);
+      textPreviewTimeoutRef.current = null;
+    }
+  };
+
+  const openPreviewForIcon = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }) => {
+    onObjectClick?.({
+      url: icon.url,
+      title: icon.title,
+      tileId: icon.id,
+      filePath: icon.filePath,
+      type: icon.type,
+      content: icon.content,
+    });
+  };
+
+  const schedulePreviewForText = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }) => {
+    clearTextPreviewTimeout();
+    textPreviewTimeoutRef.current = setTimeout(() => {
+      // Skip opening preview if inline editor already active for this note
+      if (logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id) return;
+      openPreviewForIcon(icon);
+    }, 180);
+  };
+
+  useEffect(() => {
+    return () => clearTextPreviewTimeout();
+  }, []);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (!e.ctrlKey) return;
@@ -312,9 +345,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                         strokeWidth={clickableWidth}
                         strokeLinecap="round"
                         style={{ cursor: 'pointer', pointerEvents: 'stroke' as any }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedArrowId(segment.id);
+                        onPointerDown={(e) => {
+                          handleArrowPointerDown(segment, e);
                           logic.setSelectedIconIds([]);
                         }}
                       />
@@ -381,6 +413,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   content={icon.content}
                   isSelected={logic.selectedIconIds.includes(icon.id)}
                   onClick={(event) => {
+                    clearTextPreviewTimeout();
                     const isToggle = event.metaKey || event.ctrlKey;
                     if (isToggle) {
                       const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
@@ -390,31 +423,28 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                       logic.setSelectedIconIds(next);
                       if (next.length === 1) {
                         const single = icon;
-                        onObjectClick?.({
-                          url: single.url,
-                          title: single.title,
-                          tileId: single.id,
-                          filePath: single.filePath,
-                          type: single.type,
-                          content: single.content,
-                        });
+                        if (single.type === 'text') {
+                          schedulePreviewForText(single);
+                        } else {
+                          openPreviewForIcon(single);
+                        }
                       }
                     } else {
                       logic.setSelectedIconId(icon.id);
-                      onObjectClick?.({
-                        url: icon.url,
-                        title: icon.title,
-                        tileId: icon.id,
-                        filePath: icon.filePath,
-                        type: icon.type,
-                        content: icon.content,
-                      });
+                      if (icon.type === 'text') {
+                        schedulePreviewForText(icon);
+                      } else {
+                        openPreviewForIcon(icon);
+                      }
                     }
                   }}
                   onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
                   onDelete={() => logic.handleIconDelete(icon.id)}
                   onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
-                  onEdit={(x, y, content, id) => logic.openInlineEditor(x, y, content, id)}
+                  onEdit={(x, y, content, id) => {
+                    clearTextPreviewTimeout();
+                    logic.openInlineEditor(x, y, content, id);
+                  }}
                 />
               )
             ))}
