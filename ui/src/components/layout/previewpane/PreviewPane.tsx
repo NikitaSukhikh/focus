@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { usePreviewPaneLogic } from './usePreviewPaneLogic';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
 import { AudioPlayer } from '../../media/AudioPlayer';
@@ -36,20 +36,29 @@ interface PreviewPaneProps {
 // PreviewPane renders the right-hand preview area for the selected tile, choosing between media/file previews and the embedded webview while supporting a full-window handoff.
 export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content, tileId, tiles = [], onNavigateToTile }: PreviewPaneProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const collapsed = !isOpen;
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [localTitle, setLocalTitle] = useState(title);
+  const [localContent, setLocalContent] = useState(content);
+  const [contentWasUpdated, setContentWasUpdated] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleOpenFullWindow = () => {
     const event = new CustomEvent('open:fullwindow', {
       detail: {
         url,
-        title,
+        title: localTitle ?? title,
         tileId,
         filePath,
         type,
-        content,
+        content: localContent ?? content,
       },
     });
     window.dispatchEvent(event);
+    // Auto-close normal preview when expanded mode opens
+    onClose();
   };
 
   const { isImageFile, isAudioFile, isDocumentFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
@@ -75,11 +84,71 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     navigatePrevious: navigation.navigatePrevious,
     canNavigateNext: navigation.canNavigateNext,
     canNavigatePrevious: navigation.canNavigatePrevious,
-    isEnabled: isOpen,
+    isEnabled: isOpen && !isEditingText,
   });
+
+  const handleContentUpdated = (newTitle: string, newContent: string) => {
+    setLocalTitle(newTitle);
+    setLocalContent(newContent);
+    setContentWasUpdated(true);
+    setHasUnsavedChanges(false);
+
+    // Emit event to update tile on canvas immediately
+    if (tileId) {
+      window.dispatchEvent(new CustomEvent('tile:updated', {
+        detail: {
+          tileId,
+          title: newTitle,
+          content: newContent,
+        },
+      }));
+    }
+  };
+
+  // Listen for content changes from other preview modes
+  useEffect(() => {
+    const handleContentChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tileId: string; title: string; content: string }>;
+      const { tileId: eventTileId, title: newTitle, content: newContent } = customEvent.detail;
+
+      if (eventTileId === tileId) {
+        setLocalTitle(newTitle);
+        setLocalContent(newContent);
+        setContentWasUpdated(true);
+      }
+    };
+
+    window.addEventListener('text:content-changed', handleContentChanged);
+    return () => window.removeEventListener('text:content-changed', handleContentChanged);
+  }, [tileId]);
+
+  // Auto-save on preview close
+  useEffect(() => {
+    return () => {
+      // Cleanup: save if there are unsaved changes when component unmounts
+      if (hasUnsavedChanges && tileId && localContent) {
+        // Fire async save without waiting
+        const title = localTitle || 'Untitled Note';
+        fetch(`/api/objects/${tileId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            metadata: { content: localContent },
+          }),
+        }).catch(err => console.error('Failed to auto-save on close:', err));
+      }
+    };
+  }, [hasUnsavedChanges, tileId, localContent, localTitle]);
+
+  // Use processed content that removes duplicate title
+  const processedContent = contentWasUpdated
+    ? useTextPreview(type, localContent, localTitle)
+    : textPreviewBody;
 
   return (
     <aside
+      ref={previewContainerRef}
       className="glass-panel flex flex-col h-full w-full transition-opacity duration-150"
       style={{
         opacity: collapsed ? 0 : 1,
@@ -89,7 +158,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
       aria-hidden={collapsed}
     >
       <PreviewHeader
-        title={title}
+        title={localTitle}
         type={type}
         url={url}
         onClose={onClose}
@@ -107,7 +176,20 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         {hasNoContent && <EmptyPreview />}
 
         {type === 'text' && content && (
-          <TextPreview title={title} content={textPreviewBody || ''} />
+          <TextPreview
+            title={localTitle}
+            content={processedContent || ''}
+            tileId={tileId}
+            onContentUpdated={handleContentUpdated}
+            isEditing={isEditingText}
+            paneContainerRef={previewContainerRef}
+            onStartEdit={() => {
+              setIsEditingText(true);
+              setHasUnsavedChanges(true);
+            }}
+            onStopEdit={() => setIsEditingText(false)}
+            onClosePreview={onClose}
+          />
         )}
 
         {isAudioFile && filePath && (

@@ -15,6 +15,7 @@
 
 import { useRef, useCallback } from 'react';
 import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
+import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind } from '../types';
 import { isGmailUrl } from '../utils';
@@ -175,6 +176,10 @@ export const useCenterPaneDragDrop = ({
       const targetX = dragStart.iconX + deltaX;
       const targetY = dragStart.iconY + deltaY + scrollDelta;
       const { x, y } = clampToBoundaries(targetX, targetY);
+      const movedIcon = getIconById(iconId);
+      const hasMoved = movedIcon ? movedIcon.x !== x || movedIcon.y !== y : true;
+      const fromX = dragStart.iconX;
+      const fromY = dragStart.iconY;
 
       setIconsByIsland((prev) => ({
         ...prev,
@@ -185,6 +190,33 @@ export const useCenterPaneDragDrop = ({
 
       // Debounced position update - UI updates immediately, API call is debounced
       updatePosition(iconId, x, y);
+
+      // Record move for undo/redo history when position actually changes
+      if (movedIcon && hasMoved) {
+        undoApi
+          .createEvent(selectedIsland.id, {
+            event_type: 'tile_move',
+            event_data: {
+              tile: {
+                id: movedIcon.id,
+                type: movedIcon.type,
+                title: movedIcon.title,
+                x,
+                y,
+                url: movedIcon.url,
+                description: movedIcon.description,
+                faviconUrl: movedIcon.faviconUrl,
+                filePath: movedIcon.filePath,
+                serviceKey: movedIcon.serviceKey,
+                service: movedIcon.service,
+                content: movedIcon.content,
+              },
+              from: { x: fromX, y: fromY },
+              to: { x, y },
+            },
+          })
+          .catch((err) => console.error('Failed to create tile move undo event:', err));
+      }
       return;
     }
 

@@ -86,6 +86,57 @@ export const useUndo = ({
                   break;
                 }
 
+                case 'tile_move': {
+                  // Redo tile move = apply the new position again
+                  const { tile, to } = lastRedoEvent.event_data;
+                  if (!tile) {
+                    console.warn('[REDO] Missing tile data for tile_move event');
+                    break;
+                  }
+
+                  const targetX = typeof to?.x === 'number' ? to.x : tile.x;
+                  const targetY = typeof to?.y === 'number' ? to.y : tile.y;
+
+                  setIconsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const existing = current.find((icon) => icon.id === tile.id);
+
+                    if (existing) {
+                      return {
+                        ...prev,
+                        [selectedIslandId]: current.map((icon) =>
+                          icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
+                        ),
+                      };
+                    }
+
+                    const fallbackTile: DroppedIcon = {
+                      id: tile.id,
+                      type: tile.type as any,
+                      title: tile.title,
+                      x: targetX,
+                      y: targetY,
+                      url: tile.url,
+                      description: tile.description,
+                      faviconUrl: tile.faviconUrl,
+                      filePath: tile.filePath,
+                      serviceKey: tile.serviceKey,
+                      service: tile.service,
+                      content: tile.content,
+                    };
+
+                    return {
+                      ...prev,
+                      [selectedIslandId]: [...current, fallbackTile],
+                    };
+                  });
+
+                  objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
+                    console.error('[REDO] Failed to move tile:', err);
+                  });
+                  break;
+                }
+
                 case 'tile_delete': {
                   // Redo tile deletion = delete the tile again
                   const { tile } = lastRedoEvent.event_data;
@@ -153,6 +204,62 @@ export const useUndo = ({
                       }));
                     }
                   })();
+                  break;
+                }
+
+                case 'arrow_move': {
+                  // Redo arrow move = apply the new coordinates
+                  const { arrow, to } = lastRedoEvent.event_data;
+                  if (!arrow) {
+                    console.warn('[REDO] Missing arrow data for arrow_move event');
+                    break;
+                  }
+
+                  const targetStart =
+                    to && typeof to.start?.x === 'number' && typeof to.start?.y === 'number'
+                      ? to.start
+                      : arrow.start;
+                  const targetEnd =
+                    to && typeof to.end?.x === 'number' && typeof to.end?.y === 'number'
+                      ? to.end
+                      : arrow.end;
+
+                  setArrowsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const existing = current.find((a) => a.id === arrow.id);
+
+                    if (existing) {
+                      return {
+                        ...prev,
+                        [selectedIslandId]: current.map((a) =>
+                          a.id === arrow.id ? { ...a, start: targetStart, end: targetEnd } : a
+                        ),
+                      };
+                    }
+
+                    const fallbackArrow: ArrowSegment = {
+                      id: arrow.id,
+                      start: targetStart,
+                      end: targetEnd,
+                    };
+
+                    return {
+                      ...prev,
+                      [selectedIslandId]: [...current, fallbackArrow],
+                    };
+                  });
+
+                  objectsApi
+                    .updateMetadata(arrow.id, {
+                      arrow: true,
+                      start_x: targetStart.x,
+                      start_y: targetStart.y,
+                      end_x: targetEnd.x,
+                      end_y: targetEnd.y,
+                    })
+                    .catch((err) => {
+                      console.error('[REDO] Failed to move arrow:', err);
+                    });
                   break;
                 }
 
@@ -251,6 +358,57 @@ export const useUndo = ({
                   break;
                 }
 
+                case 'tile_move': {
+                  // Undo tile move = restore the previous position
+                  const { tile, from } = lastEvent.event_data;
+                  if (!tile) {
+                    console.warn('[UNDO] Missing tile data for tile_move event');
+                    break;
+                  }
+
+                  const targetX = typeof from?.x === 'number' ? from.x : tile.x;
+                  const targetY = typeof from?.y === 'number' ? from.y : tile.y;
+
+                  setIconsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const existing = current.find((icon) => icon.id === tile.id);
+
+                    if (existing) {
+                      return {
+                        ...prev,
+                        [selectedIslandId]: current.map((icon) =>
+                          icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
+                        ),
+                      };
+                    }
+
+                    const fallbackTile: DroppedIcon = {
+                      id: tile.id,
+                      type: tile.type as any,
+                      title: tile.title,
+                      x: targetX,
+                      y: targetY,
+                      url: tile.url,
+                      description: tile.description,
+                      faviconUrl: tile.faviconUrl,
+                      filePath: tile.filePath,
+                      serviceKey: tile.serviceKey,
+                      service: tile.service,
+                      content: tile.content,
+                    };
+
+                    return {
+                      ...prev,
+                      [selectedIslandId]: [...current, fallbackTile],
+                    };
+                  });
+
+                  objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
+                    console.error('[UNDO] Failed to move tile:', err);
+                  });
+                  break;
+                }
+
                 case 'tile_delete': {
                   // Undo tile deletion = restore the tile
                   const { tile } = lastEvent.event_data;
@@ -297,6 +455,62 @@ export const useUndo = ({
                   window.dispatchEvent(
                     new CustomEvent('arrow:deleted', { detail: { arrowId: arrow.id, undo: true } })
                   );
+                  break;
+                }
+
+                case 'arrow_move': {
+                  // Undo arrow move = restore previous coordinates
+                  const { arrow, from } = lastEvent.event_data;
+                  if (!arrow) {
+                    console.warn('[UNDO] Missing arrow data for arrow_move event');
+                    break;
+                  }
+
+                  const targetStart =
+                    from && typeof from.start?.x === 'number' && typeof from.start?.y === 'number'
+                      ? from.start
+                      : arrow.start;
+                  const targetEnd =
+                    from && typeof from.end?.x === 'number' && typeof from.end?.y === 'number'
+                      ? from.end
+                      : arrow.end;
+
+                  setArrowsByIsland((prev) => {
+                    const current = prev[selectedIslandId] || [];
+                    const existing = current.find((a) => a.id === arrow.id);
+
+                    if (existing) {
+                      return {
+                        ...prev,
+                        [selectedIslandId]: current.map((a) =>
+                          a.id === arrow.id ? { ...a, start: targetStart, end: targetEnd } : a
+                        ),
+                      };
+                    }
+
+                    const fallbackArrow: ArrowSegment = {
+                      id: arrow.id,
+                      start: targetStart,
+                      end: targetEnd,
+                    };
+
+                    return {
+                      ...prev,
+                      [selectedIslandId]: [...current, fallbackArrow],
+                    };
+                  });
+
+                  objectsApi
+                    .updateMetadata(arrow.id, {
+                      arrow: true,
+                      start_x: targetStart.x,
+                      start_y: targetStart.y,
+                      end_x: targetEnd.x,
+                      end_y: targetEnd.y,
+                    })
+                    .catch((err) => {
+                      console.error('[UNDO] Failed to move arrow:', err);
+                    });
                   break;
                 }
 

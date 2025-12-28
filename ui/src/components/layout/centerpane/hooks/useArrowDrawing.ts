@@ -35,6 +35,14 @@ export const useArrowDrawing = ({
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
   const [hasArrowMovement, setHasArrowMovement] = useState(false);
   const arrowStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [draggingArrowId, setDraggingArrowId] = useState<string | null>(null);
+  const arrowDragStateRef = useRef<{
+    arrowId: string;
+    pointerStart: { x: number; y: number };
+    initial: { start: { x: number; y: number }; end: { x: number; y: number } };
+    last?: { start: { x: number; y: number }; end: { x: number; y: number } };
+  } | null>(null);
+  const arrowDragMovedRef = useRef(false);
 
   useEffect(() => {
     setDraftArrow(null);
@@ -42,6 +50,9 @@ export const useArrowDrawing = ({
     setHasArrowMovement(false);
     setSelectedArrowId(null);
     arrowStartRef.current = null;
+    setDraggingArrowId(null);
+    arrowDragStateRef.current = null;
+    arrowDragMovedRef.current = false;
   }, [selectedIslandId]);
 
   const currentArrows = useMemo(() => {
@@ -71,6 +82,25 @@ export const useArrowDrawing = ({
     setIsDrawingArrow(true);
     setHasArrowMovement(false);
     setSelectedArrowId(null);
+  };
+
+  const startArrowDrag = (segment: ArrowSegment, e: React.PointerEvent<SVGLineElement>) => {
+    if (e.button !== 0) return;
+    if (!selectedIslandId) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    setSelectedArrowId(segment.id);
+    setDraggingArrowId(segment.id);
+    arrowDragMovedRef.current = false;
+
+    const pointerStart = toArrowCoords(e.clientX, e.clientY);
+    arrowDragStateRef.current = {
+      arrowId: segment.id,
+      pointerStart,
+      initial: { start: { ...segment.start }, end: { ...segment.end } },
+    };
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -215,6 +245,102 @@ export const useArrowDrawing = ({
   };
 
   useEffect(() => {
+    if (!draggingArrowId) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!selectedIslandId) return;
+      const dragState = arrowDragStateRef.current;
+      if (!dragState) return;
+
+      const current = toArrowCoords(e.clientX, e.clientY);
+      const dx = current.x - dragState.pointerStart.x;
+      const dy = current.y - dragState.pointerStart.y;
+
+      const nextStart = {
+        x: dragState.initial.start.x + dx,
+        y: dragState.initial.start.y + dy,
+      };
+      const nextEnd = {
+        x: dragState.initial.end.x + dx,
+        y: dragState.initial.end.y + dy,
+      };
+
+      dragState.last = { start: nextStart, end: nextEnd };
+
+      const moved =
+        Math.abs(nextStart.x - dragState.initial.start.x) > 0.5 ||
+        Math.abs(nextStart.y - dragState.initial.start.y) > 0.5 ||
+        Math.abs(nextEnd.x - dragState.initial.end.x) > 0.5 ||
+        Math.abs(nextEnd.y - dragState.initial.end.y) > 0.5;
+
+      if (moved) {
+        arrowDragMovedRef.current = true;
+      }
+
+      setArrowsByIsland((prev) => {
+        const currentArrows = prev[selectedIslandId] || [];
+        return {
+          ...prev,
+          [selectedIslandId]: currentArrows.map((a) =>
+            a.id === dragState.arrowId ? { ...a, start: nextStart, end: nextEnd } : a
+          ),
+        };
+      });
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      const dragState = arrowDragStateRef.current;
+      arrowDragStateRef.current = null;
+      setDraggingArrowId(null);
+
+      if (!selectedIslandId || !dragState) return;
+      if (!arrowDragMovedRef.current || !dragState.last) return;
+
+      const finalStart = dragState.last.start;
+      const finalEnd = dragState.last.end;
+
+      // Persist move
+      objectsApi
+        .updateMetadata(dragState.arrowId, {
+          arrow: true,
+          start_x: finalStart.x,
+          start_y: finalStart.y,
+          end_x: finalEnd.x,
+          end_y: finalEnd.y,
+        })
+        .catch((err) => {
+          console.error('[ARROW] Failed to persist arrow move:', err);
+        });
+
+      // Record undo/redo event
+      undoApi
+        .createEvent(selectedIslandId, {
+          event_type: 'arrow_move',
+          event_data: {
+            arrow: {
+              id: dragState.arrowId,
+              start: finalStart,
+              end: finalEnd,
+            },
+            from: dragState.initial,
+            to: { start: finalStart, end: finalEnd },
+          },
+        })
+        .catch((err) => console.error('Failed to create arrow move undo event:', err));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, true);
+    window.addEventListener('pointerup', handlePointerUp, true);
+    window.addEventListener('pointercancel', handlePointerUp, true);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove, true);
+      window.removeEventListener('pointerup', handlePointerUp, true);
+      window.removeEventListener('pointercancel', handlePointerUp, true);
+    };
+  }, [draggingArrowId, selectedIslandId, setArrowsByIsland]);
+
+  useEffect(() => {
     const handleDeleteArrow = (e: KeyboardEvent) => {
       if (!(e.key === 'Delete' || e.key === 'Backspace')) return;
       if (!selectedArrowId || !selectedIslandId) return;
@@ -287,6 +413,7 @@ export const useArrowDrawing = ({
     handleCanvasMouseDown,
     handleCanvasMouseMove,
     handleCanvasMouseUp,
+    handleArrowPointerDown: startArrowDrag,
     allArrowSegments,
     svgWidth,
     svgHeight,

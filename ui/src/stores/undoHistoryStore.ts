@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 // Event types for the unified undo system
-export type UndoEventType = 'tile_create' | 'tile_delete' | 'arrow_create' | 'arrow_delete' | 'text_create' | 'text_delete';
+export type UndoEventType = 'tile_create' | 'tile_move' | 'tile_delete' | 'arrow_move' | 'arrow_create' | 'arrow_delete' | 'text_create' | 'text_delete';
 
 export interface TileCreateEvent {
   type: 'tile_create';
@@ -40,6 +40,41 @@ export interface TileDeleteEvent {
     serviceKey?: string;
     service?: string;
     content?: string;
+  };
+}
+
+export interface TileMoveEvent {
+  type: 'tile_move';
+  timestamp: number;
+  islandId: string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  tile: {
+    id: string;
+    type: string;
+    title: string;
+    x: number;
+    y: number;
+    url?: string;
+    description?: string;
+    faviconUrl?: string;
+    filePath?: string;
+    serviceKey?: string;
+    service?: string;
+    content?: string;
+  };
+}
+
+export interface ArrowMoveEvent {
+  type: 'arrow_move';
+  timestamp: number;
+  islandId: string;
+  from: { start: { x: number; y: number }; end: { x: number; y: number } };
+  to: { start: { x: number; y: number }; end: { x: number; y: number } };
+  arrow: {
+    id: string;
+    start: { x: number; y: number };
+    end: { x: number; y: number };
   };
 }
 
@@ -91,12 +126,12 @@ export interface TextDeleteEvent {
   };
 }
 
-export type UndoEvent = TileCreateEvent | TileDeleteEvent | ArrowCreateEvent | ArrowDeleteEvent | TextCreateEvent | TextDeleteEvent;
+export type UndoEvent = TileCreateEvent | TileMoveEvent | TileDeleteEvent | ArrowMoveEvent | ArrowCreateEvent | ArrowDeleteEvent | TextCreateEvent | TextDeleteEvent;
 
 interface UndoHistoryStore {
   events: UndoEvent[];
   redoEvents: UndoEvent[];
-  addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => void;
+  addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileMoveEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<ArrowMoveEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => void;
   getLastEvent: (islandId?: string) => UndoEvent | null;
   removeLastEvent: (islandId?: string) => void;
   getLastRedoEvent: (islandId?: string) => UndoEvent | null;

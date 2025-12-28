@@ -41,7 +41,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == False))
-            .order_by(desc(UndoEvent.timestamp))
+            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
             .limit(1)
         )
         result = await self.session.execute(stmt)
@@ -52,7 +52,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True))
-            .order_by(desc(UndoEvent.timestamp))
+            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
             .limit(1)
         )
         result = await self.session.execute(stmt)
@@ -105,7 +105,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(UndoEvent.island_id == island_id)
-            .order_by(desc(UndoEvent.timestamp))
+            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
         )
         result = await self.session.execute(stmt)
         all_events = result.scalars().all()
@@ -133,7 +133,7 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(UndoEvent.island_id == island_id)
-            .order_by(desc(UndoEvent.timestamp))
+            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
             .offset(skip)
             .limit(limit)
         )
