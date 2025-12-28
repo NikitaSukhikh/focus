@@ -15,6 +15,7 @@ interface VideoEmbedContentProps {
   hoverScaleClass: string;
 }
 
+// VideoEmbedContent renders the inline video player card for links that resolve to embeddable sources (YouTube/Vimeo) on the canvas.
 export function VideoEmbedContent({
   videoEmbed,
   title,

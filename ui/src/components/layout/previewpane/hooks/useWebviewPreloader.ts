@@ -5,6 +5,7 @@ interface PreloaderOptions {
   frequentPages: string[];
 }
 
+// useWebviewPreloader preconnects to frequently visited URLs when the preview pane is open to make subsequent webview navigations faster.
 export function useWebviewPreloader(
   webviewRef: React.RefObject<HTMLWebViewElement | null>,
   options: PreloaderOptions

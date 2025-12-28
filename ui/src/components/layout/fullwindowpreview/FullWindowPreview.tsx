@@ -1,11 +1,14 @@
 import { useRef, useState, useEffect } from 'react';
-import { X, ExternalLink, Maximize2 } from 'lucide-react';
+import { X, ExternalLink, Minimize2 } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { openExternalUrl } from '../../../platform';
 import { usePreviewPaneLogic } from '../previewpane/usePreviewPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
 import { AudioPlayer } from '../../media/AudioPlayer';
+import { useTileNavigation } from '../previewpane/hooks/useTileNavigation';
+import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigation';
+import { DroppedIcon } from '../centerpane/types';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -26,8 +29,11 @@ interface FullWindowPreviewProps {
   filePath?: string;
   type?: string;
   content?: string;
+  tiles?: DroppedIcon[];
+  onNavigateToTile?: (tileId: string) => void;
 }
 
+// FullWindowPreview is the modal version of the preview pane, showing the selected tile's content in a focused full-window overlay.
 export function FullWindowPreview({
   isOpen,
   onClose,
@@ -35,7 +41,10 @@ export function FullWindowPreview({
   title,
   filePath,
   type,
-  content
+  content,
+  tileId,
+  tiles = [],
+  onNavigateToTile
 }: FullWindowPreviewProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
   const [documentError, setDocumentError] = useState<string | null>(null);
@@ -144,6 +153,21 @@ export function FullWindowPreview({
     }
   };
 
+  // Tile navigation
+  const navigation = useTileNavigation({
+    tiles,
+    currentTileId: tileId,
+    onNavigate: onNavigateToTile || (() => {}),
+  });
+
+  useArrowKeyNavigation({
+    navigateNext: navigation.navigateNext,
+    navigatePrevious: navigation.navigatePrevious,
+    canNavigateNext: navigation.canNavigateNext,
+    canNavigatePrevious: navigation.canNavigatePrevious,
+    isEnabled: isOpen,
+  });
+
   // Handle keyboard shortcuts
   useEffect(() => {
     if (!isOpen) return;
@@ -187,7 +211,6 @@ export function FullWindowPreview({
           style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <Maximize2 size={20} style={{ color: 'var(--primary-color)', flexShrink: 0 }} />
             <h2
               className="truncate"
               style={{
@@ -200,6 +223,14 @@ export function FullWindowPreview({
             </h2>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg transition-colors hover:bg-slate-100"
+              style={{ color: 'var(--color-text-secondary)' }}
+              title="Back to normal preview"
+            >
+              <Minimize2 size={20} />
+            </button>
             {url && (
               <button
                 onClick={() => url && openExternalUrl(url)}
@@ -227,9 +258,48 @@ export function FullWindowPreview({
           style={{
             background: 'var(--background-dark)',
             minHeight: 0,
-            overflow: 'hidden'
+            overflow: 'hidden',
+            position: 'relative'
           }}
         >
+          {/* Inline tile navigation controls */}
+          <button
+            onClick={navigation.navigatePrevious}
+            disabled={!navigation.canNavigatePrevious}
+            className="absolute left-4 rounded-full w-12 h-12 flex items-center justify-center text-2xl"
+            style={{
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'var(--glass-bg)',
+              color: 'var(--color-text-primary)',
+              opacity: navigation.canNavigatePrevious ? 0.5 : 0.2,
+              boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+              zIndex: Z_INDEX.CONTENT_PREVIEW + 2,
+              cursor: navigation.canNavigatePrevious ? 'pointer' : 'not-allowed',
+            }}
+            title="Previous tile (Left arrow)"
+          >
+            &lt;
+          </button>
+          <button
+            onClick={navigation.navigateNext}
+            disabled={!navigation.canNavigateNext}
+            className="absolute right-4 rounded-full w-12 h-12 flex items-center justify-center text-2xl"
+            style={{
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'var(--glass-bg)',
+              color: 'var(--color-text-primary)',
+              opacity: navigation.canNavigateNext ? 0.5 : 0.2,
+              boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+              zIndex: Z_INDEX.CONTENT_PREVIEW + 2,
+              cursor: navigation.canNavigateNext ? 'pointer' : 'not-allowed',
+            }}
+            title="Next tile (Right arrow)"
+          >
+            &gt;
+          </button>
+
           {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>

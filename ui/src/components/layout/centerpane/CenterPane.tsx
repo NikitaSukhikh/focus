@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from './hooks/useArrowDrawing';
 import { ARROW_SETTINGS } from './arrowSettings';
 
+// CenterPane renders the freeform canvas of tiles/arrows for the selected island, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const zoom = zoomProp ?? 1;
@@ -24,7 +25,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     addFiles: logic.handleAddFiles,
-  }), [logic.handleAddFiles]);
+    getTilesForIsland: (islandId: string) => logic.iconsByIsland[islandId] || [],
+  }), [logic.handleAddFiles, logic.iconsByIsland]);
 
   const selectedIcons = useMemo(() => {
     if (!logic.selectedIsland) return [];
