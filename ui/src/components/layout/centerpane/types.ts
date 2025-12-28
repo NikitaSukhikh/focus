@@ -40,7 +40,7 @@ export interface PreviewTarget {
   tileId?: string;
   filePath?: string;
   type?: IconKind;
-  content?: string; // For text type objects - note content for preview
+  content?: string; // Text content (notes) or cached preview payloads
 }
 
 export interface CenterPaneProps {

@@ -29,13 +29,17 @@ export function VideoEmbedContent({
   hoverScaleClass,
 }: VideoEmbedContentProps) {
   return (
-    <div className={`w-full h-full flex flex-col gap-3 transition-transform duration-150 ${hoverScaleClass}`}>
+    <div
+      className={`w-full h-full flex flex-col gap-3 transition-transform duration-150 ${hoverScaleClass}`}
+      style={{ pointerEvents: isRenaming ? 'auto' : 'none' }}
+    >
       <div
         className="w-full rounded-lg overflow-hidden bg-black shadow-inner"
         style={{
           aspectRatio: '16 / 9',
           boxShadow: '0 6px 14px rgba(0,0,0,0.18)',
           flexShrink: 0,
+          pointerEvents: 'none',
         }}
       >
         <iframe
@@ -49,7 +53,9 @@ export function VideoEmbedContent({
             border: 0,
             display: 'block',
             background: '#000',
+            pointerEvents: 'none',
           }}
+          draggable={false}
         />
       </div>
       <div className="w-full min-w-0 flex flex-col items-center gap-1 px-1">
