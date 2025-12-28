@@ -10,9 +10,9 @@
 
 import { useState } from 'react';
 import { objectsApi } from '../../../../api/objects';
+import { undoApi } from '../../../../api/undo';
 import { DroppedIcon } from '../types';
 import { autoWrapText } from '../utils';
-import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface TextCreationParams {
   selectedIsland: any;
@@ -27,7 +27,6 @@ export const useCenterPaneTextCreation = ({
 }: TextCreationParams) => {
   const [isAddTextDialogOpen, setIsAddTextDialogOpen] = useState(false);
   const [pendingTextPosition, setPendingTextPosition] = useState<{ x: number; y: number } | null>(null);
-  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const openAddTextDialog = (x: number, y: number) => {
     setPendingTextPosition({ x, y });
@@ -69,18 +68,21 @@ export const useCenterPaneTextCreation = ({
         return { ...prev, [selectedIsland.id]: [...current, newIcon] };
       });
 
-      // Add to unified undo history
-      addEvent({
-        type: 'text_create' as const,
-        islandId: selectedIsland.id,
-        text: {
-          id: created.id,
-          title: created.title,
-          content: formattedContent,
-          x: clamped.x,
-          y: clamped.y,
-        },
-      });
+      // Add to backend undo history
+      undoApi
+        .createEvent(selectedIsland.id, {
+          event_type: 'text_create',
+          event_data: {
+            text: {
+              id: created.id,
+              title: created.title,
+              content: formattedContent,
+              x: clamped.x,
+              y: clamped.y,
+            },
+          },
+        })
+        .catch((err) => console.error('Failed to create undo event:', err));
 
       setIsAddTextDialogOpen(false);
       setPendingTextPosition(null);

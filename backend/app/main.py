@@ -163,7 +163,7 @@ async def root():
 
 
 # Import routers
-from app.api.routes import health, islands, objects, preview, google_oauth, internal_storage, thumbnails
+from app.api.routes import health, islands, objects, preview, google_oauth, internal_storage, thumbnails, undo
 
 # Register routers
 # Health endpoints (no /api prefix for health checks)
@@ -186,6 +186,9 @@ app.include_router(google_oauth.router, prefix="/api/google", tags=["Google"])
 
 # Internal Storage endpoints
 app.include_router(internal_storage.router, prefix="/api/internal-storage", tags=["Internal Storage"])
+
+# Undo/Redo endpoints
+app.include_router(undo.router, prefix="/api", tags=["Undo"])
 
 # TODO: Add AI Assistant router when implemented
 # from app.api.routes import assistant

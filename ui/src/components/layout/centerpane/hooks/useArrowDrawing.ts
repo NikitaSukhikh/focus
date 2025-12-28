@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { objectsApi } from '../../../../api/objects';
+import { undoApi } from '../../../../api/undo';
 import { ArrowSegment } from '../types';
-import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface UseArrowDrawingProps {
   zoom: number;
@@ -34,7 +34,6 @@ export const useArrowDrawing = ({
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
   const [hasArrowMovement, setHasArrowMovement] = useState(false);
   const arrowStartRef = useRef<{ x: number; y: number } | null>(null);
-  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   useEffect(() => {
     setDraftArrow(null);
@@ -185,16 +184,19 @@ export const useArrowDrawing = ({
         });
         setSelectedArrowId(created.id);
 
-        // Add to unified undo history
-        addEvent({
-          type: 'arrow_create' as const,
-          islandId,
-          arrow: {
-            id: created.id,
-            start: { x: newArrow.start.x, y: newArrow.start.y },
-            end: { x: newArrow.end.x, y: newArrow.end.y },
-          },
-        });
+        // Add to backend undo history
+        undoApi
+          .createEvent(islandId, {
+            event_type: 'arrow_create',
+            event_data: {
+              arrow: {
+                id: created.id,
+                start: { x: newArrow.start.x, y: newArrow.start.y },
+                end: { x: newArrow.end.x, y: newArrow.end.y },
+              },
+            },
+          })
+          .catch((err) => console.error('Failed to create undo event:', err));
 
         window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id } }));
       } catch (err) {
@@ -224,16 +226,19 @@ export const useArrowDrawing = ({
       const arrowToDelete = (arrowsByIsland[selectedIslandId] || []).find((a) => a.id === selectedArrowId);
 
       if (arrowToDelete) {
-        // Add to unified undo history
-        addEvent({
-          type: 'arrow_delete' as const,
-          islandId: selectedIslandId,
-          arrow: {
-            id: arrowToDelete.id,
-            start: { x: arrowToDelete.start.x, y: arrowToDelete.start.y },
-            end: { x: arrowToDelete.end.x, y: arrowToDelete.end.y },
-          },
-        });
+        // Add to backend undo history
+        undoApi
+          .createEvent(selectedIslandId, {
+            event_type: 'arrow_delete',
+            event_data: {
+              arrow: {
+                id: arrowToDelete.id,
+                start: { x: arrowToDelete.start.x, y: arrowToDelete.start.y },
+                end: { x: arrowToDelete.end.x, y: arrowToDelete.end.y },
+              },
+            },
+          })
+          .catch((err) => console.error('Failed to create undo event:', err));
       }
 
       setArrowsByIsland((prev) => {
@@ -250,7 +255,7 @@ export const useArrowDrawing = ({
 
     window.addEventListener('keydown', handleDeleteArrow, true);
     return () => window.removeEventListener('keydown', handleDeleteArrow, true);
-  }, [selectedArrowId, selectedIslandId, setArrowsByIsland, arrowsByIsland, addEvent]);
+  }, [selectedArrowId, selectedIslandId, setArrowsByIsland, arrowsByIsland]);
 
 
   const allArrowSegments = useMemo(() => {

@@ -10,10 +10,10 @@
  */
 
 import { objectsApi } from '../../../../api/objects';
+import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
-import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface IconActionsParams {
   selectedIsland: any;
@@ -21,7 +21,6 @@ interface IconActionsParams {
 }
 
 export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: IconActionsParams) => {
-  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const looksLikeFavicon = (src?: string) => {
     const s = (src || '').toLowerCase();
@@ -56,39 +55,45 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
     setIconsByIsland((prev) => {
       const tile = (prev[selectedIsland.id] || []).find((i) => i.id === iconId);
       if (tile) {
-        // Add to unified undo history
+        // Add to backend undo history
         // Text tiles use text_delete event, all other tiles use tile_delete
         if (tile.type === 'text') {
-          addEvent({
-            type: 'text_delete' as const,
-            islandId: selectedIsland.id,
-            text: {
-              id: tile.id,
-              title: tile.title,
-              content: tile.content || '',
-              x: tile.x,
-              y: tile.y,
-            },
-          });
+          undoApi
+            .createEvent(selectedIsland.id, {
+              event_type: 'text_delete',
+              event_data: {
+                text: {
+                  id: tile.id,
+                  title: tile.title,
+                  content: tile.content || '',
+                  x: tile.x,
+                  y: tile.y,
+                },
+              },
+            })
+            .catch((err) => console.error('Failed to create undo event:', err));
         } else {
-          addEvent({
-            type: 'tile_delete' as const,
-            islandId: selectedIsland.id,
-            tile: {
-              id: tile.id,
-              type: tile.type,
-              title: tile.title,
-              x: tile.x,
-              y: tile.y,
-              url: tile.url,
-              description: tile.description,
-              faviconUrl: tile.faviconUrl,
-              filePath: tile.filePath,
-              serviceKey: tile.serviceKey,
-              service: tile.service,
-              content: tile.content,
-            },
-          });
+          undoApi
+            .createEvent(selectedIsland.id, {
+              event_type: 'tile_delete',
+              event_data: {
+                tile: {
+                  id: tile.id,
+                  type: tile.type,
+                  title: tile.title,
+                  x: tile.x,
+                  y: tile.y,
+                  url: tile.url,
+                  description: tile.description,
+                  faviconUrl: tile.faviconUrl,
+                  filePath: tile.filePath,
+                  serviceKey: tile.serviceKey,
+                  service: tile.service,
+                  content: tile.content,
+                },
+              },
+            })
+            .catch((err) => console.error('Failed to create undo event:', err));
         }
       }
 
