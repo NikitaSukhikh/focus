@@ -15,6 +15,7 @@ import { usePersistedIsland } from './stores/hooks/usePersistedIsland';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useTelegramEventListener } from './hooks/useTelegramEventListener';
 import { usePersistedNumber } from './hooks/usePersistedNumber';
+import { useBeforeUnload } from './hooks/useBeforeUnload';
 
 type ResizeHandler = React.MouseEventHandler<HTMLDivElement>;
 
@@ -66,6 +67,9 @@ export function App() {
     // TODO: Implement Telegram account dialog
     console.log('Add Telegram account - coming soon');
   });
+
+  // Ensure pending requests are flushed before app closes
+  useBeforeUnload();
 
   // Clear preview when switching islands
   useEffect(() => {

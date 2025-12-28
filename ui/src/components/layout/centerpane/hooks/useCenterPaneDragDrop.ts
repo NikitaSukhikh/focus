@@ -18,6 +18,7 @@ import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind } from '../types';
 import { isGmailUrl } from '../utils';
+import { useDebouncedPositionUpdate } from '../../../../hooks/useDebouncedPositionUpdate';
 
 interface DragDropParams {
   selectedIsland: any;
@@ -42,6 +43,7 @@ export const useCenterPaneDragDrop = ({
 }: DragDropParams) => {
   const autoScrollIntervalRef = useRef<number | null>(null);
   const dragStartScrollTopRef = useRef<number>(0);
+  const { updatePosition } = useDebouncedPositionUpdate();
 
   const handleAutoScroll = useCallback((clientY: number) => {
     if (!paneRef.current) return;
@@ -181,9 +183,8 @@ export const useCenterPaneDragDrop = ({
         ),
       }));
 
-      objectsApi.updatePosition(iconId, x, y).catch((err) => {
-        console.error('Failed to update position:', err);
-      });
+      // Debounced position update - UI updates immediately, API call is debounced
+      updatePosition(iconId, x, y);
       return;
     }
 
