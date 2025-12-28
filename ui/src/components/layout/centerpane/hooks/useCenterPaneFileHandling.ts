@@ -14,6 +14,7 @@ import { useCallback } from 'react';
 import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
 import { openFilePicker } from '../../../../platform';
 import { DroppedIcon } from '../types';
+import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface FileHandlingParams {
   selectedIsland: any;
@@ -28,6 +29,8 @@ export const useCenterPaneFileHandling = ({
   setIconsByIsland,
   clampToBoundaries,
 }: FileHandlingParams) => {
+  const addEvent = useUndoHistoryStore((state) => state.addEvent);
+
   const handleAddFiles = useCallback(async () => {
     if (!selectedIsland || !paneRef.current) return;
 
@@ -91,6 +94,20 @@ export const useCenterPaneFileHandling = ({
                 i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
               ),
             }));
+
+            // Add to unified undo history
+            addEvent({
+              type: 'tile_create' as const,
+              islandId: selectedIsland.id,
+              tile: {
+                id: created.id,
+                type: 'file',
+                title: filename,
+                x,
+                y,
+                filePath: createdFilePath,
+              },
+            });
           })
           .catch((err) => {
             console.error('Failed to create file object:', err);
@@ -103,7 +120,7 @@ export const useCenterPaneFileHandling = ({
     } catch (err) {
       console.error('Failed to open file picker:', err);
     }
-  }, [selectedIsland, paneRef, clampToBoundaries, setIconsByIsland]);
+  }, [selectedIsland, paneRef, clampToBoundaries, setIconsByIsland, addEvent]);
 
   return {
     handleAddFiles,
