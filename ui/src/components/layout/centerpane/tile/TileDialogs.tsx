@@ -20,6 +20,7 @@ interface TileDialogsProps {
   onShareDialogClose: () => void;
 }
 
+// TileDialogs groups auxiliary dialogs (account selector and share modal) shown from tile context actions.
 export function TileDialogs({
   showAccountDialog,
   accountSelectionData,

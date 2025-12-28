@@ -18,6 +18,7 @@ interface UseArrowDrawingProps {
 
 const ARROW_PADDING = 120;
 
+// useArrowDrawing handles pointer-based arrow creation/selection on the canvas and keeps arrow segments in sync with backend objects and undo events.
 export const useArrowDrawing = ({
   zoom,
   paneRef,

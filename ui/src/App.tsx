@@ -186,6 +186,35 @@ export function App() {
     }
   };
 
+  const handleNavigateToTile = (tileId: string) => {
+    const tiles = centerPaneRef.current?.getTilesForIsland(selectedIslandId || '');
+    if (!tiles) return;
+
+    const tile = tiles.find((t) => t.id === tileId);
+    if (!tile) return;
+
+    const { category } = detectFileType(tile.filePath || '');
+    const isFile = tile.type === 'file';
+    const isPdf = isFile && category === 'pdf';
+
+    const tileData = {
+      url: isPdf && tile.filePath ? toFileUrl(tile.filePath) : tile.url,
+      title: tile.title,
+      tileId: tile.id,
+      filePath: tile.filePath,
+      type: tile.type,
+      content: tile.content,
+    };
+
+    setPreviewData(tileData);
+    setIsPreviewOpen(true);
+
+    // Also update full window data if it's open
+    if (isFullWindowOpen) {
+      setFullWindowData(tileData);
+    }
+  };
+
   const handleQuickAddFiles = () => {
     centerPaneRef.current?.addFiles();
   };
@@ -286,11 +315,10 @@ export function App() {
                 maxWidth: '800px',
                 minWidth: '360px',
                 zIndex: Z_INDEX.CONTENT_PREVIEW,
-                borderLeft: '2px solid var(--color-border-subtle)',
               }}
             >
               <PreviewPane
-                isOpen={isPreviewOpen}
+                isOpen={isPreviewOpen && !isFullWindowOpen}
                 onClose={() => setIsPreviewOpen(false)}
                 url={previewData.url}
                 title={previewData.title}
@@ -298,6 +326,8 @@ export function App() {
                 filePath={previewData.filePath}
                 type={previewData.type}
                 content={previewData.content}
+                tiles={centerPaneRef.current?.getTilesForIsland(selectedIslandId || '') || []}
+                onNavigateToTile={handleNavigateToTile}
               />
             </div>
           )}
@@ -341,6 +371,8 @@ export function App() {
         filePath={fullWindowData.filePath}
         type={fullWindowData.type}
         content={fullWindowData.content}
+        tiles={centerPaneRef.current?.getTilesForIsland(selectedIslandId || '') || []}
+        onNavigateToTile={handleNavigateToTile}
       />
     </div>
   );

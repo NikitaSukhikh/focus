@@ -4,6 +4,7 @@ import { canShowImageThumbnail } from '../../../../utils/fileTypes';
 export function useThumbnail(type: string, filePath?: string, title?: string) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
+  // Generates thumbnail URLs for image/file tiles and clears them for non-previewable items.
   useEffect(() => {
     console.log('[ICON TILE] Checking thumbnail for:', { type, filePath, title });
     if (type === 'file' && filePath && canShowImageThumbnail(filePath)) {

@@ -4,6 +4,7 @@ export function useDragHandling(id: string, x: number, y: number) {
   const [isDragging, setIsDragging] = useState(false);
   const [skipTransition, setSkipTransition] = useState(false);
 
+  // Adds drag handles and ghost image support so tiles can be repositioned within the canvas.
   const handleDragStart = (e: React.DragEvent) => {
     const startCursorX = e.clientX;
     const startCursorY = e.clientY;

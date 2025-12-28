@@ -13,6 +13,7 @@ interface AssistantPaneProps {
   onResizeStart: React.MouseEventHandler<HTMLDivElement>;
 }
 
+// AssistantPane renders the right-side assistant chat column with message history and input when the assistant panel is open.
 export function AssistantPane({ isOpen, onClose, width, onResizeStart }: AssistantPaneProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);

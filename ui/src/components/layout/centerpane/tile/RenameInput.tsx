@@ -8,6 +8,7 @@ interface RenameInputProps {
   inputRef: React.RefObject<HTMLInputElement>;
 }
 
+// RenameInput is the focused input used during inline renames for tiles and link cards.
 export function RenameInput({ value, onChange, onKeyDown, onBlur, inputRef }: RenameInputProps) {
   return (
     <input

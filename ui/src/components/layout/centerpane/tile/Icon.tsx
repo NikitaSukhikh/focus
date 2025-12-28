@@ -13,6 +13,7 @@ interface TileIconProps {
   onThumbnailError: () => void;
 }
 
+// TileIcon decides which visual to render for a tile (thumbnail, favicon, google service icon, or type icon) based on the tile's data.
 export function TileIcon({
   type,
   url,

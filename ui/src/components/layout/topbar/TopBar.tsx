@@ -7,6 +7,7 @@ import { TopBarProps, TopBarHandle } from './types';
 
 export type { TopBarHandle } from './types';
 
+// TopBar renders the global header controls (sidebar toggle, island title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom } = props;
 

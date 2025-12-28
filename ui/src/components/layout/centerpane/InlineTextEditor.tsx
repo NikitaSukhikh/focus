@@ -10,6 +10,7 @@ interface InlineTextEditorProps {
   onCancel: () => void;
 }
 
+// InlineTextEditor is an absolutely positioned textarea used to edit or create text notes directly on the canvas.
 export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
   x,
   y,

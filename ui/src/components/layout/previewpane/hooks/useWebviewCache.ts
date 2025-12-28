@@ -29,6 +29,7 @@ const DEFAULT_CONFIG: CacheConfig = {
 
 const CACHE_STORAGE_KEY = 'ocean_webview_cache';
 
+// useWebviewCache keeps lightweight load statistics in localStorage to inform caching and preloading decisions for the preview webview.
 export function useWebviewCache(webviewRef: React.RefObject<HTMLWebViewElement | null>) {
   const cacheMapRef = useRef<Map<string, CacheEntry>>(new Map());
   const loadStartTimeRef = useRef<number | null>(null);

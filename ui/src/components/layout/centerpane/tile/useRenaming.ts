@@ -5,6 +5,7 @@ export function useRenaming(title: string, onRename?: (newTitle: string) => void
   const [renamingValue, setRenamingValue] = useState(title);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
+  // Manages inline rename mode for a tile and syncs the new title via the provided callback.
   useEffect(() => {
     setRenamingValue(title);
   }, [title]);
