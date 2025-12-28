@@ -95,6 +95,7 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
 
   useEffect(() => {
     if (!isEditing) return;
+    // Auto-save and close when clicks land outside the preview container
     const handleClickOutside = (e: MouseEvent) => {
       const boundaryEl = paneContainerRef?.current ?? containerRef.current;
       if (!boundaryEl) return;

@@ -23,7 +23,7 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isSavingRef = useRef(false);
-  const hasInitializedSelection = useRef(false);
+  const hasInitializedSelection = useRef(false); // Avoid resetting selection after first focus
 
   useEffect(() => {
     if (textareaRef.current) {

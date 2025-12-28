@@ -15,6 +15,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useIslandStore } from '../../../../stores/islandStore';
 import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 import { objectsApi } from '../../../../api/objects';
+import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind, ArrowSegment } from '../types';
 import { isGmailUrl } from '../utils';
@@ -174,24 +175,44 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         // Find the tile to save to history
         const tileToDelete = (iconsByIsland[selectedIsland.id] || []).find((i) => i.id === primarySelectedId);
         if (tileToDelete) {
-          addEvent({
-            type: 'tile_delete',
-            islandId: selectedIsland.id,
-            tile: {
-              id: tileToDelete.id,
-              type: tileToDelete.type,
-              title: tileToDelete.title,
-              x: tileToDelete.x,
-              y: tileToDelete.y,
-              url: tileToDelete.url,
-              description: tileToDelete.description,
-              faviconUrl: tileToDelete.faviconUrl,
-              filePath: tileToDelete.filePath,
-              serviceKey: tileToDelete.serviceKey,
-              service: tileToDelete.service,
-              content: tileToDelete.content,
-            },
-          });
+          // Keep keyboard delete in both local undo store and server undo log
+          const isTextTile = tileToDelete.type === 'text';
+          const tileEventPayload = {
+            id: tileToDelete.id,
+            type: tileToDelete.type,
+            title: tileToDelete.title,
+            x: tileToDelete.x,
+            y: tileToDelete.y,
+            url: tileToDelete.url,
+            description: tileToDelete.description,
+            faviconUrl: tileToDelete.faviconUrl,
+            filePath: tileToDelete.filePath,
+            serviceKey: tileToDelete.serviceKey,
+            service: tileToDelete.service,
+            content: tileToDelete.content,
+          };
+          const textEventPayload = {
+            id: tileToDelete.id,
+            title: tileToDelete.title,
+            content: tileToDelete.content || '',
+            x: tileToDelete.x,
+            y: tileToDelete.y,
+          };
+
+          // Local history store
+          addEvent(
+            isTextTile
+              ? { type: 'text_delete', islandId: selectedIsland.id, text: textEventPayload }
+              : { type: 'tile_delete', islandId: selectedIsland.id, tile: tileEventPayload }
+          );
+
+          // Persist undo event to backend
+          undoApi
+            .createEvent(selectedIsland.id, {
+              event_type: isTextTile ? 'text_delete' : 'tile_delete',
+              event_data: isTextTile ? { text: textEventPayload } : { tile: tileEventPayload },
+            })
+            .catch((err) => console.error('Failed to create undo event:', err));
         }
 
         // Dispatch event before deleting to notify preview pane
