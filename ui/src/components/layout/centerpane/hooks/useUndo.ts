@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { undoApi } from '../../../../api/undo';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon, ArrowSegment } from '../types';
+import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface UseUndoProps {
   selectedIslandId?: string;
@@ -25,6 +26,44 @@ export const useUndo = ({
   setIconsByIsland,
   setArrowsByIsland,
 }: UseUndoProps) => {
+  const clearLocalHistory = useUndoHistoryStore((state) => state.clearHistory);
+
+  // Clear undo history on mount/unmount and before unload so no stale events persist across sessions.
+  useEffect(() => {
+    if (!selectedIslandId) return;
+
+    const clearServerHistory = async () => {
+      try {
+        if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+          const url = `/api/islands/${selectedIslandId}/undo-events`;
+          const blob = new Blob([], { type: 'application/json' });
+          navigator.sendBeacon(url, blob);
+        } else {
+          await fetch(`/api/islands/${selectedIslandId}/undo-events`, { method: 'DELETE', keepalive: true });
+        }
+      } catch (err) {
+        console.error('[UNDO] Failed to clear undo history:', err);
+      }
+    };
+
+    clearLocalHistory(selectedIslandId);
+    void clearServerHistory();
+
+    const handleBeforeUnload = () => {
+      clearLocalHistory(selectedIslandId);
+      clearServerHistory().catch(() => {
+        // swallow errors on unload
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearLocalHistory(selectedIslandId);
+      void clearServerHistory();
+    };
+  }, [clearLocalHistory, selectedIslandId]);
 
   useEffect(() => {
     const handleUndoRedo = (e: KeyboardEvent) => {

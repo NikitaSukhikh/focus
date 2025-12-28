@@ -57,6 +57,7 @@ export function FullWindowPreview({
   const [localContent, setLocalContent] = useState(content);
   const [contentWasUpdated, setContentWasUpdated] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Guard saves/close so outside clicks and shortcuts share a single path
   const containerRef = useRef<HTMLDivElement>(null);
   const isClosingRef = useRef(false);
   const titleRef = useRef<HTMLHeadingElement>(null);

@@ -69,6 +69,7 @@ export interface ArrowMoveEvent {
   type: 'arrow_move';
   timestamp: number;
   islandId: string;
+  // Mirror backend arrow_move payload for client-side history
   from: { start: { x: number; y: number }; end: { x: number; y: number } };
   to: { start: { x: number; y: number }; end: { x: number; y: number } };
   arrow: {

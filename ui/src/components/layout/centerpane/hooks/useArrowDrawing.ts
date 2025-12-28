@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
@@ -54,6 +54,45 @@ export const useArrowDrawing = ({
     arrowDragStateRef.current = null;
     arrowDragMovedRef.current = false;
   }, [selectedIslandId]);
+
+  const deleteArrow = useCallback(
+    (arrowId: string) => {
+      if (!selectedIslandId) return;
+
+      let arrowToDelete: ArrowSegment | undefined;
+
+      setArrowsByIsland((prev) => {
+        const current = prev[selectedIslandId] || [];
+        arrowToDelete = current.find((a) => a.id === arrowId);
+        if (!current.length) return prev;
+        return { ...prev, [selectedIslandId]: current.filter((segment) => segment.id !== arrowId) };
+      });
+
+      setSelectedArrowId((prev) => (prev === arrowId ? null : prev));
+
+      if (arrowToDelete) {
+        // Track deletion in undo log so keyboard/context actions stay reversible
+        undoApi
+          .createEvent(selectedIslandId, {
+            event_type: 'arrow_delete',
+            event_data: {
+              arrow: {
+                id: arrowToDelete.id,
+                start: { x: arrowToDelete.start.x, y: arrowToDelete.start.y },
+                end: { x: arrowToDelete.end.x, y: arrowToDelete.end.y },
+              },
+            },
+          })
+          .catch((err) => console.error('Failed to create undo event:', err));
+      }
+
+      objectsApi.delete(arrowId).catch((err) => {
+        console.error('Failed to delete arrow', err);
+      });
+      window.dispatchEvent(new CustomEvent('arrow:deleted', { detail: { arrowId } }));
+    },
+    [selectedIslandId, setArrowsByIsland]
+  );
 
   const currentArrows = useMemo(() => {
     if (!selectedIslandId) return [];
@@ -247,6 +286,7 @@ export const useArrowDrawing = ({
   useEffect(() => {
     if (!draggingArrowId) return;
 
+    // Track pointer-driven arrow moves and emit undo/redo events on release
     const handlePointerMove = (e: PointerEvent) => {
       if (!selectedIslandId) return;
       const dragState = arrowDragStateRef.current;
@@ -349,40 +389,12 @@ export const useArrowDrawing = ({
       e.preventDefault();
       e.stopPropagation();
 
-      // Find the arrow being deleted
-      const arrowToDelete = (arrowsByIsland[selectedIslandId] || []).find((a) => a.id === selectedArrowId);
-
-      if (arrowToDelete) {
-        // Add to backend undo history
-        undoApi
-          .createEvent(selectedIslandId, {
-            event_type: 'arrow_delete',
-            event_data: {
-              arrow: {
-                id: arrowToDelete.id,
-                start: { x: arrowToDelete.start.x, y: arrowToDelete.start.y },
-                end: { x: arrowToDelete.end.x, y: arrowToDelete.end.y },
-              },
-            },
-          })
-          .catch((err) => console.error('Failed to create undo event:', err));
-      }
-
-      setArrowsByIsland((prev) => {
-        const current = prev[selectedIslandId] || [];
-        return { ...prev, [selectedIslandId]: current.filter((segment) => segment.id !== selectedArrowId) };
-      });
-      const arrowIdToDelete = selectedArrowId;
-      setSelectedArrowId(null);
-      objectsApi.delete(arrowIdToDelete).catch((err) => {
-        console.error('Failed to delete arrow', err);
-      });
-      window.dispatchEvent(new CustomEvent('arrow:deleted', { detail: { arrowId: arrowIdToDelete } }));
+      deleteArrow(selectedArrowId);
     };
 
     window.addEventListener('keydown', handleDeleteArrow, true);
     return () => window.removeEventListener('keydown', handleDeleteArrow, true);
-  }, [selectedArrowId, selectedIslandId, setArrowsByIsland, arrowsByIsland]);
+  }, [deleteArrow, selectedArrowId, selectedIslandId]);
 
 
   const allArrowSegments = useMemo(() => {
@@ -409,6 +421,7 @@ export const useArrowDrawing = ({
   return {
     selectedArrowId,
     setSelectedArrowId,
+    deleteArrow,
     clearArrowSelection: () => setSelectedArrowId(null),
     handleCanvasMouseDown,
     handleCanvasMouseMove,

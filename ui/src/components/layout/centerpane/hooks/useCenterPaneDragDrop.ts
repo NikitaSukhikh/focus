@@ -193,6 +193,7 @@ export const useCenterPaneDragDrop = ({
 
       // Record move for undo/redo history when position actually changes
       if (movedIcon && hasMoved) {
+        // Emit backend undo event for tile move
         undoApi
           .createEvent(selectedIsland.id, {
             event_type: 'tile_move',

@@ -34,6 +34,7 @@ export const usePreviewTextEditor = ({
     editedContent: initialContent,
   });
 
+  // Keep editor content in sync when external updates arrive while not actively editing
   useEffect(() => {
     setEditorState((prev) => {
       if (prev.isEditing || prev.editedContent === initialContent) return prev;
