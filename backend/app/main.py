@@ -28,7 +28,8 @@ from app.core.logging import (
     set_request_context,
     clear_request_context,
 )
-from app.storage.db import init_db
+from app.storage.db import init_db, AsyncSessionLocal
+from app.storage.repositories.undo_repo import UndoEventRepository
 
 
 # Initialize settings and logging
@@ -48,15 +49,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     try:
         settings.storage.ensure_directories()
         await init_db()
+        # Clear undo history on fresh launch so sessions don't share history
+        async with AsyncSessionLocal() as session:
+            repo = UndoEventRepository(session)
+            cleared = await repo.clear_all()
+            logger.info(f"Cleared undo history on startup: {cleared} events")
     except Exception as e:
         logger.error(f"Failed to initialize storage: {e}", exc_info=True)
 
     yield
 
     # Shutdown
-    # TODO: Close database connections when database layer is implemented
-    # await close_database()
-    pass
+    try:
+        async with AsyncSessionLocal() as session:
+            repo = UndoEventRepository(session)
+            cleared = await repo.clear_all()
+            logger.info(f"Cleared undo history on shutdown: {cleared} events")
+    except Exception as e:
+        logger.error(f"Failed to clear undo history on shutdown: {e}", exc_info=True)
 
 
 # Create FastAPI application

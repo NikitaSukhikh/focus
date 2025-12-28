@@ -118,13 +118,16 @@ class UndoEvent(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     island_id = Column(String, ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Monotonic per-island order; redo/undo uses sequence to step backward/forward.
+    sequence = Column(Integer, nullable=False, default=0, server_default="0")
     event_type = Column(String(50), nullable=False)  # tile_create, tile_delete, etc.
     event_data = Column(JSON, nullable=False)  # Complete object state snapshot
     timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
     is_undone = Column(Boolean, nullable=False, default=False, server_default="0", index=True)
 
     __table_args__ = (
-        Index("idx_undo_events_island_undone", "island_id", "is_undone", "timestamp"),
+        Index("idx_undo_events_island_undone", "island_id", "is_undone", "sequence"),
+        Index("idx_undo_events_island_sequence", "island_id", "sequence", unique=True),
     )
 
 

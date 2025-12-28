@@ -18,6 +18,7 @@ class UndoEventType(str, Enum):
     TILE_CREATE = "tile_create"
     TILE_MOVE = "tile_move"
     TILE_DELETE = "tile_delete"
+    TEXT_MOVE = "text_move"
     ARROW_MOVE = "arrow_move"
     ARROW_CREATE = "arrow_create"
     ARROW_DELETE = "arrow_delete"
@@ -57,6 +58,7 @@ class UndoEventResponse(UndoEventBase):
 
     id: UUID
     island_id: UUID
+    sequence: int = Field(..., description="Monotonic per-island sequence number for deterministic ordering")
     timestamp: datetime
     is_undone: bool
 

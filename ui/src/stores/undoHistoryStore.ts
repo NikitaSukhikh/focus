@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 // Event types for the unified undo system
-export type UndoEventType = 'tile_create' | 'tile_move' | 'tile_delete' | 'arrow_move' | 'arrow_create' | 'arrow_delete' | 'text_create' | 'text_delete';
+export type UndoEventType = 'tile_create' | 'tile_move' | 'tile_delete' | 'text_move' | 'arrow_move' | 'arrow_create' | 'arrow_delete' | 'text_create' | 'text_delete';
 
 export interface TileCreateEvent {
   type: 'tile_create';
@@ -62,6 +62,21 @@ export interface TileMoveEvent {
     serviceKey?: string;
     service?: string;
     content?: string;
+  };
+}
+
+export interface TextMoveEvent {
+  type: 'text_move';
+  timestamp: number;
+  islandId: string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  text: {
+    id: string;
+    title: string;
+    content: string;
+    x: number;
+    y: number;
   };
 }
 
@@ -127,12 +142,12 @@ export interface TextDeleteEvent {
   };
 }
 
-export type UndoEvent = TileCreateEvent | TileMoveEvent | TileDeleteEvent | ArrowMoveEvent | ArrowCreateEvent | ArrowDeleteEvent | TextCreateEvent | TextDeleteEvent;
+export type UndoEvent = TileCreateEvent | TileMoveEvent | TileDeleteEvent | TextMoveEvent | ArrowMoveEvent | ArrowCreateEvent | ArrowDeleteEvent | TextCreateEvent | TextDeleteEvent;
 
 interface UndoHistoryStore {
   events: UndoEvent[];
   redoEvents: UndoEvent[];
-  addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileMoveEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<ArrowMoveEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => void;
+  addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileMoveEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<TextMoveEvent, 'timestamp'> | Omit<ArrowMoveEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => void;
   getLastEvent: (islandId?: string) => UndoEvent | null;
   removeLastEvent: (islandId?: string) => void;
   getLastRedoEvent: (islandId?: string) => UndoEvent | null;
