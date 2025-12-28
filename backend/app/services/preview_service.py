@@ -45,6 +45,7 @@ from app.models.preview import (
 )
 from app.services.thumbnails.text_preview import text_preview_service
 from app.services.thumbnails.file_thumbnail import file_thumbnail_service
+from app.services.thumbnails.audio_metadata import is_audio_file, get_audio_metadata
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -348,6 +349,16 @@ class PreviewService:
                     text_preview = text_content[:500]  # Limit preview length
                 except Exception as e:
                     logger.warning(f"Failed to generate text preview: {e}")
+
+            # Check if this is an audio file and add metadata
+            elif is_audio_file(file_path):
+                try:
+                    audio_metadata = get_audio_metadata(file_path)
+                    # Audio files are handled in the frontend with AudioPlayer component
+                    # The metadata is already stored in the object's metadata during creation
+                    logger.debug(f"Audio file detected: {file_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to extract audio metadata: {e}")
 
         return FilePreview(
             object_id=obj.id,
