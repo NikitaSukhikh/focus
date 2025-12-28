@@ -6,6 +6,7 @@ interface TextContentProps {
   hoverScaleClass: string;
 }
 
+// TextContent shows text note tiles, splitting the first line into a heading with the remaining body beneath it.
 export function TextContent({ content, isSelected, hoverScaleClass }: TextContentProps) {
   const [firstTextLine, ...otherTextLines] = (content || '').split(/\r?\n/);
   const remainingText = otherTextLines.join('\n');

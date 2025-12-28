@@ -4,6 +4,7 @@ import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { IslandItemProps } from './types';
 
+// IslandItem renders a single island row with inline rename, selection, and context menu actions used inside the sidebar list.
 export function IslandItem({
   id,
   name,

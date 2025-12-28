@@ -9,6 +9,7 @@ export function useAccountSelection() {
     resolve: (_email: string | null) => void;
   } | null>(null);
 
+  // Opens a dialog when an authenticated link needs the user to choose or add an account before opening.
   const handleAccountSelect = (email: string) => {
     if (accountSelectionData) {
       accountSelectionData.resolve(email);

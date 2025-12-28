@@ -25,6 +25,7 @@ interface DefaultContentProps {
   imageMetadata: ImageMetadata | null;
 }
 
+// DefaultContent shows the generic tile body for files and miscellaneous integrations, including thumbnails and optional inline rename.
 export function DefaultContent({
   type,
   url,

@@ -13,6 +13,7 @@ import { GmailIcon } from '../../icons/GoogleServiceIcons';
 import { FALLBACK_FAVICON } from '../../../utils/favicon';
 import { EditLinkDialog } from '../../dialogs/EditLinkDialog';
 
+// LeftSidebar lists available islands, handles CRUD/duplication for them, and surfaces saved links under the selected island with context menus.
 export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
