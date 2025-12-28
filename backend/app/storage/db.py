@@ -111,6 +111,23 @@ class AssistantToken(Base):
     requires_reauth = Column(Boolean, nullable=False, default=False, server_default="0")
 
 
+class UndoEvent(Base):
+    """Undo events table for undo/redo functionality."""
+
+    __tablename__ = "undo_events"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    island_id = Column(String, ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)  # tile_create, tile_delete, etc.
+    event_data = Column(JSON, nullable=False)  # Complete object state snapshot
+    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    is_undone = Column(Boolean, nullable=False, default=False, server_default="0", index=True)
+
+    __table_args__ = (
+        Index("idx_undo_events_island_undone", "island_id", "is_undone", "timestamp"),
+    )
+
+
 # Engine and session configuration
 settings = get_settings()
 settings.database.ensure_database_directory()

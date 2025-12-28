@@ -50,6 +50,13 @@ export const useWebviewState = (webviewRef: React.RefObject<HTMLWebViewElement |
     setIsLoading(false);
     setLoadError(null);
     clearRetryTimeout();
+    // Reset navigation refs so reopening the pane reloads the same URL
+    currentUrlRef.current = undefined;
+    pendingUrlRef.current = undefined;
+    cachedUrlsRef.current.clear();
+    skipSpinnerRef.current = false;
+    retryCountRef.current = 0;
+    isReadyRef.current = false;
   };
 
   return {
