@@ -1,5 +1,5 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect } from 'react';
-import { IconTile } from './IconTile';
+import { IconTile } from './tile/Tile';
 import { CenterPaneProps, CenterPaneHandle } from './types';
 import { useCenterPaneLogic } from './useCenterPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
