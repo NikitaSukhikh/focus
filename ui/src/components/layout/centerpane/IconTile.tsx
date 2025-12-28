@@ -367,45 +367,58 @@ export function IconTile({
     return null;
   };
 
+  // Calculate thumbnail dimensions for images
+  const getThumbnailDimensions = () => {
+    let thumbnailWidth = 96; // default
+    let thumbnailHeight = 96;
+
+    if (type === 'file' && thumbnailUrl && imageMetadata) {
+      const aspectRatio = imageMetadata.width / imageMetadata.height;
+      const maxSize = 144; // maximum dimension
+
+      if (aspectRatio > 1) {
+        // Landscape
+        thumbnailWidth = maxSize;
+        thumbnailHeight = maxSize / aspectRatio;
+      } else if (aspectRatio < 1) {
+        // Portrait
+        thumbnailHeight = maxSize;
+        thumbnailWidth = maxSize * aspectRatio;
+      } else {
+        // Square
+        thumbnailWidth = maxSize;
+        thumbnailHeight = maxSize;
+      }
+    }
+
+    return { thumbnailWidth, thumbnailHeight };
+  };
+
+  const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions();
+
   const renderIcon = () => {
     // Show thumbnail for image files
     if (type === 'file' && thumbnailUrl) {
-      // Calculate thumbnail dimensions based on actual image proportions
-      let thumbnailWidth = 96; // default 24 * 4 (w-24)
-      let thumbnailHeight = 96;
-
-      if (imageMetadata) {
-        const aspectRatio = imageMetadata.width / imageMetadata.height;
-        const maxSize = 128; // maximum dimension
-
-        if (aspectRatio > 1) {
-          // Landscape
-          thumbnailWidth = maxSize;
-          thumbnailHeight = maxSize / aspectRatio;
-        } else if (aspectRatio < 1) {
-          // Portrait
-          thumbnailHeight = maxSize;
-          thumbnailWidth = maxSize * aspectRatio;
-        } else {
-          // Square
-          thumbnailWidth = maxSize;
-          thumbnailHeight = maxSize;
-        }
-      }
-
       return (
-        <img
-          src={thumbnailUrl}
-          alt={title}
-          className="rounded-md shadow-sm"
+        <div
+          className="rounded-md shadow-sm overflow-hidden bg-white"
           style={{
             width: `${thumbnailWidth}px`,
             height: `${thumbnailHeight}px`,
-            objectFit: 'contain',
           }}
-          draggable={false}
-          onError={() => setThumbnailUrl(null)}
-        />
+        >
+          <img
+            src={thumbnailUrl}
+            alt={title}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+            }}
+            draggable={false}
+            onError={() => setThumbnailUrl(null)}
+          />
+        </div>
       );
     }
 
@@ -621,7 +634,10 @@ export function IconTile({
               />
             ) : (
               <>
-                <div className={`text-sm text-slate-700 w-full px-1 text-center mt-1 ${title.length > 20 ? 'break-words' : 'truncate'}`}>
+                <div
+                  className={`text-sm text-slate-700 px-1 text-center mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
+                  style={imageMetadata ? { width: `${thumbnailWidth}px` } : { width: '100%' }}
+                >
                   {title}
                 </div>
                 {filePath && !imageMetadata && (

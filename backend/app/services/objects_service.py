@@ -47,6 +47,7 @@ from app.models.object import (
 )
 from app.storage.repositories.objects_repo import objects_repository
 from app.storage.repositories.islands_repo import islands_repository
+from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file
 from app.core.logging import get_logger
 
 
@@ -669,6 +670,30 @@ class ObjectsService:
             mime_type, _ = mimetypes.guess_type(str(file_path))
             if mime_type:
                 object_data.mime_type = mime_type
+
+        # Extract audio metadata if it's an audio file
+        if is_audio_file(file_path):
+            try:
+                audio_metadata = get_audio_metadata(file_path)
+                # Store audio metadata in the metadata field
+                if not hasattr(object_data, 'metadata') or object_data.metadata is None:
+                    object_data.metadata = {}
+                object_data.metadata.update({
+                    'audio_duration': audio_metadata.get('duration', 0),
+                    'audio_bitrate': audio_metadata.get('bitrate', 0),
+                    'audio_sample_rate': audio_metadata.get('sample_rate', 0),
+                    'audio_channels': audio_metadata.get('channels', 0),
+                })
+                # Add ID3 tags if available
+                if 'title' in audio_metadata:
+                    object_data.metadata['audio_title'] = audio_metadata['title']
+                if 'artist' in audio_metadata:
+                    object_data.metadata['audio_artist'] = audio_metadata['artist']
+                if 'album' in audio_metadata:
+                    object_data.metadata['audio_album'] = audio_metadata['album']
+                logger.info(f"Extracted audio metadata for {file_path}: {audio_metadata}")
+            except Exception as e:
+                logger.warning(f"Failed to extract audio metadata from {file_path}: {e}")
 
         logger.debug(
             f"Validated file object: {object_data.file_path}",
