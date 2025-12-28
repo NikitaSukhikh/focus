@@ -22,6 +22,8 @@ const IMAGE_EXTENSIONS = new Set([
   'tiff',
   'tif',
   'ico',
+  'heic',
+  'heif',
 ]);
 
 // PDF file extensions

@@ -52,6 +52,11 @@ export function IconTile({
     resolve: (_email: string | null) => void;
   } | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [imageMetadata, setImageMetadata] = useState<{
+    width: number;
+    height: number;
+    aspect_ratio: string;
+  } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   // Load thumbnail for image files
@@ -77,6 +82,28 @@ export function IconTile({
       setThumbnailUrl(null);
     }
   }, [type, filePath, title]);
+
+  // Load image metadata for image files
+  useEffect(() => {
+    if (type === 'file' && filePath && canShowImageThumbnail(filePath)) {
+      const params = new URLSearchParams({ file_path: filePath });
+      fetch(`/api/thumbnails/metadata?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+          setImageMetadata({
+            width: data.width,
+            height: data.height,
+            aspect_ratio: data.aspect_ratio,
+          });
+        })
+        .catch(err => {
+          console.error('[ICON TILE] Failed to fetch image metadata:', err);
+          setImageMetadata(null);
+        });
+    } else {
+      setImageMetadata(null);
+    }
+  }, [type, filePath]);
 
   const handleDragStart = (e: React.DragEvent) => {
 
@@ -343,11 +370,39 @@ export function IconTile({
   const renderIcon = () => {
     // Show thumbnail for image files
     if (type === 'file' && thumbnailUrl) {
+      // Calculate thumbnail dimensions based on actual image proportions
+      let thumbnailWidth = 96; // default 24 * 4 (w-24)
+      let thumbnailHeight = 96;
+
+      if (imageMetadata) {
+        const aspectRatio = imageMetadata.width / imageMetadata.height;
+        const maxSize = 128; // maximum dimension
+
+        if (aspectRatio > 1) {
+          // Landscape
+          thumbnailWidth = maxSize;
+          thumbnailHeight = maxSize / aspectRatio;
+        } else if (aspectRatio < 1) {
+          // Portrait
+          thumbnailHeight = maxSize;
+          thumbnailWidth = maxSize * aspectRatio;
+        } else {
+          // Square
+          thumbnailWidth = maxSize;
+          thumbnailHeight = maxSize;
+        }
+      }
+
       return (
         <img
           src={thumbnailUrl}
           alt={title}
-          className="w-24 h-24 rounded-md object-cover shadow-sm"
+          className="rounded-md shadow-sm"
+          style={{
+            width: `${thumbnailWidth}px`,
+            height: `${thumbnailHeight}px`,
+            objectFit: 'contain',
+          }}
           draggable={false}
           onError={() => setThumbnailUrl(null)}
         />
@@ -546,7 +601,7 @@ export function IconTile({
             </div>
           </div>
         ) : (
-          <div className={`flex flex-col items-center gap-3 transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none' }}>
+          <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none' }}>
             <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${
               isSelected ? 'opacity-80' : ''
             }`}>
@@ -560,14 +615,16 @@ export function IconTile({
                 onChange={(e) => setRenamingValue(e.target.value)}
                 onKeyDown={handleRenameKeyDown}
                 onBlur={handleRenameSubmit}
-                className="text-sm text-slate-700 w-full text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none"
+                className="text-sm text-slate-700 w-full text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none mt-1"
                 style={{ pointerEvents: 'auto' } as any}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <>
-                <div className="text-sm text-slate-700 truncate w-full px-1">{title}</div>
-                {filePath && (
+                <div className={`text-sm text-slate-700 w-full px-1 text-center mt-1 ${title.length > 20 ? 'break-words' : 'truncate'}`}>
+                  {title}
+                </div>
+                {filePath && !imageMetadata && (
                   <div className="text-xs text-center whitespace-pre-line break-words leading-snug line-clamp-2 text-slate-400">
                     {truncateDisplayPath(filePath)}
                   </div>
