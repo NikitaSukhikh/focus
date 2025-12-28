@@ -5,6 +5,7 @@ import { CenterPane, CenterPaneHandle } from './components/layout/centerpane';
 import { PreviewPane } from './components/layout/previewpane';
 import { AssistantPane } from './components/layout/assistantpane';
 import { QuickAddPopup } from './components/dialogs/QuickAddPopup';
+import { FullWindowPreview } from './components/layout/fullwindowpreview/FullWindowPreview';
 import { PreviewTarget } from './components/layout/centerpane/types';
 import { detectFileType } from './utils/fileTypes';
 import { Z_INDEX } from './constants/zIndex';
@@ -29,6 +30,15 @@ export function App() {
   const [isGridMode, setIsGridMode] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [previewData, setPreviewData] = useState<{
+    url?: string;
+    title?: string;
+    tileId?: string;
+    filePath?: string;
+    type?: string;
+    content?: string;
+  }>({});
+  const [isFullWindowOpen, setIsFullWindowOpen] = useState(false);
+  const [fullWindowData, setFullWindowData] = useState<{
     url?: string;
     title?: string;
     tileId?: string;
@@ -61,6 +71,8 @@ export function App() {
   useEffect(() => {
     setPreviewData({});
     setIsPreviewOpen(false);
+    setFullWindowData({});
+    setIsFullWindowOpen(false);
   }, [selectedIslandId]);
 
   // Close preview when tile is deleted
@@ -76,10 +88,55 @@ export function App() {
         }
         return currentPreviewData;
       });
+
+      setFullWindowData((currentFullWindowData) => {
+        if (currentFullWindowData.tileId === deletedTileId) {
+          setIsFullWindowOpen(false);
+          return {};
+        }
+        return currentFullWindowData;
+      });
     };
 
     window.addEventListener('tile:deleted', handleTileDeleted);
     return () => window.removeEventListener('tile:deleted', handleTileDeleted);
+  }, []);
+
+  // Listen for full window preview requests
+  useEffect(() => {
+    const handleOpenFullWindow = (e: Event) => {
+      const customEvent = e as CustomEvent<PreviewTarget>;
+      const target = customEvent.detail;
+
+      if (target.filePath && target.type === 'file') {
+        const { category } = detectFileType(target.filePath);
+        if (category === 'pdf') {
+          setFullWindowData({
+            url: toFileUrl(target.filePath),
+            title: target.title,
+            tileId: target.tileId,
+            filePath: target.filePath,
+            type: target.type,
+            content: target.content,
+          });
+          setIsFullWindowOpen(true);
+          return;
+        }
+      }
+
+      setFullWindowData({
+        url: target.url,
+        title: target.title,
+        tileId: target.tileId,
+        filePath: target.filePath,
+        type: target.type,
+        content: target.content,
+      });
+      setIsFullWindowOpen(true);
+    };
+
+    window.addEventListener('open:fullwindow', handleOpenFullWindow);
+    return () => window.removeEventListener('open:fullwindow', handleOpenFullWindow);
   }, []);
 
   const toFileUrl = (filePath: string): string => {
@@ -269,6 +326,17 @@ export function App() {
         onClose={() => setIsQuickAddOpen(false)}
         onAddFiles={handleQuickAddFiles}
         onAddLink={handleQuickAddLink}
+      />
+
+      <FullWindowPreview
+        isOpen={isFullWindowOpen}
+        onClose={() => setIsFullWindowOpen(false)}
+        url={fullWindowData.url}
+        title={fullWindowData.title}
+        tileId={fullWindowData.tileId}
+        filePath={fullWindowData.filePath}
+        type={fullWindowData.type}
+        content={fullWindowData.content}
       />
     </div>
   );

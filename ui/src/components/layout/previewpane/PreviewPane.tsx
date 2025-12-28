@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink, Maximize2 } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { openExternalUrl } from '../../../platform';
 import { usePreviewPaneLogic } from './usePreviewPaneLogic';
@@ -28,13 +28,28 @@ interface PreviewPaneProps {
   content?: string;
 }
 
-export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content }: PreviewPaneProps) {
+export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content, tileId }: PreviewPaneProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [documentLoading, setDocumentLoading] = useState(false);
   const [imageMetadata, setImageMetadata] = useState<ImageMetadata | null>(null);
 
   const collapsed = !isOpen;
+
+  const handleOpenFullWindow = () => {
+    // Dispatch custom event to open full window preview
+    const event = new CustomEvent('open:fullwindow', {
+      detail: {
+        url,
+        title,
+        tileId,
+        filePath,
+        type,
+        content,
+      },
+    });
+    window.dispatchEvent(event);
+  };
 
   // Check if this is an image file
   const isImageFile = type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath);
@@ -161,6 +176,27 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenFullWindow}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{
+                color: 'var(--color-text-secondary)',
+                transition: 'all var(--transition-base)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title="Open in full window"
+            >
+              <Maximize2 size={18} />
+            </button>
             {url && (
               <button
                 onClick={() => url && openExternalUrl(url)}
