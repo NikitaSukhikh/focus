@@ -134,6 +134,31 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
       });
   }, [selectedIsland?.id]);
 
+  // Listen for tile updates from preview pane
+  useEffect(() => {
+    const handleTileUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tileId: string; title: string; content: string }>;
+      const { tileId, title, content } = customEvent.detail;
+
+      if (!selectedIsland) return;
+
+      setIconsByIsland((prev) => {
+        const current = prev[selectedIsland.id] || [];
+        return {
+          ...prev,
+          [selectedIsland.id]: current.map((icon) =>
+            icon.id === tileId
+              ? { ...icon, title, content, description: content.substring(0, 100) }
+              : icon
+          ),
+        };
+      });
+    };
+
+    window.addEventListener('tile:updated', handleTileUpdated);
+    return () => window.removeEventListener('tile:updated', handleTileUpdated);
+  }, [selectedIsland, setIconsByIsland]);
+
   // Handle keyboard delete for selected icon
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

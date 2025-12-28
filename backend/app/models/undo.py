@@ -16,7 +16,9 @@ class UndoEventType(str, Enum):
     """Types of undoable events."""
 
     TILE_CREATE = "tile_create"
+    TILE_MOVE = "tile_move"
     TILE_DELETE = "tile_delete"
+    ARROW_MOVE = "arrow_move"
     ARROW_CREATE = "arrow_create"
     ARROW_DELETE = "arrow_delete"
     TEXT_CREATE = "text_create"

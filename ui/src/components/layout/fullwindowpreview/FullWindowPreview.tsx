@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, ExternalLink, Minimize2 } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { openExternalUrl } from '../../../platform';
@@ -8,6 +8,8 @@ import { getVideoEmbed } from '../../../utils/videoEmbeds';
 import { AudioPlayer } from '../../media/AudioPlayer';
 import { useTileNavigation } from '../previewpane/hooks/useTileNavigation';
 import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigation';
+import { usePreviewTextEditor } from '../previewpane/hooks/usePreviewTextEditor';
+import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
 import { DroppedIcon } from '../centerpane/types';
 
 /* eslint-disable react/no-unknown-property */
@@ -50,6 +52,15 @@ export function FullWindowPreview({
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [documentLoading, setDocumentLoading] = useState(false);
   const [imageMetadata, setImageMetadata] = useState<ImageMetadata | null>(null);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [localTitle, setLocalTitle] = useState(title);
+  const [localContent, setLocalContent] = useState(content);
+  const [contentWasUpdated, setContentWasUpdated] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isClosingRef = useRef(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const textContentRef = useRef<HTMLDivElement>(null);
 
   // Check if this is an image file
   const isImageFile = type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath);
@@ -76,14 +87,17 @@ export function FullWindowPreview({
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
-  const textPreviewBody = (() => {
-    if (type !== 'text' || !content) return content;
+  const currentTitle = localTitle ?? title;
+  const currentContent = localContent ?? content;
 
-    const lines = content.split(/\r?\n/);
-    if (!lines.length) return content;
+  const getBodyWithoutTitle = (rawContent?: string | null, heading?: string | null) => {
+    if (type !== 'text' || !rawContent) return rawContent || '';
+
+    const lines = rawContent.split(/\r?\n/);
+    if (!lines.length) return rawContent;
 
     const firstLine = lines[0].trim();
-    const normalizedTitle = (title || '').trim();
+    const normalizedTitle = (heading || '').trim();
     const titleMatchesFirstLine =
       normalizedTitle &&
       (firstLine.toLowerCase() === normalizedTitle.toLowerCase() ||
@@ -94,8 +108,10 @@ export function FullWindowPreview({
       return lines.slice(1).join('\n').replace(/^\n*/, '');
     }
 
-    return content;
-  })();
+    return rawContent;
+  };
+
+  const textPreviewBody = getBodyWithoutTitle(currentContent, currentTitle);
 
   // Load image metadata
   useEffect(() => {
@@ -165,22 +181,171 @@ export function FullWindowPreview({
     navigatePrevious: navigation.navigatePrevious,
     canNavigateNext: navigation.canNavigateNext,
     canNavigatePrevious: navigation.canNavigatePrevious,
-    isEnabled: isOpen,
+    isEnabled: isOpen && !isEditingText,
   });
+
+  const editorInitialContent = currentContent
+    || ((currentTitle || textPreviewBody) ? [currentTitle, textPreviewBody].filter(Boolean).join(currentTitle && textPreviewBody ? '\n' : '') : '');
+
+  const textEditor = usePreviewTextEditor({
+    tileId,
+    initialContent: editorInitialContent,
+    initialTitle: currentTitle,
+    onContentUpdated: (newTitle, newContent) => {
+      setLocalTitle(newTitle);
+      setLocalContent(newContent);
+      setContentWasUpdated(true);
+      setIsEditingText(false);
+      setHasUnsavedChanges(false);
+
+      // Emit event to update tile on canvas immediately
+      if (tileId) {
+        window.dispatchEvent(new CustomEvent('tile:updated', {
+          detail: {
+            tileId,
+            title: newTitle,
+            content: newContent,
+          },
+        }));
+      }
+    },
+  });
+
+  // Use processed content that removes duplicate title
+  const processedTextContent = getBodyWithoutTitle(
+    contentWasUpdated ? localContent || currentContent : currentContent,
+    currentTitle
+  );
+
+  const handleSaveTextEdit = async () => {
+    await textEditor.saveEdit();
+  };
+
+  const handleSaveAndClose = useCallback(async () => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    try {
+      await textEditor.saveEdit();
+      setIsEditingText(false);
+      onClose();
+    } finally {
+      isClosingRef.current = false;
+    }
+  }, [textEditor, onClose]);
+
+  const handleCancelTextEdit = () => {
+    textEditor.cancelEdit();
+    setIsEditingText(false);
+  };
+
+  // Listen for content changes from other preview modes
+  useEffect(() => {
+    const handleContentChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tileId: string; title: string; content: string }>;
+      const { tileId: eventTileId, title: newTitle, content: newContent } = customEvent.detail;
+
+      if (eventTileId === tileId) {
+        setLocalTitle(newTitle);
+        setLocalContent(newContent);
+        setContentWasUpdated(true);
+      }
+    };
+
+    window.addEventListener('text:content-changed', handleContentChanged);
+    return () => window.removeEventListener('text:content-changed', handleContentChanged);
+  }, [tileId]);
+
+  // Auto-save on preview close
+  useEffect(() => {
+    return () => {
+      // Cleanup: save if there are unsaved changes when component unmounts
+      if (hasUnsavedChanges && tileId && localContent) {
+        // Fire async save without waiting
+        const title = localTitle || 'Untitled Note';
+        fetch(`/api/objects/${tileId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            metadata: { content: localContent },
+          }),
+        }).catch(err => console.error('Failed to auto-save on close:', err));
+      }
+    };
+  }, [hasUnsavedChanges, tileId, localContent, localTitle]);
+
+  const getCaretPositionFromClick = (e: React.MouseEvent<HTMLDivElement | HTMLHeadingElement>): number => {
+    const titleText = currentTitle || '';
+    const bodyText = processedTextContent || '';
+    const newlineLength = titleText && bodyText ? 1 : 0;
+    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+
+    if (titleRef.current && titleRef.current.contains(e.target as Node)) {
+      if (!range) return 0;
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(titleRef.current);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      return preCaretRange.toString().length;
+    }
+
+    if (textContentRef.current && range) {
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(textContentRef.current);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      const bodyOffset = preCaretRange.toString().length;
+      return titleText.length + newlineLength + bodyOffset;
+    }
+
+    // Fallback: place caret at start of clicked area instead of forcing end
+    if (textContentRef.current?.contains(e.target as Node)) {
+      return titleText.length + newlineLength;
+    }
+
+    return 0;
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement | HTMLHeadingElement>) => {
+    const caretPosition = getCaretPositionFromClick(e);
+    isClosingRef.current = false;
+    textEditor.startEditing();
+    setIsEditingText(true);
+    setHasUnsavedChanges(true);
+    (window as any).__previewCaretPosition = caretPosition;
+  };
+
+  useEffect(() => {
+    if (!isOpen || !isEditingText) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (containerRef.current.contains(e.target as Node)) return;
+      void handleSaveAndClose();
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, isEditingText, handleSaveAndClose]);
+
+  const handleBackdropClick = () => {
+    if (isEditingText) {
+      void handleSaveAndClose();
+    } else {
+      onClose();
+    }
+  };
 
   // Handle keyboard shortcuts
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !isEditingText) {
         onClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isEditingText]);
 
   if (!isOpen) return null;
 
@@ -190,11 +355,12 @@ export function FullWindowPreview({
       <div
         className="fixed inset-0 bg-black/80 backdrop-blur-sm"
         style={{ zIndex: Z_INDEX.MODAL_BACKDROP }}
-        onClick={onClose}
+        onClick={handleBackdropClick}
       />
 
       {/* Full window preview */}
       <div
+        ref={containerRef}
         className="fixed inset-0 flex flex-col"
         style={{
           zIndex: Z_INDEX.MODAL,
@@ -310,19 +476,40 @@ export function FullWindowPreview({
 
           {/* Text note preview */}
           {type === 'text' && content && (
-            <div className="flex-1 overflow-auto bg-white h-full">
-              <div className="p-12 max-w-4xl mx-auto">
-                <h1 className="text-4xl font-bold mb-8" style={{ ...FONT_ROLES.paneTitle, fontSize: '36px' }}>
-                  {title || 'Untitled Note'}
-                </h1>
-                <div
-                  className="whitespace-pre-wrap text-gray-800 leading-loose"
-                  style={{ ...FONT_ROLES.paneBody, fontSize: '20px', lineHeight: '2' }}
-                >
-                  {textPreviewBody}
+            <>
+              {isEditingText ? (
+                <PreviewTextEditor
+                  content={textEditor.editorState.editedContent}
+                  onContentChange={textEditor.updateContent}
+                  onSave={handleSaveTextEdit}
+                  onSaveAndClose={handleSaveAndClose}
+                  onCancel={handleCancelTextEdit}
+                  isFullWindow={true}
+                  isClosingRef={isClosingRef}
+                />
+              ) : (
+                <div className="flex-1 overflow-auto bg-white h-full">
+                  <div className="p-12 max-w-4xl mx-auto">
+                    <h1
+                      ref={titleRef}
+                      className="text-4xl font-bold mb-8 cursor-text"
+                      style={{ ...FONT_ROLES.paneTitle, fontSize: '36px' }}
+                      onDoubleClick={handleDoubleClick}
+                    >
+                      {currentTitle || 'Header'}
+                    </h1>
+                    <div
+                      ref={textContentRef}
+                      className="whitespace-pre-wrap text-gray-800 leading-loose cursor-text"
+                      style={{ ...FONT_ROLES.paneBody, fontSize: '20px', lineHeight: '2' }}
+                      onDoubleClick={handleDoubleClick}
+                    >
+                      {processedTextContent}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
 
           {/* Audio preview */}

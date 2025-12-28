@@ -106,36 +106,51 @@ export function App() {
     return () => window.removeEventListener('tile:deleted', handleTileDeleted);
   }, []);
 
+  useEffect(() => {
+    const handleContentChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tileId: string; title: string; content: string }>;
+      const { tileId: updatedTileId, title: newTitle, content: newContent } = customEvent.detail;
+
+      setPreviewData((prev) => prev.tileId === updatedTileId ? { ...prev, title: newTitle, content: newContent } : prev);
+      setFullWindowData((prev) => prev.tileId === updatedTileId ? { ...prev, title: newTitle, content: newContent } : prev);
+    };
+
+    window.addEventListener('text:content-changed', handleContentChanged);
+    return () => window.removeEventListener('text:content-changed', handleContentChanged);
+  }, []);
+
   // Listen for full window preview requests
   useEffect(() => {
     const handleOpenFullWindow = (e: Event) => {
       const customEvent = e as CustomEvent<PreviewTarget>;
       const target = customEvent.detail;
 
-      if (target.filePath && target.type === 'file') {
-        const { category } = detectFileType(target.filePath);
-        if (category === 'pdf') {
-          setFullWindowData({
-            url: toFileUrl(target.filePath),
-            title: target.title,
-            tileId: target.tileId,
-            filePath: target.filePath,
-            type: target.type,
-            content: target.content,
-          });
-          setIsFullWindowOpen(true);
-          return;
-        }
-      }
-
-      setFullWindowData({
+      let nextData = {
         url: target.url,
         title: target.title,
         tileId: target.tileId,
         filePath: target.filePath,
         type: target.type,
         content: target.content,
-      });
+      };
+
+      if (target.filePath && target.type === 'file') {
+        const { category } = detectFileType(target.filePath);
+        if (category === 'pdf') {
+          nextData = {
+            url: toFileUrl(target.filePath),
+            title: target.title,
+            tileId: target.tileId,
+            filePath: target.filePath,
+            type: target.type,
+            content: target.content,
+          };
+        }
+      }
+
+      setPreviewData(nextData);
+      setIsPreviewOpen(false);
+      setFullWindowData(nextData);
       setIsFullWindowOpen(true);
     };
 
