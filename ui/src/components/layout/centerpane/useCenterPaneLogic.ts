@@ -21,6 +21,7 @@ import { useCenterPaneFileHandling } from './hooks/useCenterPaneFileHandling';
 import { useCenterPaneLinkCreation } from './hooks/useCenterPaneLinkCreation';
 import { useCenterPaneTextCreation } from './hooks/useCenterPaneTextCreation';
 import { useInlineTextEditor } from './hooks/useInlineTextEditor';
+import { useUnifiedUndo } from './hooks/useUnifiedUndo';
 
 export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>, zoom: number = 1) => {
   // State management
@@ -96,6 +97,13 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     selectedIsland,
     setIconsByIsland,
     clampToBoundaries,
+  });
+
+  // Unified undo system
+  useUnifiedUndo({
+    selectedIslandId: selectedIsland?.id,
+    setIconsByIsland,
+    setArrowsByIsland,
   });
 
   // Canvas click with proper parameters

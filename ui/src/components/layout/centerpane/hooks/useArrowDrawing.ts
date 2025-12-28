@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { ArrowSegment } from '../types';
+import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface UseArrowDrawingProps {
   zoom: number;
@@ -16,12 +17,6 @@ interface UseArrowDrawingProps {
 }
 
 const ARROW_PADDING = 120;
-const cloneSegments = (segments: ArrowSegment[]): ArrowSegment[] =>
-  segments.map((s) => ({
-    id: s.id,
-    start: { ...s.start },
-    end: { ...s.end },
-  }));
 
 export const useArrowDrawing = ({
   zoom,
@@ -38,17 +33,14 @@ export const useArrowDrawing = ({
   const [draftArrow, setDraftArrow] = useState<ArrowSegment | null>(null);
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
   const [hasArrowMovement, setHasArrowMovement] = useState(false);
-  const historyRef = useRef<Record<string, ArrowSegment[][]>>({});
   const arrowStartRef = useRef<{ x: number; y: number } | null>(null);
+  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   useEffect(() => {
     setDraftArrow(null);
     setIsDrawingArrow(false);
     setHasArrowMovement(false);
     setSelectedArrowId(null);
-    if (selectedIslandId) {
-      historyRef.current[selectedIslandId] = [];
-    }
     arrowStartRef.current = null;
   }, [selectedIslandId]);
 
@@ -154,10 +146,6 @@ export const useArrowDrawing = ({
     };
 
     const islandId = selectedIslandId;
-    historyRef.current[islandId] = [
-      ...(historyRef.current[islandId] || []),
-      cloneSegments(currentArrows),
-    ];
 
     setArrowsByIsland((prev) => {
       const current = prev[selectedIslandId] || [];
@@ -196,6 +184,18 @@ export const useArrowDrawing = ({
           };
         });
         setSelectedArrowId(created.id);
+
+        // Add to unified undo history
+        addEvent({
+          type: 'arrow_create' as const,
+          islandId,
+          arrow: {
+            id: created.id,
+            start: { x: newArrow.start.x, y: newArrow.start.y },
+            end: { x: newArrow.end.x, y: newArrow.end.y },
+          },
+        });
+
         window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id } }));
       } catch (err) {
         console.error('Failed to persist arrow', err);
@@ -220,10 +220,21 @@ export const useArrowDrawing = ({
       e.preventDefault();
       e.stopPropagation();
 
-      historyRef.current[selectedIslandId] = [
-        ...(historyRef.current[selectedIslandId] || []),
-        cloneSegments(arrowsByIsland[selectedIslandId] || []),
-      ];
+      // Find the arrow being deleted
+      const arrowToDelete = (arrowsByIsland[selectedIslandId] || []).find((a) => a.id === selectedArrowId);
+
+      if (arrowToDelete) {
+        // Add to unified undo history
+        addEvent({
+          type: 'arrow_delete' as const,
+          islandId: selectedIslandId,
+          arrow: {
+            id: arrowToDelete.id,
+            start: { x: arrowToDelete.start.x, y: arrowToDelete.start.y },
+            end: { x: arrowToDelete.end.x, y: arrowToDelete.end.y },
+          },
+        });
+      }
 
       setArrowsByIsland((prev) => {
         const current = prev[selectedIslandId] || [];
@@ -239,90 +250,8 @@ export const useArrowDrawing = ({
 
     window.addEventListener('keydown', handleDeleteArrow, true);
     return () => window.removeEventListener('keydown', handleDeleteArrow, true);
-  }, [selectedArrowId, selectedIslandId, setArrowsByIsland, arrowsByIsland]);
+  }, [selectedArrowId, selectedIslandId, setArrowsByIsland, arrowsByIsland, addEvent]);
 
-  useEffect(() => {
-    const handleUndoArrow = (e: KeyboardEvent) => {
-      if (!selectedIslandId) return;
-      if (!(e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey)) return;
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      const stack = historyRef.current[selectedIslandId] || [];
-      if (stack.length === 0) return;
-      e.preventDefault();
-      const snapshot = stack.pop() || [];
-      historyRef.current[selectedIslandId] = stack;
-
-      const previousState = cloneSegments(snapshot);
-      const currentState = arrowsByIsland[selectedIslandId] || [];
-      const currentIds = new Set(currentState.map((a) => a.id));
-      const targetIds = new Set(previousState.map((a) => a.id));
-      const toDelete = currentState.filter((a) => !targetIds.has(a.id));
-      const toAdd = previousState.filter((a) => !currentIds.has(a.id));
-
-      setArrowsByIsland((prev) => ({
-        ...prev,
-        [selectedIslandId]: previousState,
-      }));
-      setSelectedArrowId(null);
-
-      void Promise.all(
-        toDelete.map(async (arrow) => {
-          try {
-            await objectsApi.delete(arrow.id);
-            window.dispatchEvent(new CustomEvent('arrow:deleted', { detail: { arrowId: arrow.id, undo: true } }));
-          } catch (err) {
-            console.error('Failed to delete arrow during undo', err);
-          }
-        })
-      );
-
-      void Promise.all(
-        toAdd.map(async (arrow) => {
-          const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
-          const tempArrow: ArrowSegment = { ...arrow, id: tempId };
-          setArrowsByIsland((prev) => {
-            const current = prev[selectedIslandId] || [];
-            return { ...prev, [selectedIslandId]: [...current, tempArrow] };
-          });
-          try {
-            const created = await objectsApi.create(selectedIslandId, {
-              type: 'text',
-              title: 'Arrow',
-              content: 'Arrow connection',
-            });
-            await objectsApi.updateMetadata(created.id, {
-              arrow: true,
-              start_x: arrow.start.x,
-              start_y: arrow.start.y,
-              end_x: arrow.end.x,
-              end_y: arrow.end.y,
-              content: 'Arrow connection',
-            });
-            setArrowsByIsland((prev) => {
-              const current = prev[selectedIslandId] || [];
-              return {
-                ...prev,
-                [selectedIslandId]: current.map((segment) =>
-                  segment.id === tempId ? { ...segment, id: created.id } : segment
-                ),
-              };
-            });
-            window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } }));
-          } catch (err) {
-            console.error('Failed to restore arrow during undo', err);
-            setArrowsByIsland((prev) => {
-              const current = prev[selectedIslandId] || [];
-              return { ...prev, [selectedIslandId]: current.filter((segment) => segment.id !== tempId) };
-            });
-          }
-        })
-      );
-    };
-
-    window.addEventListener('keydown', handleUndoArrow, true);
-    return () => window.removeEventListener('keydown', handleUndoArrow, true);
-  }, [selectedIslandId, setArrowsByIsland]);
 
   const allArrowSegments = useMemo(() => {
     const segments = [...currentArrows];

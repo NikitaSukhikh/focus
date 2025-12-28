@@ -13,6 +13,7 @@ import { useState, useCallback } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon } from '../types';
 import { autoWrapText } from '../utils';
+import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface InlineEditorParams {
   selectedIsland: any;
@@ -39,6 +40,7 @@ export const useInlineTextEditor = ({
     y: 0,
     content: '',
   });
+  const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const openInlineEditor = useCallback((x: number, y: number, content = '', editingId?: string) => {
     setEditorState({
@@ -125,6 +127,19 @@ export const useInlineTextEditor = ({
         setIconsByIsland((prev) => {
           const current = prev[selectedIsland.id] || [];
           return { ...prev, [selectedIsland.id]: [...current, newIcon] };
+        });
+
+        // Add to unified undo history
+        addEvent({
+          type: 'text_create' as const,
+          islandId: selectedIsland.id,
+          text: {
+            id: created.id,
+            title: created.title,
+            content: formattedContent,
+            x: clamped.x,
+            y: clamped.y,
+          },
         });
       }
 
