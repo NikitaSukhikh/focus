@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { FileText, File, FileType } from 'lucide-react';
+import { FileText, File, FileType, Music } from 'lucide-react';
 
 interface FileIconProps {
   size?: number;
@@ -100,6 +100,21 @@ export function TextFileIcon({ size = 48, className = '' }: FileIconProps) {
   );
 }
 
+// Audio File Icon
+export function AudioFileIcon({ size = 48, className = '' }: FileIconProps) {
+  return (
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+      <Music size={size} className="text-purple-600" />
+      <div
+        className="absolute bottom-0 right-0 bg-purple-600 text-white text-xs font-bold px-1 rounded"
+        style={{ fontSize: size * 0.2 }}
+      >
+        MP3
+      </div>
+    </div>
+  );
+}
+
 // Generic File Icon
 export function GenericFileIcon({ size = 48, className = '' }: FileIconProps) {
   return <File size={size} className={`text-slate-500 ${className}`} />;
@@ -116,6 +131,27 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
   if (ext === 'odt') return OdtIcon;
   if (['xls', 'xlsx', 'ods'].includes(ext)) return ExcelIcon;
   if (['ppt', 'pptx', 'odp'].includes(ext)) return PowerPointIcon;
+  if (
+    [
+      'mp3',
+      'wav',
+      'flac',
+      'ogg',
+      'oga',
+      'm4a',
+      'aac',
+      'wma',
+      'opus',
+      'aiff',
+      'aif',
+      'aifc',
+      'alac',
+      'ape',
+      'wv',
+      'mka',
+    ].includes(ext)
+  )
+    return AudioFileIcon;
   if (
     [
       'txt',
