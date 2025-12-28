@@ -13,7 +13,7 @@
  * - Managing scroll position during drag operations
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
@@ -44,7 +44,32 @@ export const useCenterPaneDragDrop = ({
 }: DragDropParams) => {
   const autoScrollIntervalRef = useRef<number | null>(null);
   const dragStartScrollTopRef = useRef<number>(0);
+  const dragDepthRef = useRef<number>(0);
   const { updatePosition } = useDebouncedPositionUpdate();
+  const safeZoom = Math.max(zoom, 0.01);
+
+  type DragStartData = {
+    startCursorX: number;
+    startCursorY: number;
+    iconX: number;
+    iconY: number;
+    startScrollTop: number;
+  };
+
+  const parseDragStart = (raw: string, fallback: DragStartData): DragStartData => {
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        startCursorX: parsed.startCursorX ?? fallback.startCursorX,
+        startCursorY: parsed.startCursorY ?? fallback.startCursorY,
+        iconX: parsed.iconX ?? fallback.iconX,
+        iconY: parsed.iconY ?? fallback.iconY,
+        startScrollTop: parsed.startScrollTop ?? fallback.startScrollTop,
+      };
+    } catch {
+      return fallback;
+    }
+  };
 
   const handleAutoScroll = useCallback((clientY: number) => {
     if (!paneRef.current) return;
@@ -110,6 +135,7 @@ export const useCenterPaneDragDrop = ({
     e.preventDefault();
     e.stopPropagation();
     console.log('[DRAG] DragEnter event', e.dataTransfer.types);
+    dragDepthRef.current += 1;
     const iconId = e.dataTransfer.types.includes('application/x-icon-id');
     e.dataTransfer.dropEffect = iconId ? 'move' : 'copy';
     setIsDragOver(true);
@@ -125,22 +151,21 @@ export const useCenterPaneDragDrop = ({
     const iconId = e.dataTransfer.types.includes('application/x-icon-id');
     e.dataTransfer.dropEffect = iconId ? 'move' : 'copy';
 
-    // Update ghost position for existing icon drags
+   // Update ghost position for existing icon drags
     if (iconId && paneRef.current) {
-      const rect = paneRef.current.getBoundingClientRect();
       const draggedId = e.dataTransfer.getData('application/x-icon-id');
       const startData = e.dataTransfer.getData('application/x-drag-start');
-      let dragStart = { startCursorX: 0, startCursorY: 0, iconX: 0, iconY: 0 };
-      try {
-        if (startData) {
-          dragStart = JSON.parse(startData);
-        }
-      } catch {
-        // ignore
-      }
-      const deltaX = (e.clientX - dragStart.startCursorX) / Math.max(zoom, 0.01);
-      const deltaY = (e.clientY - dragStart.startCursorY) / Math.max(zoom, 0.01);
-      const scrollDelta = paneRef.current.scrollTop - dragStartScrollTopRef.current;
+      const dragStart = parseDragStart(startData, {
+        startCursorX: e.clientX,
+        startCursorY: e.clientY,
+        iconX: 0,
+        iconY: 0,
+        startScrollTop: dragStartScrollTopRef.current ?? paneRef.current.scrollTop ?? 0,
+      });
+
+      const deltaX = (e.clientX - dragStart.startCursorX) / safeZoom;
+      const deltaY = (e.clientY - dragStart.startCursorY) / safeZoom;
+      const scrollDelta = paneRef.current.scrollTop - dragStart.startScrollTop;
       const targetX = dragStart.iconX + deltaX;
       const targetY = dragStart.iconY + deltaY + scrollDelta;
       const { x, y } = clampToBoundaries(targetX, targetY);
@@ -155,14 +180,18 @@ export const useCenterPaneDragDrop = ({
 
   const handleDragLeave = () => {
     console.log('[DRAG] DragLeave event');
-    setIsDragOver(false);
-    setDragGhost(null);
-    stopAutoScroll();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDragOver(false);
+      setDragGhost(null);
+      stopAutoScroll();
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragDepthRef.current = 0;
     setIsDragOver(false);
     setDragGhost(null);
     stopAutoScroll();
@@ -184,18 +213,17 @@ export const useCenterPaneDragDrop = ({
     const iconId = e.dataTransfer.getData('application/x-icon-id');
     if (iconId) {
       const startData = e.dataTransfer.getData('application/x-drag-start');
-      let dragStart = { startCursorX: 0, startCursorY: 0, iconX: 0, iconY: 0 };
-      try {
-        if (startData) {
-          dragStart = JSON.parse(startData);
-        }
-      } catch {
-        // Ignore
-      }
+      const dragStart = parseDragStart(startData, {
+        startCursorX: e.clientX,
+        startCursorY: e.clientY,
+        iconX: 0,
+        iconY: 0,
+        startScrollTop: dragStartScrollTopRef.current ?? paneRef.current.scrollTop ?? 0,
+      });
 
-      const deltaX = e.clientX - dragStart.startCursorX;
-      const deltaY = e.clientY - dragStart.startCursorY;
-      const scrollDelta = paneRef.current.scrollTop - dragStartScrollTopRef.current;
+      const deltaX = (e.clientX - dragStart.startCursorX) / safeZoom;
+      const deltaY = (e.clientY - dragStart.startCursorY) / safeZoom;
+      const scrollDelta = paneRef.current.scrollTop - dragStart.startScrollTop;
       const targetX = dragStart.iconX + deltaX;
       const targetY = dragStart.iconY + deltaY + scrollDelta;
       const { x, y } = clampToBoundaries(targetX, targetY);
@@ -565,6 +593,23 @@ export const useCenterPaneDragDrop = ({
         console.error('Failed to create object from drop:', err);
       });
   };
+
+  // Ensure drag state is cleaned up even if the drag ends outside the canvas
+  useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      dragDepthRef.current = 0;
+      setIsDragOver(false);
+      setDragGhost(null);
+      stopAutoScroll();
+    };
+
+    window.addEventListener('dragend', handleGlobalDragEnd, true);
+    window.addEventListener('drop', handleGlobalDragEnd, true);
+    return () => {
+      window.removeEventListener('dragend', handleGlobalDragEnd, true);
+      window.removeEventListener('drop', handleGlobalDragEnd, true);
+    };
+  }, [setDragGhost, setIsDragOver, stopAutoScroll]);
 
   return {
     handleDragEnter,

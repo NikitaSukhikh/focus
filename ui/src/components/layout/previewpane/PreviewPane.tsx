@@ -62,16 +62,16 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     onClose();
   };
 
-  const { isImageFile, isAudioFile, isDocumentFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
   const imageMetadata = useImageMetadata(isImageFile, filePath);
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile, documentPreviewUrl);
   const textPreviewBody = useTextPreview(type, content, title);
   const videoEmbed = getVideoEmbed(url);
 
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
-  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content;
+  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile;
 
   // Tile navigation
   const navigation = useTileNavigation({
@@ -191,6 +191,19 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
             onStopEdit={() => setIsEditingText(false)}
             onClosePreview={onClose}
           />
+        )}
+
+        {isTextFile && (
+          <div className="flex-1 overflow-auto bg-white">
+            <div className="p-6 max-w-4xl mx-auto">
+              <div className="text-xs text-slate-500 mb-3">
+                {content ? 'Text file preview' : 'Loading text preview...'}
+              </div>
+              <pre className="whitespace-pre-wrap font-mono text-slate-800 text-sm leading-6 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                {content || ''}
+              </pre>
+            </div>
+          </div>
         )}
 
         {isAudioFile && filePath && (

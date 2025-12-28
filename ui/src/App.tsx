@@ -8,6 +8,7 @@ import { QuickAddPopup } from './components/dialogs/QuickAddPopup';
 import { FullWindowPreview } from './components/layout/fullwindowpreview/FullWindowPreview';
 import { PreviewTarget } from './components/layout/centerpane/types';
 import { detectFileType } from './utils/fileTypes';
+import { previewApi } from './api/preview';
 import { Z_INDEX } from './constants/zIndex';
 import { PANEL_DIMENSIONS } from './constants/panelDimensions';
 import { useIslandStore } from './stores/islandStore';
@@ -49,6 +50,7 @@ export function App() {
   }>({});
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
+  const textFilePreviewCache = useRef<Record<string, string>>({});
 
   const selectedIslandId = useIslandStore((state) => state.selectedIslandId);
 
@@ -77,6 +79,7 @@ export function App() {
     setIsPreviewOpen(false);
     setFullWindowData({});
     setIsFullWindowOpen(false);
+    textFilePreviewCache.current = {};
   }, [selectedIslandId]);
 
   // Close preview when tile is deleted
@@ -125,33 +128,13 @@ export function App() {
       const customEvent = e as CustomEvent<PreviewTarget>;
       const target = customEvent.detail;
 
-      let nextData = {
-        url: target.url,
-        title: target.title,
-        tileId: target.tileId,
-        filePath: target.filePath,
-        type: target.type,
-        content: target.content,
-      };
-
-      if (target.filePath && target.type === 'file') {
-        const { category } = detectFileType(target.filePath);
-        if (category === 'pdf') {
-          nextData = {
-            url: toFileUrl(target.filePath),
-            title: target.title,
-            tileId: target.tileId,
-            filePath: target.filePath,
-            type: target.type,
-            content: target.content,
-          };
-        }
-      }
+      const nextData = normalizePreviewTarget(target);
 
       setPreviewData(nextData);
       setIsPreviewOpen(false);
       setFullWindowData(nextData);
       setIsFullWindowOpen(true);
+      void hydrateTextFilePreview(nextData, true);
     };
 
     window.addEventListener('open:fullwindow', handleOpenFullWindow);
@@ -166,6 +149,62 @@ export function App() {
     const normalized = filePath.replace(/\\/g, '/');
     const needsLeadingSlash = normalized.startsWith('/') ? '' : '/';
     return `file://${needsLeadingSlash}${encodeURI(normalized)}`;
+  };
+
+  const isTextFileTarget = (target: PreviewTarget) =>
+    target.type === 'file' && target.filePath && detectFileType(target.filePath).category === 'text';
+
+  const normalizePreviewTarget = (target: PreviewTarget): PreviewTarget => {
+    const normalized: PreviewTarget = { ...target };
+
+    if (target.filePath && target.type === 'file') {
+      const { category } = detectFileType(target.filePath);
+      if (category === 'pdf') {
+        normalized.url = toFileUrl(target.filePath);
+      }
+    }
+
+    if (isTextFileTarget(normalized) && normalized.tileId) {
+      const cached = textFilePreviewCache.current[normalized.tileId];
+      if (cached && !normalized.content) {
+        normalized.content = cached;
+      }
+    }
+
+    return normalized;
+  };
+
+  const hydrateTextFilePreview = async (target: PreviewTarget, updateFullWindow: boolean) => {
+    if (!isTextFileTarget(target) || !target.tileId) return;
+
+    const cached = textFilePreviewCache.current[target.tileId];
+    if (cached) {
+      setPreviewData((prev) => prev.tileId === target.tileId ? { ...prev, content: cached } : prev);
+      if (updateFullWindow) {
+        setFullWindowData((prev) => prev.tileId === target.tileId ? { ...prev, content: cached } : prev);
+      }
+      return;
+    }
+
+    try {
+      const preview = await previewApi.getObjectPreview(target.tileId);
+      const textContent = preview.text_preview || preview.content_preview;
+
+      if (textContent) {
+        textFilePreviewCache.current[target.tileId] = textContent;
+        setPreviewData((prev) => prev.tileId === target.tileId ? { ...prev, content: textContent } : prev);
+        if (updateFullWindow) {
+          setFullWindowData((prev) => prev.tileId === target.tileId ? { ...prev, content: textContent } : prev);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load text preview', err);
+      const fallback = 'Preview unavailable.';
+      setPreviewData((prev) => prev.tileId === target.tileId ? { ...prev, content: prev.content ?? fallback } : prev);
+      if (updateFullWindow) {
+        setFullWindowData((prev) => prev.tileId === target.tileId ? { ...prev, content: prev.content ?? fallback } : prev);
+      }
+    }
   };
 
 
@@ -208,18 +247,14 @@ export function App() {
     const tile = tiles.find((t) => t.id === tileId);
     if (!tile) return;
 
-    const { category } = detectFileType(tile.filePath || '');
-    const isFile = tile.type === 'file';
-    const isPdf = isFile && category === 'pdf';
-
-    const tileData = {
-      url: isPdf && tile.filePath ? toFileUrl(tile.filePath) : tile.url,
+    const tileData = normalizePreviewTarget({
+      url: tile.url,
       title: tile.title,
       tileId: tile.id,
       filePath: tile.filePath,
       type: tile.type,
       content: tile.content,
-    };
+    });
 
     setPreviewData(tileData);
     setIsPreviewOpen(true);
@@ -228,6 +263,8 @@ export function App() {
     if (isFullWindowOpen) {
       setFullWindowData(tileData);
     }
+
+    void hydrateTextFilePreview(tileData, isFullWindowOpen);
   };
 
   const handleQuickAddFiles = () => {
@@ -289,34 +326,16 @@ export function App() {
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
                 onOpenQuickAdd={() => setIsQuickAddOpen(true)}
-                onObjectClick={(target: PreviewTarget) => {
-                  const { url, title, tileId, filePath, type, content } = target || {};
+                 onObjectClick={(target: PreviewTarget) => {
+                  const normalized = normalizePreviewTarget(target || {});
+                  setPreviewData(normalized);
+                  setIsPreviewOpen(true);
 
-                  if (filePath && type === 'file') {
-                    const { category } = detectFileType(filePath);
-                    if (category === 'pdf') {
-                      setPreviewData({
-                        url: toFileUrl(filePath),
-                        title,
-                        tileId,
-                        filePath,
-                        type,
-                        content,
-                      });
-                      setIsPreviewOpen(true);
-                      return;
-                    }
+                  if (isFullWindowOpen) {
+                    setFullWindowData(normalized);
                   }
 
-                  setPreviewData({
-                    url,
-                    title,
-                    tileId,
-                    filePath,
-                    type,
-                    content,
-                  });
-                  setIsPreviewOpen(true);
+                  void hydrateTextFilePreview(normalized, isFullWindowOpen);
                 }}
                 onCanvasEmptyClick={handleCanvasEmptyClick}
               />

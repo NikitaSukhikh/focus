@@ -266,10 +266,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
           boxShadow: logic.isDragOver ? '0 0 20px var(--shadow)' : 'none',
           position: 'relative',
         }}
+        data-center-pane-scroll
         ref={paneRef}
         onDragEnter={logic.handleDragEnter}
+        onDragEnterCapture={logic.handleDragEnter}
         onDragOver={logic.handleDragOver}
+        onDragOverCapture={logic.handleDragOver}
         onDragLeave={logic.handleDragLeave}
+        onDragLeaveCapture={logic.handleDragLeave}
         onDrop={logic.handleDrop}
         onClick={(e) => {
           setArrowContextMenu(null);
