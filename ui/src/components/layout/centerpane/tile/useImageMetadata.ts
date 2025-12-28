@@ -7,6 +7,7 @@ export interface ImageMetadata {
   aspect_ratio: string;
 }
 
+// useImageMetadata fetches image dimensions for file tiles so layout sizing and detail display can be accurate.
 export function useImageMetadata(type: string, filePath?: string) {
   const [imageMetadata, setImageMetadata] = useState<ImageMetadata | null>(null);
 

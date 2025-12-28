@@ -55,6 +55,7 @@ export interface CenterPaneProps {
 
 export interface CenterPaneHandle {
   addFiles: () => Promise<void>;
+  getTilesForIsland: (islandId: string) => DroppedIcon[];
 }
 
 export interface TileProps {

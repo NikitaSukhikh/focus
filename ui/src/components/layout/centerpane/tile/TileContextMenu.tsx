@@ -19,6 +19,7 @@ interface TileContextMenuProps {
   onDelete: () => void;
 }
 
+// TileContextMenu renders the right-click menu for a tile, exposing preview, share, open, rename, and delete actions.
 export function TileContextMenu({
   show,
   position,

@@ -17,6 +17,7 @@ import { DefaultContent } from './DefaultContent';
 import { TileContextMenu } from './TileContextMenu';
 import { TileDialogs } from './TileDialogs';
 
+// Tile renders an individual canvas item (link/file/text) with drag/drop, rename, context menu, and preview wiring.
 export function Tile({
   id,
   type,

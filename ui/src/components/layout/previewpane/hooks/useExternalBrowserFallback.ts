@@ -14,6 +14,7 @@ const PROBLEMATIC_PATTERNS = [
   /bitbucket\.org/i,
 ];
 
+// useExternalBrowserFallback tracks repeated webview failures and decides when to launch a URL in the external browser instead.
 export function useExternalBrowserFallback() {
   const failedLoadsRef = useRef<Map<string, FailedLoadAttempt>>(new Map());
 

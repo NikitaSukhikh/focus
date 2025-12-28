@@ -24,6 +24,7 @@ interface LinkContentProps {
   hoverScaleClass: string;
 }
 
+// LinkContent renders the visual card for link tiles, handling favicon/thumbnail display and inline renaming.
 export function LinkContent({
   url,
   filePath,
