@@ -83,6 +83,29 @@ export const useCenterPaneDragDrop = ({
     }
   }, []);
 
+  const logTileCreate = useCallback((tile: {
+    id: string;
+    type: IconKind | string;
+    title: string;
+    x: number;
+    y: number;
+    url?: string;
+    description?: string;
+    faviconUrl?: string;
+    filePath?: string;
+    serviceKey?: string;
+    service?: string;
+    content?: string;
+  }) => {
+    if (!selectedIsland) return;
+    undoApi
+      .createEvent(selectedIsland.id, {
+        event_type: 'tile_create',
+        event_data: { tile },
+      })
+      .catch((err) => console.error('Failed to create undo event:', err));
+  }, [selectedIsland]);
+
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -194,24 +217,37 @@ export const useCenterPaneDragDrop = ({
       // Record move for undo/redo history when position actually changes
       if (movedIcon && hasMoved) {
         // Emit backend undo event for tile move
+        const isText = movedIcon.type === 'text';
         undoApi
           .createEvent(selectedIsland.id, {
-            event_type: 'tile_move',
+            event_type: isText ? 'text_move' : 'tile_move',
             event_data: {
-              tile: {
-                id: movedIcon.id,
-                type: movedIcon.type,
-                title: movedIcon.title,
-                x,
-                y,
-                url: movedIcon.url,
-                description: movedIcon.description,
-                faviconUrl: movedIcon.faviconUrl,
-                filePath: movedIcon.filePath,
-                serviceKey: movedIcon.serviceKey,
-                service: movedIcon.service,
-                content: movedIcon.content,
-              },
+              ...(isText
+                ? {
+                    text: {
+                      id: movedIcon.id,
+                      title: movedIcon.title,
+                      content: movedIcon.content || '',
+                      x,
+                      y,
+                    },
+                  }
+                : {
+                    tile: {
+                      id: movedIcon.id,
+                      type: movedIcon.type,
+                      title: movedIcon.title,
+                      x,
+                      y,
+                      url: movedIcon.url,
+                      description: movedIcon.description,
+                      faviconUrl: movedIcon.faviconUrl,
+                      filePath: movedIcon.filePath,
+                      serviceKey: movedIcon.serviceKey,
+                      service: movedIcon.service,
+                      content: movedIcon.content,
+                    },
+                  }),
               from: { x: fromX, y: fromY },
               to: { x, y },
             },
@@ -272,13 +308,26 @@ export const useCenterPaneDragDrop = ({
           .then((created) => {
             const meta = (created.metadata || {}) as Record<string, any>;
             const createdFilePath = meta.file_path as string;
+            const createdX = typeof meta.x === 'number' ? meta.x : clampedX;
+            const createdY = typeof meta.y === 'number' ? meta.y : clampedY;
 
             setIconsByIsland((prev) => ({
               ...prev,
               [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, x: createdX, y: createdY } : i
               ),
             }));
+
+            logTileCreate({
+              id: created.id,
+              type: 'file',
+              title: filename,
+              x: createdX,
+              y: createdY,
+              filePath: createdFilePath,
+              service: (meta.service as string | undefined),
+              serviceKey: created.description,
+            });
           })
           .catch((err) => {
             console.error('Failed to create file object:', err);
@@ -468,6 +517,8 @@ export const useCenterPaneDragDrop = ({
         const finalFavicon = created.type === 'link'
           ? (meta.favicon_url as string | undefined) || (finalUrl ? buildFaviconUrl(finalUrl) : undefined)
           : undefined;
+        const finalService = (meta.service as string | undefined) || payload.service;
+        const finalServiceKey = created.description;
 
         setIconsByIsland((prev) => {
           const current = (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId);
@@ -481,13 +532,28 @@ export const useCenterPaneDragDrop = ({
                 title: created.title,
                 x: finalX,
                 y: finalY,
-                serviceKey: createdServiceKey,
+                serviceKey: finalServiceKey,
                 url: finalUrl,
                 description: finalDescription,
                 faviconUrl: finalFavicon,
               },
             ],
           };
+        });
+
+        logTileCreate({
+          id: created.id,
+          type: iconType,
+          title: created.title,
+          x: finalX,
+          y: finalY,
+          url: finalUrl,
+          description: finalDescription,
+          faviconUrl: finalFavicon,
+          filePath: (meta.file_path as string | undefined),
+          service: finalService,
+          serviceKey: finalServiceKey,
+          content: (meta.content as string | undefined),
         });
 
         // Notify other components that a link was created

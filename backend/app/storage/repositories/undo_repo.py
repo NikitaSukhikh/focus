@@ -6,7 +6,7 @@ Handles database operations for undo/redo events.
 
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy import select, and_, desc
+from sqlalchemy import select, and_, desc, asc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.storage.db import UndoEvent
@@ -25,8 +25,15 @@ class UndoEventRepository:
         event_data: dict,
     ) -> UndoEvent:
         """Create a new undo event."""
+        # Determine next sequence number for this island (monotonic timeline)
+        stmt = select(func.coalesce(func.max(UndoEvent.sequence), 0)).where(UndoEvent.island_id == island_id)
+        result = await self.session.execute(stmt)
+        max_sequence = result.scalar_one() or 0
+        next_sequence = int(max_sequence) + 1
+
         event = UndoEvent(
             island_id=island_id,
+            sequence=next_sequence,
             event_type=event_type,
             event_data=event_data,
             is_undone=False,
@@ -41,8 +48,8 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == False))
-            # Timestamp + id ordering guarantees deterministic stacks when events share timestamps
-            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
+            # Highest sequence = most recent applied event
+            .order_by(desc(UndoEvent.sequence))
             .limit(1)
         )
         result = await self.session.execute(stmt)
@@ -53,8 +60,8 @@ class UndoEventRepository:
         stmt = (
             select(UndoEvent)
             .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True))
-            # Timestamp + id ordering guarantees deterministic stacks when events share timestamps
-            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
+            # Lowest undone sequence = next redo step (walk forward one)
+            .order_by(asc(UndoEvent.sequence))
             .limit(1)
         )
         result = await self.session.execute(stmt)
@@ -101,31 +108,6 @@ class UndoEventRepository:
         await self.session.commit()
         return count
 
-    async def trim_old_events(self, island_id: str, max_events: int = 100) -> int:
-        """Keep only the most recent max_events for an island."""
-        # Get all events ordered by timestamp desc
-        stmt = (
-            select(UndoEvent)
-            .where(UndoEvent.island_id == island_id)
-            # Stable ordering avoids accidental reordering during trimming
-            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
-        )
-        result = await self.session.execute(stmt)
-        all_events = result.scalars().all()
-
-        if len(all_events) <= max_events:
-            return 0
-
-        # Delete events beyond max_events
-        events_to_delete = all_events[max_events:]
-        count = len(events_to_delete)
-
-        for event in events_to_delete:
-            await self.session.delete(event)
-
-        await self.session.commit()
-        return count
-
     async def get_events(
         self,
         island_id: str,
@@ -137,7 +119,7 @@ class UndoEventRepository:
             select(UndoEvent)
             .where(UndoEvent.island_id == island_id)
             # Stable ordering for paginated reads
-            .order_by(desc(UndoEvent.timestamp), desc(UndoEvent.id))
+            .order_by(desc(UndoEvent.sequence))
             .offset(skip)
             .limit(limit)
         )
@@ -162,3 +144,31 @@ class UndoEventRepository:
 
         await self.session.commit()
         return count
+
+    async def clear_all(self) -> int:
+        """Delete all undo events for all islands."""
+        stmt = select(UndoEvent)
+        result = await self.session.execute(stmt)
+        events = result.scalars().all()
+        count = len(events)
+        for event in events:
+            await self.session.delete(event)
+        await self.session.commit()
+        return count
+
+    async def trim_to_limit(self, island_id: str, limit: int) -> int:
+        """Keep only the most recent `limit` events for an island; delete older ones."""
+        stmt = (
+            select(UndoEvent)
+            .where(UndoEvent.island_id == island_id)
+            .order_by(desc(UndoEvent.sequence))
+        )
+        result = await self.session.execute(stmt)
+        events = result.scalars().all()
+        if len(events) <= limit:
+            return 0
+        to_delete = events[limit:]
+        for event in to_delete:
+            await self.session.delete(event)
+        await self.session.commit()
+        return len(to_delete)
