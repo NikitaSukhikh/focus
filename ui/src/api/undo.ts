@@ -16,6 +16,7 @@ export type UndoEventType =
   | 'text_create'
   | 'text_delete';
 
+// Keep client event types aligned with backend undo events
 export interface UndoEventCreate {
   event_type: UndoEventType;
   event_data: Record<string, any>;

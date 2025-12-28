@@ -18,6 +18,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const zoom = zoomProp ?? 1;
   const paneRef = useRef<HTMLDivElement | null>(null);
+  // Throttle opening text previews so inline edits don't immediately pop the preview pane
   const textPreviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const logic = useCenterPaneLogic(paneRef, zoom);
@@ -46,6 +47,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   }, [logic.dragGhost]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number; canvasX: number; canvasY: number } | null>(null);
+  const [arrowContextMenu, setArrowContextMenu] = useState<{ x: number; y: number; arrowId: string } | null>(null);
   useEffect(() => {
     const handleKeyZoom = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
@@ -76,9 +78,21 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     };
   };
 
+  const toPaneCoords = (clientX: number, clientY: number) => {
+    if (!paneRef.current) return { x: clientX, y: clientY };
+    const rect = paneRef.current.getBoundingClientRect();
+    const scrollLeft = paneRef.current.scrollLeft;
+    const scrollTop = paneRef.current.scrollTop;
+    return {
+      x: clientX - rect.left + scrollLeft,
+      y: clientY - rect.top + scrollTop,
+    };
+  };
+
   const {
     selectedArrowId,
     setSelectedArrowId,
+    deleteArrow,
     clearArrowSelection,
     handleCanvasMouseDown,
     handleCanvasMouseMove,
@@ -96,7 +110,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     setArrowsByIsland: logic.setArrowsByIsland,
     contentHeight: logic.contentHeight,
     toCanvasCoords,
-    contextMenuOpen: !!contextMenu,
+    contextMenuOpen: !!contextMenu || !!arrowContextMenu,
     isTargetBlocked: (el) => Boolean(el.closest('[data-icon-tile]') || el.closest('[data-inline-editor]')),
   });
 
@@ -116,6 +130,23 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       }
     },
   ], [logic, contextMenu, paneRef]);
+
+  useEffect(() => {
+    if (!arrowContextMenu) return;
+
+    const handleArrowMenuKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setArrowContextMenu(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleArrowMenuKey, true);
+    return () => window.removeEventListener('keydown', handleArrowMenuKey, true);
+  }, [arrowContextMenu]);
+
+  useEffect(() => {
+    setArrowContextMenu(null);
+  }, [logic.selectedIsland?.id]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -145,12 +176,24 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     return () => window.removeEventListener('keydown', handleKey);
   }, [contextMenu, menuItems]);
 
+  const handleArrowContextMenu = (e: React.MouseEvent<SVGLineElement>, arrowId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Right-click on arrow opens a focused delete-only context menu
+    const pos = toPaneCoords(e.clientX, e.clientY);
+    setArrowContextMenu({ ...pos, arrowId });
+    setSelectedArrowId(arrowId);
+    setContextMenu(null);
+    logic.setSelectedIconIds([]);
+  };
+
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest('[data-icon-tile]')) return;
     e.preventDefault();
     e.stopPropagation();
     setContextMenu(null);
+    setArrowContextMenu(null);
     onOpenQuickAdd?.();
   };
 
@@ -229,6 +272,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onDragLeave={logic.handleDragLeave}
         onDrop={logic.handleDrop}
         onClick={(e) => {
+          setArrowContextMenu(null);
           clearArrowSelection();
           logic.handleCanvasClick(e, onCanvasEmptyClick);
         }}
@@ -346,9 +390,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                         strokeLinecap="round"
                         style={{ cursor: 'pointer', pointerEvents: 'stroke' as any }}
                         onPointerDown={(e) => {
+                          // Kick off arrow drag/move handling and clear tile selection
                           handleArrowPointerDown(segment, e);
                           logic.setSelectedIconIds([]);
                         }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onContextMenu={(e) => handleArrowContextMenu(e, segment.id)}
                       />
                       {/* Visible arrow line */}
                       <line
@@ -449,6 +498,40 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               )
             ))}
           </div>
+
+          {arrowContextMenu && (
+            <>
+              <div
+                className="absolute inset-0"
+                style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
+                onClick={() => setArrowContextMenu(null)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setArrowContextMenu(null);
+                }}
+              />
+              <div
+                className="absolute w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
+                style={{
+                  zIndex: Z_INDEX.CONTEXT_MENU,
+                  left: arrowContextMenu.x,
+                  top: arrowContextMenu.y,
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteArrow(arrowContextMenu.arrowId);
+                    setArrowContextMenu(null);
+                  }}
+                  className="w-full px-3.5 py-2 text-left text-sm flex items-center gap-2 text-red-600 hover:bg-red-50"
+                  style={FONT_ROLES.topbarControl}
+                >
+                  Delete
+                </button>
+              </div>
+            </>
+          )}
 
           {contextMenu && (
             <>

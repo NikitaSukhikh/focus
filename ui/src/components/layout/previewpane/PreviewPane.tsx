@@ -36,6 +36,7 @@ interface PreviewPaneProps {
 // PreviewPane renders the right-hand preview area for the selected tile, choosing between media/file previews and the embedded webview while supporting a full-window handoff.
 export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content, tileId, tiles = [], onNavigateToTile }: PreviewPaneProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
+  // Used to detect outside clicks while editing text inside the pane
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const collapsed = !isOpen;
   const [isEditingText, setIsEditingText] = useState(false);
