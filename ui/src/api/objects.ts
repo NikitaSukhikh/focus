@@ -1,4 +1,5 @@
 import { truncateLinkTitle } from '../utils/text';
+import { requestTracker } from '../utils/requestTracker';
 
 const API_BASE = '/api';
 
@@ -58,71 +59,94 @@ export const objectsApi = {
       ...payload,
       title: payload.title ? truncateLinkTitle(payload.title) : payload.title,
     };
-    const res = await fetch(`${API_BASE}/islands/${islandId}/objects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(safePayload),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to create object: ${res.status} ${text}`);
-    }
-    return res.json();
+
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/islands/${islandId}/objects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(safePayload),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to create object: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
   },
 
   async updatePosition(objectId: string, x: number, y: number): Promise<ObjectResponse> {
-    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metadata: { x, y } }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to update position: ${res.status} ${text}`);
-    }
-    return res.json();
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: { x, y } }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update position: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
   },
 
   async updateTitle(objectId: string, title: string): Promise<ObjectResponse> {
     const safeTitle = truncateLinkTitle(title);
-    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: safeTitle }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to update title: ${res.status} ${text}`);
-    }
-    return res.json();
+
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: safeTitle }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update title: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
   },
 
   async updateLink(objectId: string, url: string, title: string, description: string, favicon_url: string): Promise<ObjectResponse> {
     const safeTitle = truncateLinkTitle(title);
-    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: safeTitle,
-        description,
-        metadata: { url, favicon_url }
-      }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to update link: ${res.status} ${text}`);
-    }
-    return res.json();
+
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: safeTitle,
+          description,
+          metadata: { url, favicon_url }
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update link: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
   },
 
   async delete(objectId: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to delete object: ${res.status} ${text}`);
-    }
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to delete object: ${res.status} ${text}`);
+      }
+    })();
+
+    return requestTracker.track(promise);
   },
 
   async getAllByType(type: ObjectType): Promise<ObjectResponse[]> {
@@ -136,15 +160,19 @@ export const objectsApi = {
   },
 
   async updateMetadata(objectId: string, metadata: Record<string, unknown>): Promise<ObjectResponse> {
-    const res = await fetch(`${API_BASE}/objects/${objectId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metadata }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to update metadata: ${res.status} ${text}`);
-    }
-    return res.json();
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update metadata: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
   },
 };
