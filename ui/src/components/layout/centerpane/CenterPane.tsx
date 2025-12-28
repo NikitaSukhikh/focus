@@ -11,6 +11,7 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { useIslandStore } from '../../../stores/islandStore';
 import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from './hooks/useArrowDrawing';
+import { ARROW_SETTINGS } from './arrowSettings';
 
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
@@ -283,37 +284,54 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               >
                 <defs>
                   <marker
-                    id="center-pane-arrowhead"
-                    markerWidth="12"
-                    markerHeight="12"
-                    refX="10"
-                    refY="6"
+                    id={ARROW_SETTINGS.marker.id}
+                    markerWidth={ARROW_SETTINGS.marker.width}
+                    markerHeight={ARROW_SETTINGS.marker.height}
+                    refX={ARROW_SETTINGS.marker.refX}
+                    refY={ARROW_SETTINGS.marker.refY}
                     orient="auto"
                     markerUnits="userSpaceOnUse"
                   >
-                    <path d="M0 0 L12 6 L0 12 L3 6 Z" fill="var(--primary-color)" />
+                    <path d={ARROW_SETTINGS.marker.path} fill={ARROW_SETTINGS.color} />
                   </marker>
                 </defs>
-                {allArrowSegments.map((segment) => (
-                  <line
-                    key={segment.id}
-                    x1={segment.start.x}
-                    y1={segment.start.y}
-                    x2={segment.end.x}
-                    y2={segment.end.y}
-                    stroke="var(--primary-color)"
-                    strokeOpacity={1}
-                    strokeWidth={3}
-                    strokeLinecap="round"
-                    markerEnd="url(#center-pane-arrowhead)"
-                    style={{ cursor: 'pointer', pointerEvents: 'stroke' as any }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedArrowId(segment.id);
-                      logic.setSelectedIconIds([]);
-                    }}
-                  />
-                ))}
+                {allArrowSegments.map((segment) => {
+                  const isDraft = segment.id === 'arrow-draft';
+                  const clickableWidth = ARROW_SETTINGS.strokeWidth + (ARROW_SETTINGS.clickAreaPadding * 2);
+                  return (
+                    <g key={segment.id}>
+                      {/* Invisible wider line for click area */}
+                      <line
+                        x1={segment.start.x}
+                        y1={segment.start.y}
+                        x2={segment.end.x}
+                        y2={segment.end.y}
+                        stroke="transparent"
+                        strokeWidth={clickableWidth}
+                        strokeLinecap="round"
+                        style={{ cursor: 'pointer', pointerEvents: 'stroke' as any }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedArrowId(segment.id);
+                          logic.setSelectedIconIds([]);
+                        }}
+                      />
+                      {/* Visible arrow line */}
+                      <line
+                        x1={segment.start.x}
+                        y1={segment.start.y}
+                        x2={segment.end.x}
+                        y2={segment.end.y}
+                        stroke={ARROW_SETTINGS.color}
+                        strokeOpacity={isDraft ? ARROW_SETTINGS.opacity.draft : ARROW_SETTINGS.opacity.normal}
+                        strokeWidth={ARROW_SETTINGS.strokeWidth}
+                        strokeLinecap="round"
+                        markerEnd={`url(#${ARROW_SETTINGS.marker.id})`}
+                        style={{ pointerEvents: 'none' }}
+                      />
+                    </g>
+                  );
+                })}
               </svg>
             )}
 
