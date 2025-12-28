@@ -1,5 +1,5 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect } from 'react';
-import { IconTile } from './tile/Tile';
+import { Tile } from './tile/Tile';
 import { CenterPaneProps, CenterPaneHandle } from './types';
 import { useCenterPaneLogic } from './useCenterPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
@@ -365,7 +365,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
             {(logic.iconsByIsland[logic.selectedIsland?.id ?? ''] || []).map((icon) => (
               logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
-                <IconTile
+                <Tile
                   key={icon.id}
                   id={icon.id}
                   type={icon.type}

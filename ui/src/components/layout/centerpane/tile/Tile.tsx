@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconTileProps } from '../types';
+import { TileProps } from '../types';
 import { authenticatedLinksService } from '../../../../services/authenticatedLinks';
 import { getVideoEmbed } from '../../../../utils/videoEmbeds';
 import { Z_INDEX } from '../../../../constants/zIndex';
@@ -17,7 +17,7 @@ import { DefaultContent } from './DefaultContent';
 import { TileContextMenu } from './TileContextMenu';
 import { TileDialogs } from './TileDialogs';
 
-export function IconTile({
+export function Tile({
   id,
   type,
   title,
@@ -35,7 +35,7 @@ export function IconTile({
   onRename,
   onRefreshMetadata,
   onEdit
-}: IconTileProps) {
+}: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
 
   const { isDragging, skipTransition, handleDragStart, handleDragEnd } = useDragHandling(id, x, y);
@@ -73,7 +73,7 @@ export function IconTile({
       url,
       id,
       async (service) => {
-        console.log(`[IconTile] OAuth needed for ${service}`);
+        console.log(`[Tile] OAuth needed for ${service}`);
         await authenticatedLinksService.triggerOAuth(service);
       },
       onAccountSelection
@@ -97,9 +97,9 @@ export function IconTile({
     if (pathToCopy) {
       try {
         await navigator.clipboard.writeText(pathToCopy);
-        console.log('[ICON TILE] Path copied to clipboard:', pathToCopy);
+        console.log('[Tile] Path copied to clipboard:', pathToCopy);
       } catch (err) {
-        console.error('[ICON TILE] Failed to copy path to clipboard:', err);
+        console.error('[Tile] Failed to copy path to clipboard:', err);
       }
     }
   };
