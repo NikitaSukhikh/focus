@@ -124,6 +124,104 @@ async def check_thumbnail(
 
 
 @router.get(
+    "/metadata",
+    summary="Get image metadata",
+    description="Get metadata for an image file including dimensions and aspect ratio.",
+)
+async def get_image_metadata(
+    file_path: str = Query(..., description="Absolute path to the image file"),
+):
+    """
+    Get metadata for an image file.
+
+    Args:
+        file_path: Absolute path to the image file
+
+    Returns:
+        dict: Image metadata including dimensions and aspect ratio
+    """
+    try:
+        if not file_thumbnail_service.is_image(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported image format",
+            )
+
+        width, height = file_thumbnail_service.get_image_dimensions(file_path)
+        file_size = file_thumbnail_service.get_file_size(file_path)
+
+        # Calculate aspect ratio by rounding to popular ratios
+        actual_ratio = height / width
+
+        # Popular aspect ratios as (height, width, decimal_value)
+        popular_ratios = [
+            (1, 1, 1.0),      # Square
+            (2, 3, 0.6667),   # 2:3
+            (3, 4, 0.75),     # 3:4
+            (9, 16, 0.5625),  # 9:16
+            (10, 16, 0.625),  # 10:16
+            (4, 5, 0.8),      # 4:5
+            (3, 5, 0.6),      # 3:5
+            (2, 1, 2.0),      # 2:1
+            (3, 2, 1.5),      # 3:2
+            (4, 3, 1.3333),   # 4:3
+            (16, 9, 1.7778),  # 16:9
+            (21, 9, 2.3333),  # 21:9
+        ]
+
+        # Find closest popular ratio
+        min_diff = float('inf')
+        closest_ratio = None
+        is_exact_match = False
+
+        for h, w, ratio_val in popular_ratios:
+            diff = abs(actual_ratio - ratio_val)
+            if diff < min_diff:
+                min_diff = diff
+                closest_ratio = (h, w, ratio_val)
+                # Check if it's an exact match (within floating point precision)
+                is_exact_match = diff < 0.0001
+
+        # Show exact only if truly exact, otherwise always show approx
+        if is_exact_match and closest_ratio:
+            aspect_ratio_str = f"{closest_ratio[0]}:{closest_ratio[1]}"
+        elif closest_ratio:
+            aspect_ratio_str = f"approx {closest_ratio[0]}:{closest_ratio[1]}"
+        else:
+            # Fallback to GCD simplification
+            from math import gcd
+            divisor = gcd(width, height)
+            aspect_ratio_str = f"approx {height // divisor}:{width // divisor}"
+
+        return {
+            "width": width,
+            "height": height,
+            "aspect_ratio": aspect_ratio_str,
+            "file_size": file_size,
+            "file_size_human": file_thumbnail_service.get_human_readable_size(file_size),
+        }
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {file_path}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except ValueError as e:
+        logger.error(f"Invalid image file: {file_path}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Failed to get image metadata: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get image metadata",
+        )
+
+
+@router.get(
     "/full-image",
     response_class=FileResponse,
     summary="Get full-size image for preview",
