@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
+import { detectFileType } from '../../../../utils/fileTypes';
 
 interface FileTypeDetection {
   isImageFile: boolean;
   isAudioFile: boolean;
   isDocumentFile: boolean;
+  isTextFile: boolean;
   imagePreviewUrl: string | null;
   documentPreviewUrl: string | null;
 }
@@ -18,6 +20,10 @@ export function useFileTypeDetection(
     const isAudioFile = type === 'file' && filePath && /\.(mp3|wav|flac|ogg|oga|m4a|aac|wma|opus|aiff|aif|aifc|alac|ape|wv|mka)$/i.test(filePath);
     const isDocumentFile = type === 'file' && filePath && /\.(docx|doc|odt)$/i.test(filePath);
 
+    const isTextFile = type === 'file' && filePath
+      ? detectFileType(filePath).category === 'text'
+      : false;
+
     const imagePreviewUrl = isImageFile && filePath
       ? `/api/thumbnails/full-image?${new URLSearchParams({ file_path: filePath }).toString()}`
       : null;
@@ -30,6 +36,7 @@ export function useFileTypeDetection(
       isImageFile,
       isAudioFile,
       isDocumentFile,
+      isTextFile,
       imagePreviewUrl,
       documentPreviewUrl,
     };

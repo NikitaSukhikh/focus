@@ -39,7 +39,7 @@ export function Tile({
 }: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
 
-  const { isDragging, skipTransition, handleDragStart, handleDragEnd } = useDragHandling(id, x, y);
+  const { isDragging, skipTransition, handleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
   const { imageMetadata } = useImageMetadata(type, filePath);
   const {
@@ -227,6 +227,7 @@ export function Tile({
       <button
         data-icon-tile
         draggable="true"
+        ref={dragRef as any}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={(event) => onClick?.(event)}

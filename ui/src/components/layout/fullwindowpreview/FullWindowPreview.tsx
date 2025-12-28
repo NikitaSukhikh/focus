@@ -10,6 +10,7 @@ import { useTileNavigation } from '../previewpane/hooks/useTileNavigation';
 import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigation';
 import { usePreviewTextEditor } from '../previewpane/hooks/usePreviewTextEditor';
 import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
+import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection';
 import { DroppedIcon } from '../centerpane/types';
 
 /* eslint-disable react/no-unknown-property */
@@ -63,29 +64,12 @@ export function FullWindowPreview({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textContentRef = useRef<HTMLDivElement>(null);
 
-  // Check if this is an image file
-  const isImageFile = type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath);
-
-  // Check if this is an audio file
-  const isAudioFile = type === 'file' && filePath && /\.(mp3|wav|flac|ogg|oga|m4a|aac|wma|opus|aiff|aif|aifc|alac|ape|wv|mka)$/i.test(filePath);
-
-  // Check if this is a document file
-  const isDocumentFile = type === 'file' && filePath && /\.(docx|doc|odt)$/i.test(filePath);
-
-  // Build image preview URL
-  const imagePreviewUrl = isImageFile && filePath
-    ? `/api/thumbnails/full-image?${new URLSearchParams({ file_path: filePath }).toString()}`
-    : null;
-
-  // Build document preview URL
-  const documentPreviewUrl = isDocumentFile && filePath
-    ? `/api/thumbnails/document-preview?${new URLSearchParams({ file_path: filePath }).toString()}`
-    : null;
+  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
 
   const videoEmbed = getVideoEmbed(url);
 
   // Only use webview logic when not showing an image, audio, or document
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
   const currentTitle = localTitle ?? title;
@@ -467,7 +451,7 @@ export function FullWindowPreview({
             &gt;
           </button>
 
-          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && (
+          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>
                 No preview available.
@@ -511,6 +495,22 @@ export function FullWindowPreview({
                 </div>
               )}
             </>
+          )}
+
+          {isTextFile && (
+            <div className="flex-1 overflow-auto bg-white h-full">
+              <div className="p-12 max-w-5xl mx-auto w-full">
+                <div className="text-sm text-slate-500 mb-4">
+                  {content ? 'Text file preview' : 'Loading text preview...'}
+                  {filePath && (
+                    <div className="text-xs text-slate-400 break-all mt-1">{filePath}</div>
+                  )}
+                </div>
+                <pre className="whitespace-pre-wrap font-mono text-slate-800 text-base leading-7 bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm">
+                  {content || ''}
+                </pre>
+              </div>
+            </div>
           )}
 
           {/* Audio preview */}
