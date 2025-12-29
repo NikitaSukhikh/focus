@@ -81,6 +81,15 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     onNavigate: onNavigateToTile || (() => {}),
   });
 
+  // Keep local state in sync when the selected tile changes (e.g., via navigation controls)
+  useEffect(() => {
+    setLocalTitle(title);
+    setLocalContent(content);
+    setContentWasUpdated(false);
+    setHasUnsavedChanges(false);
+    setIsEditingText(false);
+  }, [tileId, title, content]);
+
   useArrowKeyNavigation({
     navigateNext: navigation.navigateNext,
     navigatePrevious: navigation.navigatePrevious,
