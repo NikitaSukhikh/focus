@@ -629,7 +629,7 @@ export function FullWindowPreview({
               ref={webviewRef}
               src="about:blank"
               partition="persist:ocean-webview"
-              allowpopups={true as any}
+              allowpopups="true"
               style={{
                 flex: 1,
                 width: '100%',

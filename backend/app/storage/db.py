@@ -61,6 +61,10 @@ class Object(Base):
     type = Column(String(50), nullable=False)
     title = Column(String(400), nullable=False)
     description = Column(Text, nullable=True)
+    default_title = Column(String(400), nullable=False, server_default="")
+    default_description = Column(Text, nullable=True)
+    custom_title = Column(String(400), nullable=True)
+    custom_description = Column(Text, nullable=True)
     tags = Column(JSON, nullable=False, default=list, server_default="[]")
     metadata_json = Column("metadata", JSON, nullable=False, default=dict, server_default="{}")
     position = Column(Integer, nullable=True)
@@ -163,8 +167,56 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
 
+async def ensure_object_name_columns() -> None:
+    """
+    Ensure the objects table has default/custom title/description columns.
+
+    Adds missing columns for default/custom names and backfills existing rows
+    so the display title/description remain consistent.
+    """
+    async with engine.begin() as conn:
+        result = await conn.exec_driver_sql("PRAGMA table_info(objects);")
+        existing_columns = {row[1] for row in result}
+        statements = []
+
+        if "default_title" not in existing_columns:
+            statements.append("ALTER TABLE objects ADD COLUMN default_title TEXT NOT NULL DEFAULT ''")
+        if "default_description" not in existing_columns:
+            statements.append("ALTER TABLE objects ADD COLUMN default_description TEXT")
+        if "custom_title" not in existing_columns:
+            statements.append("ALTER TABLE objects ADD COLUMN custom_title TEXT")
+        if "custom_description" not in existing_columns:
+            statements.append("ALTER TABLE objects ADD COLUMN custom_description TEXT")
+
+        for stmt in statements:
+            await conn.exec_driver_sql(stmt)
+
+        if statements:
+            await conn.exec_driver_sql("""
+                UPDATE objects
+                SET
+                    default_title = COALESCE(default_title, title),
+                    default_description = COALESCE(default_description, description),
+                    title = COALESCE(NULLIF(custom_title, ''), NULLIF(default_title, ''), title, 'Untitled'),
+                    description = COALESCE(custom_description, default_description, description)
+            """)
+        else:
+            # Ensure no empty titles remain even if columns already exist
+            await conn.exec_driver_sql("""
+                UPDATE objects
+                SET
+                    default_title = CASE WHEN default_title IS NULL OR default_title = '' THEN title ELSE default_title END,
+                    title = CASE
+                        WHEN (title IS NULL OR title = '') AND (custom_title IS NOT NULL AND custom_title <> '') THEN custom_title
+                        WHEN (title IS NULL OR title = '') AND (default_title IS NOT NULL AND default_title <> '') THEN default_title
+                        WHEN (title IS NULL OR title = '') THEN 'Untitled'
+                        ELSE title
+                    END
+            """)
+
 
 async def init_db() -> None:
     """Initialize database and create tables."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await ensure_object_name_columns()

@@ -66,6 +66,17 @@ class ObjectBase(BaseModel):
         max_length=1000,
         description="Optional description"
     )
+    custom_title: Optional[str] = Field(
+        None,
+        min_length=2,
+        max_length=400,
+        description="Custom title set by user (overrides default title when present)"
+    )
+    custom_description: Optional[str] = Field(
+        None,
+        max_length=1000,
+        description="Custom description set by user (overrides default description when present)"
+    )
     tags: List[str] = Field(
         default_factory=list,
         description="Tags for categorization and search"
@@ -92,6 +103,28 @@ class ObjectBase(BaseModel):
         if not v:
             raise ValueError("Title cannot be empty or only whitespace")
         return v
+
+    @field_validator("custom_title")
+    @classmethod
+    def validate_custom_title(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and normalize custom title (allows clearing when None)."""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if len(v) < 2:
+            raise ValueError("Custom title must be at least 2 characters")
+        return v
+
+    @field_validator("custom_description")
+    @classmethod
+    def validate_custom_description(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize custom description (allows clearing when blank)."""
+        if v is None:
+            return v
+        v = v.strip()
+        return v or None
 
     @field_validator("tags")
     @classmethod
@@ -483,6 +516,17 @@ class ObjectUpdate(BaseModel):
     Type-specific fields are stored in metadata dict.
     """
 
+    default_title: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=400,
+        description="Default title (metadata-derived)"
+    )
+    default_description: Optional[str] = Field(
+        None,
+        max_length=1000,
+        description="Default description (metadata-derived)"
+    )
     title: Optional[str] = Field(
         None,
         min_length=1,
@@ -493,6 +537,17 @@ class ObjectUpdate(BaseModel):
         None,
         max_length=1000,
         description="Object description"
+    )
+    custom_title: Optional[str] = Field(
+        None,
+        min_length=2,
+        max_length=400,
+        description="Custom title override"
+    )
+    custom_description: Optional[str] = Field(
+        None,
+        max_length=1000,
+        description="Custom description override"
     )
     tags: Optional[List[str]] = Field(
         None,
@@ -516,6 +571,38 @@ class ObjectUpdate(BaseModel):
             v = v.strip()
             if not v:
                 raise ValueError("Title cannot be empty or only whitespace")
+        return v
+
+    @field_validator("default_title")
+    @classmethod
+    def validate_default_title(cls, v: Optional[str]) -> Optional[str]:
+        """Validate default title when provided."""
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Default title cannot be empty or only whitespace")
+        return v
+
+    @field_validator("custom_title")
+    @classmethod
+    def validate_custom_title(cls, v: Optional[str]) -> Optional[str]:
+        """Validate custom title when provided."""
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
+            if len(v) < 2:
+                raise ValueError("Custom title must be at least 2 characters")
+        return v
+
+    @field_validator("custom_description")
+    @classmethod
+    def validate_custom_description(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize custom description when provided."""
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
         return v
 
     @field_validator("tags")
@@ -548,6 +635,11 @@ class ObjectResponse(ObjectBase):
     id: UUID = Field(..., description="Unique object identifier")
     island_id: UUID = Field(..., description="ID of the island this object belongs to")
     type: ObjectType = Field(..., description="Object type")
+    default_title: str = Field(..., description="Original/default title from metadata or system")
+    default_description: Optional[str] = Field(
+        None,
+        description="Original/default description from metadata or system"
+    )
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
         description="Type-specific metadata (url, file_path, etc.)"
