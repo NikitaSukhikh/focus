@@ -74,6 +74,10 @@ export function FullWindowPreview({
 
   const currentTitle = localTitle ?? title;
   const currentContent = localContent ?? content;
+  const firstContentLine = currentContent
+    ? (currentContent.split(/\r?\n/).find((line) => line.trim().length > 0) || '').trim()
+    : '';
+  const displayTitle = (currentTitle || '').trim() || firstContentLine || 'Preview';
 
   const getBodyWithoutTitle = (rawContent?: string | null, heading?: string | null) => {
     if (type !== 'text' || !rawContent) return rawContent || '';
@@ -370,7 +374,7 @@ export function FullWindowPreview({
                 fontSize: '18px'
               }}
             >
-              {title || 'Preview'}
+              {displayTitle}
             </h2>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -473,15 +477,15 @@ export function FullWindowPreview({
                   isClosingRef={isClosingRef}
                 />
               ) : (
-                <div className="flex-1 overflow-auto bg-white h-full">
-                  <div className="p-12 max-w-4xl mx-auto">
+                <div className="flex-1 overflow-auto bg-white min-h-0">
+                  <div className="p-12 max-w-4xl w-full mx-auto min-h-full">
                     <h1
                       ref={titleRef}
                       className="text-4xl font-bold mb-8 cursor-text"
                       style={{ ...FONT_ROLES.paneTitle, fontSize: '36px' }}
                       onDoubleClick={handleDoubleClick}
                     >
-                      {currentTitle || 'Header'}
+                      {displayTitle}
                     </h1>
                     <div
                       ref={textContentRef}

@@ -22,6 +22,12 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
   const titleRef = useRef<HTMLHeadingElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const trimmedTitle = (title || '').trim();
+  const firstContentLine = content
+    ? (content.split(/\r?\n/).find((line) => line.trim().length > 0) || '').trim()
+    : '';
+  const displayTitle = trimmedTitle || firstContentLine || 'Untitled Note';
+
   // Reconstruct full content with title as first line
   const fullContent = title && content
     ? `${title}\n${content}`
@@ -132,7 +138,7 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
           style={{ ...FONT_ROLES.paneTitle, fontSize: '28px' }}
           onDoubleClick={handleDoubleClick}
         >
-          {title || 'Untitled Note'}
+          {displayTitle}
         </h1>
         <div
           ref={contentRef}
