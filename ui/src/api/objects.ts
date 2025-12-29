@@ -1,5 +1,6 @@
 import { truncateLinkTitle } from '../utils/text';
 import { requestTracker } from '../utils/requestTracker';
+import { TagValue } from '../types/tags';
 
 const API_BASE = '/api';
 
@@ -10,6 +11,7 @@ export interface ObjectCreatePayload {
   title: string;
   description?: string;
   tags?: string[];
+  tag?: TagValue;
   custom_title?: string;
   custom_description?: string;
   // Position metadata
@@ -44,6 +46,7 @@ export interface ObjectResponse {
   custom_title?: string;
   custom_description?: string;
   tags?: string[];
+  tag?: TagValue;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -65,6 +68,7 @@ export const objectsApi = {
     const trimmedCustomDescription = payload.custom_description?.trim();
     const safePayload: ObjectCreatePayload = {
       ...payload,
+      tag: payload.tag ?? '',
       title: payload.title ? truncateLinkTitle(payload.title) : payload.title,
       custom_title: trimmedCustomTitle && trimmedCustomTitle.length > 1 ? truncateLinkTitle(trimmedCustomTitle) : undefined,
       custom_description: trimmedCustomDescription ? trimmedCustomDescription : undefined,

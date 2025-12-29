@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { DroppedIcon } from '../types';
+import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
 
 interface TextCreationParams {
@@ -59,6 +60,7 @@ export const useCenterPaneTextCreation = ({
         title: created.title,
         x: clamped.x,
         y: clamped.y,
+        tag: normalizeTag(created.tag),
         description: formattedContent.substring(0, 100), // Preview snippet
         content: formattedContent,
       };
@@ -79,6 +81,7 @@ export const useCenterPaneTextCreation = ({
               content: formattedContent,
               x: clamped.x,
               y: clamped.y,
+              tag: normalizeTag(created.tag),
             },
           },
         })
