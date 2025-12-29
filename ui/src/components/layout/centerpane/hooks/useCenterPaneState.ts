@@ -18,6 +18,7 @@ import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind, ArrowSegment } from '../types';
+import { normalizeTag } from '../../../../types/tags';
 import { isGmailUrl } from '../utils';
 import { calculateContentHeight } from '../boundaries';
 
@@ -74,6 +75,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
             const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
 
+            const tag = normalizeTag((obj as any).tag ?? meta.tag);
             const isGmail = url && isGmailUrl(url);
             const displayTitleBase = customTitle || obj.title || defaultTitle || '';
             const displayTitle = isGmail && description?.includes('Gmail - ')
@@ -108,6 +110,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               title: displayTitle,
               x,
               y,
+              tag,
               serviceKey,
               url,
               service,
@@ -247,6 +250,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             title: tileToDelete.title,
             x: tileToDelete.x,
             y: tileToDelete.y,
+            tag: tileToDelete.tag,
             url: tileToDelete.url,
             description: tileToDelete.description,
             faviconUrl: tileToDelete.faviconUrl,

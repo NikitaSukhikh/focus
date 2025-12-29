@@ -4,14 +4,21 @@ import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { useTopBarLogic } from './useTopBarLogic';
 import { TopBarProps, TopBarHandle } from './types';
+import { TagsButton, TagsMenu, useTagsDropdown, TagColor } from './tags';
 
 export type { TopBarHandle } from './types';
 
 // TopBar renders the global header controls (sidebar toggle, island title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
-  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom } = props;
+  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onTagsClick, isTagsOpen, onTagSelect } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
+  const tagsDropdown = useTagsDropdown({ isOpenProp: isTagsOpen, onToggle: onTagsClick });
+
+  const handleTagSelect = (color: TagColor) => {
+    onTagSelect?.(color);
+    tagsDropdown.close();
+  };
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({}), []);
@@ -130,6 +137,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               e.currentTarget.style.boxShadow = 'none';
             }}
           />
+        </div>
+
+        <div className="relative" style={{ zIndex: Z_INDEX.DROPDOWN_MENU }}>
+          <TagsButton ref={tagsDropdown.triggerRef} onClick={tagsDropdown.toggleOpen} isActive={tagsDropdown.isOpen} />
+          <TagsMenu ref={tagsDropdown.menuRef} isOpen={tagsDropdown.isOpen} onSelect={handleTagSelect} />
         </div>
 
         <div className="flex items-center gap-0 px-1 py-0.5 rounded-lg" style={{ background: 'var(--glass-bg)' }}>

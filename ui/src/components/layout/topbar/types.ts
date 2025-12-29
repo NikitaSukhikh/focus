@@ -1,4 +1,5 @@
 import { CenterPaneHandle } from '../centerpane/types';
+import { TagColor } from './tags';
 
 export interface TopBarProps {
   onToggleSidebar: () => void;
@@ -14,6 +15,9 @@ export interface TopBarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   zoom: number;
+  onTagsClick?: () => void;
+  isTagsOpen?: boolean;
+  onTagSelect?: (color: TagColor) => void;
 }
 
 export interface TopBarHandle {

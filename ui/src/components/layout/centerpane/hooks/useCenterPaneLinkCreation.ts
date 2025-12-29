@@ -14,6 +14,7 @@ import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
+import { normalizeTag } from '../../../../types/tags';
 import { isGmailUrl } from '../utils';
 
 interface LinkCreationParams {
@@ -216,6 +217,7 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
         title: displayTitle,
         x,
         y,
+        tag: normalizeTag(created.tag),
         url,
         description: displayDescription,
         defaultTitle: created.default_title || defaultTitle,
@@ -234,12 +236,13 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
       undoApi
         .createEvent(selectedIsland.id, {
           event_type: 'tile_create',
-          event_data: {
-            tile: {
-              id: created.id,
-              type: isGmail ? 'gmail' : 'link',
-              title: displayTitle,
-              defaultTitle: created.default_title,
+              event_data: {
+                tile: {
+                  id: created.id,
+                  type: isGmail ? 'gmail' : 'link',
+                  title: displayTitle,
+                  tag: normalizeTag(created.tag),
+                  defaultTitle: created.default_title,
               defaultDescription: created.default_description,
               customTitle: created.custom_title ?? customTitle ?? null,
               customDescription: created.custom_description ?? customDescription ?? null,
