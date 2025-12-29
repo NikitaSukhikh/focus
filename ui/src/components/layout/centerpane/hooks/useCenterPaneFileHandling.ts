@@ -15,6 +15,7 @@ import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { openFilePicker } from '../../../../platform';
 import { DroppedIcon } from '../types';
+import { normalizeTag } from '../../../../types/tags';
 
 interface FileHandlingParams {
   selectedIsland: any;
@@ -73,6 +74,7 @@ export const useCenterPaneFileHandling = ({
           title: filename,
           x,
           y,
+          tag: '',
           filePath: filePath,
         };
 
@@ -86,11 +88,12 @@ export const useCenterPaneFileHandling = ({
           .then((created) => {
             const meta = (created.metadata || {}) as Record<string, any>;
             const createdFilePath = meta.file_path as string;
+            const tag = normalizeTag((created as any).tag ?? meta.tag);
 
             setIconsByIsland((prev) => ({
               ...prev,
               [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath } : i
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, tag } : i
               ),
             }));
 
@@ -105,6 +108,7 @@ export const useCenterPaneFileHandling = ({
                     title: filename,
                     x,
                     y,
+                    tag: tag,
                     filePath: createdFilePath,
                   },
                 },

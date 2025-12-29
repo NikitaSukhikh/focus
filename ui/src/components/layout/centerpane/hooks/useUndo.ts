@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 import { undoApi } from '../../../../api/undo';
 import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon, ArrowSegment } from '../types';
+import { normalizeTag } from '../../../../types/tags';
 import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 
 interface UseUndoProps {
@@ -135,18 +136,19 @@ export const useUndo = ({
               switch (lastRedoEvent.event_type) {
                 case 'tile_create': {
                   // Redo tile creation = create the tile again
-                  const { tile } = lastRedoEvent.event_data;
-              const restoredTile: DroppedIcon = {
-                id: tile.id,
-                type: tile.type as any,
-                title: tile.title,
-                x: tile.x,
-                y: tile.y,
-                url: tile.url,
-                description: tile.description,
-                faviconUrl: tile.faviconUrl,
-                filePath: tile.filePath,
-                serviceKey: tile.serviceKey,
+              const { tile } = lastRedoEvent.event_data;
+          const restoredTile: DroppedIcon = {
+            id: tile.id,
+            type: tile.type as any,
+            title: tile.title,
+            x: tile.x,
+            y: tile.y,
+            tag: normalizeTag(tile.tag),
+            url: tile.url,
+            description: tile.description,
+            faviconUrl: tile.faviconUrl,
+            filePath: tile.filePath,
+            serviceKey: tile.serviceKey,
                 service: tile.service,
                 content: tile.content,
               };
@@ -192,6 +194,7 @@ export const useUndo = ({
                       title: tile.title,
                       x: targetX,
                       y: targetY,
+                      tag: normalizeTag(tile.tag),
                       url: tile.url,
                       description: tile.description,
                       faviconUrl: tile.faviconUrl,
@@ -243,6 +246,7 @@ export const useUndo = ({
                       title: text.title,
                       x: targetX,
                       y: targetY,
+                      tag: normalizeTag(text.tag),
                       content: text.content,
                     };
 
@@ -431,6 +435,7 @@ export const useUndo = ({
                 title: text.title,
                 x: text.x,
                 y: text.y,
+                tag: normalizeTag(text.tag),
                 content: text.content,
               };
 
@@ -529,6 +534,7 @@ export const useUndo = ({
                       title: tile.title,
                       x: targetX,
                       y: targetY,
+                      tag: normalizeTag(tile.tag),
                       url: tile.url,
                       description: tile.description,
                       faviconUrl: tile.faviconUrl,
@@ -580,6 +586,7 @@ export const useUndo = ({
                       title: text.title,
                       x: targetX,
                       y: targetY,
+                      tag: normalizeTag(text.tag),
                       content: text.content,
                     };
 
@@ -604,6 +611,7 @@ export const useUndo = ({
                 title: tile.title,
                 x: tile.x,
                 y: tile.y,
+                tag: normalizeTag(tile.tag),
                 url: tile.url,
                 description: tile.description,
                 faviconUrl: tile.faviconUrl,
@@ -804,6 +812,7 @@ export const useUndo = ({
                 title: text.title,
                 x: text.x,
                 y: text.y,
+                tag: normalizeTag(text.tag),
                 content: text.content,
               };
 

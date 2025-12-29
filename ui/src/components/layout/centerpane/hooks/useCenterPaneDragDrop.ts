@@ -20,6 +20,7 @@ import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind } from '../types';
 import { isGmailUrl } from '../utils';
 import { useDebouncedPositionUpdate } from '../../../../hooks/useDebouncedPositionUpdate';
+import { normalizeTag } from '../../../../types/tags';
 
 interface DragDropParams {
   selectedIsland: any;
@@ -114,6 +115,7 @@ export const useCenterPaneDragDrop = ({
     title: string;
     x: number;
     y: number;
+    tag?: string;
     url?: string;
     description?: string;
     faviconUrl?: string;
@@ -323,6 +325,7 @@ export const useCenterPaneDragDrop = ({
           title: filename,
           x: clampedX,
           y: clampedY,
+          tag: '',
           filePath: filePath,
         };
 
@@ -338,11 +341,12 @@ export const useCenterPaneDragDrop = ({
             const createdFilePath = meta.file_path as string;
             const createdX = typeof meta.x === 'number' ? meta.x : clampedX;
             const createdY = typeof meta.y === 'number' ? meta.y : clampedY;
+            const tag = normalizeTag((created as any).tag ?? meta.tag);
 
             setIconsByIsland((prev) => ({
               ...prev,
               [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, x: createdX, y: createdY } : i
+                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, x: createdX, y: createdY, tag } : i
               ),
             }));
 
@@ -352,6 +356,7 @@ export const useCenterPaneDragDrop = ({
               title: filename,
               x: createdX,
               y: createdY,
+              tag,
               filePath: createdFilePath,
               service: (meta.service as string | undefined),
               serviceKey: created.description,
@@ -501,6 +506,7 @@ export const useCenterPaneDragDrop = ({
       title: payload.title,
       x,
       y,
+      tag: '',
       serviceKey,
       url: payload.type === 'link' ? (payload as any).url : undefined,
       description: payload.description,
@@ -547,6 +553,7 @@ export const useCenterPaneDragDrop = ({
           : undefined;
         const finalService = (meta.service as string | undefined) || payload.service;
         const finalServiceKey = created.description;
+        const tag = normalizeTag((created as any).tag ?? meta.tag);
 
         setIconsByIsland((prev) => {
           const current = (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId);
@@ -560,6 +567,7 @@ export const useCenterPaneDragDrop = ({
                 title: created.title,
                 x: finalX,
                 y: finalY,
+                tag,
                 serviceKey: finalServiceKey,
                 url: finalUrl,
                 description: finalDescription,
@@ -582,6 +590,7 @@ export const useCenterPaneDragDrop = ({
           service: finalService,
           serviceKey: finalServiceKey,
           content: (meta.content as string | undefined),
+          tag,
         });
 
         // Notify other components that a link was created
