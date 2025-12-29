@@ -66,6 +66,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const imageMetadata = useImageMetadata(isImageFile, filePath);
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile, documentPreviewUrl);
   const textPreviewBody = useTextPreview(type, content, title);
+  const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
 
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile;
@@ -144,7 +145,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
 
   // Use processed content that removes duplicate title
   const processedContent = contentWasUpdated
-    ? useTextPreview(type, localContent, localTitle)
+    ? updatedTextPreviewBody
     : textPreviewBody;
 
   return (

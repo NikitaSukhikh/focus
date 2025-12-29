@@ -28,6 +28,10 @@ export interface DroppedIcon {
   serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
   url?: string; // For link objects
   description?: string; // For all objects
+  defaultTitle?: string;
+  defaultDescription?: string;
+  customTitle?: string | null;
+  customDescription?: string | null;
   faviconUrl?: string;
   service?: string;
   filePath?: string; // For file objects - path to original file
@@ -56,6 +60,7 @@ export interface CenterPaneProps {
 export interface CenterPaneHandle {
   addFiles: () => Promise<void>;
   getTilesForIsland: (islandId: string) => DroppedIcon[];
+  openAddLinkDialog: () => void;
 }
 
 export interface TileProps {
@@ -74,6 +79,7 @@ export interface TileProps {
   onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
   onRename?: (_newTitle: string) => void;
+  onOpenLinkEdit?: () => void;
   onRefreshMetadata?: () => void;
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
 }

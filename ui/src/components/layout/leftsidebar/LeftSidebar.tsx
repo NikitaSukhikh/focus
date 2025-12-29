@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { ChevronLeft, Plus, Edit2, Trash2, ChevronDown, Settings } from 'lucide-react';
+import { ChevronLeft, Plus, Settings } from 'lucide-react';
 import { useIslandStore } from '../../../stores/islandStore';
 import { objectsApi } from '../../../api/objects';
 import { Z_INDEX } from '../../../constants/zIndex';
@@ -8,12 +8,8 @@ import { FONT_ROLES } from '../../../styles/fontManager';
 import { IslandItem } from './IslandItem';
 import { LeftSidebarProps } from './types';
 import { mapObjectToPayload, generateUniqueName } from './utils';
-import { useSidebarLogic } from './useSidebarLogic';
-import { GmailIcon } from '../../icons/GoogleServiceIcons';
-import { FALLBACK_FAVICON } from '../../../utils/favicon';
-import { EditLinkDialog } from '../../dialogs/EditLinkDialog';
 
-// LeftSidebar lists available islands, handles CRUD/duplication for them, and surfaces saved links under the selected island with context menus.
+// LeftSidebar lists available islands and handles basic island CRUD/duplication.
 export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -31,9 +27,6 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
   const loadIslands = useIslandStore((state) => state.loadIslands);
   const initialize = useIslandStore((state) => state.initialize);
   const setDuplicating = useIslandStore((state) => state.setDuplicating);
-
-  // Sidebar logic for links dropdown
-  const logic = useSidebarLogic();
 
   useEffect(() => {
     initialize();
@@ -239,69 +232,22 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
             <div className="space-y-2">
               {islands.map((island) => {
                 const isSelected = island.id === selectedIslandId;
-                const hasObjects = island.object_count > 0;
-                const isExpanded = logic.isIslandExpanded(island.id);
 
                 return (
-                  <React.Fragment key={island.id}>
-                    <IslandItem
-                      id={island.id}
-                      name={island.name}
-                      isActive={isSelected}
-                      isEditing={editingId === island.id}
-                      onRename={handleRenameIsland}
-                      onDelete={handleDeleteIsland}
-                      onDuplicate={handleDuplicateIsland}
-                      onStartEdit={() => setEditingId(island.id)}
-                      onCancelEdit={() => setEditingId(null)}
-                      onClick={() => handleSelectIsland(island.id)}
-                      showLinksToggle={hasObjects}
-                      isLinksExpanded={isExpanded}
-                      onToggleLinks={() => logic.toggleIslandExpansion(island.id)}
-                    />
-
-                  {/* Links List - positioned directly below selected island */}
-                  {island.id === selectedIslandId && logic.savedLinks.length > 0 && isExpanded && (
-                    <div className="ml-6 mt-1 mb-2 space-y-1">
-                      {logic.savedLinks.map((link) => {
-                        const displayName = link.name.replace(/^https?:\/\//, '').replace(/\/$/, '');
-                        const isGmail =
-                          (link.url || '').toLowerCase().includes('mail.google.com') ||
-                          (link.url || '').toLowerCase().includes('gmail.com');
-
-                        const iconNode = isGmail ? (
-                          <GmailIcon size={14} />
-                        ) : (
-                          <img
-                            src={link.favicon_url || FALLBACK_FAVICON}
-                            alt=""
-                            className="w-3.5 h-3.5 object-contain"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = FALLBACK_FAVICON;
-                              e.currentTarget.style.display = 'block';
-                            }}
-                          />
-                        );
-
-                        return (
-                          <div
-                            key={link.id}
-                            onContextMenu={(e) => logic.handleLinkContextMenu(e, link.id)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-slate-100 transition-colors"
-                            title={link.description || link.url}
-                          >
-                            <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-                              {iconNode}
-                            </div>
-                            <span className="truncate text-sm text-slate-600" style={FONT_ROLES.sidebarHint}>{displayName}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </React.Fragment>
-              );
+                  <IslandItem
+                    key={island.id}
+                    id={island.id}
+                    name={island.name}
+                    isActive={isSelected}
+                    isEditing={editingId === island.id}
+                    onRename={handleRenameIsland}
+                    onDelete={handleDeleteIsland}
+                    onDuplicate={handleDuplicateIsland}
+                    onStartEdit={() => setEditingId(island.id)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onClick={() => handleSelectIsland(island.id)}
+                  />
+                );
               })}
             </div>
           )}
@@ -349,52 +295,6 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         />
       )}
 
-      {/* Edit Link Dialog */}
-      <EditLinkDialog
-        isOpen={!!logic.editingLinkId}
-        onClose={() => logic.setEditingLinkId(null)}
-        onSave={logic.handleSaveEditedLink}
-        initialUrl={logic.editingLinkData.url}
-        initialTitle={logic.editingLinkData.title}
-        initialDescription={logic.editingLinkData.description}
-      />
-
-      {/* Link Context Menu */}
-      {logic.linkContextMenu && (
-        <>
-          <div
-            className="fixed inset-0"
-            style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
-            onClick={() => logic.setLinkContextMenu(null)}
-          />
-          <div
-            className="fixed w-40 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
-            style={{
-              zIndex: Z_INDEX.CONTEXT_MENU,
-              left: `${logic.linkContextMenu.x}px`,
-              top: `${logic.linkContextMenu.y}px`
-            }}
-          >
-            <button
-              onClick={() => logic.handleEditLink(logic.linkContextMenu!.linkId)}
-              className="w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
-              style={FONT_ROLES.sidebarItem}
-            >
-              <Edit2 size={14} />
-              Edit
-            </button>
-            <button
-              onClick={() => logic.handleDeleteLink(logic.linkContextMenu!.linkId)}
-              className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-              style={FONT_ROLES.sidebarItem}
-            >
-              <Trash2 size={14} />
-              Delete
-            </button>
-          </div>
-        </>
-      )}
-
       {/* Delete Confirmation Dialog */}
       {pendingDeleteId &&
         ReactDOM.createPortal(
@@ -424,7 +324,6 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
                     className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
                     disabled={isDeleting}
                     ref={noButtonRef}
-                    autoFocus
                   >
                     No
                   </button>

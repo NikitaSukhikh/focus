@@ -16,7 +16,4 @@ export interface IslandItemProps {
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onClick: () => void;
-  showLinksToggle?: boolean;
-  isLinksExpanded?: boolean;
-  onToggleLinks?: () => void;
 }

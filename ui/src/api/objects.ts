@@ -10,6 +10,8 @@ export interface ObjectCreatePayload {
   title: string;
   description?: string;
   tags?: string[];
+  custom_title?: string;
+  custom_description?: string;
   // Position metadata
   x?: number;
   y?: number;
@@ -37,6 +39,10 @@ export interface ObjectResponse {
   type: ObjectType;
   title: string;
   description?: string;
+  default_title: string;
+  default_description?: string;
+  custom_title?: string;
+  custom_description?: string;
   tags?: string[];
   metadata: Record<string, unknown>;
   created_at: string;
@@ -55,9 +61,14 @@ export const objectsApi = {
   },
 
   async create(islandId: string, payload: ObjectCreatePayload): Promise<ObjectResponse> {
+    const trimmedCustomTitle = payload.custom_title?.trim();
+    const trimmedCustomDescription = payload.custom_description?.trim();
     const safePayload: ObjectCreatePayload = {
       ...payload,
       title: payload.title ? truncateLinkTitle(payload.title) : payload.title,
+      custom_title: trimmedCustomTitle && trimmedCustomTitle.length > 1 ? truncateLinkTitle(trimmedCustomTitle) : undefined,
+      custom_description: trimmedCustomDescription ? trimmedCustomDescription : undefined,
+      description: payload.description?.trim(),
     };
 
     const promise = (async () => {
@@ -100,7 +111,7 @@ export const objectsApi = {
       const res = await fetch(`${API_BASE}/objects/${objectId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: safeTitle }),
+        body: JSON.stringify({ custom_title: safeTitle }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -112,18 +123,42 @@ export const objectsApi = {
     return requestTracker.track(promise);
   },
 
-  async updateLink(objectId: string, url: string, title: string, description: string, favicon_url: string): Promise<ObjectResponse> {
-    const safeTitle = truncateLinkTitle(title);
+  async updateLink(
+    objectId: string,
+    url: string,
+    defaultTitle: string,
+    defaultDescription: string,
+    favicon_url: string,
+    customTitle?: string | null,
+    customDescription?: string | null,
+  ): Promise<ObjectResponse> {
+    const safeDefaultTitle = truncateLinkTitle(defaultTitle);
+    const trimmedDefaultDescription = defaultDescription?.trim() ?? '';
+    const trimmedCustomTitle = customTitle === null ? null : customTitle?.trim();
+    const trimmedCustomDescription = customDescription === null ? null : customDescription?.trim();
+    const body: Record<string, unknown> = {
+      default_title: safeDefaultTitle,
+      default_description: trimmedDefaultDescription,
+      metadata: { url, favicon_url }
+    };
+
+    if (trimmedCustomTitle) {
+      body.custom_title = truncateLinkTitle(trimmedCustomTitle);
+    } else if (customTitle === null) {
+      body.custom_title = null;
+    }
+
+    if (trimmedCustomDescription) {
+      body.custom_description = trimmedCustomDescription;
+    } else if (customDescription === null) {
+      body.custom_description = null;
+    }
 
     const promise = (async () => {
       const res = await fetch(`${API_BASE}/objects/${objectId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: safeTitle,
-          description,
-          metadata: { url, favicon_url }
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const text = await res.text();

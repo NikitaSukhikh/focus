@@ -26,6 +26,10 @@ export interface SavedLink {
   title: string;
   name: string;
   description?: string;
+  defaultTitle?: string;
+  defaultDescription?: string;
+  customTitle?: string | null;
+  customDescription?: string | null;
   favicon_url?: string;
   account_email?: string;
 }

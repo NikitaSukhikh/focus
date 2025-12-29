@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Edit2, Trash2, Copy, ChevronDown } from 'lucide-react';
+import { Edit2, Trash2, Copy } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { IslandItemProps } from './types';
@@ -16,9 +16,6 @@ export function IslandItem({
   onStartEdit,
   onCancelEdit,
   onClick,
-  showLinksToggle = false,
-  isLinksExpanded = false,
-  onToggleLinks
 }: IslandItemProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -115,13 +112,7 @@ export function IslandItem({
   return (
     <>
       <div
-        onClick={(e) => {
-          if (isActive && showLinksToggle) {
-            onToggleLinks?.();
-          } else {
-            onClick();
-          }
-        }}
+        onClick={() => onClick()}
         onContextMenu={handleContextMenu}
         onDoubleClick={(e) => {
           e.stopPropagation();
@@ -173,14 +164,6 @@ export function IslandItem({
                 <span className="block truncate" style={FONT_ROLES.sidebarItem}>{name}</span>
               )}
             </div>
-
-            {/* Links toggle chevron */}
-            {showLinksToggle && (
-              <ChevronDown
-                size={14}
-                className={`shrink-0 transition-transform text-slate-400 ${isLinksExpanded ? 'rotate-0' : '-rotate-90'}`}
-              />
-            )}
           </div>
         </div>
 

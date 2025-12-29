@@ -108,10 +108,11 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* Title Input */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label htmlFor="add-text-title" className="block text-sm font-medium text-slate-700 mb-2">
                 Title <span className="text-red-500">*</span>
               </label>
               <input
+                id="add-text-title"
                 ref={titleInputRef}
                 type="text"
                 value={title}
@@ -127,7 +128,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
             {/* Content Textarea */}
             <div className="flex-1">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-slate-700">
+                <label htmlFor="add-text-content" className="block text-sm font-medium text-slate-700">
                   Content <span className="text-red-500">*</span>
                 </label>
                 <span className={`text-xs ${isOverLimit ? 'text-red-500 font-semibold' : 'text-slate-500'}`}>
@@ -135,6 +136,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
                 </span>
               </div>
               <textarea
+                id="add-text-content"
                 ref={contentTextareaRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}

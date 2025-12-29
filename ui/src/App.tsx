@@ -272,11 +272,11 @@ export function App() {
   };
 
   const handleQuickAddLink = () => {
-    topBarRef.current?.openAddLinkDialog();
+    centerPaneRef.current?.openAddLinkDialog();
   };
 
   const handleQuickAddTelegram = () => {
-    topBarRef.current?.openAddTelegramDialog();
+    // Placeholder: Telegram dialog not yet implemented
   };
 
   const handleZoomIn = () => {

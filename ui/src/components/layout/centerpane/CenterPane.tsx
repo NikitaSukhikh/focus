@@ -28,7 +28,19 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   useImperativeHandle(ref, () => ({
     addFiles: logic.handleAddFiles,
     getTilesForIsland: (islandId: string) => logic.iconsByIsland[islandId] || [],
-  }), [logic.handleAddFiles, logic.iconsByIsland]);
+    openAddLinkDialog: () => {
+      if (!paneRef.current) {
+        logic.openAddLinkDialog(200, 200);
+        return;
+      }
+      const rect = paneRef.current.getBoundingClientRect();
+      const scrollLeft = paneRef.current.scrollLeft;
+      const scrollTop = paneRef.current.scrollTop;
+      const centerCanvasX = (rect.width / 2 + scrollLeft) / Math.max(zoom, 0.01);
+      const centerCanvasY = (rect.height / 2 + scrollTop) / Math.max(zoom, 0.01);
+      logic.openAddLinkDialog(centerCanvasX, centerCanvasY);
+    },
+  }), [logic.handleAddFiles, logic.iconsByIsland, logic.openAddLinkDialog, zoom]);
 
   const selectedIcons = useMemo(() => {
     if (!logic.selectedIsland) return [];
@@ -491,7 +503,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                       }
                     }
                   }}
-                  onRename={(newTitle) => logic.handleIconRename(icon.id, newTitle)}
+                  onRename={icon.type === 'link' ? undefined : (newTitle) => logic.handleIconRename(icon.id, newTitle)}
+                  onOpenLinkEdit={icon.type === 'link' ? () => logic.openLinkEditDialog(icon) : undefined}
                   onDelete={() => logic.handleIconDelete(icon.id)}
                   onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
                   onEdit={(x, y, content, id) => {
@@ -641,6 +654,15 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         isOpen={logic.isAddLinkDialogOpen}
         onClose={logic.closeAddLinkDialog}
         onAdd={logic.handleAddLink}
+        submitLabel={logic.editingLink ? 'Save Link' : 'Add Link'}
+        initialValues={logic.editingLink ? {
+          id: logic.editingLink.id,
+          url: logic.editingLink.url,
+          defaultTitle: logic.editingLink.defaultTitle,
+          defaultDescription: logic.editingLink.defaultDescription,
+          customTitle: logic.editingLink.customTitle,
+          customDescription: logic.editingLink.customDescription,
+        } : undefined}
       />
 
       {/* Add Text Dialog */}
