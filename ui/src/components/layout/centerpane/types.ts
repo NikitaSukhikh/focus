@@ -1,4 +1,5 @@
 import type React from 'react';
+import { TagColor } from '../../types/tags';
 
 export type IconKind =
   | 'link'
@@ -25,6 +26,7 @@ export interface DroppedIcon {
   title: string;
   x: number;
   y: number;
+  tag?: TagColor | '';
   serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
   url?: string; // For link objects
   description?: string; // For all objects
@@ -74,6 +76,7 @@ export interface TileProps {
   faviconUrl?: string;
   filePath?: string;
   content?: string;
+  tag?: TagColor | '';
   isSelected?: boolean;
   onClick?: (event: React.MouseEvent) => void;
   onPositionChange?: (_x: number, _y: number) => void;

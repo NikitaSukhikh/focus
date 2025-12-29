@@ -13,6 +13,7 @@ import { useState, useCallback } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { DroppedIcon } from '../types';
+import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
 
 interface InlineEditorParams {
@@ -119,6 +120,7 @@ export const useInlineTextEditor = ({
           title: created.title,
           x: clamped.x,
           y: clamped.y,
+          tag: normalizeTag(created.tag),
           description: formattedContent.substring(0, 100),
           content: formattedContent,
         };
@@ -133,15 +135,16 @@ export const useInlineTextEditor = ({
           .createEvent(selectedIsland.id, {
             event_type: 'text_create',
             event_data: {
-              text: {
-                id: created.id,
-                title: created.title,
-                content: formattedContent,
-                x: clamped.x,
-                y: clamped.y,
-              },
+            text: {
+              id: created.id,
+              title: created.title,
+              content: formattedContent,
+              x: clamped.x,
+              y: clamped.y,
+              tag: normalizeTag(created.tag),
             },
-          })
+          },
+        })
           .catch((err) => console.error('Failed to create undo event:', err));
       }
 
