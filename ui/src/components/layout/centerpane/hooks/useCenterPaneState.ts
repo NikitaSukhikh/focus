@@ -63,17 +63,22 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const x = typeof meta.x === 'number' ? meta.x : 100 + (idx % 5) * 120;
             const y = typeof meta.y === 'number' ? meta.y : 100 + Math.floor(idx / 5) * 140;
 
+            const defaultTitle = (obj as any).default_title as string | undefined;
+            const defaultDescription = (obj as any).default_description as string | undefined;
+            const customTitle = ((obj as any).custom_title as string | null | undefined) ?? null;
+            const customDescription = ((obj as any).custom_description as string | null | undefined) ?? null;
             const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
-            const description = obj.type !== 'google_drive' ? obj.description : undefined;
+            const description = obj.type !== 'google_drive' ? (customDescription ?? obj.description ?? defaultDescription) : undefined;
             const url = obj.type === 'link' ? (meta.url as string) : undefined;
             const service = meta.service as string | undefined;
             const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
             const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
 
             const isGmail = url && isGmailUrl(url);
+            const displayTitleBase = customTitle || obj.title || defaultTitle || '';
             const displayTitle = isGmail && description?.includes('Gmail - ')
               ? description.replace('Gmail - ', '')
-              : obj.title;
+              : displayTitleBase;
 
             let kind: IconKind =
               obj.type === 'link'
@@ -107,6 +112,10 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               url,
               service,
               description,
+              defaultTitle,
+              defaultDescription,
+              customTitle,
+              customDescription,
               faviconUrl,
               filePath,
               content: obj.type === 'text' ? (meta.content as string) : undefined,
@@ -158,6 +167,61 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     window.addEventListener('tile:updated', handleTileUpdated);
     return () => window.removeEventListener('tile:updated', handleTileUpdated);
+  }, [selectedIsland, setIconsByIsland]);
+
+  // Sync link updates (title/description/custom/default) from other UI surfaces (e.g., sidebar)
+  useEffect(() => {
+    const handleLinkUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        linkId: string;
+        title?: string;
+        description?: string;
+        url?: string;
+        defaultTitle?: string;
+        defaultDescription?: string;
+        customTitle?: string | null;
+        customDescription?: string | null;
+        faviconUrl?: string;
+      }>;
+      const {
+        linkId,
+        title,
+        description,
+        url,
+        defaultTitle,
+        defaultDescription,
+        customTitle,
+        customDescription,
+        faviconUrl,
+      } = customEvent.detail;
+
+      if (!selectedIsland) return;
+
+      setIconsByIsland((prev) => {
+        const current = prev[selectedIsland.id] || [];
+        return {
+          ...prev,
+          [selectedIsland.id]: current.map((icon) =>
+            icon.id === linkId
+              ? {
+                  ...icon,
+                  title: title ?? icon.title,
+                  description: description ?? icon.description,
+                  url: url ?? icon.url,
+                  defaultTitle: defaultTitle ?? icon.defaultTitle,
+                  defaultDescription: defaultDescription ?? icon.defaultDescription,
+                  customTitle: customTitle ?? icon.customTitle ?? null,
+                  customDescription: customDescription ?? icon.customDescription ?? null,
+                  faviconUrl: faviconUrl ?? icon.faviconUrl,
+                }
+              : icon
+          ),
+        };
+      });
+    };
+
+    window.addEventListener('link:updated', handleLinkUpdated);
+    return () => window.removeEventListener('link:updated', handleLinkUpdated);
   }, [selectedIsland, setIconsByIsland]);
 
   // Handle keyboard delete for selected icon

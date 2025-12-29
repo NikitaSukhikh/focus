@@ -103,6 +103,7 @@ class ObjectsService:
     MAX_OBJECTS_PER_ISLAND = 500  # Maximum objects per island
     MAX_TITLE_LENGTH = 400
     MIN_TITLE_LENGTH = 1
+    MIN_CUSTOM_TITLE_LENGTH = 2
     MAX_TAG_LENGTH = 50
     MAX_TAGS_COUNT = 20
     MAX_TEXT_CONTENT_LENGTH = 10000
@@ -383,6 +384,9 @@ class ObjectsService:
         # Validate update data
         if object_data.title:
             self._validate_title(object_data.title)
+        if object_data.default_title:
+            self._validate_title(object_data.default_title)
+        self._validate_custom_title(object_data.custom_title)
 
         if object_data.tags is not None:
             self._validate_tags(object_data.tags)
@@ -545,6 +549,7 @@ class ObjectsService:
         """
         # Common validation
         self._validate_title(object_data.title)
+        self._validate_custom_title(getattr(object_data, "custom_title", None))
         self._validate_tags(object_data.tags)
 
         # Type-specific validation
@@ -580,6 +585,29 @@ class ObjectsService:
         if len(title) > self.MAX_TITLE_LENGTH:
             raise InvalidObjectDataError(
                 f"Object title must not exceed {self.MAX_TITLE_LENGTH} characters"
+            )
+
+    def _validate_custom_title(self, title: Optional[str]) -> None:
+        """
+        Validate custom title when provided.
+
+        Args:
+            title: Custom title override
+
+        Raises:
+            InvalidObjectDataError: If title is invalid
+        """
+        if title is None:
+            return
+        if not title.strip():
+            return
+        if len(title.strip()) < self.MIN_CUSTOM_TITLE_LENGTH:
+            raise InvalidObjectDataError(
+                f"Custom title must be at least {self.MIN_CUSTOM_TITLE_LENGTH} characters"
+            )
+        if len(title.strip()) > self.MAX_TITLE_LENGTH:
+            raise InvalidObjectDataError(
+                f"Custom title must not exceed {self.MAX_TITLE_LENGTH} characters"
             )
 
     def _validate_tags(self, tags: List[str]) -> None:

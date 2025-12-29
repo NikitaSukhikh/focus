@@ -78,13 +78,28 @@ class ObjectsRepository:
                 select(func.count(Object.id)).where(Object.island_id == str(island_id))
             )
             metadata = self._extract_metadata(object_data)
+            default_title = object_data.title
+            default_description = object_data.description
+            custom_title = getattr(object_data, "custom_title", None)
+            custom_description = getattr(object_data, "custom_description", None)
+            display_title, display_description = self._compute_display_fields(
+                default_title,
+                custom_title,
+                default_description,
+                custom_description,
+                fallback_title=object_data.title,
+            )
 
             obj = Object(
                 id=str(uuid4()),
                 island_id=str(island_id),
                 type=object_data.type,
-                title=object_data.title,
-                description=object_data.description,
+                title=display_title,
+                description=display_description,
+                default_title=default_title,
+                default_description=default_description,
+                custom_title=custom_title,
+                custom_description=custom_description,
                 tags=object_data.tags,
                 metadata_json=metadata,
                 position=position or 0,
@@ -411,32 +426,71 @@ class ObjectsRepository:
                 logger.warning(f"Cannot update - object not found: {object_id}")
                 return None
 
-            update_data = object_data.model_dump(exclude_unset=True, exclude_none=True)
-            # Pull metadata updates directly to avoid Pydantic omissions
-            metadata_updates = object_data.metadata if object_data.metadata is not None else update_data.pop("metadata", None)
-            for key, value in update_data.items():
+            payload = object_data.model_dump(exclude_unset=True)
+            metadata_updates = object_data.metadata if object_data.metadata is not None else payload.pop("metadata", None)
+
+            default_title_set = "default_title" in payload
+            default_description_set = "default_description" in payload
+            custom_title_set = "custom_title" in payload
+            custom_description_set = "custom_description" in payload
+            title_set = "title" in payload
+            description_set = "description" in payload
+
+            default_title = payload.pop("default_title", None)
+            default_description = payload.pop("default_description", None)
+            custom_title = payload.pop("custom_title", None)
+            custom_description = payload.pop("custom_description", None)
+            title_update = payload.pop("title", None)
+            description_update = payload.pop("description", None)
+
+            for key, value in payload.items():
                 setattr(obj, key, value)
-            logger.debug("Object update payload", extra={"object_id": str(object_id), "update_data": update_data, "metadata_updates": metadata_updates})
+
+            if default_title_set and default_title is not None:
+                obj.default_title = default_title
+            if default_description_set:
+                obj.default_description = default_description
+
+            if custom_title_set:
+                obj.custom_title = custom_title
+            elif title_set:
+                obj.custom_title = title_update
+
+            if custom_description_set:
+                obj.custom_description = custom_description
+            elif description_set and not default_description_set:
+                obj.default_description = description_update
+
             if metadata_updates:
                 current_meta = obj.metadata_json or {}
                 current_meta.update(metadata_updates)
-                await session.execute(
-                    update(Object)
-                    .where(Object.id == str(object_id))
-                    .values(metadata_json=current_meta, updated_at=datetime.utcnow())
-                )
-                await session.commit()
-                await session.refresh(obj)
-            else:
-                obj.updated_at = datetime.utcnow()
-                await session.commit()
-                await session.refresh(obj)
+                obj.metadata_json = current_meta
+
+            obj.title, obj.description = self._compute_display_fields(
+                obj.default_title or obj.title,
+                obj.custom_title,
+                obj.default_description,
+                obj.custom_description,
+                fallback_title=obj.title,
+            )
+
+            obj.updated_at = datetime.utcnow()
+            await session.commit()
+            await session.refresh(obj)
 
             logger.info(
                 f"Updated object: {obj.title}",
                 extra={
                     "object_id": str(object_id),
-                    "updated_fields": list(update_data.keys()) + (["metadata"] if metadata_updates else [])
+                    "updated_fields": list(payload.keys()) + (
+                        ["default_title"] if default_title_set else []
+                    ) + (
+                        ["default_description"] if default_description_set else []
+                    ) + (
+                        ["custom_title"] if custom_title_set or title_set else []
+                    ) + (
+                        ["custom_description"] if custom_description_set or description_set else []
+                    ) + (["metadata"] if metadata_updates else [])
                 }
             )
 
@@ -687,17 +741,46 @@ class ObjectsRepository:
             )
             return ObjectList(objects=object_responses, total=total)
 
+    def _compute_display_fields(
+        self,
+        default_title: str,
+        custom_title: Optional[str],
+        default_description: Optional[str],
+        custom_description: Optional[str],
+        fallback_title: Optional[str] = None,
+    ) -> tuple[str, Optional[str]]:
+        """
+        Resolve display title/description using custom overrides when present,
+        always returning a non-empty title.
+        """
+        candidate_default = (default_title or "").strip()
+        candidate_custom = (custom_title or "").strip()
+        base_title = candidate_custom or candidate_default or (fallback_title or "").strip() or "Untitled"
+        display_description = custom_description if custom_description is not None else default_description
+        return base_title, display_description
+
     def _to_response(self, obj: Object) -> ObjectResponse:
         """
         Map ORM Object to ObjectResponse using the JSON metadata column.
         """
+        display_title, display_description = self._compute_display_fields(
+            obj.default_title or obj.title,
+            obj.custom_title,
+            obj.default_description,
+            obj.custom_description,
+            fallback_title=obj.title,
+        )
         return ObjectResponse.model_validate(
             {
                 "id": obj.id,
                 "island_id": obj.island_id,
                 "type": obj.type,
-                "title": obj.title,
-                "description": obj.description,
+                "title": display_title,
+                "description": display_description,
+                "default_title": obj.default_title or obj.title,
+                "default_description": obj.default_description,
+                "custom_title": obj.custom_title,
+                "custom_description": obj.custom_description,
                 "tags": obj.tags or [],
                 "position": obj.position,
                 "metadata": obj.metadata_json or {},
