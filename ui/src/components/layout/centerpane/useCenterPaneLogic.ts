@@ -146,8 +146,10 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     // Link creation
     isAddLinkDialogOpen: linkCreation.isAddLinkDialogOpen,
     openAddLinkDialog: linkCreation.openAddLinkDialog,
+    openLinkEditDialog: linkCreation.openLinkEditDialog,
     handleAddLink: linkCreation.handleAddLink,
     closeAddLinkDialog: linkCreation.closeAddLinkDialog,
+    editingLink: linkCreation.editingLink,
 
     // Text creation
     isAddTextDialogOpen: textCreation.isAddTextDialogOpen,

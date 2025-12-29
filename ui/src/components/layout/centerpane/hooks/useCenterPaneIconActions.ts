@@ -38,13 +38,16 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
 
   const handleIconRename = (iconId: string, newTitle: string) => {
     if (!selectedIsland) return;
+    const trimmedTitle = newTitle.trim();
+    if (trimmedTitle.length < 2) return;
+    const displayTitle = truncateLinkTitle(trimmedTitle);
     setIconsByIsland((prev) => ({
       ...prev,
       [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
-        i.id === iconId ? { ...i, title: newTitle } : i
+        i.id === iconId ? { ...i, title: displayTitle, customTitle: displayTitle } : i
       ),
     }));
-    objectsApi.updateTitle(iconId, newTitle).catch((err) => {
+    objectsApi.updateTitle(iconId, displayTitle).catch((err) => {
       console.error('Failed to update title:', err);
     });
   };
@@ -81,6 +84,10 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
                   id: tile.id,
                   type: tile.type,
                   title: tile.title,
+                  defaultTitle: tile.defaultTitle,
+                  defaultDescription: tile.defaultDescription,
+                  customTitle: tile.customTitle,
+                  customDescription: tile.customDescription,
                   x: tile.x,
                   y: tile.y,
                   url: tile.url,
@@ -133,12 +140,21 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
           ...prev,
           [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
             i.id === iconId
-              ? { ...i, title: newTitle, description: newDescription, faviconUrl: newFaviconUrl, url: resolvedUrl }
+              ? {
+                  ...i,
+                  defaultTitle: newTitle,
+                  defaultDescription: newDescription,
+                  title: i.customTitle ? i.title : newTitle,
+                  description: i.customDescription ?? newDescription,
+                  faviconUrl: newFaviconUrl,
+                  url: resolvedUrl,
+                }
               : i
           ),
         }));
 
         await objectsApi.updateLink(iconId, resolvedUrl, newTitle, newDescription, newFaviconUrl);
+        window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: iconId } }));
       }
     } catch (err) {
       console.error('[CENTER PANE] Failed to refresh metadata:', err);

@@ -154,7 +154,10 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
           onCanPlay={() => {
             console.log('[AudioPlayer] Audio can play');
           }}
-        />
+          controls={false}
+        >
+          <track kind="captions" src="data:text/vtt," label="Captions not provided" />
+        </audio>
 
         {/* Title Section */}
         <div className="mb-8 text-center">

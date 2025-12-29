@@ -34,6 +34,7 @@ export function Tile({
   onPositionChange: _onPositionChange,
   onDelete,
   onRename,
+  onOpenLinkEdit,
   onRefreshMetadata,
   onEdit
 }: TileProps) {
@@ -222,6 +223,15 @@ export function Tile({
     );
   };
 
+  const handleLinkRename = () => {
+    setShowContextMenu(false);
+    if (type === 'link' && onOpenLinkEdit) {
+      onOpenLinkEdit();
+      return;
+    }
+    handleRenameClick();
+  };
+
   return (
     <>
       <button
@@ -278,7 +288,7 @@ export function Tile({
           void openLinkExternally();
         }}
         onRefreshMetadata={handleRefreshMetadataClick}
-        onRename={handleRenameClick}
+        onRename={handleLinkRename}
         onDelete={handleDeleteClick}
       />
 

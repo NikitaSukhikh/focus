@@ -2,10 +2,18 @@ import { ObjectResponse, ObjectCreatePayload } from '../../../api/objects';
 
 export const mapObjectToPayload = (obj: ObjectResponse): ObjectCreatePayload | null => {
   const meta = (obj.metadata || {}) as Record<string, any>;
+  const defaultTitle = (obj as any).default_title as string | undefined;
+  const defaultDescription = (obj as any).default_description as string | undefined;
+  const customTitle = ((obj as any).custom_title as string | null | undefined) ?? undefined;
+  const customDescription = ((obj as any).custom_description as string | null | undefined) ?? undefined;
+  const effectiveTitle = customTitle || obj.title || defaultTitle || '';
+  const effectiveDescription = customDescription ?? obj.description ?? defaultDescription;
   const base: ObjectCreatePayload = {
     type: obj.type,
-    title: obj.title,
-    description: obj.description,
+    title: defaultTitle || obj.title || effectiveTitle,
+    description: defaultDescription ?? obj.description ?? effectiveDescription,
+    custom_title: customTitle,
+    custom_description: customDescription,
     tags: (obj as any).tags || [],
     x: typeof meta.x === 'number' ? meta.x : undefined,
     y: typeof meta.y === 'number' ? meta.y : undefined,
