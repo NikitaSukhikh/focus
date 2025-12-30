@@ -34,6 +34,9 @@ from app.storage.db import AsyncSessionLocal, Object
 
 logger = get_logger(__name__)
 
+# SQLite json_each helper column name
+JSON_VALUE_COL = "value"
+
 
 # ============================================================================
 # Repository Class
@@ -54,6 +57,22 @@ class ObjectsRepository:
         if session is not None:
             return session, True
         return AsyncSessionLocal(), False
+
+    def _apply_tag_filter(self, stmt, tags: Optional[List[str]]):
+        """
+        Apply AND tag filtering using SQLite json_each on the tags array.
+        """
+        if not tags:
+            return stmt
+        tags_lower = [t.lower() for t in tags if t]
+        for tag in tags_lower:
+            tag_tvf = func.json_each(Object.tags).table_valued(JSON_VALUE_COL)
+            stmt = stmt.where(
+                func.exists(
+                    select(1).select_from(tag_tvf).where(func.lower(tag_tvf.c.value) == tag)
+                )
+            )
+        return stmt
 
     # ========================================================================
     # Create
@@ -268,18 +287,12 @@ class ObjectsRepository:
                     func.lower(Object.title).like(pattern) |
                     func.lower(Object.description).like(pattern)
                 )
+            stmt = self._apply_tag_filter(stmt, tags)
             total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
             result = await session_to_use.execute(
                 stmt.order_by(ordering).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
-            # Tag filtering in python to keep simple
-            if tags:
-                tags_lower = [t.lower() for t in tags]
-                rows = [
-                    r for r in rows
-                    if all(tag in [t.lower() for t in (r.tags or [])] for tag in tags_lower)
-                ]
             object_responses = [self._to_response(r) for r in rows]
 
             logger.debug(
@@ -386,6 +399,29 @@ class ObjectsRepository:
             if not external:
                 await session_to_use.close()
 
+    async def get_object_counts_by_island_ids(
+        self,
+        island_ids: list[UUID],
+        session: AsyncSession | None = None
+    ) -> dict[str, int]:
+        """
+        Get object counts for multiple islands in one query.
+        """
+        if not island_ids:
+            return {}
+        session_to_use, external = self._get_session(session)
+        try:
+            stmt = (
+                select(Object.island_id, func.count(Object.id))
+                .where(Object.island_id.in_([str(i) for i in island_ids]))
+                .group_by(Object.island_id)
+            )
+            result = await session_to_use.execute(stmt)
+            return {row[0]: row[1] for row in result.all()}
+        finally:
+            if not external:
+                await session_to_use.close()
+
     async def search_objects(
         self,
         search_query: str,
@@ -423,17 +459,12 @@ class ObjectsRepository:
                 )
             if object_type:
                 stmt = stmt.where(Object.type == (object_type.value if hasattr(object_type, "value") else object_type))
+            stmt = self._apply_tag_filter(stmt, tags)
             total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
             result = await session_to_use.execute(
                 stmt.order_by(desc(Object.created_at)).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
-            if tags:
-                tags_lower = [t.lower() for t in tags]
-                rows = [
-                    r for r in rows
-                    if all(tag in [t.lower() for t in (r.tags or [])] for tag in tags_lower)
-                ]
             object_responses = [self._to_response(r) for r in rows]
             logger.debug(
                 f"Search found {total} objects",
@@ -829,20 +860,19 @@ class ObjectsRepository:
         """
         session_to_use, external = self._get_session(session)
         try:
+            stmt = select(Object).order_by(desc(Object.created_at))
+            stmt = self._apply_tag_filter(stmt, [tag])
+            total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
             result = await session_to_use.execute(
-                select(Object).order_by(desc(Object.created_at)).offset(skip).limit(limit * 2)
+                stmt.offset(skip).limit(limit)
             )
             rows = result.scalars().all()
-            tag_lower = tag.lower()
-            filtered = [r for r in rows if tag_lower in [t.lower() for t in (r.tags or [])]]
-            total = len(filtered)
-            paginated = filtered[:limit]
-            object_responses = [self._to_response(r) for r in paginated]
+            object_responses = [self._to_response(r) for r in rows]
             logger.debug(
                 f"Found {total} objects with tag '{tag}'",
                 extra={"tag": tag, "returned": len(object_responses)}
             )
-            return ObjectList(objects=object_responses, total=total)
+            return ObjectList(objects=object_responses, total=total or 0)
         finally:
             if not external:
                 await session_to_use.close()
