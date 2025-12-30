@@ -6,7 +6,7 @@ Handles database operations for undo/redo events.
 
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy import select, and_, desc, asc, func
+from sqlalchemy import select, and_, desc, asc, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.storage.db import UndoEvent
@@ -25,11 +25,13 @@ class UndoEventRepository:
         event_data: dict,
     ) -> UndoEvent:
         """Create a new undo event."""
-        # Determine next sequence number for this island (monotonic timeline)
-        stmt = select(func.coalesce(func.max(UndoEvent.sequence), 0)).where(UndoEvent.island_id == island_id)
-        result = await self.session.execute(stmt)
-        max_sequence = result.scalar_one() or 0
-        next_sequence = int(max_sequence) + 1
+        # Atomic insert computing next sequence in a single statement to avoid race on unique constraint.
+        # SQLite lacks RETURNING in older versions; fetch back the row after insert/refresh.
+        next_seq_subq = (
+            select(func.coalesce(func.max(UndoEvent.sequence), 0) + 1)
+            .where(UndoEvent.island_id == island_id)
+        )
+        next_sequence = (await self.session.execute(next_seq_subq)).scalar_one()
 
         event = UndoEvent(
             island_id=island_id,
@@ -39,7 +41,7 @@ class UndoEventRepository:
             is_undone=False,
         )
         self.session.add(event)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(event)
         return event
 
@@ -95,18 +97,13 @@ class UndoEventRepository:
 
     async def clear_redoable_events(self, island_id: str) -> int:
         """Delete all redoable events (is_undone=True) for an island."""
-        stmt = select(UndoEvent).where(
-            and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True)
+        stmt = (
+            delete(UndoEvent)
+            .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True))
         )
         result = await self.session.execute(stmt)
-        events = result.scalars().all()
-
-        count = len(events)
-        for event in events:
-            await self.session.delete(event)
-
-        await self.session.commit()
-        return count
+        await self.session.flush()
+        return result.rowcount or 0
 
     async def get_events(
         self,
@@ -147,28 +144,27 @@ class UndoEventRepository:
 
     async def clear_all(self) -> int:
         """Delete all undo events for all islands."""
-        stmt = select(UndoEvent)
-        result = await self.session.execute(stmt)
-        events = result.scalars().all()
-        count = len(events)
-        for event in events:
-            await self.session.delete(event)
-        await self.session.commit()
-        return count
+        result = await self.session.execute(delete(UndoEvent))
+        await self.session.flush()
+        return result.rowcount or 0
 
     async def trim_to_limit(self, island_id: str, limit: int) -> int:
         """Keep only the most recent `limit` events for an island; delete older ones."""
-        stmt = (
-            select(UndoEvent)
+        # Keep the newest `limit` events by sequence, delete older in one statement.
+        # Find cutoff sequence at offset `limit`.
+        cutoff_stmt = (
+            select(UndoEvent.sequence)
             .where(UndoEvent.island_id == island_id)
             .order_by(desc(UndoEvent.sequence))
+            .offset(limit)
+            .limit(1)
         )
-        result = await self.session.execute(stmt)
-        events = result.scalars().all()
-        if len(events) <= limit:
+        cutoff = (await self.session.execute(cutoff_stmt)).scalar_one_or_none()
+        if cutoff is None:
             return 0
-        to_delete = events[limit:]
-        for event in to_delete:
-            await self.session.delete(event)
-        await self.session.commit()
-        return len(to_delete)
+        delete_stmt = delete(UndoEvent).where(
+            and_(UndoEvent.island_id == island_id, UndoEvent.sequence < cutoff)
+        )
+        result = await self.session.execute(delete_stmt)
+        await self.session.flush()
+        return result.rowcount or 0
