@@ -27,22 +27,22 @@ class TokenEncryption:
     """
 
     def __init__(self, encryption_key: str):
+        key = encryption_key.strip()
+        if len(key) == 44 and key.endswith("="):
+            # Looks like a Fernet key
+            fernet_key = key.encode()
+        else:
+            # Enforce strong raw key length before derivation
+            if len(key) < 32:
+                raise ValueError(
+                    f"Encryption key must be a 32-byte urlsafe base64 Fernet key or >=32 chars for derivation (got {len(key)}). "
+                    "Set ENCRYPTION_KEY to a secure value."
+                )
+            key_bytes = key.encode()[:32]
+            fernet_key = base64.urlsafe_b64encode(key_bytes)
+
         try:
-            if len(encryption_key) == 44 and encryption_key.endswith('='):
-                # Valid Fernet key (base64-encoded 32 bytes)
-                self._fernet = Fernet(encryption_key.encode())
-            else:
-                # Convert string to Fernet key
-                if len(encryption_key) < 32:
-                    raise ValueError(
-                        f"Encryption key must be at least 32 characters (got {len(encryption_key)}). "
-                        "Please set a secure ENCRYPTION_KEY in your environment variables."
-                    )
-                key_bytes = encryption_key.encode()[:32]
-                fernet_key = base64.urlsafe_b64encode(key_bytes)
-                self._fernet = Fernet(fernet_key)
-        except ValueError:
-            raise
+            self._fernet = Fernet(fernet_key)
         except Exception as e:
             logger.error(f"Failed to initialize token encryption: {e}")
             raise ValueError("Invalid encryption key configuration")
