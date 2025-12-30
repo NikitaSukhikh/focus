@@ -57,7 +57,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const meta = (obj.metadata || {}) as Record<string, any>;
             const x = meta.x;
             const y = meta.y;
-            return typeof x === 'number' && typeof y === 'number' && x >= 0 && y >= 0;
+            const deletedAt = meta.deleted_at;
+            const hasCoords = typeof x === 'number' && typeof y === 'number' && x >= 0 && y >= 0;
+            return hasCoords && !deletedAt;
           })
           .map((obj, idx) => {
             const meta = (obj.metadata || {}) as Record<string, any>;
@@ -291,8 +293,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== primarySelectedId),
         }));
 
-        objectsApi.updatePosition(primarySelectedId, -1, -1).catch((err) => {
-          console.error('Failed to clear object position:', err);
+        objectsApi.markDeleted(primarySelectedId).catch((err) => {
+          console.error('Failed to mark object deleted:', err);
         });
         setSelectedIconIds([]);
       }

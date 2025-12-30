@@ -87,13 +87,24 @@ class DatabaseSettings(BaseSettings):
     @property
     def url(self) -> str:
         """Generate SQLite database URL."""
-        db_path = Path(self.path).resolve()
+        db_path = self._resolve_db_path()
         return f"sqlite+aiosqlite:///{db_path}"
 
     def ensure_database_directory(self) -> None:
         """Ensure the database directory exists."""
-        db_path = Path(self.path)
+        db_path = self._resolve_db_path()
         db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _resolve_db_path(self) -> Path:
+        """
+        Resolve DB path relative to the backend directory so different
+        working directories (repo root vs backend/) use the same file.
+        """
+        raw = Path(self.path)
+        if raw.is_absolute():
+            return raw
+        backend_root = Path(__file__).resolve().parents[2]
+        return (backend_root / raw).resolve()
 
 
 class GoogleOAuthSettings(BaseSettings):

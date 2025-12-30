@@ -96,6 +96,8 @@ export const objectsApi = {
       const res = await fetch(`${API_BASE}/objects/${objectId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        // keepalive ensures position persists even if window closes right after move
+        keepalive: true,
         body: JSON.stringify({ metadata: { x, y } }),
       });
       if (!res.ok) {
@@ -208,6 +210,30 @@ export const objectsApi = {
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Failed to update metadata: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
+  },
+
+  /**
+   * Soft delete: mark object as deleted and clear coordinates.
+   * Used instead of hard DELETE so undo/redo can restore from event payload.
+   */
+  async markDeleted(objectId: string): Promise<ObjectResponse> {
+    const deletedAt = new Date().toISOString();
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        // keepalive helps when window closes soon after deletion
+        keepalive: true,
+        body: JSON.stringify({ metadata: { x: -1, y: -1, deleted_at: deletedAt } }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to mark deleted: ${res.status} ${text}`);
       }
       return res.json();
     })();
