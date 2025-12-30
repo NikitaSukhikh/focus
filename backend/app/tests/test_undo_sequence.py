@@ -11,15 +11,15 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.storage.db import UndoEvent, AsyncSessionLocal
+from app.storage.db import UndoEvent
 from app.storage.repositories.undo_repo import UndoEventRepository
 
 
 @pytest.mark.asyncio
-async def test_undo_redo_sequence_ordering():
+async def test_undo_redo_sequence_ordering(test_modules):
     """Ensure undo selects the highest applied sequence and redo the lowest undone sequence."""
     island_id = str(uuid.uuid4())
-    async with AsyncSessionLocal() as session:  # type: AsyncSession
+    async with test_modules.db.AsyncSessionLocal() as session:  # type: AsyncSession
         repo = UndoEventRepository(session)
 
         # Seed events with explicit sequences (simulating insert order)
