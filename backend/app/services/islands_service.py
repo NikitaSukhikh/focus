@@ -15,9 +15,11 @@ from app.models.island import (
     IslandList,
     IslandDeleteResponse,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.storage.repositories.islands_repo import islands_repository
 from app.storage.repositories.objects_repo import objects_repository
 from app.core.logging import get_logger
+from app.storage.db import AsyncSessionLocal
 
 
 logger = get_logger(__name__)
@@ -73,11 +75,19 @@ class IslandsService:
         self.islands_repo = islands_repository
         self.objects_repo = objects_repository
 
+    def _get_session(self, session: AsyncSession | None) -> tuple[AsyncSession, bool]:
+        """
+        Return a session and flag indicating if it was provided by caller.
+        """
+        if session is not None:
+            return session, True
+        return AsyncSessionLocal(), False
+
     # ========================================================================
     # Create
     # ========================================================================
 
-    async def create_island(self, island_data: IslandCreate) -> IslandResponse:
+    async def create_island(self, island_data: IslandCreate, session: AsyncSession | None = None) -> IslandResponse:
         """
         Create a new island with validation.
 
@@ -92,27 +102,28 @@ class IslandsService:
             IslandNameConflictError: If island name already exists
             InvalidIslandDataError: If island data is invalid
         """
-        # Validate island count limit
-        await self._check_island_limit()
-
-        # Additional validation
-        self._validate_island_data(island_data)
-
-        # Create island; ignore name conflicts (duplicate names allowed)
+        session_to_use, external = self._get_session(session)
         try:
-            island = await self.islands_repo.create_island(island_data)
-        except IslandNameConflictError:
-            island = await self.islands_repo.create_island(island_data)
+            async with session_to_use.begin():
+                await self._check_island_limit(session=session_to_use)
 
-        # Logging disabled here to avoid LogRecord conflicts with reserved attributes.
+                self._validate_island_data(island_data)
 
-        return island
+                try:
+                    island = await self.islands_repo.create_island(island_data, session=session_to_use)
+                except IslandNameConflictError:
+                    island = await self.islands_repo.create_island(island_data, session=session_to_use)
+
+            return island
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Read
     # ========================================================================
 
-    async def get_island(self, island_id: UUID) -> IslandResponse:
+    async def get_island(self, island_id: UUID, session: AsyncSession | None = None) -> IslandResponse:
         """
         Get an island by ID.
 
@@ -125,12 +136,17 @@ class IslandsService:
         Raises:
             IslandNotFoundError: If island not found
         """
-        island = await self.islands_repo.get_island_by_id(island_id)
+        session_to_use, external = self._get_session(session)
+        try:
+            island = await self.islands_repo.get_island_by_id(island_id, session=session_to_use)
 
-        if island is None:
-            raise IslandNotFoundError(f"Island not found: {island_id}")
+            if island is None:
+                raise IslandNotFoundError(f"Island not found: {island_id}")
 
-        return island
+            return island
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_all_islands(
         self,
@@ -138,6 +154,7 @@ class IslandsService:
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        session: AsyncSession | None = None,
     ) -> IslandList:
         """
         Get all islands with pagination and sorting.
@@ -151,30 +168,36 @@ class IslandsService:
         Returns:
             IslandList: Paginated list of islands
         """
-        islands = await self.islands_repo.get_all_islands(
-            skip=skip,
-            limit=limit,
-            sort_by=sort_by,
-            sort_order=sort_order
-        )
+        session_to_use, external = self._get_session(session)
+        try:
+            islands = await self.islands_repo.get_all_islands(
+                skip=skip,
+                limit=limit,
+                sort_by=sort_by,
+                sort_order=sort_order,
+                session=session_to_use
+            )
 
-        # Update object counts for each island
-        for island in islands.islands:
-            count = await self.objects_repo.get_object_count_by_island(island.id)
-            island.object_count = count
+            for island in islands.islands:
+                count = await self.objects_repo.get_object_count_by_island(island.id, session=session_to_use)
+                island.object_count = count
 
-        logger.debug(
-            f"Retrieved {len(islands.islands)} islands",
-            extra={"total": islands.total, "skip": skip, "limit": limit}
-        )
+            logger.debug(
+                f"Retrieved {len(islands.islands)} islands",
+                extra={"total": islands.total, "skip": skip, "limit": limit}
+            )
 
-        return islands
+            return islands
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def search_islands(
         self,
         search_query: str,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> IslandList:
         """
         Search islands by name or description.
@@ -187,27 +210,38 @@ class IslandsService:
         Returns:
             IslandList: Matching islands
         """
-        islands = await self.islands_repo.search_islands(
-            search_query=search_query,
-            skip=skip,
-            limit=limit
-        )
+        session_to_use, external = self._get_session(session)
+        try:
+            islands = await self.islands_repo.search_islands(
+                search_query=search_query,
+                skip=skip,
+                limit=limit,
+                session=session_to_use
+            )
 
-        logger.debug(
-            f"Search found {islands.total} islands",
-            extra={"query": search_query, "returned": len(islands.islands)}
-        )
+            logger.debug(
+                f"Search found {islands.total} islands",
+                extra={"query": search_query, "returned": len(islands.islands)}
+            )
 
-        return islands
+            return islands
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def get_island_count(self) -> int:
+    async def get_island_count(self, session: AsyncSession | None = None) -> int:
         """
         Get total count of islands.
 
         Returns:
             int: Total number of islands
         """
-        return await self.islands_repo.get_island_count()
+        session_to_use, external = self._get_session(session)
+        try:
+            return await self.islands_repo.get_island_count(session=session_to_use)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Update
@@ -216,7 +250,8 @@ class IslandsService:
     async def update_island(
         self,
         island_id: UUID,
-        island_data: IslandUpdate
+        island_data: IslandUpdate,
+        session: AsyncSession | None = None
     ) -> IslandResponse:
         """
         Update an island with validation.
@@ -233,26 +268,29 @@ class IslandsService:
             IslandNameConflictError: If new name conflicts with existing island
             InvalidIslandDataError: If update data is invalid
         """
-        # Check island exists
-        existing_island = await self.islands_repo.get_island_by_id(island_id)
-        if existing_island is None:
-            raise IslandNotFoundError(f"Island not found: {island_id}")
+        session_to_use, external = self._get_session(session)
+        try:
+            async with session_to_use.begin():
+                existing_island = await self.islands_repo.get_island_by_id(island_id, session=session_to_use)
+                if existing_island is None:
+                    raise IslandNotFoundError(f"Island not found: {island_id}")
 
-        # Additional validation
-        if island_data.name:
-            self._validate_name(island_data.name)
+                if island_data.name:
+                    self._validate_name(island_data.name)
 
-        # Update island
-        updated_island = await self.islands_repo.update_island(island_id, island_data)
+                updated_island = await self.islands_repo.update_island(island_id, island_data, session=session_to_use)
 
-        if updated_island is None:
-            raise IslandNotFoundError(f"Island not found during update: {island_id}")
+                if updated_island is None:
+                    raise IslandNotFoundError(f"Island not found during update: {island_id}")
 
-        logger.info(f"Island updated: {updated_island.name}")
+            logger.info(f"Island updated: {updated_island.name}")
 
-        return updated_island
+            return updated_island
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def reorder_islands(self, island_ids: List[UUID]) -> List[IslandResponse]:
+    async def reorder_islands(self, island_ids: List[UUID], session: AsyncSession | None = None) -> List[IslandResponse]:
         """
         Reorder islands.
 
@@ -265,8 +303,10 @@ class IslandsService:
         Raises:
             InvalidIslandDataError: If island IDs are invalid
         """
+        session_to_use, external = self._get_session(session)
         try:
-            reordered = await self.islands_repo.reorder_islands(island_ids)
+            async with session_to_use.begin():
+                reordered = await self.islands_repo.reorder_islands(island_ids, session=session_to_use)
 
             logger.info(
                 f"Reordered {len(island_ids)} islands",
@@ -277,12 +317,15 @@ class IslandsService:
 
         except ValueError as e:
             raise InvalidIslandDataError(f"Invalid reorder data: {e}")
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Delete
     # ========================================================================
 
-    async def delete_island(self, island_id: UUID) -> IslandDeleteResponse:
+    async def delete_island(self, island_id: UUID, session: AsyncSession | None = None) -> IslandDeleteResponse:
         """
         Delete an island and all its objects (cascade).
 
@@ -295,52 +338,55 @@ class IslandsService:
         Raises:
             IslandNotFoundError: If island not found
         """
-        # Check island exists
-        island = await self.islands_repo.get_island_by_id(island_id)
-        if island is None:
-            raise IslandNotFoundError(f"Island not found: {island_id}")
+        session_to_use, external = self._get_session(session)
+        try:
+            async with session_to_use.begin():
+                island = await self.islands_repo.get_island_by_id(island_id, session=session_to_use)
+                if island is None:
+                    raise IslandNotFoundError(f"Island not found: {island_id}")
 
-        island_name = island.name
+                island_name = island.name
 
-        # Cascade delete: Delete all objects on this island first
-        objects_deleted = await self.objects_repo.delete_objects_by_island(island_id)
+                objects_deleted = await self.objects_repo.delete_objects_by_island(island_id, session=session_to_use)
 
-        # Delete the island
-        deleted = await self.islands_repo.delete_island(island_id)
+                deleted = await self.islands_repo.delete_island(island_id, session=session_to_use)
 
-        if not deleted:
-            raise IslandNotFoundError(
-                f"Island not found during deletion: {island_id}"
+                if not deleted:
+                    raise IslandNotFoundError(
+                        f"Island not found during deletion: {island_id}"
+                    )
+
+            logger.info(
+                f"Deleted island '{island_name}' and {objects_deleted} objects",
+                extra={
+                    "island_id": str(island_id),
+                    "island_name": island_name,
+                    "objects_deleted": objects_deleted
+                }
             )
 
-        logger.info(
-            f"Deleted island '{island_name}' and {objects_deleted} objects",
-            extra={
-                "island_id": str(island_id),
-                "island_name": island_name,
-                "objects_deleted": objects_deleted
-            }
-        )
-
-        return IslandDeleteResponse(
-            success=True,
-            island_id=island_id,
-            objects_deleted=objects_deleted,
-            message=f"Island '{island_name}' and {objects_deleted} objects deleted successfully"
-        )
+            return IslandDeleteResponse(
+                success=True,
+                island_id=island_id,
+                objects_deleted=objects_deleted,
+                message=f"Island '{island_name}' and {objects_deleted} objects deleted successfully"
+            )
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Validation Helpers
     # ========================================================================
 
-    async def _check_island_limit(self) -> None:
+    async def _check_island_limit(self, session: AsyncSession | None = None) -> None:
         """
         Check if island count limit has been reached.
 
         Raises:
             IslandLimitExceededError: If limit exceeded
         """
-        current_count = await self.islands_repo.get_island_count()
+        current_count = await self.islands_repo.get_island_count(session=session)
 
         if current_count >= self.MAX_ISLANDS:
             raise IslandLimitExceededError(
@@ -400,7 +446,7 @@ class IslandsService:
     # Helper Methods
     # ========================================================================
 
-    async def island_exists(self, island_id: UUID) -> bool:
+    async def island_exists(self, island_id: UUID, session: AsyncSession | None = None) -> bool:
         """
         Check if an island exists.
 
@@ -410,9 +456,14 @@ class IslandsService:
         Returns:
             bool: True if exists
         """
-        return await self.islands_repo.exists(island_id)
+        session_to_use, external = self._get_session(session)
+        try:
+            return await self.islands_repo.exists(island_id, session=session_to_use)
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def get_island_object_count(self, island_id: UUID) -> int:
+    async def get_island_object_count(self, island_id: UUID, session: AsyncSession | None = None) -> int:
         """
         Get the count of objects on an island.
 
@@ -425,14 +476,18 @@ class IslandsService:
         Raises:
             IslandNotFoundError: If island not found
         """
-        # Check island exists
-        exists = await self.islands_repo.exists(island_id)
-        if not exists:
-            raise IslandNotFoundError(f"Island not found: {island_id}")
+        session_to_use, external = self._get_session(session)
+        try:
+            exists = await self.islands_repo.exists(island_id, session=session_to_use)
+            if not exists:
+                raise IslandNotFoundError(f"Island not found: {island_id}")
 
-        return await self.objects_repo.get_object_count_by_island(island_id)
+            return await self.objects_repo.get_object_count_by_island(island_id, session=session_to_use)
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def increment_object_count(self, island_id: UUID) -> None:
+    async def increment_object_count(self, island_id: UUID, session: AsyncSession | None = None) -> None:
         """
         Increment the object count for an island.
 
@@ -442,14 +497,14 @@ class IslandsService:
         Note:
             This is called when an object is added to an island.
         """
-        await self.islands_repo.update_island_object_count(island_id, delta=1)
+        await self.islands_repo.update_island_object_count(island_id, delta=1, session=session)
 
         logger.debug(
             f"Incremented object count for island {island_id}",
             extra={"island_id": str(island_id)}
         )
 
-    async def decrement_object_count(self, island_id: UUID) -> None:
+    async def decrement_object_count(self, island_id: UUID, session: AsyncSession | None = None) -> None:
         """
         Decrement the object count for an island.
 
@@ -459,7 +514,7 @@ class IslandsService:
         Note:
             This is called when an object is removed from an island.
         """
-        await self.islands_repo.update_island_object_count(island_id, delta=-1)
+        await self.islands_repo.update_island_object_count(island_id, delta=-1, session=session)
 
         logger.debug(
             f"Decremented object count for island {island_id}",
