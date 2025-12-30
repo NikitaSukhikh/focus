@@ -14,6 +14,7 @@
 import { CenterPaneHandle } from '../centerpane/types';
 import { useSpaceStore } from '../../../stores/spaceStore';
 import { useSpaceNameEditor } from './hooks/useSpaceNameEditor';
+import { useTopBarSearch } from './hooks/useTopBarSearch';
 
 export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>) => {
   const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
@@ -24,6 +25,9 @@ export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>
     selectedSpace,
     updateSpace,
   });
+
+  // Search state (UI currently hidden but retained for future use)
+  const search = useTopBarSearch();
 
   return {
     // Space state
@@ -37,5 +41,9 @@ export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>
     spaceNameInputRef: spaceEditor.spaceNameInputRef,
     handleSpaceNameSubmit: spaceEditor.handleSpaceNameSubmit,
     handleSpaceNameKeyDown: spaceEditor.handleSpaceNameKeyDown,
+
+    // Search state
+    searchQuery: search.searchQuery,
+    setSearchQuery: search.setSearchQuery,
   };
 };

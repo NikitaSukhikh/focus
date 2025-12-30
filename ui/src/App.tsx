@@ -366,6 +366,7 @@ export function App() {
             </div>
           )}
         </div>
+        {/* To be implemented: assistant pane (hidden) */}
         {isConversationOpen && (
           <div
             className="absolute right-0 bottom-0 drop-shadow-2xl"
@@ -376,7 +377,9 @@ export function App() {
               height: `${PANEL_DIMENSIONS.ASSISTANT.HEIGHT}px`,
               pointerEvents: 'auto',
               zIndex: Z_INDEX.ASSISTANT_PANE,
+              display: 'none',
             }}
+            aria-hidden="true"
           >
             <AssistantPane
               isOpen={isConversationOpen}
