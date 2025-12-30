@@ -28,17 +28,17 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   const {
     isDragOver,
     setIsDragOver,
-    iconsByIsland,
-    setIconsByIsland,
-    arrowsByIsland,
-    setArrowsByIsland,
+    iconsBySpace,
+    setIconsBySpace,
+    arrowsBySpace,
+    setArrowsBySpace,
     selectedIconId,
     setSelectedIconId,
     selectedIconIds,
     setSelectedIconIds,
     dragGhost,
     setDragGhost,
-    selectedIsland,
+    selectedSpace,
     contentHeight,
   } = useCenterPaneState(paneRef);
 
@@ -52,14 +52,14 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
 
   // Drag & drop handlers
   const dragDropHandlers = useCenterPaneDragDrop({
-    selectedIsland,
+    selectedSpace,
     paneRef,
     setIsDragOver,
-    setIconsByIsland,
+    setIconsBySpace,
     clampToBoundaries,
     getIconById: (id: string) => {
-      if (!selectedIsland) return undefined;
-      return (iconsByIsland[selectedIsland.id] || []).find((i) => i.id === id);
+      if (!selectedSpace) return undefined;
+      return (iconsBySpace[selectedSpace.id] || []).find((i) => i.id === id);
     },
     setDragGhost,
     zoom,
@@ -67,43 +67,43 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
 
   // Icon action handlers
   const iconActions = useCenterPaneIconActions({
-    selectedIsland,
-    setIconsByIsland,
+    selectedSpace,
+    setIconsBySpace,
   });
 
   // File handling
   const fileHandlers = useCenterPaneFileHandling({
-    selectedIsland,
+    selectedSpace,
     paneRef,
-    setIconsByIsland,
+    setIconsBySpace,
     clampToBoundaries,
   });
 
   // Link creation
   const linkCreation = useCenterPaneLinkCreation({
-    selectedIsland,
-    setIconsByIsland,
+    selectedSpace,
+    setIconsBySpace,
   });
 
   // Text creation
   const textCreation = useCenterPaneTextCreation({
-    selectedIsland,
-    setIconsByIsland,
+    selectedSpace,
+    setIconsBySpace,
     clampToBoundaries,
   });
 
   // Inline text editor
   const inlineEditor = useInlineTextEditor({
-    selectedIsland,
-    setIconsByIsland,
+    selectedSpace,
+    setIconsBySpace,
     clampToBoundaries,
   });
 
   // Undo system
   useUndo({
-    selectedIslandId: selectedIsland?.id,
-    setIconsByIsland,
-    setArrowsByIsland,
+    selectedSpaceId: selectedSpace?.id,
+    setIconsBySpace,
+    setArrowsBySpace,
   });
 
   // Canvas click with proper parameters
@@ -114,17 +114,17 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   return {
     // State
     isDragOver,
-    iconsByIsland,
-    arrowsByIsland,
+    iconsBySpace,
+    arrowsBySpace,
     selectedIconId,
     selectedIconIds,
-    selectedIsland,
+    selectedSpace,
     contentHeight,
     setSelectedIconId,
     setSelectedIconIds,
     dragGhost,
     setDragGhost,
-    setArrowsByIsland,
+    setArrowsBySpace,
 
     // Drag & Drop
     handleDragEnter: dragDropHandlers.handleDragEnter,

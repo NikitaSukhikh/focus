@@ -1,14 +1,14 @@
 """
 API Routes Module
 
-Contains all FastAPI router modules for the Ocean backend API.
+Contains all FastAPI router modules for the Focus backend API.
 """
 
-from app.api.routes import health, islands, objects, preview, google_oauth, internal_storage, thumbnails, undo
+from app.api.routes import health, spaces, objects, preview, google_oauth, internal_storage, thumbnails, undo
 
 __all__ = [
     "health",
-    "islands",
+    "spaces",
     "objects",
     "preview",
     "google_oauth",

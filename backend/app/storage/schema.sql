@@ -1,6 +1,6 @@
 -- SQLite schema reference for core tables
 
-CREATE TABLE IF NOT EXISTS islands (
+CREATE TABLE IF NOT EXISTS spaces (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS islands (
 
 CREATE TABLE IF NOT EXISTS objects (
     id TEXT PRIMARY KEY,
-    island_id TEXT NOT NULL REFERENCES islands(id) ON DELETE CASCADE,
+    space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
     type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS objects (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_objects_island_type ON objects (island_id, type);
+CREATE INDEX IF NOT EXISTS idx_objects_space_type ON objects (space_id, type);
 
 CREATE TABLE IF NOT EXISTS google_tokens (
     user_id TEXT PRIMARY KEY,
@@ -45,15 +45,15 @@ CREATE TABLE IF NOT EXISTS google_tokens (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Undo / Redo event log (monotonic per-island sequence)
+-- Undo / Redo event log (monotonic per-space sequence)
 CREATE TABLE IF NOT EXISTS undo_events (
     id TEXT PRIMARY KEY,
-    island_id TEXT NOT NULL REFERENCES islands(id) ON DELETE CASCADE,
+    space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
     sequence INTEGER NOT NULL DEFAULT 0,
     event_type TEXT NOT NULL,
     event_data JSON NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_undone INTEGER NOT NULL DEFAULT 0
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_undo_events_island_sequence ON undo_events (island_id, sequence);
-CREATE INDEX IF NOT EXISTS idx_undo_events_island_undone ON undo_events (island_id, is_undone, sequence);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_undo_events_space_sequence ON undo_events (space_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_undo_events_space_undone ON undo_events (space_id, is_undone, sequence);

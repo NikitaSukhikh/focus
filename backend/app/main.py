@@ -1,8 +1,8 @@
 """
-Ocean Backend - FastAPI Application
+Focus Backend - FastAPI Application
 
-Main application entry point for the Ocean backend server.
-Provides REST API for Islands, Objects, Previews, Google OAuth, and AI Assistant.
+Main application entry point for the Focus backend server.
+Provides REST API for Spaces, Objects, Previews, Google OAuth, and AI Assistant.
 """
 
 # Load .env file before importing settings
@@ -71,8 +71,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
 # Create FastAPI application
 app = FastAPI(
-    title="Ocean Backend API",
-    description="Backend API for Ocean - A desktop workspace organizer for links, files, and more",
+    title="Focus Backend API",
+    description="Backend API for Focus - A desktop workspace organizer for links, files, and more",
     version="0.1.0",
     docs_url="/docs" if settings.dev.enable_api_docs else None,
     redoc_url="/redoc" if settings.dev.enable_api_docs else None,
@@ -164,7 +164,7 @@ async def root():
     Returns basic API information and status.
     """
     return {
-        "name": "Ocean Backend API",
+        "name": "Focus Backend API",
         "version": "0.1.0",
         "status": "running",
         "environment": settings.server.environment,
@@ -173,14 +173,14 @@ async def root():
 
 
 # Import routers
-from app.api.routes import health, islands, objects, preview, google_oauth, internal_storage, thumbnails, undo
+from app.api.routes import health, spaces, objects, preview, google_oauth, internal_storage, thumbnails, undo
 
 # Register routers
 # Health endpoints (no /api prefix for health checks)
 app.include_router(health.router, tags=["Health"])
 
-# Islands endpoints
-app.include_router(islands.router, prefix="/api/islands", tags=["Islands"])
+# Spaces endpoints
+app.include_router(spaces.router, prefix="/api/spaces", tags=["Spaces"])
 
 # Objects endpoints
 app.include_router(objects.router, prefix="/api", tags=["Objects"])

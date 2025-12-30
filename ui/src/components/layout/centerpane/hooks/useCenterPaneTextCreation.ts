@@ -16,14 +16,14 @@ import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
 
 interface TextCreationParams {
-  selectedIsland: any;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  selectedSpace: any;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
 }
 
 export const useCenterPaneTextCreation = ({
-  selectedIsland,
-  setIconsByIsland,
+  selectedSpace,
+  setIconsBySpace,
   clampToBoundaries,
 }: TextCreationParams) => {
   const [isAddTextDialogOpen, setIsAddTextDialogOpen] = useState(false);
@@ -35,8 +35,8 @@ export const useCenterPaneTextCreation = ({
   };
 
   const handleAddText = async (title: string, content: string) => {
-    if (!selectedIsland || !pendingTextPosition) {
-      alert('Please select an island first');
+    if (!selectedSpace || !pendingTextPosition) {
+      alert('Please select an space first');
       return;
     }
 
@@ -45,7 +45,7 @@ export const useCenterPaneTextCreation = ({
     const clamped = clampToBoundaries(x, y);
 
     try {
-      const created = await objectsApi.create(selectedIsland.id, {
+      const created = await objectsApi.create(selectedSpace.id, {
         type: 'text',
         title,
         content: formattedContent,
@@ -65,14 +65,14 @@ export const useCenterPaneTextCreation = ({
         content: formattedContent,
       };
 
-      setIconsByIsland((prev) => {
-        const current = prev[selectedIsland.id] || [];
-        return { ...prev, [selectedIsland.id]: [...current, newIcon] };
+      setIconsBySpace((prev) => {
+        const current = prev[selectedSpace.id] || [];
+        return { ...prev, [selectedSpace.id]: [...current, newIcon] };
       });
 
       // Add to backend undo history
       undoApi
-        .createEvent(selectedIsland.id, {
+        .createEvent(selectedSpace.id, {
           event_type: 'text_create',
           event_data: {
             text: {

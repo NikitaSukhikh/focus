@@ -9,12 +9,11 @@ import { FONT_ROLES } from '../../../styles/fontManager';
 interface AssistantPaneProps {
   isOpen: boolean;
   onClose: () => void;
-  width: number;
   onResizeStart: React.MouseEventHandler<HTMLDivElement>;
 }
 
 // AssistantPane renders the right-side assistant chat column with message history and input when the assistant panel is open.
-export function AssistantPane({ isOpen, onClose, width, onResizeStart }: AssistantPaneProps) {
+export function AssistantPane({ isOpen, onClose, onResizeStart }: AssistantPaneProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
 
@@ -23,13 +22,13 @@ export function AssistantPane({ isOpen, onClose, width, onResizeStart }: Assista
     const userMessage: Message = { role: 'user', content: text };
     setMessages((prev) => [...prev, userMessage]);
     setIsSending(false);
-    console.info('[Ocean] Wire up real assistant calls here.');
+    console.info('[Focus] Wire up real assistant calls here.');
   };
 
   if (!isOpen) return null;
 
   return (
-    <>
+    <div className="flex h-full w-full">
       {/* Resize handle */}
       <div
         className="w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors"
@@ -37,10 +36,9 @@ export function AssistantPane({ isOpen, onClose, width, onResizeStart }: Assista
       />
 
       <aside
-        className="glass-panel flex flex-col h-full relative flex-none pb-6"
+        className="glass-panel flex flex-col h-full relative flex-1 min-w-0 pb-6"
         style={{
-          width: `${width}px`,
-          flex: '0 0 auto',
+          flex: '1 1 auto',
           background: 'var(--background-light)',
           borderLeft: '1px solid var(--color-border-strong)',
         }}
@@ -94,7 +92,7 @@ export function AssistantPane({ isOpen, onClose, width, onResizeStart }: Assista
         disabled={isSending}
         placeholder="Ask me anything..."
       />
-    </aside>
-    </>
+      </aside>
+    </div>
   );
 }

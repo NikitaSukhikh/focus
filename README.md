@@ -1,12 +1,12 @@
-# Ocean (Desktop) — Developer README
+# Focus (Desktop) — Developer README
 
-Ocean is a desktop application that lets users collect “objects” (links and files) onto customizable workspaces called **Islands** for fast access. The UI is a three-pane layout:
+Focus is a desktop application that lets users collect “objects” (links and files) onto customizable workspaces called **Spaces** for fast access. The UI is a three-pane layout:
 
-- **Left sidebar**: Islands list (usually folded by default).
-- **Central pane**: The active Island canvas containing object tiles (thumbnails for files/links, or first lines for plain text).
+- **Left sidebar**: Spaces list (usually folded by default).
+- **Central pane**: The active Space canvas containing object tiles (thumbnails for files/links, or first lines for plain text).
 - **Right sidebar**: A wide preview/inspector panel showing details and preview of the currently focused object (single click).
 
-Ocean also supports storing **Gmail** and **Google Drive** entry points as objects. Users connect via **Google OAuth** through a dedicated “Connect Google” flow.
+Focus also supports storing **Gmail** and **Google Drive** entry points as objects. Users connect via **Google OAuth** through a dedicated “Connect Google” flow.
 
 Tech stack:
 - **Frontend/UI**: Tauri + React + TypeScript
@@ -34,11 +34,11 @@ Tech stack:
 
 ## Key Concepts
 
-### Island
-An **Island** is a user-created workspace. Multiple Islands exist and are listed in the left sidebar. Selecting an Island updates the central pane.
+### Space
+An **Space** is a user-created workspace. Multiple Spaces exist and are listed in the left sidebar. Selecting an Space updates the central pane.
 
 ### Object
-An **Object** is a unit stored on an Island (displayed as a tile/card):
+An **Object** is a unit stored on an Space (displayed as a tile/card):
 
 - **Link**: stored with title, optional favicon/thumbnail, URL, optional tags.
 - **File**: stored as a reference to a local file path (and optional cached thumbnail/preview).
@@ -46,7 +46,7 @@ An **Object** is a unit stored on an Island (displayed as a tile/card):
 - **Service object (Google)**: Gmail/Drive entry points can appear as objects, but require OAuth to be usable.
 
 ### Focus & Preview
-A single click focuses an object on the Island canvas (right to the central pane). Canvas shows a larger preview and metadata (file details, link preview, Drive/Gmail details if connected).
+A single click focuses an object on the Space canvas (right to the central pane). Canvas shows a larger preview and metadata (file details, link preview, Drive/Gmail details if connected).
 
 
 
@@ -56,9 +56,9 @@ The far right sidebar is a conversation with AI assistant, integrated via API.
 
 ## Architecture
 
-Ocean runs as a desktop shell (Tauri) hosting a React UI. A local Python backend provides:
+Focus runs as a desktop shell (Tauri) hosting a React UI. A local Python backend provides:
 
-- persistence (Islands, object metadata)
+- persistence (Spaces, object metadata)
 - file preview / thumbnail generation (optional, depending on implementation)
 - Google integrations (Drive and Gmail APIs)
 - any heavy processing best kept out of the UI thread
@@ -76,7 +76,7 @@ Ocean runs as a desktop shell (Tauri) hosting a React UI. A local Python backend
 
 Recommended layout:
 
-ocean/ ## Root folder. We are already inside it.
+focus/ ## Root folder. We are already inside it.
   README.md
   .gitignore
   LICENSE
@@ -139,27 +139,27 @@ ocean/ ## Root folder. We are already inside it.
             index.ts
 
       features/
-        islands/
+        spaces/
           api/
-            islandsApi.ts         # fetch islands, create, rename, reorder, delete
+            spacesApi.ts         # fetch spaces, create, rename, reorder, delete
           components/
-            IslandList/
-              IslandList.tsx
+            SpaceList/
+              SpaceList.tsx
               index.ts
-            IslandItem/
-              IslandItem.tsx
+            SpaceItem/
+              SpaceItem.tsx
               index.ts
           hooks/
-            useIslands.ts
+            useSpaces.ts
           models/
-            island.ts
+            space.ts
           state/
-            islandsSlice.ts       # if Redux/Zustand/Context-based state
+            spacesSlice.ts       # if Redux/Zustand/Context-based state
           index.ts
 
         objects/
           api/
-            objectsApi.ts         # CRUD objects on an island
+            objectsApi.ts         # CRUD objects on an space
           components/
             ObjectGrid/
               ObjectGrid.tsx
@@ -270,7 +270,7 @@ ocean/ ## Root folder. We are already inside it.
         __init__.py
         routes/
           health.py
-          islands.py
+          spaces.py
           objects.py
           preview.py
           google_oauth.py
@@ -283,14 +283,14 @@ ocean/ ## Root folder. We are already inside it.
 
       models/
         __init__.py
-        island.py                 # Pydantic models
+        space.py                 # Pydantic models
         object.py
         preview.py
         google.py
 
       services/
         __init__.py
-        islands_service.py
+        spaces_service.py
         objects_service.py
         preview_service.py
         thumbnails/
@@ -309,7 +309,7 @@ ocean/ ## Root folder. We are already inside it.
         db.py                     # SQLite connection / session
         migrations/               # if using Alembic
         repositories/
-          islands_repo.py
+          spaces_repo.py
           objects_repo.py
           google_repo.py          # if persisting connection state
         local_files/
@@ -318,7 +318,7 @@ ocean/ ## Root folder. We are already inside it.
 
       tests/
         test_health.py
-        test_islands.py
+        test_spaces.py
         test_objects.py
 
     scripts/

@@ -9,14 +9,21 @@ const __dirname = path.dirname(__filename);
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'ocean',
+    executableName: 'focus',
+    // electron-packager expects icon without extension; it will pick .ico on Windows and .icns on macOS
+    icon: path.join(__dirname, 'src', 'assets', 'focus'),
+    extraResource: [
+      path.join(__dirname, 'src', 'assets', 'focus.png'),
+      path.join(__dirname, 'src', 'assets', 'focus.ico'),
+      path.join(__dirname, 'src', 'assets', 'focus.icns'),
+    ],
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        authors: 'Ocean Team',
+        authors: 'Focus Team',
       },
     },
     {

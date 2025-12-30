@@ -1,4 +1,4 @@
-Write-Host "Starting Ocean Frontend (Electron)..." -ForegroundColor Cyan
+Write-Host "Starting Focus Frontend (Electron)..." -ForegroundColor Cyan
 Write-Host ""
 
 $env:VITE_DATA_MODE = 'backend'

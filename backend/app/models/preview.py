@@ -46,14 +46,14 @@ class LinkPreview(PreviewBase):
             "example": {
                 "object_id": "550e8400-e29b-41d4-a716-446655440000",
                 "object_type": "link",
-                "title": "GitHub - Ocean Project",
+                "title": "GitHub - Focus Project",
                 "description": "Desktop workspace organizer",
                 "tags": ["development", "github"],
-                "url": "https://github.com/anthropics/ocean",
+                "url": "https://github.com/anthropics/focus",
                 "favicon_url": "https://github.com/favicon.ico",
                 "thumbnail_url": "https://opengraph.githubassets.com/...",
                 "site_name": "GitHub",
-                "og_title": "Ocean - Desktop Workspace Organizer",
+                "og_title": "Focus - Desktop Workspace Organizer",
                 "og_description": "Organize your links, files, and more",
                 "og_image": "https://opengraph.githubassets.com/..."
             }

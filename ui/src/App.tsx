@@ -11,8 +11,8 @@ import { detectFileType } from './utils/fileTypes';
 import { previewApi } from './api/preview';
 import { Z_INDEX } from './constants/zIndex';
 import { PANEL_DIMENSIONS } from './constants/panelDimensions';
-import { useIslandStore } from './stores/islandStore';
-import { usePersistedIsland } from './stores/hooks/usePersistedIsland';
+import { useSpaceStore } from './stores/spaceStore';
+import { usePersistedSpace } from './stores/hooks/usePersistedSpace';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useTelegramEventListener } from './hooks/useTelegramEventListener';
 import { usePersistedNumber } from './hooks/usePersistedNumber';
@@ -27,7 +27,7 @@ export function App() {
     PANEL_DIMENSIONS.SIDEBAR.DEFAULT_WIDTH
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
-  const [isConversationOpen, setIsConversationOpen] = useState(true);
+  const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isGridMode, setIsGridMode] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -52,9 +52,9 @@ export function App() {
   const topBarRef = useRef<TopBarHandle>(null);
   const textFilePreviewCache = useRef<Record<string, string>>({});
 
-  const selectedIslandId = useIslandStore((state) => state.selectedIslandId);
+  const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
 
-  usePersistedIsland();
+  usePersistedSpace();
 
   // Setup all keyboard shortcuts
   useAppShortcuts({
@@ -73,14 +73,14 @@ export function App() {
   // Ensure pending requests are flushed before app closes
   useBeforeUnload();
 
-  // Clear preview when switching islands
+  // Clear preview when switching spaces
   useEffect(() => {
     setPreviewData({});
     setIsPreviewOpen(false);
     setFullWindowData({});
     setIsFullWindowOpen(false);
     textFilePreviewCache.current = {};
-  }, [selectedIslandId]);
+  }, [selectedSpaceId]);
 
   // Close preview when tile is deleted
   useEffect(() => {
@@ -241,7 +241,7 @@ export function App() {
   };
 
   const handleNavigateToTile = (tileId: string) => {
-    const tiles = centerPaneRef.current?.getTilesForIsland(selectedIslandId || '');
+    const tiles = centerPaneRef.current?.getTilesForSpace(selectedSpaceId || '');
     if (!tiles) return;
 
     const tile = tiles.find((t) => t.id === tileId);
@@ -360,7 +360,7 @@ export function App() {
                 filePath={previewData.filePath}
                 type={previewData.type}
                 content={previewData.content}
-                tiles={centerPaneRef.current?.getTilesForIsland(selectedIslandId || '') || []}
+                tiles={centerPaneRef.current?.getTilesForSpace(selectedSpaceId || '') || []}
                 onNavigateToTile={handleNavigateToTile}
               />
             </div>
@@ -381,7 +381,6 @@ export function App() {
             <AssistantPane
               isOpen={isConversationOpen}
               onClose={() => setIsConversationOpen(false)}
-              width={PANEL_DIMENSIONS.ASSISTANT.DEFAULT_WIDTH}
               onResizeStart={() => {}}
             />
           </div>
@@ -405,7 +404,7 @@ export function App() {
         filePath={fullWindowData.filePath}
         type={fullWindowData.type}
         content={fullWindowData.content}
-        tiles={centerPaneRef.current?.getTilesForIsland(selectedIslandId || '') || []}
+        tiles={centerPaneRef.current?.getTilesForSpace(selectedSpaceId || '') || []}
         onNavigateToTile={handleNavigateToTile}
       />
     </div>

@@ -1,4 +1,4 @@
-Write-Host "Starting Ocean backend..." -ForegroundColor Cyan
+Write-Host "Starting Focus backend..." -ForegroundColor Cyan
 Write-Host ""
 
 # Kill any existing backend server processes (uvicorn on port 8000)

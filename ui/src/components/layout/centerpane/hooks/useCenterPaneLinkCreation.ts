@@ -18,11 +18,11 @@ import { normalizeTag } from '../../../../types/tags';
 import { isGmailUrl } from '../utils';
 
 interface LinkCreationParams {
-  selectedIsland: any;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  selectedSpace: any;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
 }
 
-export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: LinkCreationParams) => {
+export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: LinkCreationParams) => {
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [pendingLinkPosition, setPendingLinkPosition] = useState<{ x: number; y: number } | null>(null);
   const [editingLink, setEditingLink] = useState<{
@@ -77,8 +77,8 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
     customTitle?: string,
     customDescription?: string
   ) => {
-    if (!selectedIsland) {
-      alert('Please select an island first');
+    if (!selectedSpace) {
+      alert('Please select an space first');
       return;
     }
 
@@ -108,11 +108,11 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
           (editingLink.url === url ? editingLink.faviconUrl : undefined) ||
           favicon_url;
 
-        setIconsByIsland((prev) => {
-          const current = prev[selectedIsland.id] || [];
+        setIconsBySpace((prev) => {
+          const current = prev[selectedSpace.id] || [];
           return {
             ...prev,
-            [selectedIsland.id]: current.map((icon) =>
+            [selectedSpace.id]: current.map((icon) =>
               icon.id === editingLink.id
                 ? {
                     ...icon,
@@ -144,8 +144,8 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
               const refreshedDescription = metadata.description || metadata.og_description || defaultDescription;
               const refreshedFavicon = pickFavicon(metadata, resolvedUrl, url) || nextFavicon;
 
-              setIconsByIsland((prev) => {
-                const current = prev[selectedIsland.id] || [];
+              setIconsBySpace((prev) => {
+                const current = prev[selectedSpace.id] || [];
                 const updatedIcons = current.map((icon) =>
                   icon.id === editingLink.id
                     ? {
@@ -159,7 +159,7 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
                       }
                     : icon
                 );
-                return { ...prev, [selectedIsland.id]: updatedIcons };
+                return { ...prev, [selectedSpace.id]: updatedIcons };
               });
 
               await objectsApi.updateLink(
@@ -196,7 +196,7 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
     const { x, y } = pendingLinkPosition;
 
     try {
-      const created = await objectsApi.create(selectedIsland.id, {
+      const created = await objectsApi.create(selectedSpace.id, {
         type: isGmail ? 'gmail' : 'link',
         title: defaultTitle,
         url,
@@ -227,14 +227,14 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
         faviconUrl: isGmail ? undefined : favicon_url,
       };
 
-      setIconsByIsland((prev) => {
-        const current = prev[selectedIsland.id] || [];
-        return { ...prev, [selectedIsland.id]: [...current, newIcon] };
+      setIconsBySpace((prev) => {
+        const current = prev[selectedSpace.id] || [];
+        return { ...prev, [selectedSpace.id]: [...current, newIcon] };
       });
 
       // Add to backend undo history
       undoApi
-        .createEvent(selectedIsland.id, {
+        .createEvent(selectedSpace.id, {
           event_type: 'tile_create',
               event_data: {
                 tile: {
@@ -274,8 +274,8 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
             console.log('[AUTO-REFRESH] Using favicon:', updatedFavicon);
 
             // Update the icon in state
-            setIconsByIsland((prev) => {
-              const current = prev[selectedIsland.id] || [];
+            setIconsBySpace((prev) => {
+              const current = prev[selectedSpace.id] || [];
               const updated = current.map((icon) =>
                 icon.id === created.id
                   ? {
@@ -289,7 +289,7 @@ export const useCenterPaneLinkCreation = ({ selectedIsland, setIconsByIsland }: 
                     }
                   : icon
               );
-              return { ...prev, [selectedIsland.id]: updated };
+              return { ...prev, [selectedSpace.id]: updated };
             });
 
             // Persist to backend

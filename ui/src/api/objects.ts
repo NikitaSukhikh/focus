@@ -37,7 +37,7 @@ export interface ObjectCreatePayload {
 
 export interface ObjectResponse {
   id: string;
-  island_id: string;
+  space_id: string;
   type: ObjectType;
   title: string;
   description?: string;
@@ -53,8 +53,8 @@ export interface ObjectResponse {
 }
 
 export const objectsApi = {
-  async list(islandId: string): Promise<ObjectResponse[]> {
-    const res = await fetch(`${API_BASE}/islands/${islandId}/objects`);
+  async list(spaceId: string): Promise<ObjectResponse[]> {
+    const res = await fetch(`${API_BASE}/spaces/${spaceId}/objects`);
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`Failed to list objects: ${res.status} ${text}`);
@@ -63,7 +63,7 @@ export const objectsApi = {
     return data.objects || [];
   },
 
-  async create(islandId: string, payload: ObjectCreatePayload): Promise<ObjectResponse> {
+  async create(spaceId: string, payload: ObjectCreatePayload): Promise<ObjectResponse> {
     const trimmedCustomTitle = payload.custom_title?.trim();
     const trimmedCustomDescription = payload.custom_description?.trim();
     const safePayload: ObjectCreatePayload = {
@@ -76,7 +76,7 @@ export const objectsApi = {
     };
 
     const promise = (async () => {
-      const res = await fetch(`${API_BASE}/islands/${islandId}/objects`, {
+      const res = await fetch(`${API_BASE}/spaces/${spaceId}/objects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(safePayload),

@@ -1,8 +1,8 @@
 """
-Islands Repository
+Spaces Repository
 
-Data access layer for Island entities.
-Provides async CRUD operations and queries for islands using SQLAlchemy async sessions
+Data access layer for Space entities.
+Provides async CRUD operations and queries for spaces using SQLAlchemy async sessions
 against the configured database (see app/storage/db.py for engine/session setup).
 """
 
@@ -13,14 +13,14 @@ from uuid import UUID, uuid4
 from sqlalchemy import select, func, update, delete, asc, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.island import (
-    IslandCreate,
-    IslandUpdate,
-    IslandResponse,
-    IslandList,
+from app.models.space import (
+    SpaceCreate,
+    SpaceUpdate,
+    SpaceResponse,
+    SpaceList,
 )
 from app.core.logging import get_logger
-from app.storage.db import AsyncSessionLocal, Island
+from app.storage.db import AsyncSessionLocal, Space
 
 
 logger = get_logger(__name__)
@@ -30,11 +30,11 @@ logger = get_logger(__name__)
 # Repository Class
 # ============================================================================
 
-class IslandsRepository:
+class SpacesRepository:
     """
-    Repository for Island entities.
+    Repository for Space entities.
 
-    Provides async CRUD operations and queries for managing islands.
+    Provides async CRUD operations and queries for managing spaces.
     Currently uses in-memory storage; will be updated to use database.
     """
 
@@ -50,38 +50,38 @@ class IslandsRepository:
     # Create
     # ========================================================================
 
-    async def create_island(self, island_data: IslandCreate, session: AsyncSession | None = None) -> IslandResponse:
+    async def create_space(self, space_data: SpaceCreate, session: AsyncSession | None = None) -> SpaceResponse:
         """
-        Create a new island.
+        Create a new space.
 
         Args:
-            island_data: Island creation data
+            space_data: Space creation data
 
         Returns:
-            IslandResponse: Created island with metadata
+            SpaceResponse: Created space with metadata
 
         """
         session_to_use, external = self._get_session(session)
         try:
-            position = await session_to_use.scalar(select(func.count(Island.id)))
-            island = Island(
+            position = await session_to_use.scalar(select(func.count(Space.id)))
+            space = Space(
                 id=str(uuid4()),
-                name=island_data.name,
-                description=island_data.description,
-                icon=island_data.icon,
-                color=island_data.color,
+                name=space_data.name,
+                description=space_data.description,
+                icon=space_data.icon,
+                color=space_data.color,
                 position=position or 0,
                 object_count=0,
             )
-            session_to_use.add(island)
+            session_to_use.add(space)
             await session_to_use.flush()
             if not external:
                 await session_to_use.commit()
-                await session_to_use.refresh(island)
+                await session_to_use.refresh(space)
 
-            logger.info(f"Created island: {island.name}")
+            logger.info(f"Created space: {space.name}")
 
-            return IslandResponse.model_validate(island)
+            return SpaceResponse.model_validate(space)
         finally:
             if not external:
                 await session_to_use.close()
@@ -90,41 +90,41 @@ class IslandsRepository:
     # Read
     # ========================================================================
 
-    async def get_island_by_id(self, island_id: UUID, session: AsyncSession | None = None) -> Optional[IslandResponse]:
+    async def get_space_by_id(self, space_id: UUID, session: AsyncSession | None = None) -> Optional[SpaceResponse]:
         """
-        Get an island by ID.
+        Get an space by ID.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Returns:
-            IslandResponse if found, None otherwise
+            SpaceResponse if found, None otherwise
 
         """
         session_to_use, external = self._get_session(session)
         try:
             result = await session_to_use.execute(
-                select(Island).where(Island.id == str(island_id))
+                select(Space).where(Space.id == str(space_id))
             )
-            island = result.scalar_one_or_none()
-            if island is None:
-                logger.warning(f"Island not found: {island_id}")
+            space = result.scalar_one_or_none()
+            if space is None:
+                logger.warning(f"Space not found: {space_id}")
                 return None
-            return IslandResponse.model_validate(island)
+            return SpaceResponse.model_validate(space)
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def get_all_islands(
+    async def get_all_spaces(
         self,
         skip: int = 0,
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
         session: AsyncSession | None = None,
-    ) -> IslandList:
+    ) -> SpaceList:
         """
-        Get all islands with pagination and sorting.
+        Get all spaces with pagination and sorting.
 
         Args:
             skip: Number of records to skip (offset)
@@ -133,78 +133,78 @@ class IslandsRepository:
             sort_order: Sort order (asc or desc)
 
         Returns:
-            IslandList: Paginated list of islands
+            SpaceList: Paginated list of spaces
 
         """
         sort_column = {
-            "position": Island.position,
-            "name": Island.name,
-            "created_at": Island.created_at,
-            "updated_at": Island.updated_at,
-        }.get(sort_by or "position", Island.position)
+            "position": Space.position,
+            "name": Space.name,
+            "created_at": Space.created_at,
+            "updated_at": Space.updated_at,
+        }.get(sort_by or "position", Space.position)
 
         ordering = desc(sort_column) if sort_order.lower() == "desc" else asc(sort_column)
 
         session_to_use, external = self._get_session(session)
         try:
-            total = await session_to_use.scalar(select(func.count(Island.id)))
+            total = await session_to_use.scalar(select(func.count(Space.id)))
             result = await session_to_use.execute(
-                select(Island)
+                select(Space)
                 .order_by(ordering)
                 .offset(skip)
                 .limit(limit)
             )
             rows = result.scalars().all()
-            island_responses = [IslandResponse.model_validate(i) for i in rows]
+            space_responses = [SpaceResponse.model_validate(i) for i in rows]
 
             logger.debug(
-                f"Retrieved {len(island_responses)} islands (total: {total})",
+                f"Retrieved {len(space_responses)} spaces (total: {total})",
                 extra={"skip": skip, "limit": limit, "total": total}
             )
 
-            return IslandList(islands=island_responses, total=total or 0)
+            return SpaceList(spaces=space_responses, total=total or 0)
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def get_islands_by_ids(self, island_ids: List[UUID], session: AsyncSession | None = None) -> List[IslandResponse]:
+    async def get_spaces_by_ids(self, space_ids: List[UUID], session: AsyncSession | None = None) -> List[SpaceResponse]:
         """
-        Get multiple islands by their IDs.
+        Get multiple spaces by their IDs.
 
         Args:
-            island_ids: List of island UUIDs
+            space_ids: List of space UUIDs
 
         Returns:
-            List[IslandResponse]: List of found islands
+            List[SpaceResponse]: List of found spaces
 
         """
         session_to_use, external = self._get_session(session)
         try:
             result = await session_to_use.execute(
-                select(Island).where(Island.id.in_([str(i) for i in island_ids]))
+                select(Space).where(Space.id.in_([str(i) for i in space_ids]))
             )
             rows = result.scalars().all()
-            islands = [IslandResponse.model_validate(r) for r in rows]
+            spaces = [SpaceResponse.model_validate(r) for r in rows]
             logger.debug(
-                f"Retrieved {len(islands)} islands by IDs",
-                extra={"requested": len(island_ids), "found": len(islands)}
+                f"Retrieved {len(spaces)} spaces by IDs",
+                extra={"requested": len(space_ids), "found": len(spaces)}
             )
-            return islands
+            return spaces
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def get_island_count(self, session: AsyncSession | None = None) -> int:
+    async def get_space_count(self, session: AsyncSession | None = None) -> int:
         """
-        Get total count of islands.
+        Get total count of spaces.
 
         Returns:
-            int: Total number of islands
+            int: Total number of spaces
 
         """
         session_to_use, external = self._get_session(session)
         try:
-            return await session_to_use.scalar(select(func.count(Island.id))) or 0
+            return await session_to_use.scalar(select(func.count(Space.id))) or 0
         finally:
             if not external:
                 await session_to_use.close()
@@ -213,98 +213,98 @@ class IslandsRepository:
     # Update
     # ========================================================================
 
-    async def update_island(
+    async def update_space(
         self,
-        island_id: UUID,
-        island_data: IslandUpdate,
+        space_id: UUID,
+        space_data: SpaceUpdate,
         session: AsyncSession | None = None
-    ) -> Optional[IslandResponse]:
+    ) -> Optional[SpaceResponse]:
         """
-        Update an existing island.
+        Update an existing space.
 
         Args:
-            island_id: Island UUID
-            island_data: Island update data (partial)
+            space_id: Space UUID
+            space_data: Space update data (partial)
 
         Returns:
-            IslandResponse if updated, None if not found
+            SpaceResponse if updated, None if not found
 
         """
         session_to_use, external = self._get_session(session)
         try:
-            result = await session_to_use.execute(select(Island).where(Island.id == str(island_id)))
-            island = result.scalar_one_or_none()
-            if island is None:
-                logger.warning(f"Cannot update - island not found: {island_id}")
+            result = await session_to_use.execute(select(Space).where(Space.id == str(space_id)))
+            space = result.scalar_one_or_none()
+            if space is None:
+                logger.warning(f"Cannot update - space not found: {space_id}")
                 return None
 
-            update_data = island_data.model_dump(exclude_unset=True, exclude_none=True)
+            update_data = space_data.model_dump(exclude_unset=True, exclude_none=True)
             if "position" in update_data:
                 update_data.pop("position")
                 logger.warning(
-                    f"Position update ignored - use reorder_islands instead",
-                    extra={"island_id": str(island_id)}
+                    f"Position update ignored - use reorder_spaces instead",
+                    extra={"space_id": str(space_id)}
                 )
 
             for key, value in update_data.items():
-                setattr(island, key, value)
-            island.updated_at = datetime.utcnow()
+                setattr(space, key, value)
+            space.updated_at = datetime.utcnow()
 
             if not external:
                 await session_to_use.commit()
-                await session_to_use.refresh(island)
+                await session_to_use.refresh(space)
             else:
                 await session_to_use.flush()
 
             logger.info(
-                f"Updated island: {island.name}",
-                extra={"island_id": str(island_id), "updated_fields": list(update_data.keys())}
+                f"Updated space: {space.name}",
+                extra={"space_id": str(space_id), "updated_fields": list(update_data.keys())}
             )
 
-            return IslandResponse.model_validate(island)
+            return SpaceResponse.model_validate(space)
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def update_island_object_count(
+    async def update_space_object_count(
         self,
-        island_id: UUID,
+        space_id: UUID,
         delta: int = 1,
         session: AsyncSession | None = None
-    ) -> Optional[IslandResponse]:
+    ) -> Optional[SpaceResponse]:
         """
-        Update the object count for an island.
+        Update the object count for an space.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
             delta: Amount to change count by (positive or negative)
 
         Returns:
-            IslandResponse if updated, None if not found
+            SpaceResponse if updated, None if not found
 
         """
         session_to_use, external = self._get_session(session)
         try:
-            result = await session_to_use.execute(select(Island).where(Island.id == str(island_id)))
-            island = result.scalar_one_or_none()
-            if island is None:
-                logger.warning(f"Cannot update count - island not found: {island_id}")
+            result = await session_to_use.execute(select(Space).where(Space.id == str(space_id)))
+            space = result.scalar_one_or_none()
+            if space is None:
+                logger.warning(f"Cannot update count - space not found: {space_id}")
                 return None
 
-            island.object_count = max(0, (island.object_count or 0) + delta)
-            island.updated_at = datetime.utcnow()
+            space.object_count = max(0, (space.object_count or 0) + delta)
+            space.updated_at = datetime.utcnow()
             if not external:
                 await session_to_use.commit()
-                await session_to_use.refresh(island)
+                await session_to_use.refresh(space)
             else:
                 await session_to_use.flush()
 
             logger.debug(
-                f"Updated object count for island {island_id}",
-                extra={"island_id": str(island_id), "delta": delta, "new_count": island.object_count}
+                f"Updated object count for space {space_id}",
+                extra={"space_id": str(space_id), "delta": delta, "new_count": space.object_count}
             )
 
-            return IslandResponse.model_validate(island)
+            return SpaceResponse.model_validate(space)
         finally:
             if not external:
                 await session_to_use.close()
@@ -313,44 +313,44 @@ class IslandsRepository:
     # Delete
     # ========================================================================
 
-    async def delete_island(self, island_id: UUID, session: AsyncSession | None = None) -> bool:
+    async def delete_space(self, space_id: UUID, session: AsyncSession | None = None) -> bool:
         """
-        Delete an island.
+        Delete an space.
 
         Note: Cascade deletion of objects is handled automatically by the database
         foreign key constraint (CASCADE on delete).
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Returns:
             bool: True if deleted, False if not found
         """
         session_to_use, external = self._get_session(session)
         try:
-            result = await session_to_use.execute(select(Island).where(Island.id == str(island_id)))
-            island = result.scalar_one_or_none()
+            result = await session_to_use.execute(select(Space).where(Space.id == str(space_id)))
+            space = result.scalar_one_or_none()
 
-            if island is None:
-                logger.warning(f"Cannot delete - island not found: {island_id}")
+            if space is None:
+                logger.warning(f"Cannot delete - space not found: {space_id}")
                 return False
 
-            island_name = island.name
-            island_position = island.position
+            space_name = space.name
+            space_position = space.position
 
-            # Delete the island (cascade will delete related objects)
-            await session_to_use.delete(island)
+            # Delete the space (cascade will delete related objects)
+            await session_to_use.delete(space)
             if not external:
                 await session_to_use.commit()
             else:
                 await session_to_use.flush()
 
-            # Reorder remaining islands to fill the gap
+            # Reorder remaining spaces to fill the gap
             await self._compact_positions(session=session_to_use)
 
             logger.info(
-                f"Deleted island: {island_name}",
-                extra={"island_id": str(island_id), "position": island_position}
+                f"Deleted space: {space_name}",
+                extra={"space_id": str(space_id), "position": space_position}
             )
 
             return True
@@ -358,27 +358,27 @@ class IslandsRepository:
             if not external:
                 await session_to_use.close()
 
-    async def delete_all_islands(self, session: AsyncSession | None = None) -> int:
+    async def delete_all_spaces(self, session: AsyncSession | None = None) -> int:
         """
-        Delete all islands (used for testing).
+        Delete all spaces (used for testing).
 
         Returns:
-            int: Number of islands deleted
+            int: Number of spaces deleted
         """
         session_to_use, external = self._get_session(session)
         try:
-            # Count islands before deletion
-            count_result = await session_to_use.execute(select(func.count()).select_from(Island))
+            # Count spaces before deletion
+            count_result = await session_to_use.execute(select(func.count()).select_from(Space))
             count = count_result.scalar_one()
 
-            # Delete all islands
-            await session_to_use.execute(delete(Island))
+            # Delete all spaces
+            await session_to_use.execute(delete(Space))
             if not external:
                 await session_to_use.commit()
             else:
                 await session_to_use.flush()
 
-            logger.warning(f"Deleted all islands", extra={"count": count})
+            logger.warning(f"Deleted all spaces", extra={"count": count})
 
             return count
         finally:
@@ -389,40 +389,40 @@ class IslandsRepository:
     # Reorder
     # ========================================================================
 
-    async def reorder_islands(self, island_ids: List[UUID], session: AsyncSession | None = None) -> List[IslandResponse]:
+    async def reorder_spaces(self, space_ids: List[UUID], session: AsyncSession | None = None) -> List[SpaceResponse]:
         """
-        Reorder islands by providing a new ordered list of IDs.
+        Reorder spaces by providing a new ordered list of IDs.
 
         Args:
-            island_ids: Ordered list of island UUIDs
+            space_ids: Ordered list of space UUIDs
 
         Returns:
-            List[IslandResponse]: Reordered islands
+            List[SpaceResponse]: Reordered spaces
 
         Raises:
-            ValueError: If island IDs don't match existing islands
+            ValueError: If space IDs don't match existing spaces
         """
         session_to_use, external = self._get_session(session)
         try:
             # Validate IDs
-            result = await session_to_use.execute(select(Island.id))
+            result = await session_to_use.execute(select(Space.id))
             existing_ids = {UUID(i) for i in result.scalars().all()}
-            provided_ids = set(island_ids)
+            provided_ids = set(space_ids)
             if existing_ids != provided_ids:
                 missing_ids = existing_ids - provided_ids
                 extra_ids = provided_ids - existing_ids
                 error_msg = []
                 if missing_ids:
-                    error_msg.append(f"Missing islands: {missing_ids}")
+                    error_msg.append(f"Missing spaces: {missing_ids}")
                 if extra_ids:
-                    error_msg.append(f"Unknown islands: {extra_ids}")
+                    error_msg.append(f"Unknown spaces: {extra_ids}")
                 raise ValueError("; ".join(error_msg))
 
             now = datetime.utcnow()
-            for position, island_id in enumerate(island_ids):
+            for position, space_id in enumerate(space_ids):
                 await session_to_use.execute(
-                    update(Island)
-                    .where(Island.id == str(island_id))
+                    update(Space)
+                    .where(Space.id == str(space_id))
                     .values(position=position, updated_at=now)
                 )
             if not external:
@@ -430,13 +430,13 @@ class IslandsRepository:
             else:
                 await session_to_use.flush()
 
-            result = await session_to_use.execute(select(Island).where(Island.id.in_([str(i) for i in island_ids])))
+            result = await session_to_use.execute(select(Space).where(Space.id.in_([str(i) for i in space_ids])))
             rows = {row.id: row for row in result.scalars().all()}
-            reordered = [IslandResponse.model_validate(rows[str(i)]) for i in island_ids if str(i) in rows]
+            reordered = [SpaceResponse.model_validate(rows[str(i)]) for i in space_ids if str(i) in rows]
 
             logger.info(
-                f"Reordered {len(island_ids)} islands",
-                extra={"island_count": len(island_ids)}
+                f"Reordered {len(space_ids)} spaces",
+                extra={"space_count": len(space_ids)}
             )
 
             return reordered
@@ -450,35 +450,35 @@ class IslandsRepository:
 
     async def _compact_positions(self, session: AsyncSession | None = None) -> None:
         """
-        Compact island positions to eliminate gaps.
+        Compact space positions to eliminate gaps.
 
-        After deleting an island, this ensures positions are sequential
+        After deleting an space, this ensures positions are sequential
         starting from 0.
         """
         session_to_use, external = self._get_session(session)
         try:
-            result = await session_to_use.execute(select(Island).order_by(Island.position.asc()))
-            islands = result.scalars().all()
+            result = await session_to_use.execute(select(Space).order_by(Space.position.asc()))
+            spaces = result.scalars().all()
             now = datetime.utcnow()
-            for new_position, island in enumerate(islands):
-                if island.position != new_position:
-                    island.position = new_position
-                    island.updated_at = now
+            for new_position, space in enumerate(spaces):
+                if space.position != new_position:
+                    space.position = new_position
+                    space.updated_at = now
             if not external:
                 await session_to_use.commit()
             else:
                 await session_to_use.flush()
-            logger.debug(f"Compacted positions for {len(islands)} islands")
+            logger.debug(f"Compacted positions for {len(spaces)} spaces")
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def exists(self, island_id: UUID, session: AsyncSession | None = None) -> bool:
+    async def exists(self, space_id: UUID, session: AsyncSession | None = None) -> bool:
         """
-        Check if an island exists.
+        Check if an space exists.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Returns:
             bool: True if exists, False otherwise
@@ -487,22 +487,22 @@ class IslandsRepository:
         session_to_use, external = self._get_session(session)
         try:
             exists = await session_to_use.scalar(
-                select(func.count(Island.id)).where(Island.id == str(island_id))
+                select(func.count(Space.id)).where(Space.id == str(space_id))
             )
             return bool(exists)
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def search_islands(
+    async def search_spaces(
         self,
         search_query: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None
-    ) -> IslandList:
+    ) -> SpaceList:
         """
-        Search islands by name or description.
+        Search spaces by name or description.
 
         Args:
             search_query: Search string (case-insensitive)
@@ -510,29 +510,29 @@ class IslandsRepository:
             limit: Maximum number of records to return
 
         Returns:
-            IslandList: Matching islands
+            SpaceList: Matching spaces
 
         """
         session_to_use, external = self._get_session(session)
         try:
-            stmt = select(Island)
+            stmt = select(Space)
             if search_query:
                 pattern = f"%{search_query.lower()}%"
                 stmt = stmt.where(
-                    func.lower(Island.name).like(pattern) |
-                    func.lower(Island.description).like(pattern)
+                    func.lower(Space.name).like(pattern) |
+                    func.lower(Space.description).like(pattern)
                 )
             total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
             result = await session_to_use.execute(
-                stmt.order_by(Island.position.asc()).offset(skip).limit(limit)
+                stmt.order_by(Space.position.asc()).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
-            islands = [IslandResponse.model_validate(r) for r in rows]
+            spaces = [SpaceResponse.model_validate(r) for r in rows]
             logger.debug(
-                f"Search found {total} islands",
-                extra={"query": search_query, "returned": len(islands)}
+                f"Search found {total} spaces",
+                extra={"query": search_query, "returned": len(spaces)}
             )
-            return IslandList(islands=islands, total=total or 0)
+            return SpaceList(spaces=spaces, total=total or 0)
         finally:
             if not external:
                 await session_to_use.close()
@@ -543,20 +543,20 @@ class IslandsRepository:
 # ============================================================================
 
 # Create a singleton instance
-islands_repository = IslandsRepository()
+spaces_repository = SpacesRepository()
 
 
 # ============================================================================
 # Convenience Functions
 # ============================================================================
 
-async def get_repository() -> IslandsRepository:
+async def get_repository() -> SpacesRepository:
     """
-    Get the islands repository instance.
+    Get the spaces repository instance.
 
     This is used for dependency injection in FastAPI routes.
 
     Returns:
-        IslandsRepository: Repository instance
+        SpacesRepository: Repository instance
     """
-    return islands_repository
+    return spaces_repository
