@@ -114,8 +114,8 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
     });
 
     // Soft-delete by clearing position so undo/redo can restore the object
-    objectsApi.updatePosition(iconId, -1, -1).catch((err) => {
-      console.error('Failed to clear object position:', err);
+    objectsApi.markDeleted(iconId).catch((err) => {
+      console.error('Failed to mark object deleted:', err);
     });
   };
 
