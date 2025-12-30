@@ -15,6 +15,7 @@ import { objectsApi } from '../../../../api/objects';
 import { DroppedIcon, ArrowSegment } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
+import type { UndoEventResponse } from '../../../../api/undo';
 
 interface UseUndoProps {
   selectedIslandId?: string;
@@ -65,21 +66,443 @@ export const useUndo = ({
     return null;
   };
 
+  type UndoDirection = 'undo' | 'redo';
+
+  const toDroppedIconFromTile = (tile: any): DroppedIcon => ({
+    id: tile.id,
+    type: tile.type as any,
+    title: tile.title,
+    x: tile.x,
+    y: tile.y,
+    tag: normalizeTag(tile.tag),
+    url: tile.url,
+    description: tile.description,
+    faviconUrl: tile.faviconUrl,
+    filePath: tile.filePath,
+    serviceKey: tile.serviceKey,
+    service: tile.service,
+    content: tile.content,
+  });
+
+  const toDroppedTextFromEvent = (text: any): DroppedIcon => ({
+    id: text.id,
+    type: 'text',
+    title: text.title,
+    x: text.x,
+    y: text.y,
+    tag: normalizeTag(text.tag),
+    content: text.content,
+  });
+
+  const processUndoRedoEvent = async (event: UndoEventResponse, direction: UndoDirection) => {
+    const isRedo = direction === 'redo';
+
+    switch (event.event_type) {
+      case 'tile_create': {
+        const { tile } = event.event_data;
+        if (!tile || !selectedIslandId) break;
+
+        if (isRedo) {
+          const restoredTile = toDroppedIconFromTile(tile);
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredTile],
+          }));
+
+          objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
+            console.error(`[${direction.toUpperCase()}] Failed to restore tile:`, err);
+          });
+        } else {
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== tile.id),
+          }));
+
+          objectsApi.updatePosition(tile.id, -1, -1).catch((err) => {
+            console.error('[UNDO] Failed to delete tile:', err);
+          });
+          window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: tile.id } }));
+        }
+        break;
+      }
+
+      case 'tile_move': {
+        const { tile, from, to } = event.event_data;
+        if (!tile || !selectedIslandId) break;
+
+        const target = isRedo ? to : from;
+        const targetX = typeof target?.x === 'number' ? target.x : tile.x;
+        const targetY = typeof target?.y === 'number' ? target.y : tile.y;
+
+        setIconsByIsland((prev) => {
+          const current = prev[selectedIslandId] || [];
+          const existing = current.find((icon) => icon.id === tile.id);
+
+          if (existing) {
+            return {
+              ...prev,
+              [selectedIslandId]: current.map((icon) =>
+                icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
+              ),
+            };
+          }
+
+          const fallbackTile = toDroppedIconFromTile({ ...tile, x: targetX, y: targetY });
+          return { ...prev, [selectedIslandId]: [...current, fallbackTile] };
+        });
+
+        objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
+          console.error(`[${direction.toUpperCase()}] Failed to move tile:`, err);
+        });
+        break;
+      }
+
+      case 'text_move': {
+        const { text, from, to } = event.event_data;
+        if (!text || !selectedIslandId) break;
+        const target = isRedo ? to : from;
+        const targetX = typeof target?.x === 'number' ? target.x : text.x;
+        const targetY = typeof target?.y === 'number' ? target.y : text.y;
+
+        setIconsByIsland((prev) => {
+          const current = prev[selectedIslandId] || [];
+          const existing = current.find((icon) => icon.id === text.id);
+
+          if (existing) {
+            return {
+              ...prev,
+              [selectedIslandId]: current.map((icon) =>
+                icon.id === text.id ? { ...icon, x: targetX, y: targetY } : icon
+              ),
+            };
+          }
+
+          const fallbackText = toDroppedTextFromEvent({ ...text, x: targetX, y: targetY });
+          return { ...prev, [selectedIslandId]: [...current, fallbackText] };
+        });
+
+        objectsApi.updatePosition(text.id, targetX, targetY).catch((err) => {
+          console.error(`[${direction.toUpperCase()}] Failed to move text note:`, err);
+        });
+        break;
+      }
+
+      case 'tile_delete': {
+        const { tile } = event.event_data;
+        if (!tile || !selectedIslandId) break;
+
+        if (isRedo) {
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== tile.id),
+          }));
+
+          objectsApi.updatePosition(tile.id, -1, -1).catch((err) => {
+            console.error('[REDO] Failed to delete tile:', err);
+          });
+          window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: tile.id } }));
+        } else {
+          const restoredIcon = toDroppedIconFromTile(tile);
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredIcon],
+          }));
+
+          objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
+            console.error('[UNDO] Failed to restore tile position:', err);
+          });
+        }
+        break;
+      }
+
+      case 'arrow_create': {
+        const { arrow } = event.event_data;
+        if (!arrow || !selectedIslandId) break;
+
+        if (isRedo) {
+          const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
+          const tempArrow: ArrowSegment = { id: tempId, start: arrow.start, end: arrow.end };
+
+          setArrowsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: [...(prev[selectedIslandId] || []), tempArrow],
+          }));
+
+          void (async () => {
+            try {
+              const created = await objectsApi.create(selectedIslandId, {
+                type: 'text',
+                title: 'Arrow',
+                content: 'Arrow connection',
+              });
+
+              await objectsApi.updateMetadata(created.id, {
+                arrow: true,
+                start_x: arrow.start.x,
+                start_y: arrow.start.y,
+                end_x: arrow.end.x,
+                end_y: arrow.end.y,
+                content: 'Arrow connection',
+              });
+
+              setArrowsByIsland((prev) => ({
+                ...prev,
+                [selectedIslandId]: (prev[selectedIslandId] || []).map((a) =>
+                  a.id === tempId ? { ...a, id: created.id } : a
+                ),
+              }));
+              arrowIdAliasRef.current.set(arrow.id, created.id);
+              window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } }));
+            } catch (err) {
+              console.error('[REDO] Failed to create arrow:', err);
+              setArrowsByIsland((prev) => ({
+                ...prev,
+                [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== tempId),
+              }));
+            }
+          })();
+        } else {
+          let deletedArrowId: string | null = null;
+          setArrowsByIsland((prev) => {
+            const current = prev[selectedIslandId] || [];
+            const resolvedId = resolveArrowId(current, arrow);
+            deletedArrowId = resolvedId || arrow.id;
+            arrowIdAliasRef.current.delete(arrow.id);
+            return {
+              ...prev,
+              [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
+            };
+          });
+
+          if (deletedArrowId) {
+            objectsApi.delete(deletedArrowId).catch((err) => {
+              console.error('[UNDO] Failed to delete arrow:', err);
+            });
+          }
+
+          window.dispatchEvent(new CustomEvent('arrow:deleted', { detail: { arrowId: deletedArrowId || arrow.id, undo: true } }));
+        }
+        break;
+      }
+
+      case 'arrow_move': {
+        const { arrow, from, to } = event.event_data;
+        if (!arrow || !selectedIslandId) break;
+        const targetStart = isRedo
+          ? (to && typeof to.start?.x === 'number' && typeof to.start?.y === 'number' ? to.start : arrow.start)
+          : (from && typeof from.start?.x === 'number' && typeof from.start?.y === 'number' ? from.start : arrow.start);
+        const targetEnd = isRedo
+          ? (to && typeof to.end?.x === 'number' && typeof to.end?.y === 'number' ? to.end : arrow.end)
+          : (from && typeof from.end?.x === 'number' && typeof from.end?.y === 'number' ? from.end : arrow.end);
+
+        let updatedArrowId = arrow.id;
+        setArrowsByIsland((prev) => {
+          const current = prev[selectedIslandId] || [];
+          const resolvedId = resolveArrowId(current, arrow) || arrow.id;
+          updatedArrowId = resolvedId;
+          const existing = current.find((a) => a.id === resolvedId);
+
+          if (existing) {
+            if (resolvedId !== arrow.id) {
+              arrowIdAliasRef.current.set(arrow.id, resolvedId);
+            }
+            return {
+              ...prev,
+              [selectedIslandId]: current.map((a) =>
+                a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
+              ),
+            };
+          }
+
+          const fallbackArrow: ArrowSegment = {
+            id: resolvedId,
+            start: targetStart,
+            end: targetEnd,
+          };
+
+          if (resolvedId !== arrow.id) {
+            arrowIdAliasRef.current.set(arrow.id, resolvedId);
+          }
+
+          return {
+            ...prev,
+            [selectedIslandId]: [...current, fallbackArrow],
+          };
+        });
+
+        objectsApi
+          .updateMetadata(updatedArrowId, {
+            arrow: true,
+            start_x: targetStart.x,
+            start_y: targetStart.y,
+            end_x: targetEnd.x,
+            end_y: targetEnd.y,
+          })
+          .catch((err) => {
+            console.error(`[${direction.toUpperCase()}] Failed to move arrow:`, err);
+          });
+        break;
+      }
+
+      case 'arrow_delete': {
+        const { arrow } = event.event_data;
+        if (!arrow || !selectedIslandId) break;
+
+        if (isRedo) {
+          let deletedArrowId: string | null = null;
+          setArrowsByIsland((prev) => {
+            const current = prev[selectedIslandId] || [];
+            const resolvedId = resolveArrowId(current, arrow);
+            deletedArrowId = resolvedId || arrow.id;
+            arrowIdAliasRef.current.delete(arrow.id);
+            return {
+              ...prev,
+              [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
+            };
+          });
+
+          if (deletedArrowId) {
+            objectsApi.delete(deletedArrowId).catch((err) => {
+              console.error('[REDO] Failed to delete arrow:', err);
+            });
+          }
+
+          window.dispatchEvent(
+            new CustomEvent('arrow:deleted', { detail: { arrowId: deletedArrowId || arrow.id, undo: false } })
+          );
+        } else {
+          const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
+          const tempArrow: ArrowSegment = {
+            id: tempId,
+            start: arrow.start,
+            end: arrow.end,
+          };
+
+          setArrowsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: [...(prev[selectedIslandId] || []), tempArrow],
+          }));
+
+          void (async () => {
+            try {
+              const created = await objectsApi.create(selectedIslandId, {
+                type: 'text',
+                title: 'Arrow',
+                content: 'Arrow connection',
+              });
+
+              await objectsApi.updateMetadata(created.id, {
+                arrow: true,
+                start_x: arrow.start.x,
+                start_y: arrow.start.y,
+                end_x: arrow.end.x,
+                end_y: arrow.end.y,
+                content: 'Arrow connection',
+              });
+
+              setArrowsByIsland((prev) => ({
+                ...prev,
+                [selectedIslandId]: (prev[selectedIslandId] || []).map((a) =>
+                  a.id === tempId ? { ...a, id: created.id } : a
+                ),
+              }));
+              arrowIdAliasRef.current.set(arrow.id, created.id);
+
+              window.dispatchEvent(
+                new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } })
+              );
+            } catch (err) {
+              console.error('[UNDO] Failed to restore arrow:', err);
+              setArrowsByIsland((prev) => ({
+                ...prev,
+                [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== tempId),
+              }));
+            }
+          })();
+        }
+        break;
+      }
+
+      case 'text_create': {
+        const { text } = event.event_data;
+        if (!text || !selectedIslandId) break;
+
+        if (isRedo) {
+          const restoredText = toDroppedTextFromEvent(text);
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredText],
+          }));
+
+          objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
+            console.error('[REDO] Failed to restore text note:', err);
+          });
+        } else {
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== text.id),
+          }));
+
+          objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
+            console.error('[UNDO] Failed to delete text note:', err);
+          });
+          window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: text.id } }));
+        }
+        break;
+      }
+
+      case 'text_delete': {
+        const { text } = event.event_data;
+        if (!text || !selectedIslandId) break;
+
+        if (isRedo) {
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== text.id),
+          }));
+
+          objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
+            console.error('[REDO] Failed to delete text note:', err);
+          });
+          window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: text.id } }));
+        } else {
+          const restoredText = toDroppedTextFromEvent(text);
+          setIconsByIsland((prev) => ({
+            ...prev,
+            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredText],
+          }));
+
+          objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
+            console.error('[UNDO] Failed to restore text note:', err);
+          });
+        }
+        break;
+      }
+
+      default:
+        console.warn(`[${direction.toUpperCase()}] Unknown event type:`, event);
+    }
+  };
   // Clear undo history on mount/unmount and before unload so no stale events persist across sessions.
   useEffect(() => {
     if (!selectedIslandId) return;
 
     const clearServerHistory = async () => {
       try {
-        if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-          const url = `/api/islands/${selectedIslandId}/undo-events`;
-          const blob = new Blob([], { type: 'application/json' });
-          navigator.sendBeacon(url, blob);
-        } else {
-          await fetch(`/api/islands/${selectedIslandId}/undo-events`, { method: 'DELETE', keepalive: true });
-        }
+        await fetch(`/api/islands/${selectedIslandId}/undo-events`, {
+          method: 'DELETE',
+          keepalive: true,
+        });
       } catch (err) {
-        console.error('[UNDO] Failed to clear undo history:', err);
+        try {
+          if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+            const url = `/api/islands/${selectedIslandId}/undo-events`;
+            const blob = new Blob([], { type: 'application/json' });
+            navigator.sendBeacon(url, blob);
+          }
+        } catch (sendBeaconErr) {
+          console.error('[UNDO] Failed to clear undo history:', err, sendBeaconErr);
+        }
       }
     };
 
@@ -104,741 +527,37 @@ export const useUndo = ({
 
   useEffect(() => {
     const handleUndoRedo = (e: KeyboardEvent) => {
-      // Check for Ctrl+Z or Cmd+Z (undo) or Ctrl+Shift+Z or Cmd+Shift+Z (redo)
       const key = e.key.toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && key === 'z') {
-        const target = e.target as HTMLElement;
-        // Don't interfere with native undo in input fields
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-          return;
-        }
-
-        if (!selectedIslandId) return;
-
-        e.preventDefault();
-
-        const isRedo = e.shiftKey;
-
-        if (isRedo) {
-          // Handle redo (Ctrl+Shift+Z)
-          void (async () => {
-            try {
-              const response = await undoApi.redo(selectedIslandId);
-              if (!response.success || !response.event) {
-                console.log('[REDO] No events to redo');
-                return;
-              }
-
-              const lastRedoEvent = response.event;
-              console.log('[REDO] Processing event:', lastRedoEvent.event_type, lastRedoEvent);
-
-              // Process the redo event (reverse the undo operation)
-              switch (lastRedoEvent.event_type) {
-                case 'tile_create': {
-                  // Redo tile creation = create the tile again
-              const { tile } = lastRedoEvent.event_data;
-          const restoredTile: DroppedIcon = {
-            id: tile.id,
-            type: tile.type as any,
-            title: tile.title,
-            x: tile.x,
-            y: tile.y,
-            tag: normalizeTag(tile.tag),
-            url: tile.url,
-            description: tile.description,
-            faviconUrl: tile.faviconUrl,
-            filePath: tile.filePath,
-            serviceKey: tile.serviceKey,
-                service: tile.service,
-                content: tile.content,
-              };
-
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredTile],
-              }));
-
-                  objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
-                    console.error('[REDO] Failed to restore tile:', err);
-                  });
-                  break;
-                }
-
-                case 'tile_move': {
-                  // Redo tile move = apply the new position again
-                  const { tile, to } = lastRedoEvent.event_data;
-                  if (!tile) {
-                    console.warn('[REDO] Missing tile data for tile_move event');
-                    break;
-                  }
-
-                  const targetX = typeof to?.x === 'number' ? to.x : tile.x;
-                  const targetY = typeof to?.y === 'number' ? to.y : tile.y;
-
-                  setIconsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const existing = current.find((icon) => icon.id === tile.id);
-
-                    if (existing) {
-                      return {
-                        ...prev,
-                        [selectedIslandId]: current.map((icon) =>
-                          icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
-                        ),
-                      };
-                    }
-
-                    const fallbackTile: DroppedIcon = {
-                      id: tile.id,
-                      type: tile.type as any,
-                      title: tile.title,
-                      x: targetX,
-                      y: targetY,
-                      tag: normalizeTag(tile.tag),
-                      url: tile.url,
-                      description: tile.description,
-                      faviconUrl: tile.faviconUrl,
-                      filePath: tile.filePath,
-                      serviceKey: tile.serviceKey,
-                      service: tile.service,
-                      content: tile.content,
-                    };
-
-                    return {
-                      ...prev,
-                      [selectedIslandId]: [...current, fallbackTile],
-                    };
-                  });
-
-                  objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
-                    console.error('[REDO] Failed to move tile:', err);
-                  });
-                  break;
-                }
-
-                case 'text_move': {
-                  // Redo text move = apply the new position again
-                  const { text, to } = lastRedoEvent.event_data;
-                  if (!text) {
-                    console.warn('[REDO] Missing text data for text_move event');
-                    break;
-                  }
-
-                  const targetX = typeof to?.x === 'number' ? to.x : text.x;
-                  const targetY = typeof to?.y === 'number' ? to.y : text.y;
-
-                  setIconsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const existing = current.find((icon) => icon.id === text.id);
-
-                    if (existing) {
-                      return {
-                        ...prev,
-                        [selectedIslandId]: current.map((icon) =>
-                          icon.id === text.id ? { ...icon, x: targetX, y: targetY } : icon
-                        ),
-                      };
-                    }
-
-                    const fallbackText: DroppedIcon = {
-                      id: text.id,
-                      type: 'text',
-                      title: text.title,
-                      x: targetX,
-                      y: targetY,
-                      tag: normalizeTag(text.tag),
-                      content: text.content,
-                    };
-
-                    return {
-                      ...prev,
-                      [selectedIslandId]: [...current, fallbackText],
-                    };
-                  });
-
-                  objectsApi.updatePosition(text.id, targetX, targetY).catch((err) => {
-                    console.error('[REDO] Failed to move text note:', err);
-                  });
-                  break;
-                }
-
-                case 'tile_delete': {
-                  // Redo tile deletion = delete the tile again
-                  const { tile } = lastRedoEvent.event_data;
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== tile.id),
-              }));
-
-                  objectsApi.updatePosition(tile.id, -1, -1).catch((err) => {
-                    console.error('[REDO] Failed to delete tile:', err);
-                  });
-
-                  window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: tile.id } }));
-                  break;
-                }
-
-                case 'arrow_create': {
-                  // Redo arrow creation = create the arrow again
-                  const { arrow } = lastRedoEvent.event_data;
-
-                  const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
-                  const tempArrow: ArrowSegment = {
-                    id: tempId,
-                    start: arrow.start,
-                    end: arrow.end,
-                  };
-
-                  setArrowsByIsland((prev) => ({
-                    ...prev,
-                    [selectedIslandId]: [...(prev[selectedIslandId] || []), tempArrow],
-                  }));
-
-                  void (async () => {
-                    try {
-                      const created = await objectsApi.create(selectedIslandId, {
-                        type: 'text',
-                        title: 'Arrow',
-                        content: 'Arrow connection',
-                      });
-
-                      await objectsApi.updateMetadata(created.id, {
-                        arrow: true,
-                        start_x: arrow.start.x,
-                        start_y: arrow.start.y,
-                        end_x: arrow.end.x,
-                        end_y: arrow.end.y,
-                        content: 'Arrow connection',
-                      });
-
-                      setArrowsByIsland((prev) => ({
-                        ...prev,
-                        [selectedIslandId]: (prev[selectedIslandId] || []).map((a) =>
-                          a.id === tempId ? { ...a, id: created.id } : a
-                        ),
-                      }));
-                      arrowIdAliasRef.current.set(arrow.id, created.id);
-
-                      window.dispatchEvent(
-                        new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } })
-                      );
-                    } catch (err) {
-                      console.error('[REDO] Failed to create arrow:', err);
-                      setArrowsByIsland((prev) => ({
-                        ...prev,
-                        [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== tempId),
-                      }));
-                    }
-                  })();
-                  break;
-                }
-
-                case 'arrow_move': {
-                  // Redo arrow move = apply the new coordinates
-                  const { arrow, to } = lastRedoEvent.event_data;
-                  if (!arrow) {
-                    console.warn('[REDO] Missing arrow data for arrow_move event');
-                    break;
-                  }
-
-                  const targetStart =
-                    to && typeof to.start?.x === 'number' && typeof to.start?.y === 'number'
-                      ? to.start
-                      : arrow.start;
-                  const targetEnd =
-                    to && typeof to.end?.x === 'number' && typeof to.end?.y === 'number'
-                      ? to.end
-                      : arrow.end;
-
-                  let updatedArrowId = arrow.id;
-                  setArrowsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const resolvedId = resolveArrowId(current, arrow) || arrow.id;
-                    updatedArrowId = resolvedId;
-                    const existing = current.find((a) => a.id === resolvedId);
-
-                    if (existing) {
-                      if (resolvedId !== arrow.id) {
-                        arrowIdAliasRef.current.set(arrow.id, resolvedId);
-                      }
-                      return {
-                        ...prev,
-                        [selectedIslandId]: current.map((a) =>
-                          a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
-                        ),
-                      };
-                    }
-
-                    const fallbackArrow: ArrowSegment = {
-                      id: resolvedId,
-                      start: targetStart,
-                      end: targetEnd,
-                    };
-
-                    if (resolvedId !== arrow.id) {
-                      arrowIdAliasRef.current.set(arrow.id, resolvedId);
-                    }
-
-                    return {
-                      ...prev,
-                      [selectedIslandId]: [...current, fallbackArrow],
-                    };
-                  });
-
-                  objectsApi
-                    .updateMetadata(updatedArrowId, {
-                      arrow: true,
-                      start_x: targetStart.x,
-                      start_y: targetStart.y,
-                      end_x: targetEnd.x,
-                      end_y: targetEnd.y,
-                    })
-                    .catch((err) => {
-                      console.error('[REDO] Failed to move arrow:', err);
-                    });
-                  break;
-                }
-
-                case 'arrow_delete': {
-                  // Redo arrow deletion = delete the arrow again
-                  const { arrow } = lastRedoEvent.event_data;
-                  let deletedArrowId: string | null = null;
-                  setArrowsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const resolvedId = resolveArrowId(current, arrow);
-                    deletedArrowId = resolvedId || arrow.id;
-                    arrowIdAliasRef.current.delete(arrow.id);
-                    return {
-                      ...prev,
-                      [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
-                    };
-                  });
-
-                  if (deletedArrowId) {
-                    objectsApi.delete(deletedArrowId).catch((err) => {
-                      console.error('[REDO] Failed to delete arrow:', err);
-                    });
-                  }
-
-                  window.dispatchEvent(
-                    new CustomEvent('arrow:deleted', { detail: { arrowId: deletedArrowId || arrow.id, undo: false } })
-                  );
-                  break;
-                }
-
-                case 'text_create': {
-                  // Redo text creation = create the text again
-                  const { text } = lastRedoEvent.event_data;
-              const restoredText: DroppedIcon = {
-                id: text.id,
-                type: 'text',
-                title: text.title,
-                x: text.x,
-                y: text.y,
-                tag: normalizeTag(text.tag),
-                content: text.content,
-              };
-
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredText],
-              }));
-
-                  objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
-                    console.error('[REDO] Failed to restore text note:', err);
-                  });
-                  break;
-                }
-
-                case 'text_delete': {
-                  // Redo text deletion = delete the text again
-                  const { text } = lastRedoEvent.event_data;
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== text.id),
-              }));
-
-                  objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
-                    console.error('[REDO] Failed to delete text note:', err);
-                  });
-
-                  window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: text.id } }));
-                  break;
-                }
-
-                default:
-                  console.warn('[REDO] Unknown event type:', lastRedoEvent);
-              }
-            } catch (err) {
-              console.error('[REDO] Error processing redo:', err);
-            }
-          })();
-        } else {
-          // Handle undo (Ctrl+Z)
-          void (async () => {
-            try {
-              const response = await undoApi.undo(selectedIslandId);
-              if (!response.success || !response.event) {
-                console.log('[UNDO] No events to undo');
-                return;
-              }
-
-              const lastEvent = response.event;
-              console.log('[UNDO] Processing event:', lastEvent.event_type, lastEvent);
-
-              // Process the event based on type
-              switch (lastEvent.event_type) {
-                case 'tile_create': {
-                  // Undo tile creation = delete the tile
-                  const { tile } = lastEvent.event_data;
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== tile.id),
-              }));
-
-                  objectsApi.updatePosition(tile.id, -1, -1).catch((err) => {
-                    console.error('[UNDO] Failed to delete tile:', err);
-                  });
-
-                  window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: tile.id } }));
-                  break;
-                }
-
-                case 'tile_move': {
-                  // Undo tile move = restore the previous position
-                  const { tile, from } = lastEvent.event_data;
-                  if (!tile) {
-                    console.warn('[UNDO] Missing tile data for tile_move event');
-                    break;
-                  }
-
-                  const targetX = typeof from?.x === 'number' ? from.x : tile.x;
-                  const targetY = typeof from?.y === 'number' ? from.y : tile.y;
-
-                  setIconsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const existing = current.find((icon) => icon.id === tile.id);
-
-                    if (existing) {
-                      return {
-                        ...prev,
-                        [selectedIslandId]: current.map((icon) =>
-                          icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
-                        ),
-                      };
-                    }
-
-                    const fallbackTile: DroppedIcon = {
-                      id: tile.id,
-                      type: tile.type as any,
-                      title: tile.title,
-                      x: targetX,
-                      y: targetY,
-                      tag: normalizeTag(tile.tag),
-                      url: tile.url,
-                      description: tile.description,
-                      faviconUrl: tile.faviconUrl,
-                      filePath: tile.filePath,
-                      serviceKey: tile.serviceKey,
-                      service: tile.service,
-                      content: tile.content,
-                    };
-
-                    return {
-                      ...prev,
-                      [selectedIslandId]: [...current, fallbackTile],
-                    };
-                  });
-
-                  objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
-                    console.error('[UNDO] Failed to move tile:', err);
-                  });
-                  break;
-                }
-
-                case 'text_move': {
-                  // Undo text move = restore the previous position
-                  const { text, from } = lastEvent.event_data;
-                  if (!text) {
-                    console.warn('[UNDO] Missing text data for text_move event');
-                    break;
-                  }
-
-                  const targetX = typeof from?.x === 'number' ? from.x : text.x;
-                  const targetY = typeof from?.y === 'number' ? from.y : text.y;
-
-                  setIconsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const existing = current.find((icon) => icon.id === text.id);
-
-                    if (existing) {
-                      return {
-                        ...prev,
-                        [selectedIslandId]: current.map((icon) =>
-                          icon.id === text.id ? { ...icon, x: targetX, y: targetY } : icon
-                        ),
-                      };
-                    }
-
-                    const fallbackText: DroppedIcon = {
-                      id: text.id,
-                      type: 'text',
-                      title: text.title,
-                      x: targetX,
-                      y: targetY,
-                      tag: normalizeTag(text.tag),
-                      content: text.content,
-                    };
-
-                    return {
-                      ...prev,
-                      [selectedIslandId]: [...current, fallbackText],
-                    };
-                  });
-
-                  objectsApi.updatePosition(text.id, targetX, targetY).catch((err) => {
-                    console.error('[UNDO] Failed to move text note:', err);
-                  });
-                  break;
-                }
-
-                case 'tile_delete': {
-                  // Undo tile deletion = restore the tile
-                  const { tile } = lastEvent.event_data;
-              const restoredIcon: DroppedIcon = {
-                id: tile.id,
-                type: tile.type as any,
-                title: tile.title,
-                x: tile.x,
-                y: tile.y,
-                tag: normalizeTag(tile.tag),
-                url: tile.url,
-                description: tile.description,
-                faviconUrl: tile.faviconUrl,
-                filePath: tile.filePath,
-                serviceKey: tile.serviceKey,
-                service: tile.service,
-                content: tile.content,
-              };
-
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredIcon],
-              }));
-
-                  // Restore position in backend
-                  objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
-                    console.error('[UNDO] Failed to restore tile position:', err);
-                  });
-                  break;
-                }
-
-                case 'arrow_create': {
-                  // Undo arrow creation = delete the arrow
-                  const { arrow } = lastEvent.event_data;
-                  let deletedArrowId: string | null = null;
-                  setArrowsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const resolvedId = resolveArrowId(current, arrow);
-                    deletedArrowId = resolvedId || arrow.id;
-                    arrowIdAliasRef.current.delete(arrow.id);
-                    return {
-                      ...prev,
-                      [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
-                    };
-                  });
-
-                  // Delete from backend regardless of local presence to keep server state consistent
-                  if (deletedArrowId) {
-                    objectsApi.delete(deletedArrowId).catch((err) => {
-                      console.error('[UNDO] Failed to delete arrow:', err);
-                    });
-                  }
-
-                  window.dispatchEvent(
-                    new CustomEvent('arrow:deleted', { detail: { arrowId: deletedArrowId || arrow.id, undo: true } })
-                  );
-                  break;
-                }
-
-                case 'arrow_move': {
-                  // Undo arrow move = restore previous coordinates
-                  const { arrow, from } = lastEvent.event_data;
-                  if (!arrow) {
-                    console.warn('[UNDO] Missing arrow data for arrow_move event');
-                    break;
-                  }
-
-                  const targetStart =
-                    from && typeof from.start?.x === 'number' && typeof from.start?.y === 'number'
-                      ? from.start
-                      : arrow.start;
-                  const targetEnd =
-                    from && typeof from.end?.x === 'number' && typeof from.end?.y === 'number'
-                      ? from.end
-                      : arrow.end;
-
-                  let updatedArrowId = arrow.id;
-                  setArrowsByIsland((prev) => {
-                    const current = prev[selectedIslandId] || [];
-                    const resolvedId = resolveArrowId(current, arrow) || arrow.id;
-                    updatedArrowId = resolvedId;
-                    const existing = current.find((a) => a.id === resolvedId);
-
-                    if (existing) {
-                      if (resolvedId !== arrow.id) {
-                        arrowIdAliasRef.current.set(arrow.id, resolvedId);
-                      }
-                      return {
-                        ...prev,
-                        [selectedIslandId]: current.map((a) =>
-                          a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
-                        ),
-                      };
-                    }
-
-                    const fallbackArrow: ArrowSegment = {
-                      id: resolvedId,
-                      start: targetStart,
-                      end: targetEnd,
-                    };
-
-                    if (resolvedId !== arrow.id) {
-                      arrowIdAliasRef.current.set(arrow.id, resolvedId);
-                    }
-
-                    return {
-                      ...prev,
-                      [selectedIslandId]: [...current, fallbackArrow],
-                    };
-                  });
-
-                  objectsApi
-                    .updateMetadata(updatedArrowId, {
-                      arrow: true,
-                      start_x: targetStart.x,
-                      start_y: targetStart.y,
-                      end_x: targetEnd.x,
-                      end_y: targetEnd.y,
-                    })
-                    .catch((err) => {
-                      console.error('[UNDO] Failed to move arrow:', err);
-                    });
-                  break;
-                }
-
-                case 'arrow_delete': {
-                  // Undo arrow deletion = restore the arrow
-                  const { arrow } = lastEvent.event_data;
-
-                  // Create the arrow with a temporary ID first
-                  const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
-                  const tempArrow: ArrowSegment = {
-                    id: tempId,
-                    start: arrow.start,
-                    end: arrow.end,
-                  };
-
-                  setArrowsByIsland((prev) => ({
-                    ...prev,
-                    [selectedIslandId]: [...(prev[selectedIslandId] || []), tempArrow],
-                  }));
-
-                  // Persist to backend
-                  void (async () => {
-                    try {
-                      const created = await objectsApi.create(selectedIslandId, {
-                        type: 'text',
-                        title: 'Arrow',
-                        content: 'Arrow connection',
-                      });
-
-                      await objectsApi.updateMetadata(created.id, {
-                        arrow: true,
-                        start_x: arrow.start.x,
-                        start_y: arrow.start.y,
-                        end_x: arrow.end.x,
-                        end_y: arrow.end.y,
-                        content: 'Arrow connection',
-                      });
-
-                      // Replace temp ID with real ID
-                      setArrowsByIsland((prev) => ({
-                        ...prev,
-                        [selectedIslandId]: (prev[selectedIslandId] || []).map((a) =>
-                          a.id === tempId ? { ...a, id: created.id } : a
-                        ),
-                      }));
-                      arrowIdAliasRef.current.set(arrow.id, created.id);
-
-                      window.dispatchEvent(
-                        new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } })
-                      );
-                    } catch (err) {
-                      console.error('[UNDO] Failed to restore arrow:', err);
-                      // Remove the temp arrow on failure
-                      setArrowsByIsland((prev) => ({
-                        ...prev,
-                        [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== tempId),
-                      }));
-                    }
-                  })();
-                  break;
-                }
-
-                case 'text_create': {
-                  // Undo text creation = delete the text
-                  const { text } = lastEvent.event_data;
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== text.id),
-              }));
-
-                  // Delete from backend
-                  objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
-                    console.error('[UNDO] Failed to delete text note:', err);
-                  });
-
-                  window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: text.id } }));
-                  break;
-                }
-
-                case 'text_delete': {
-                  // Undo text deletion = restore the text
-                  const { text } = lastEvent.event_data;
-              const restoredText: DroppedIcon = {
-                id: text.id,
-                type: 'text',
-                title: text.title,
-                x: text.x,
-                y: text.y,
-                tag: normalizeTag(text.tag),
-                content: text.content,
-              };
-
-              setIconsByIsland((prev) => ({
-                ...prev,
-                [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredText],
-              }));
-
-                  objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
-                    console.error('[UNDO] Failed to restore text note:', err);
-                  });
-                  break;
-                }
-
-                default:
-                  console.warn('[UNDO] Unknown event type:', lastEvent);
-              }
-            } catch (err) {
-              console.error('[UNDO] Error processing undo:', err);
-            }
-          })();
-        }
+      if (!(e.ctrlKey || e.metaKey) || key !== 'z') return;
+
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
       }
+
+      if (!selectedIslandId) return;
+
+      e.preventDefault();
+      const direction: UndoDirection = e.shiftKey ? 'redo' : 'undo';
+      const runner = direction === 'redo' ? undoApi.redo : undoApi.undo;
+
+      void (async () => {
+        try {
+          const response = await runner(selectedIslandId);
+          if (!response.success || !response.event) {
+            console.log(`[${direction.toUpperCase()}] No events to ${direction}`);
+            return;
+          }
+
+          console.log(`[${direction.toUpperCase()}] Processing event:`, response.event.event_type, response.event);
+          await processUndoRedoEvent(response.event, direction);
+        } catch (err) {
+          console.error(`[${direction.toUpperCase()}] Error processing ${direction}:`, err);
+        }
+      })();
     };
 
     window.addEventListener('keydown', handleUndoRedo);
     return () => window.removeEventListener('keydown', handleUndoRedo);
-  }, [selectedIslandId, setIconsByIsland, setArrowsByIsland]);
+  }, [selectedIslandId]);
 };
