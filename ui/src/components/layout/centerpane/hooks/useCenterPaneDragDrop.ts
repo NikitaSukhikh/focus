@@ -600,6 +600,10 @@ export const useCenterPaneDragDrop = ({
       })
       .catch((err) => {
         console.error('Failed to create object from drop:', err);
+        setIconsByIsland((prev) => ({
+          ...prev,
+          [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+        }));
       });
   };
 
