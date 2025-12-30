@@ -178,9 +178,12 @@ class IslandsService:
                 session=session_to_use
             )
 
+            counts = await self.objects_repo.get_object_counts_by_island_ids(
+                [island.id for island in islands.islands],
+                session=session_to_use
+            )
             for island in islands.islands:
-                count = await self.objects_repo.get_object_count_by_island(island.id, session=session_to_use)
-                island.object_count = count
+                island.object_count = counts.get(str(island.id), 0)
 
             logger.debug(
                 f"Retrieved {len(islands.islands)} islands",

@@ -412,12 +412,23 @@ class ObjectsService:
         session: AsyncSession | None = None
     ) -> ObjectList:
         """
-        Compatibility helper for multi-tag queries (AND logic placeholder).
-        Currently uses the first tag for filtering to match existing repository behavior.
+        Multi-tag query (AND logic) across all islands.
         """
-        if not tags:
-            return ObjectList(objects=[], total=0)
-        return await self.get_objects_by_tag(tags[0], skip=skip, limit=limit, session=session)
+        session_to_use, external = self._get_session(session)
+        try:
+            objects = await self.objects_repo.search_objects(
+                search_query="",
+                tags=tags,
+                object_type=None,
+                island_id=None,
+                skip=skip,
+                limit=limit,
+                session=session_to_use
+            )
+            return objects
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Update
