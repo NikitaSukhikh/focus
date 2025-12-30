@@ -1,14 +1,1 @@
-"use strict";
-const electron = require("electron");
-electron.contextBridge.exposeInMainWorld("desktopAPI", {
-  platform: "electron",
-  openDialog: (options) => electron.ipcRenderer.invoke("desktop:open-dialog", options),
-  openExternal: (url) => electron.ipcRenderer.invoke("desktop:open-external", url),
-  showItemInFolder: (filePath) => electron.ipcRenderer.invoke("desktop:show-item-in-folder", filePath),
-  arrangeWindowsSideBySide: () => electron.ipcRenderer.invoke("desktop:arrange-windows-side-by-side"),
-  writeFileToClipboard: (filePath) => electron.ipcRenderer.invoke("desktop:write-file-to-clipboard", filePath),
-  clearClipboard: () => electron.ipcRenderer.invoke("desktop:clear-clipboard"),
-  openAuthWindow: (payload) => electron.ipcRenderer.invoke("desktop:open-auth-window", payload),
-  closeFileExplorer: () => electron.ipcRenderer.invoke("desktop:close-file-explorer")
-  // TODO: Add preview/webview helpers once renderer-side API is defined.
-});
+"use strict";const o=require("electron");o.contextBridge.exposeInMainWorld("desktopAPI",{platform:"electron",openDialog:e=>o.ipcRenderer.invoke("desktop:open-dialog",e),openExternal:e=>o.ipcRenderer.invoke("desktop:open-external",e),showItemInFolder:e=>o.ipcRenderer.invoke("desktop:show-item-in-folder",e),arrangeWindowsSideBySide:()=>o.ipcRenderer.invoke("desktop:arrange-windows-side-by-side"),writeFileToClipboard:e=>o.ipcRenderer.invoke("desktop:write-file-to-clipboard",e),clearClipboard:()=>o.ipcRenderer.invoke("desktop:clear-clipboard"),openAuthWindow:e=>o.ipcRenderer.invoke("desktop:open-auth-window",e),closeFileExplorer:()=>o.ipcRenderer.invoke("desktop:close-file-explorer")});
