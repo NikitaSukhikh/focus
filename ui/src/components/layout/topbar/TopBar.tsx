@@ -1,10 +1,11 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, X, Settings, MessageCircle, PanelRight, Search, Grid3x3, Slash, ZoomIn, ZoomOut } from 'lucide-react';
+import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomIn, ZoomOut } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { useTopBarLogic } from './useTopBarLogic';
 import { TopBarProps, TopBarHandle } from './types';
-import { TagsButton, TagsMenu, useTagsDropdown, TagColor } from './tags';
+import { TopBarSearch } from './TopBarSearch';
+import { TopBarTags } from './TopBarTags';
 import focusLogo from '../../../assets/focus.png';
 
 export type { TopBarHandle } from './types';
@@ -14,12 +15,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onTagsClick, isTagsOpen, onTagSelect } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
-  const tagsDropdown = useTagsDropdown({ isOpenProp: isTagsOpen, onToggle: onTagsClick });
-
-  const handleTagSelect = (color: TagColor) => {
-    onTagSelect?.(color);
-    tagsDropdown.close();
-  };
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({}), []);
@@ -113,38 +108,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
       {/* Right section */}
       <div className="flex items-center gap-2" style={{ zIndex: Z_INDEX.BASE_RAISED }}>
-        {/* Search Bar */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={16} style={{ color: 'var(--color-text-muted)' }} />
-          </div>
-          <input
-            type="text"
-            value={logic.searchQuery}
-            onChange={(e) => logic.setSearchQuery(e.target.value)}
-            placeholder="Search..."
-            className="pl-9 pr-3 py-1.5 rounded-lg focus:outline-none w-64"
-            style={{
-              ...FONT_ROLES.topbarControl,
-              background: 'var(--glass-bg)',
-              color: 'var(--color-text-primary)',
-              border: '1px solid var(--color-border-subtle)',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = 'var(--primary-color)';
-              e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-border-subtle)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-        </div>
+        {/* To be implemented in the future: search menu (hidden) */}
+        <TopBarSearch searchQuery={logic.searchQuery} setSearchQuery={logic.setSearchQuery} />
 
-        <div className="relative" style={{ zIndex: Z_INDEX.DROPDOWN_MENU }}>
-          <TagsButton ref={tagsDropdown.triggerRef} onClick={tagsDropdown.toggleOpen} isActive={tagsDropdown.isOpen} />
-          <TagsMenu ref={tagsDropdown.menuRef} isOpen={tagsDropdown.isOpen} onSelect={handleTagSelect} />
-        </div>
+        {/* To be implemented in the future: tags button (hidden) */}
+        <TopBarTags isOpen={isTagsOpen} onToggle={onTagsClick} onTagSelect={onTagSelect} />
 
         <div className="flex items-center gap-0 px-1 py-0.5 rounded-lg" style={{ background: 'var(--glass-bg)' }}>
           <button
