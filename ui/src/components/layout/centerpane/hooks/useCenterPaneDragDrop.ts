@@ -23,10 +23,10 @@ import { useDebouncedPositionUpdate } from '../../../../hooks/useDebouncedPositi
 import { normalizeTag } from '../../../../types/tags';
 
 interface DragDropParams {
-  selectedIsland: any;
+  selectedSpace: any;
   paneRef: React.RefObject<HTMLDivElement | null>;
   setIsDragOver: (value: boolean) => void;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
   getIconById: (id: string) => DroppedIcon | undefined;
   setDragGhost: (ghost: { id: string; x: number; y: number; type: IconKind } | null) => void;
@@ -34,10 +34,10 @@ interface DragDropParams {
 }
 
 export const useCenterPaneDragDrop = ({
-  selectedIsland,
+  selectedSpace,
   paneRef,
   setIsDragOver,
-  setIconsByIsland,
+  setIconsBySpace,
   clampToBoundaries,
   getIconById,
   setDragGhost,
@@ -124,14 +124,14 @@ export const useCenterPaneDragDrop = ({
     service?: string;
     content?: string;
   }) => {
-    if (!selectedIsland) return;
+    if (!selectedSpace) return;
     undoApi
-      .createEvent(selectedIsland.id, {
+      .createEvent(selectedSpace.id, {
         event_type: 'tile_create',
         event_data: { tile },
       })
       .catch((err) => console.error('Failed to create undo event:', err));
-  }, [selectedIsland]);
+  }, [selectedSpace]);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -204,8 +204,8 @@ export const useCenterPaneDragDrop = ({
       items: e.dataTransfer.items?.length,
     });
 
-    if (!paneRef.current || !selectedIsland) {
-      console.log('[DROP] Missing paneRef or selectedIsland');
+    if (!paneRef.current || !selectedSpace) {
+      console.log('[DROP] Missing paneRef or selectedSpace');
       return;
     }
 
@@ -234,9 +234,9 @@ export const useCenterPaneDragDrop = ({
       const fromX = dragStart.iconX;
       const fromY = dragStart.iconY;
 
-      setIconsByIsland((prev) => ({
+      setIconsBySpace((prev) => ({
         ...prev,
-        [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+        [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
           i.id === iconId ? { ...i, x, y } : i
         ),
       }));
@@ -249,7 +249,7 @@ export const useCenterPaneDragDrop = ({
         // Emit backend undo event for tile move
         const isText = movedIcon.type === 'text';
         undoApi
-          .createEvent(selectedIsland.id, {
+          .createEvent(selectedSpace.id, {
             event_type: isText ? 'text_move' : 'tile_move',
             event_data: {
               ...(isText
@@ -329,13 +329,13 @@ export const useCenterPaneDragDrop = ({
           filePath: filePath,
         };
 
-        setIconsByIsland((prev) => ({
+        setIconsBySpace((prev) => ({
           ...prev,
-          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
+          [selectedSpace.id]: [...(prev[selectedSpace.id] || []), optimisticIcon],
         }));
 
         objectsApi
-          .create(selectedIsland.id, payload)
+          .create(selectedSpace.id, payload)
           .then((created) => {
             const meta = (created.metadata || {}) as Record<string, any>;
             const createdFilePath = meta.file_path as string;
@@ -343,9 +343,9 @@ export const useCenterPaneDragDrop = ({
             const createdY = typeof meta.y === 'number' ? meta.y : clampedY;
             const tag = normalizeTag((created as any).tag ?? meta.tag);
 
-            setIconsByIsland((prev) => ({
+            setIconsBySpace((prev) => ({
               ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+              [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
                 i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, x: createdX, y: createdY, tag } : i
               ),
             }));
@@ -364,9 +364,9 @@ export const useCenterPaneDragDrop = ({
           })
           .catch((err) => {
             console.error('Failed to create file object:', err);
-            setIconsByIsland((prev) => ({
+            setIconsBySpace((prev) => ({
               ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+              [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
             }));
           });
       });
@@ -512,13 +512,13 @@ export const useCenterPaneDragDrop = ({
       description: payload.description,
       faviconUrl: payload.type === 'link' ? (payload as any).favicon_url || buildFaviconUrl((payload as any).url) : undefined,
     };
-    setIconsByIsland((prev) => {
-      const current = prev[selectedIsland.id] || [];
-      return { ...prev, [selectedIsland.id]: [...current, optimisticIcon] };
+    setIconsBySpace((prev) => {
+      const current = prev[selectedSpace.id] || [];
+      return { ...prev, [selectedSpace.id]: [...current, optimisticIcon] };
     });
 
     objectsApi
-      .create(selectedIsland.id, payload)
+      .create(selectedSpace.id, payload)
       .then((created) => {
         const createdServiceKey = created.description;
         const iconType: IconKind =
@@ -555,11 +555,11 @@ export const useCenterPaneDragDrop = ({
         const finalServiceKey = created.description;
         const tag = normalizeTag((created as any).tag ?? meta.tag);
 
-        setIconsByIsland((prev) => {
-          const current = (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId);
+        setIconsBySpace((prev) => {
+          const current = (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId);
           return {
             ...prev,
-            [selectedIsland.id]: [
+            [selectedSpace.id]: [
               ...current,
               {
                 id: created.id,
@@ -600,9 +600,9 @@ export const useCenterPaneDragDrop = ({
       })
       .catch((err) => {
         console.error('Failed to create object from drop:', err);
-        setIconsByIsland((prev) => ({
+        setIconsBySpace((prev) => ({
           ...prev,
-          [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+          [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
         }));
       });
   };

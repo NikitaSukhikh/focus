@@ -17,7 +17,7 @@ export function WebviewPreview({ webviewRef, url, hasNonWebviewPreview, loadErro
       <webview
         ref={webviewRef}
         src="about:blank"
-        partition="persist:ocean-webview"
+        partition="persist:focus-webview"
         allowpopups="true"
         style={{
           flex: 1,

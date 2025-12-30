@@ -47,7 +47,7 @@ from app.models.object import (
     TextObjectCreate,
 )
 from app.storage.repositories.objects_repo import objects_repository
-from app.storage.repositories.islands_repo import islands_repository
+from app.storage.repositories.spaces_repo import spaces_repository
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file
 from app.core.logging import get_logger
 from app.storage.db import AsyncSessionLocal
@@ -70,8 +70,8 @@ class ObjectNotFoundError(ObjectServiceError):
     pass
 
 
-class IslandNotFoundError(ObjectServiceError):
-    """Raised when the parent island is not found."""
+class SpaceNotFoundError(ObjectServiceError):
+    """Raised when the parent space is not found."""
     pass
 
 
@@ -102,7 +102,7 @@ class ObjectsService:
     """
 
     # Configuration
-    MAX_OBJECTS_PER_ISLAND = 500  # Maximum objects per island
+    MAX_OBJECTS_PER_ISLAND = 500  # Maximum objects per space
     MAX_TITLE_LENGTH = 400
     MIN_TITLE_LENGTH = 1
     MIN_CUSTOM_TITLE_LENGTH = 2
@@ -113,7 +113,7 @@ class ObjectsService:
     def __init__(self):
         """Initialize the service."""
         self.objects_repo = objects_repository
-        self.islands_repo = islands_repository
+        self.spaces_repo = spaces_repository
 
     def _get_session(self, session: AsyncSession | None) -> tuple[AsyncSession, bool]:
         """
@@ -129,7 +129,7 @@ class ObjectsService:
 
     async def create_object(
         self,
-        island_id: UUID,
+        space_id: UUID,
         object_data: Union[
             LinkObjectCreate,
             FileObjectCreate,
@@ -143,14 +143,14 @@ class ObjectsService:
         Create a new object with type-specific validation.
 
         Args:
-            island_id: ID of the island to add the object to
+            space_id: ID of the space to add the object to
             object_data: Object creation data (polymorphic)
 
         Returns:
             ObjectResponse: Created object
 
         Raises:
-            IslandNotFoundError: If island doesn't exist
+            SpaceNotFoundError: If space doesn't exist
             ObjectLimitExceededError: If object limit exceeded
             InvalidObjectDataError: If object data is invalid
             FileNotFoundError: If file object's file doesn't exist
@@ -159,18 +159,18 @@ class ObjectsService:
 
         try:
             async with session_to_use.begin():
-                await self._check_island_exists(island_id, session=session_to_use)
-                await self._check_object_limit(island_id, session=session_to_use)
+                await self._check_space_exists(space_id, session=session_to_use)
+                await self._check_object_limit(space_id, session=session_to_use)
                 await self._validate_object_data(object_data)
 
                 obj = await self.objects_repo.create_object(
-                    island_id,
+                    space_id,
                     object_data,
                     session=session_to_use
                 )
 
-                await self.islands_repo.update_island_object_count(
-                    island_id,
+                await self.spaces_repo.update_space_object_count(
+                    space_id,
                     delta=1,
                     session=session_to_use
                 )
@@ -180,7 +180,7 @@ class ObjectsService:
                 f"Created {obj.type} object: {obj.title}",
                 extra={
                     "object_id": str(obj.id),
-                    "island_id": str(island_id),
+                    "space_id": str(space_id),
                     "type": obj.type,
                     "title": obj.title
                 }
@@ -220,9 +220,9 @@ class ObjectsService:
             if not external:
                 await session_to_use.close()
 
-    async def get_objects_by_island(
+    async def get_objects_by_space(
         self,
-        island_id: UUID,
+        space_id: UUID,
         skip: int = 0,
         limit: int = 100,
         object_type: Optional[ObjectType] = None,
@@ -233,10 +233,10 @@ class ObjectsService:
         session: AsyncSession | None = None,
     ) -> ObjectList:
         """
-        Get all objects on an island with filtering and sorting.
+        Get all objects on an space with filtering and sorting.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
             skip: Number of records to skip
             limit: Maximum number of records to return
             object_type: Filter by object type
@@ -249,14 +249,14 @@ class ObjectsService:
             ObjectList: Paginated list of objects
 
         Raises:
-            IslandNotFoundError: If island doesn't exist
+            SpaceNotFoundError: If space doesn't exist
         """
         session_to_use, external = self._get_session(session)
         try:
-            await self._check_island_exists(island_id, session=session_to_use)
+            await self._check_space_exists(space_id, session=session_to_use)
 
-            objects = await self.objects_repo.get_objects_by_island(
-                island_id=island_id,
+            objects = await self.objects_repo.get_objects_by_space(
+                space_id=space_id,
                 skip=skip,
                 limit=limit,
                 object_type=object_type,
@@ -268,9 +268,9 @@ class ObjectsService:
             )
 
             logger.debug(
-                f"Retrieved {len(objects.objects)} objects for island {island_id}",
+                f"Retrieved {len(objects.objects)} objects for space {space_id}",
                 extra={
-                    "island_id": str(island_id),
+                    "space_id": str(space_id),
                     "total": objects.total,
                     "filters": {
                         "type": object_type,
@@ -290,13 +290,13 @@ class ObjectsService:
         search_query: str,
         tags: Optional[List[str]] = None,
         object_type: Optional[ObjectType] = None,
-        island_id: Optional[UUID] = None,
+        space_id: Optional[UUID] = None,
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None
     ) -> ObjectList:
         """
-        Search objects across all islands.
+        Search objects across all spaces.
 
         Args:
             search_query: Search string
@@ -314,7 +314,7 @@ class ObjectsService:
                 search_query=search_query,
                 tags=tags,
                 object_type=object_type,
-                island_id=island_id,
+                space_id=space_id,
                 skip=skip,
                 limit=limit,
                 session=session_to_use
@@ -412,7 +412,7 @@ class ObjectsService:
         session: AsyncSession | None = None
     ) -> ObjectList:
         """
-        Multi-tag query (AND logic) across all islands.
+        Multi-tag query (AND logic) across all spaces.
         """
         session_to_use, external = self._get_session(session)
         try:
@@ -420,7 +420,7 @@ class ObjectsService:
                 search_query="",
                 tags=tags,
                 object_type=None,
-                island_id=None,
+                space_id=None,
                 skip=skip,
                 limit=limit,
                 session=session_to_use
@@ -487,34 +487,34 @@ class ObjectsService:
 
     async def reorder_objects(
         self,
-        island_id: UUID,
+        space_id: UUID,
         object_ids: List[UUID],
         session: AsyncSession | None = None
     ) -> List[ObjectResponse]:
         """
-        Reorder objects on an island.
+        Reorder objects on an space.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
             object_ids: Ordered list of object UUIDs
 
         Returns:
             List[ObjectResponse]: Reordered objects
 
         Raises:
-            IslandNotFoundError: If island doesn't exist
+            SpaceNotFoundError: If space doesn't exist
             InvalidObjectDataError: If object IDs are invalid
         """
         session_to_use, external = self._get_session(session)
 
         try:
             async with session_to_use.begin():
-                await self._check_island_exists(island_id, session=session_to_use)
-                reordered = await self.objects_repo.reorder_objects(island_id, object_ids, session=session_to_use)
+                await self._check_space_exists(space_id, session=session_to_use)
+                reordered = await self.objects_repo.reorder_objects(space_id, object_ids, session=session_to_use)
 
             logger.info(
-                f"Reordered {len(object_ids)} objects on island {island_id}",
-                extra={"island_id": str(island_id), "object_count": len(object_ids)}
+                f"Reordered {len(object_ids)} objects on space {space_id}",
+                extra={"space_id": str(space_id), "object_count": len(object_ids)}
             )
 
             return reordered
@@ -549,7 +549,7 @@ class ObjectsService:
                 if obj is None:
                     raise ObjectNotFoundError(f"Object not found: {object_id}")
 
-                island_id = obj.island_id
+                space_id = obj.space_id
                 object_title = obj.title
 
                 deleted = await self.objects_repo.delete_object(object_id, session=session_to_use)
@@ -557,13 +557,13 @@ class ObjectsService:
                 if not deleted:
                     raise ObjectNotFoundError(f"Object not found during deletion: {object_id}")
 
-                await self.islands_repo.update_island_object_count(island_id, delta=-1, session=session_to_use)
+                await self.spaces_repo.update_space_object_count(space_id, delta=-1, session=session_to_use)
 
             logger.info(
                 f"Deleted object: {object_title}",
                 extra={
                     "object_id": str(object_id),
-                    "island_id": str(island_id),
+                    "space_id": str(space_id),
                     "title": object_title
                 }
             )
@@ -581,36 +581,36 @@ class ObjectsService:
     # Validation Helpers
     # ========================================================================
 
-    async def _check_island_exists(self, island_id: UUID, session: AsyncSession | None = None) -> None:
+    async def _check_space_exists(self, space_id: UUID, session: AsyncSession | None = None) -> None:
         """
-        Check if an island exists.
+        Check if an space exists.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Raises:
-            IslandNotFoundError: If island doesn't exist
+            SpaceNotFoundError: If space doesn't exist
         """
-        exists = await self.islands_repo.exists(island_id, session=session)
+        exists = await self.spaces_repo.exists(space_id, session=session)
         if not exists:
-            raise IslandNotFoundError(f"Island not found: {island_id}")
+            raise SpaceNotFoundError(f"Space not found: {space_id}")
 
-    async def _check_object_limit(self, island_id: UUID, session: AsyncSession | None = None) -> None:
+    async def _check_object_limit(self, space_id: UUID, session: AsyncSession | None = None) -> None:
         """
-        Check if object limit for island has been reached.
+        Check if object limit for space has been reached.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Raises:
             ObjectLimitExceededError: If limit exceeded
         """
-        current_count = await self.objects_repo.get_object_count_by_island(island_id, session=session)
+        current_count = await self.objects_repo.get_object_count_by_space(space_id, session=session)
 
         if current_count >= self.MAX_OBJECTS_PER_ISLAND:
             raise ObjectLimitExceededError(
                 f"Maximum number of objects ({self.MAX_OBJECTS_PER_ISLAND}) "
-                f"reached for this island"
+                f"reached for this space"
             )
 
     async def _validate_object_data(

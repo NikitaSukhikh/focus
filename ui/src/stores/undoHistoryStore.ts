@@ -6,7 +6,7 @@ export type UndoEventType = 'tile_create' | 'tile_move' | 'tile_delete' | 'text_
 export interface TileCreateEvent {
   type: 'tile_create';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   tile: {
     id: string;
     type: string;
@@ -26,7 +26,7 @@ export interface TileCreateEvent {
 export interface TileDeleteEvent {
   type: 'tile_delete';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   tile: {
     id: string;
     type: string;
@@ -46,7 +46,7 @@ export interface TileDeleteEvent {
 export interface TileMoveEvent {
   type: 'tile_move';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   from: { x: number; y: number };
   to: { x: number; y: number };
   tile: {
@@ -68,7 +68,7 @@ export interface TileMoveEvent {
 export interface TextMoveEvent {
   type: 'text_move';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   from: { x: number; y: number };
   to: { x: number; y: number };
   text: {
@@ -83,7 +83,7 @@ export interface TextMoveEvent {
 export interface ArrowMoveEvent {
   type: 'arrow_move';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   // Mirror backend arrow_move payload for client-side history
   from: { start: { x: number; y: number }; end: { x: number; y: number } };
   to: { start: { x: number; y: number }; end: { x: number; y: number } };
@@ -97,7 +97,7 @@ export interface ArrowMoveEvent {
 export interface ArrowCreateEvent {
   type: 'arrow_create';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   arrow: {
     id: string;
     start: { x: number; y: number };
@@ -108,7 +108,7 @@ export interface ArrowCreateEvent {
 export interface ArrowDeleteEvent {
   type: 'arrow_delete';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   arrow: {
     id: string;
     start: { x: number; y: number };
@@ -119,7 +119,7 @@ export interface ArrowDeleteEvent {
 export interface TextCreateEvent {
   type: 'text_create';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   text: {
     id: string;
     title: string;
@@ -132,7 +132,7 @@ export interface TextCreateEvent {
 export interface TextDeleteEvent {
   type: 'text_delete';
   timestamp: number;
-  islandId: string;
+  spaceId: string;
   text: {
     id: string;
     title: string;
@@ -148,13 +148,13 @@ interface UndoHistoryStore {
   events: UndoEvent[];
   redoEvents: UndoEvent[];
   addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileMoveEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<TextMoveEvent, 'timestamp'> | Omit<ArrowMoveEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => void;
-  getLastEvent: (islandId?: string) => UndoEvent | null;
-  removeLastEvent: (islandId?: string) => void;
-  getLastRedoEvent: (islandId?: string) => UndoEvent | null;
-  removeLastRedoEvent: (islandId?: string) => void;
+  getLastEvent: (spaceId?: string) => UndoEvent | null;
+  removeLastEvent: (spaceId?: string) => void;
+  getLastRedoEvent: (spaceId?: string) => UndoEvent | null;
+  removeLastRedoEvent: (spaceId?: string) => void;
   moveEventToRedo: (event: UndoEvent) => void;
   moveEventToUndo: (event: UndoEvent) => void;
-  clearHistory: (islandId?: string) => void;
+  clearHistory: (spaceId?: string) => void;
 }
 
 const MAX_HISTORY_EVENTS = 100;
@@ -182,12 +182,12 @@ export const useUndoHistoryStore = create<UndoHistoryStore>((set, get) => ({
     });
   },
 
-  getLastEvent: (islandId?: string) => {
+  getLastEvent: (spaceId?: string) => {
     const { events } = get();
 
-    // Filter by island if specified
-    const filteredEvents = islandId
-      ? events.filter((e) => e.islandId === islandId)
+    // Filter by space if specified
+    const filteredEvents = spaceId
+      ? events.filter((e) => e.spaceId === spaceId)
       : events;
 
     if (filteredEvents.length === 0) return null;
@@ -197,13 +197,13 @@ export const useUndoHistoryStore = create<UndoHistoryStore>((set, get) => ({
     return sorted[sorted.length - 1];
   },
 
-  removeLastEvent: (islandId?: string) => {
+  removeLastEvent: (spaceId?: string) => {
     set((state) => {
       const { events } = state;
 
-      // Filter by island if specified
-      const filteredEvents = islandId
-        ? events.filter((e) => e.islandId === islandId)
+      // Filter by space if specified
+      const filteredEvents = spaceId
+        ? events.filter((e) => e.spaceId === spaceId)
         : events;
 
       if (filteredEvents.length === 0) return state;
@@ -219,12 +219,12 @@ export const useUndoHistoryStore = create<UndoHistoryStore>((set, get) => ({
     });
   },
 
-  getLastRedoEvent: (islandId?: string) => {
+  getLastRedoEvent: (spaceId?: string) => {
     const { redoEvents } = get();
 
-    // Filter by island if specified
-    const filteredEvents = islandId
-      ? redoEvents.filter((e) => e.islandId === islandId)
+    // Filter by space if specified
+    const filteredEvents = spaceId
+      ? redoEvents.filter((e) => e.spaceId === spaceId)
       : redoEvents;
 
     if (filteredEvents.length === 0) return null;
@@ -234,13 +234,13 @@ export const useUndoHistoryStore = create<UndoHistoryStore>((set, get) => ({
     return sorted[sorted.length - 1];
   },
 
-  removeLastRedoEvent: (islandId?: string) => {
+  removeLastRedoEvent: (spaceId?: string) => {
     set((state) => {
       const { redoEvents } = state;
 
-      // Filter by island if specified
-      const filteredEvents = islandId
-        ? redoEvents.filter((e) => e.islandId === islandId)
+      // Filter by space if specified
+      const filteredEvents = spaceId
+        ? redoEvents.filter((e) => e.spaceId === spaceId)
         : redoEvents;
 
       if (filteredEvents.length === 0) return state;
@@ -282,16 +282,16 @@ export const useUndoHistoryStore = create<UndoHistoryStore>((set, get) => ({
     });
   },
 
-  clearHistory: (islandId?: string) => {
+  clearHistory: (spaceId?: string) => {
     set((state) => {
-      if (!islandId) {
+      if (!spaceId) {
         return { events: [], redoEvents: [] };
       }
 
-      // Clear only events for the specific island
+      // Clear only events for the specific space
       return {
-        events: state.events.filter((e) => e.islandId !== islandId),
-        redoEvents: state.redoEvents.filter((e) => e.islandId !== islandId),
+        events: state.events.filter((e) => e.spaceId !== spaceId),
+        redoEvents: state.redoEvents.filter((e) => e.spaceId !== spaceId),
       };
     });
   },

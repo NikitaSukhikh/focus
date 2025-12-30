@@ -16,11 +16,11 @@ import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 
 interface IconActionsParams {
-  selectedIsland: any;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  selectedSpace: any;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
 }
 
-export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: IconActionsParams) => {
+export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: IconActionsParams) => {
 
   const looksLikeFavicon = (src?: string) => {
     const s = (src || '').toLowerCase();
@@ -37,13 +37,13 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
   };
 
   const handleIconRename = (iconId: string, newTitle: string) => {
-    if (!selectedIsland) return;
+    if (!selectedSpace) return;
     const trimmedTitle = newTitle.trim();
     if (trimmedTitle.length < 2) return;
     const displayTitle = truncateLinkTitle(trimmedTitle);
-    setIconsByIsland((prev) => ({
+    setIconsBySpace((prev) => ({
       ...prev,
-      [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+      [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
         i.id === iconId ? { ...i, title: displayTitle, customTitle: displayTitle } : i
       ),
     }));
@@ -53,16 +53,16 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
   };
 
   const handleIconDelete = (iconId: string) => {
-    if (!selectedIsland) return;
+    if (!selectedSpace) return;
 
-    setIconsByIsland((prev) => {
-      const tile = (prev[selectedIsland.id] || []).find((i) => i.id === iconId);
+    setIconsBySpace((prev) => {
+      const tile = (prev[selectedSpace.id] || []).find((i) => i.id === iconId);
       if (tile) {
         // Add to backend undo history
         // Text tiles use text_delete event, all other tiles use tile_delete
         if (tile.type === 'text') {
           undoApi
-            .createEvent(selectedIsland.id, {
+            .createEvent(selectedSpace.id, {
               event_type: 'text_delete',
               event_data: {
                 text: {
@@ -77,7 +77,7 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
             .catch((err) => console.error('Failed to create undo event:', err));
         } else {
           undoApi
-            .createEvent(selectedIsland.id, {
+            .createEvent(selectedSpace.id, {
               event_type: 'tile_delete',
               event_data: {
                 tile: {
@@ -109,7 +109,7 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
 
       return {
         ...prev,
-        [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== iconId),
+        [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== iconId),
       };
     });
 
@@ -120,7 +120,7 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
   };
 
   const handleIconRefreshMetadata = async (iconId: string, url: string | undefined) => {
-    if (!selectedIsland || !url) return;
+    if (!selectedSpace || !url) return;
 
     try {
       const params = new URLSearchParams({ url });
@@ -136,9 +136,9 @@ export const useCenterPaneIconActions = ({ selectedIsland, setIconsByIsland }: I
         const newFaviconUrl = pickFavicon(metadata, resolvedUrl, url);
         console.log('[CENTER PANE] Using favicon URL:', newFaviconUrl);
 
-        setIconsByIsland((prev) => ({
+        setIconsBySpace((prev) => ({
           ...prev,
-          [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+          [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
             i.id === iconId
               ? {
                   ...i,

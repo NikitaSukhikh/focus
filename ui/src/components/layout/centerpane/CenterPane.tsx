@@ -8,12 +8,12 @@ import { Z_INDEX } from '../../../constants/zIndex';
 import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
 import { AddTextDialog } from '../../dialogs/AddTextDialog';
 import { InlineTextEditor } from './InlineTextEditor';
-import { useIslandStore } from '../../../stores/islandStore';
+import { useSpaceStore } from '../../../stores/spaceStore';
 import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from './hooks/useArrowDrawing';
 import { ARROW_SETTINGS } from './arrowSettings';
 
-// CenterPane renders the freeform canvas of tiles/arrows for the selected island, wiring user input to the composable center-pane logic hooks.
+// CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const zoom = zoomProp ?? 1;
@@ -22,12 +22,12 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const textPreviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const logic = useCenterPaneLogic(paneRef, zoom);
-  const isDuplicating = useIslandStore((state) => state.isDuplicating);
+  const isDuplicating = useSpaceStore((state) => state.isDuplicating);
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     addFiles: logic.handleAddFiles,
-    getTilesForIsland: (islandId: string) => logic.iconsByIsland[islandId] || [],
+    getTilesForSpace: (spaceId: string) => logic.iconsBySpace[spaceId] || [],
     openAddLinkDialog: () => {
       if (!paneRef.current) {
         logic.openAddLinkDialog(200, 200);
@@ -40,13 +40,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       const centerCanvasY = (rect.height / 2 + scrollTop) / Math.max(zoom, 0.01);
       logic.openAddLinkDialog(centerCanvasX, centerCanvasY);
     },
-  }), [logic.handleAddFiles, logic.iconsByIsland, logic.openAddLinkDialog, zoom]);
+  }), [logic.handleAddFiles, logic.iconsBySpace, logic.openAddLinkDialog, zoom]);
 
   const selectedIcons = useMemo(() => {
-    if (!logic.selectedIsland) return [];
-    const icons = logic.iconsByIsland[logic.selectedIsland.id] || [];
+    if (!logic.selectedSpace) return [];
+    const icons = logic.iconsBySpace[logic.selectedSpace.id] || [];
     return icons.filter((icon) => logic.selectedIconIds.includes(icon.id));
-  }, [logic.iconsByIsland, logic.selectedIconIds, logic.selectedIsland]);
+  }, [logic.iconsBySpace, logic.selectedIconIds, logic.selectedSpace]);
   const INLINE_PREVIEW_LIMIT = 6;
   const inlinePreviewIcons = useMemo(
     () => selectedIcons.slice(0, INLINE_PREVIEW_LIMIT),
@@ -123,9 +123,9 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   } = useArrowDrawing({
     zoom,
     paneRef,
-    selectedIslandId: logic.selectedIsland?.id,
-    arrowsByIsland: logic.arrowsByIsland,
-    setArrowsByIsland: logic.setArrowsByIsland,
+    selectedSpaceId: logic.selectedSpace?.id,
+    arrowsBySpace: logic.arrowsBySpace,
+    setArrowsBySpace: logic.setArrowsBySpace,
     contentHeight: logic.contentHeight,
     toCanvasCoords,
     contextMenuOpen: !!contextMenu || !!arrowContextMenu,
@@ -164,7 +164,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
   useEffect(() => {
     setArrowContextMenu(null);
-  }, [logic.selectedIsland?.id]);
+  }, [logic.selectedSpace?.id]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -346,7 +346,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               minHeight: `${contentHeightWithArrows / Math.max(zoom, 0.01)}px`,
             }}
           >
-            {(logic.selectedIsland && logic.iconsByIsland[logic.selectedIsland.id]?.length) ? null : (
+            {(logic.selectedSpace && logic.iconsBySpace[logic.selectedSpace.id]?.length) ? null : (
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>Drop integrations or links here. Use the + button to add files.</div>
             )}
 
@@ -468,7 +468,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               />
             )}
 
-            {(logic.iconsByIsland[logic.selectedIsland?.id ?? ''] || []).map((icon) => (
+            {(logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || []).map((icon) => (
               logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
                 <Tile
                   key={icon.id}

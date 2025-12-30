@@ -3,7 +3,7 @@
  *
  * Purpose: Composes all TopBar business logic hooks into a unified interface
  * Responsibilities:
- * - Composing specialized hooks (integrations, links, island editor, context menu)
+ * - Composing specialized hooks (integrations, links, space editor, context menu)
  * - Providing a single unified API to the TopBar presentation component
  * - Managing dependencies between different TopBar features
  *
@@ -12,30 +12,30 @@
  */
 
 import { CenterPaneHandle } from '../centerpane/types';
-import { useIslandStore } from '../../../stores/islandStore';
-import { useIslandNameEditor } from './hooks/useIslandNameEditor';
+import { useSpaceStore } from '../../../stores/spaceStore';
+import { useSpaceNameEditor } from './hooks/useSpaceNameEditor';
 
 export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>) => {
-  const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
-  const updateIsland = useIslandStore((state) => state.updateIsland);
+  const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
+  const updateSpace = useSpaceStore((state) => state.updateSpace);
 
-  // Island name editor
-  const islandEditor = useIslandNameEditor({
-    selectedIsland,
-    updateIsland,
+  // Space name editor
+  const spaceEditor = useSpaceNameEditor({
+    selectedSpace,
+    updateSpace,
   });
 
   return {
-    // Island state
-    selectedIsland,
+    // Space state
+    selectedSpace,
 
-    // Island name editor
-    isEditingIslandName: islandEditor.isEditingIslandName,
-    setIsEditingIslandName: islandEditor.setIsEditingIslandName,
-    editingIslandName: islandEditor.editingIslandName,
-    setEditingIslandName: islandEditor.setEditingIslandName,
-    islandNameInputRef: islandEditor.islandNameInputRef,
-    handleIslandNameSubmit: islandEditor.handleIslandNameSubmit,
-    handleIslandNameKeyDown: islandEditor.handleIslandNameKeyDown,
+    // Space name editor
+    isEditingSpaceName: spaceEditor.isEditingSpaceName,
+    setIsEditingSpaceName: spaceEditor.setIsEditingSpaceName,
+    editingSpaceName: spaceEditor.editingSpaceName,
+    setEditingSpaceName: spaceEditor.setEditingSpaceName,
+    spaceNameInputRef: spaceEditor.spaceNameInputRef,
+    handleSpaceNameSubmit: spaceEditor.handleSpaceNameSubmit,
+    handleSpaceNameKeyDown: spaceEditor.handleSpaceNameKeyDown,
   };
 };

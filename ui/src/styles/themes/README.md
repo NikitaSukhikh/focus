@@ -1,8 +1,8 @@
-# Ocean App Style System
+# Focus App Style System
 
 ## Overview
 
-The Ocean app supports multiple visual themes through a centralized style switching system.
+The Focus app supports multiple visual themes through a centralized style switching system.
 
 ## Available Styles
 

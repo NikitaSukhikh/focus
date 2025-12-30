@@ -1,10 +1,10 @@
-# Ocean - Quick Start Guide
+# Focus - Quick Start Guide
 
-## Two Ways to Run Ocean UI
+## Two Ways to Run Focus UI
 
 ### Option 1: Desktop App (Recommended) 🖥️
 
-Run Ocean as a **standalone desktop application** using Tauri.
+Run Focus as a **standalone desktop application** using Tauri.
 
 #### Prerequisites
 - **Rust** must be installed:
@@ -33,7 +33,7 @@ Or use the helper script:
 ./run-desktop.sh
 ```
 
-This will launch Ocean in a **native desktop window** (no browser needed)!
+This will launch Focus in a **native desktop window** (no browser needed)!
 
 ### Option 2: Browser Mode (Development) 🌐
 
@@ -67,7 +67,7 @@ Or use the helper script:
 
 A three-pane layout:
 
-- **Left Sidebar** (dark theme): Islands list with sample data
+- **Left Sidebar** (dark theme): Spaces list with sample data
   - Click the chevron icon to collapse/expand
   - Resizable by dragging the edge
   
@@ -82,7 +82,7 @@ A three-pane layout:
 ## Project Structure
 
 ```
-ocean/
+focus/
 ├── backend/              # Python FastAPI backend
 │   ├── requirements.txt  # Python dependencies (updated)
 │   └── app/             # Backend application code
@@ -110,7 +110,7 @@ ocean/
 ✅ Three-pane layout as per README.md
 ✅ Resizable left sidebar
 ✅ Visual styling matching assistant UI theme
-✅ Sample Islands and Objects
+✅ Sample Spaces and Objects
 ✅ Preview panel with metadata
 ✅ Responsive hover effects
 ✅ Custom scrollbars
@@ -167,4 +167,4 @@ This will create platform-specific installers in `ui/src-tauri/target/release/bu
 - **macOS**: `.dmg` and `.app` bundle
 - **Linux**: `.deb`, `.AppImage`, and others
 
-Enjoy exploring Ocean! 🌊
+Enjoy exploring Focus! 🌊

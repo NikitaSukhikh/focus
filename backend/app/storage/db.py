@@ -2,7 +2,7 @@
 Async database setup and ORM models.
 
 This module configures the SQLAlchemy async engine/session and defines the
-core tables for islands, objects, and Google tokens.
+core tables for spaces, objects, and Google tokens.
 """
 
 import uuid
@@ -33,10 +33,10 @@ Base = declarative_base()
 
 # Models
 
-class Island(Base):
-    """Islands table (workspaces)."""
+class Space(Base):
+    """Spaces table (workspaces)."""
 
-    __tablename__ = "islands"
+    __tablename__ = "spaces"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), nullable=False, index=True)
@@ -48,16 +48,16 @@ class Island(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
-    objects = relationship("Object", back_populates="island", cascade="all, delete-orphan")
+    objects = relationship("Object", back_populates="space", cascade="all, delete-orphan")
 
 
 class Object(Base):
-    """Objects table (items on islands)."""
+    """Objects table (items on spaces)."""
 
     __tablename__ = "objects"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    island_id = Column(String, ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True)
+    space_id = Column(String, ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True)
     type = Column(String(50), nullable=False)
     title = Column(String(400), nullable=False)
     description = Column(Text, nullable=True)
@@ -71,10 +71,10 @@ class Object(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
-    island = relationship("Island", back_populates="objects")
+    space = relationship("Space", back_populates="objects")
 
     __table_args__ = (
-        Index("idx_objects_island_type", "island_id", "type"),
+        Index("idx_objects_space_type", "space_id", "type"),
     )
 
 
@@ -121,8 +121,8 @@ class UndoEvent(Base):
     __tablename__ = "undo_events"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    island_id = Column(String, ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True)
-    # Monotonic per-island order; redo/undo uses sequence to step backward/forward.
+    space_id = Column(String, ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Monotonic per-space order; redo/undo uses sequence to step backward/forward.
     sequence = Column(Integer, nullable=False, default=0, server_default="0")
     # event_type covers nine event kinds: tile_create/tile_move/tile_delete,
     # text_create/text_move/text_delete, arrow_create/arrow_move/arrow_delete.
@@ -132,8 +132,8 @@ class UndoEvent(Base):
     is_undone = Column(Boolean, nullable=False, default=False, server_default="0", index=True)
 
     __table_args__ = (
-        Index("idx_undo_events_island_undone", "island_id", "is_undone", "sequence"),
-        Index("idx_undo_events_island_sequence", "island_id", "sequence", unique=True),
+        Index("idx_undo_events_space_undone", "space_id", "is_undone", "sequence"),
+        Index("idx_undo_events_space_sequence", "space_id", "sequence", unique=True),
     )
 
 

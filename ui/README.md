@@ -1,12 +1,12 @@
-# Ocean UI
+# Focus UI
 
-React + TypeScript + Vite frontend for Ocean desktop application.
+React + TypeScript + Vite frontend for Focus desktop application.
 
 ## Features
 
 - **Three-pane layout**: 
-  - Left sidebar (Islands list, usually folded by default)
-  - Center pane (Active Island canvas with object tiles)
+  - Left sidebar (Spaces list, usually folded by default)
+  - Center pane (Active Space canvas with object tiles)
   - Right sidebar (Preview/inspector panel for focused objects)
 - Tailwind CSS styling matching the assistant UI theme
 - Resizable left sidebar
@@ -40,7 +40,7 @@ cp .env.example .env
 npm run tauri:dev
 ```
 
-This launches Ocean as a **native desktop application** (no browser needed).
+This launches Focus as a **native desktop application** (no browser needed).
 
 ### Running in Browser (Development)
 
@@ -75,7 +75,7 @@ src/
 │   ├── layout/          # Layout components (TopBar, LeftSidebar, CenterPane, RightSidebar)
 │   ├── common/          # Reusable UI components (Button, Icon, Spinner, etc.)
 │   └── features/        # Feature-specific components
-│       ├── islands/     # Islands management
+│       ├── spaces/     # Spaces management
 │       ├── objects/     # Objects (links, files) management
 │       ├── preview/     # Preview panel components
 │       ├── google/      # Google OAuth integration
@@ -101,7 +101,7 @@ This project uses Tailwind CSS with a custom configuration matching the assistan
 ### Layout Components
 
 - **TopBar**: Top navigation bar with app logo, sidebar toggle, and action buttons
-- **LeftSidebar**: Collapsible sidebar showing Islands list with resize handle
+- **LeftSidebar**: Collapsible sidebar showing Spaces list with resize handle
 - **CenterPane**: Main canvas displaying object tiles in a grid layout
 - **RightSidebar**: Preview panel showing focused object details and metadata
 

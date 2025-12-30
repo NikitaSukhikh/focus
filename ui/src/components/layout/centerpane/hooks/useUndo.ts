@@ -18,24 +18,24 @@ import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 import type { UndoEventResponse } from '../../../../api/undo';
 
 interface UseUndoProps {
-  selectedIslandId?: string;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
-  setArrowsByIsland: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
+  selectedSpaceId?: string;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  setArrowsBySpace: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
 }
 
 export const useUndo = ({
-  selectedIslandId,
-  setIconsByIsland,
-  setArrowsByIsland,
+  selectedSpaceId,
+  setIconsBySpace,
+  setArrowsBySpace,
 }: UseUndoProps) => {
   const clearLocalHistory = useUndoHistoryStore((state) => state.clearHistory);
   // Track current arrow IDs when they get recreated so redo/undo can target the right object even if the original ID was deleted.
   const arrowIdAliasRef = useRef<Map<string, string>>(new Map());
 
-  // Reset mapping when switching islands to avoid cross-island ID reuse.
+  // Reset mapping when switching spaces to avoid cross-space ID reuse.
   useEffect(() => {
     arrowIdAliasRef.current.clear();
-  }, [selectedIslandId]);
+  }, [selectedSpaceId]);
 
   const resolveArrowId = (
     currentArrows: ArrowSegment[],
@@ -100,22 +100,22 @@ export const useUndo = ({
     switch (event.event_type) {
       case 'tile_create': {
         const { tile } = event.event_data;
-        if (!tile || !selectedIslandId) break;
+        if (!tile || !selectedSpaceId) break;
 
         if (isRedo) {
           const restoredTile = toDroppedIconFromTile(tile);
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredTile],
+            [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredTile],
           }));
 
           objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
             console.error(`[${direction.toUpperCase()}] Failed to restore tile:`, err);
           });
         } else {
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== tile.id),
+            [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((icon) => icon.id !== tile.id),
           }));
 
           objectsApi.updatePosition(tile.id, -1, -1).catch((err) => {
@@ -128,27 +128,27 @@ export const useUndo = ({
 
       case 'tile_move': {
         const { tile, from, to } = event.event_data;
-        if (!tile || !selectedIslandId) break;
+        if (!tile || !selectedSpaceId) break;
 
         const target = isRedo ? to : from;
         const targetX = typeof target?.x === 'number' ? target.x : tile.x;
         const targetY = typeof target?.y === 'number' ? target.y : tile.y;
 
-        setIconsByIsland((prev) => {
-          const current = prev[selectedIslandId] || [];
+        setIconsBySpace((prev) => {
+          const current = prev[selectedSpaceId] || [];
           const existing = current.find((icon) => icon.id === tile.id);
 
           if (existing) {
             return {
               ...prev,
-              [selectedIslandId]: current.map((icon) =>
+              [selectedSpaceId]: current.map((icon) =>
                 icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
               ),
             };
           }
 
           const fallbackTile = toDroppedIconFromTile({ ...tile, x: targetX, y: targetY });
-          return { ...prev, [selectedIslandId]: [...current, fallbackTile] };
+          return { ...prev, [selectedSpaceId]: [...current, fallbackTile] };
         });
 
         objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
@@ -159,26 +159,26 @@ export const useUndo = ({
 
       case 'text_move': {
         const { text, from, to } = event.event_data;
-        if (!text || !selectedIslandId) break;
+        if (!text || !selectedSpaceId) break;
         const target = isRedo ? to : from;
         const targetX = typeof target?.x === 'number' ? target.x : text.x;
         const targetY = typeof target?.y === 'number' ? target.y : text.y;
 
-        setIconsByIsland((prev) => {
-          const current = prev[selectedIslandId] || [];
+        setIconsBySpace((prev) => {
+          const current = prev[selectedSpaceId] || [];
           const existing = current.find((icon) => icon.id === text.id);
 
           if (existing) {
             return {
               ...prev,
-              [selectedIslandId]: current.map((icon) =>
+              [selectedSpaceId]: current.map((icon) =>
                 icon.id === text.id ? { ...icon, x: targetX, y: targetY } : icon
               ),
             };
           }
 
           const fallbackText = toDroppedTextFromEvent({ ...text, x: targetX, y: targetY });
-          return { ...prev, [selectedIslandId]: [...current, fallbackText] };
+          return { ...prev, [selectedSpaceId]: [...current, fallbackText] };
         });
 
         objectsApi.updatePosition(text.id, targetX, targetY).catch((err) => {
@@ -189,12 +189,12 @@ export const useUndo = ({
 
       case 'tile_delete': {
         const { tile } = event.event_data;
-        if (!tile || !selectedIslandId) break;
+        if (!tile || !selectedSpaceId) break;
 
         if (isRedo) {
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== tile.id),
+            [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((icon) => icon.id !== tile.id),
           }));
 
           objectsApi.updatePosition(tile.id, -1, -1).catch((err) => {
@@ -203,9 +203,9 @@ export const useUndo = ({
           window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: tile.id } }));
         } else {
           const restoredIcon = toDroppedIconFromTile(tile);
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredIcon],
+            [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredIcon],
           }));
 
           objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
@@ -217,20 +217,20 @@ export const useUndo = ({
 
       case 'arrow_create': {
         const { arrow } = event.event_data;
-        if (!arrow || !selectedIslandId) break;
+        if (!arrow || !selectedSpaceId) break;
 
         if (isRedo) {
           const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
           const tempArrow: ArrowSegment = { id: tempId, start: arrow.start, end: arrow.end };
 
-          setArrowsByIsland((prev) => ({
+          setArrowsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: [...(prev[selectedIslandId] || []), tempArrow],
+            [selectedSpaceId]: [...(prev[selectedSpaceId] || []), tempArrow],
           }));
 
           void (async () => {
             try {
-              const created = await objectsApi.create(selectedIslandId, {
+              const created = await objectsApi.create(selectedSpaceId, {
                 type: 'text',
                 title: 'Arrow',
                 content: 'Arrow connection',
@@ -245,9 +245,9 @@ export const useUndo = ({
                 content: 'Arrow connection',
               });
 
-              setArrowsByIsland((prev) => ({
+              setArrowsBySpace((prev) => ({
                 ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).map((a) =>
+                [selectedSpaceId]: (prev[selectedSpaceId] || []).map((a) =>
                   a.id === tempId ? { ...a, id: created.id } : a
                 ),
               }));
@@ -255,22 +255,22 @@ export const useUndo = ({
               window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id, restored: true } }));
             } catch (err) {
               console.error('[REDO] Failed to create arrow:', err);
-              setArrowsByIsland((prev) => ({
+              setArrowsBySpace((prev) => ({
                 ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== tempId),
+                [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((a) => a.id !== tempId),
               }));
             }
           })();
         } else {
           let deletedArrowId: string | null = null;
-          setArrowsByIsland((prev) => {
-            const current = prev[selectedIslandId] || [];
+          setArrowsBySpace((prev) => {
+            const current = prev[selectedSpaceId] || [];
             const resolvedId = resolveArrowId(current, arrow);
             deletedArrowId = resolvedId || arrow.id;
             arrowIdAliasRef.current.delete(arrow.id);
             return {
               ...prev,
-              [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
+              [selectedSpaceId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
             };
           });
 
@@ -287,7 +287,7 @@ export const useUndo = ({
 
       case 'arrow_move': {
         const { arrow, from, to } = event.event_data;
-        if (!arrow || !selectedIslandId) break;
+        if (!arrow || !selectedSpaceId) break;
         const targetStart = isRedo
           ? (to && typeof to.start?.x === 'number' && typeof to.start?.y === 'number' ? to.start : arrow.start)
           : (from && typeof from.start?.x === 'number' && typeof from.start?.y === 'number' ? from.start : arrow.start);
@@ -296,8 +296,8 @@ export const useUndo = ({
           : (from && typeof from.end?.x === 'number' && typeof from.end?.y === 'number' ? from.end : arrow.end);
 
         let updatedArrowId = arrow.id;
-        setArrowsByIsland((prev) => {
-          const current = prev[selectedIslandId] || [];
+        setArrowsBySpace((prev) => {
+          const current = prev[selectedSpaceId] || [];
           const resolvedId = resolveArrowId(current, arrow) || arrow.id;
           updatedArrowId = resolvedId;
           const existing = current.find((a) => a.id === resolvedId);
@@ -308,7 +308,7 @@ export const useUndo = ({
             }
             return {
               ...prev,
-              [selectedIslandId]: current.map((a) =>
+              [selectedSpaceId]: current.map((a) =>
                 a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
               ),
             };
@@ -326,7 +326,7 @@ export const useUndo = ({
 
           return {
             ...prev,
-            [selectedIslandId]: [...current, fallbackArrow],
+            [selectedSpaceId]: [...current, fallbackArrow],
           };
         });
 
@@ -346,18 +346,18 @@ export const useUndo = ({
 
       case 'arrow_delete': {
         const { arrow } = event.event_data;
-        if (!arrow || !selectedIslandId) break;
+        if (!arrow || !selectedSpaceId) break;
 
         if (isRedo) {
           let deletedArrowId: string | null = null;
-          setArrowsByIsland((prev) => {
-            const current = prev[selectedIslandId] || [];
+          setArrowsBySpace((prev) => {
+            const current = prev[selectedSpaceId] || [];
             const resolvedId = resolveArrowId(current, arrow);
             deletedArrowId = resolvedId || arrow.id;
             arrowIdAliasRef.current.delete(arrow.id);
             return {
               ...prev,
-              [selectedIslandId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
+              [selectedSpaceId]: current.filter((a) => a.id !== (resolvedId || arrow.id)),
             };
           });
 
@@ -378,14 +378,14 @@ export const useUndo = ({
             end: arrow.end,
           };
 
-          setArrowsByIsland((prev) => ({
+          setArrowsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: [...(prev[selectedIslandId] || []), tempArrow],
+            [selectedSpaceId]: [...(prev[selectedSpaceId] || []), tempArrow],
           }));
 
           void (async () => {
             try {
-              const created = await objectsApi.create(selectedIslandId, {
+              const created = await objectsApi.create(selectedSpaceId, {
                 type: 'text',
                 title: 'Arrow',
                 content: 'Arrow connection',
@@ -400,9 +400,9 @@ export const useUndo = ({
                 content: 'Arrow connection',
               });
 
-              setArrowsByIsland((prev) => ({
+              setArrowsBySpace((prev) => ({
                 ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).map((a) =>
+                [selectedSpaceId]: (prev[selectedSpaceId] || []).map((a) =>
                   a.id === tempId ? { ...a, id: created.id } : a
                 ),
               }));
@@ -413,9 +413,9 @@ export const useUndo = ({
               );
             } catch (err) {
               console.error('[UNDO] Failed to restore arrow:', err);
-              setArrowsByIsland((prev) => ({
+              setArrowsBySpace((prev) => ({
                 ...prev,
-                [selectedIslandId]: (prev[selectedIslandId] || []).filter((a) => a.id !== tempId),
+                [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((a) => a.id !== tempId),
               }));
             }
           })();
@@ -425,22 +425,22 @@ export const useUndo = ({
 
       case 'text_create': {
         const { text } = event.event_data;
-        if (!text || !selectedIslandId) break;
+        if (!text || !selectedSpaceId) break;
 
         if (isRedo) {
           const restoredText = toDroppedTextFromEvent(text);
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredText],
+            [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredText],
           }));
 
           objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
             console.error('[REDO] Failed to restore text note:', err);
           });
         } else {
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== text.id),
+            [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((icon) => icon.id !== text.id),
           }));
 
           objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
@@ -453,12 +453,12 @@ export const useUndo = ({
 
       case 'text_delete': {
         const { text } = event.event_data;
-        if (!text || !selectedIslandId) break;
+        if (!text || !selectedSpaceId) break;
 
         if (isRedo) {
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: (prev[selectedIslandId] || []).filter((icon) => icon.id !== text.id),
+            [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((icon) => icon.id !== text.id),
           }));
 
           objectsApi.updatePosition(text.id, -1, -1).catch((err) => {
@@ -467,9 +467,9 @@ export const useUndo = ({
           window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: text.id } }));
         } else {
           const restoredText = toDroppedTextFromEvent(text);
-          setIconsByIsland((prev) => ({
+          setIconsBySpace((prev) => ({
             ...prev,
-            [selectedIslandId]: [...(prev[selectedIslandId] || []), restoredText],
+            [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredText],
           }));
 
           objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
@@ -485,18 +485,18 @@ export const useUndo = ({
   };
   // Clear undo history on mount/unmount and before unload so no stale events persist across sessions.
   useEffect(() => {
-    if (!selectedIslandId) return;
+    if (!selectedSpaceId) return;
 
     const clearServerHistory = async () => {
       try {
-        await fetch(`/api/islands/${selectedIslandId}/undo-events`, {
+        await fetch(`/api/spaces/${selectedSpaceId}/undo-events`, {
           method: 'DELETE',
           keepalive: true,
         });
       } catch (err) {
         try {
           if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-            const url = `/api/islands/${selectedIslandId}/undo-events`;
+            const url = `/api/spaces/${selectedSpaceId}/undo-events`;
             const blob = new Blob([], { type: 'application/json' });
             navigator.sendBeacon(url, blob);
           }
@@ -506,11 +506,11 @@ export const useUndo = ({
       }
     };
 
-    clearLocalHistory(selectedIslandId);
+    clearLocalHistory(selectedSpaceId);
     void clearServerHistory();
 
     const handleBeforeUnload = () => {
-      clearLocalHistory(selectedIslandId);
+      clearLocalHistory(selectedSpaceId);
       clearServerHistory().catch(() => {
         // swallow errors on unload
       });
@@ -520,10 +520,10 @@ export const useUndo = ({
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      clearLocalHistory(selectedIslandId);
+      clearLocalHistory(selectedSpaceId);
       void clearServerHistory();
     };
-  }, [clearLocalHistory, selectedIslandId]);
+  }, [clearLocalHistory, selectedSpaceId]);
 
   useEffect(() => {
     const handleUndoRedo = (e: KeyboardEvent) => {
@@ -535,7 +535,7 @@ export const useUndo = ({
         return;
       }
 
-      if (!selectedIslandId) return;
+      if (!selectedSpaceId) return;
 
       e.preventDefault();
       const direction: UndoDirection = e.shiftKey ? 'redo' : 'undo';
@@ -543,7 +543,7 @@ export const useUndo = ({
 
       void (async () => {
         try {
-          const response = await runner(selectedIslandId);
+          const response = await runner(selectedSpaceId);
           if (!response.success || !response.event) {
             console.log(`[${direction.toUpperCase()}] No events to ${direction}`);
             return;
@@ -559,5 +559,5 @@ export const useUndo = ({
 
     window.addEventListener('keydown', handleUndoRedo);
     return () => window.removeEventListener('keydown', handleUndoRedo);
-  }, [selectedIslandId]);
+  }, [selectedSpaceId]);
 };

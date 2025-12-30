@@ -1,7 +1,7 @@
 """
-Island Pydantic Models
+Space Pydantic Models
 
-Data models for Island entities - workspaces that contain objects.
+Data models for Space entities - workspaces that contain objects.
 """
 
 from datetime import datetime
@@ -10,20 +10,20 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
-class IslandBase(BaseModel):
-    """Base Island model with common fields."""
+class SpaceBase(BaseModel):
+    """Base Space model with common fields."""
 
     name: str = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="Island name",
+        description="Space name",
         examples=["Work Projects", "Personal", "Research"]
     )
     description: Optional[str] = Field(
         None,
         max_length=500,
-        description="Optional island description"
+        description="Optional space description"
     )
     icon: Optional[str] = Field(
         None,
@@ -41,13 +41,13 @@ class IslandBase(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Validate and normalize island name."""
+        """Validate and normalize space name."""
         # Strip whitespace
         v = v.strip()
 
         # Ensure not empty after stripping
         if not v:
-            raise ValueError("Island name cannot be empty or only whitespace")
+            raise ValueError("Space name cannot be empty or only whitespace")
 
         return v
 
@@ -63,14 +63,14 @@ class IslandBase(BaseModel):
         return v
 
 
-class IslandCreate(IslandBase):
+class SpaceCreate(SpaceBase):
     """
-    Schema for creating a new Island.
+    Schema for creating a new Space.
 
-    Used in POST /api/islands endpoint.
+    Used in POST /api/spaces endpoint.
     """
 
-    # All fields inherited from IslandBase
+    # All fields inherited from SpaceBase
     # position is handled server-side (append to end)
 
     model_config = ConfigDict(
@@ -85,11 +85,11 @@ class IslandCreate(IslandBase):
     )
 
 
-class IslandUpdate(BaseModel):
+class SpaceUpdate(BaseModel):
     """
-    Schema for updating an existing Island.
+    Schema for updating an existing Space.
 
-    Used in PUT/PATCH /api/islands/{id} endpoint.
+    Used in PUT/PATCH /api/spaces/{id} endpoint.
     All fields are optional to allow partial updates.
     """
 
@@ -97,12 +97,12 @@ class IslandUpdate(BaseModel):
         None,
         min_length=1,
         max_length=100,
-        description="Island name"
+        description="Space name"
     )
     description: Optional[str] = Field(
         None,
         max_length=500,
-        description="Island description"
+        description="Space description"
     )
     icon: Optional[str] = Field(
         None,
@@ -117,17 +117,17 @@ class IslandUpdate(BaseModel):
     position: Optional[int] = Field(
         None,
         ge=0,
-        description="Position in the islands list (0-based)"
+        description="Position in the spaces list (0-based)"
     )
 
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and normalize island name."""
+        """Validate and normalize space name."""
         if v is not None:
             v = v.strip()
             if not v:
-                raise ValueError("Island name cannot be empty or only whitespace")
+                raise ValueError("Space name cannot be empty or only whitespace")
         return v
 
     @field_validator("description")
@@ -150,34 +150,34 @@ class IslandUpdate(BaseModel):
     )
 
 
-class IslandResponse(IslandBase):
+class SpaceResponse(SpaceBase):
     """
-    Schema for Island responses.
+    Schema for Space responses.
 
-    Used in GET /api/islands/{id} and other endpoints that return island data.
+    Used in GET /api/spaces/{id} and other endpoints that return space data.
     """
 
     id: UUID = Field(
         ...,
-        description="Unique island identifier"
+        description="Unique space identifier"
     )
     position: int = Field(
         ...,
         ge=0,
-        description="Position in the islands list (0-based)"
+        description="Position in the spaces list (0-based)"
     )
     object_count: int = Field(
         default=0,
         ge=0,
-        description="Number of objects on this island"
+        description="Number of objects on this space"
     )
     created_at: datetime = Field(
         ...,
-        description="Timestamp when the island was created"
+        description="Timestamp when the space was created"
     )
     updated_at: datetime = Field(
         ...,
-        description="Timestamp when the island was last updated"
+        description="Timestamp when the space was last updated"
     )
 
     model_config = ConfigDict(
@@ -198,15 +198,15 @@ class IslandResponse(IslandBase):
     )
 
 
-class IslandSummary(BaseModel):
+class SpaceSummary(BaseModel):
     """
-    Minimal Island schema for lists and references.
+    Minimal Space schema for lists and references.
 
-    Used when you need to reference an island without full details.
+    Used when you need to reference an space without full details.
     """
 
-    id: UUID = Field(..., description="Unique island identifier")
-    name: str = Field(..., description="Island name")
+    id: UUID = Field(..., description="Unique space identifier")
+    name: str = Field(..., description="Space name")
     icon: Optional[str] = Field(None, description="Icon identifier or emoji")
     color: Optional[str] = Field(None, description="Color in hex format")
     object_count: int = Field(default=0, ge=0, description="Number of objects")
@@ -225,27 +225,27 @@ class IslandSummary(BaseModel):
     )
 
 
-class IslandList(BaseModel):
+class SpaceList(BaseModel):
     """
-    Schema for paginated list of Islands.
+    Schema for paginated list of Spaces.
 
-    Used in GET /api/islands endpoint.
+    Used in GET /api/spaces endpoint.
     """
 
-    islands: List[IslandResponse] = Field(
+    spaces: List[SpaceResponse] = Field(
         default_factory=list,
-        description="List of islands"
+        description="List of spaces"
     )
     total: int = Field(
         ...,
         ge=0,
-        description="Total number of islands"
+        description="Total number of spaces"
     )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "islands": [
+                "spaces": [
                     {
                         "id": "550e8400-e29b-41d4-a716-446655440000",
                         "name": "Work Projects",
@@ -275,31 +275,31 @@ class IslandList(BaseModel):
     )
 
 
-class IslandReorder(BaseModel):
+class SpaceReorder(BaseModel):
     """
-    Schema for reordering islands.
+    Schema for reordering spaces.
 
-    Used in POST /api/islands/reorder endpoint.
+    Used in POST /api/spaces/reorder endpoint.
     """
 
-    island_ids: List[UUID] = Field(
+    space_ids: List[UUID] = Field(
         ...,
         min_length=1,
-        description="Ordered list of island IDs in desired sequence"
+        description="Ordered list of space IDs in desired sequence"
     )
 
-    @field_validator("island_ids")
+    @field_validator("space_ids")
     @classmethod
     def validate_unique_ids(cls, v: List[UUID]) -> List[UUID]:
-        """Ensure all island IDs are unique."""
+        """Ensure all space IDs are unique."""
         if len(v) != len(set(v)):
-            raise ValueError("Duplicate island IDs are not allowed")
+            raise ValueError("Duplicate space IDs are not allowed")
         return v
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "island_ids": [
+                "space_ids": [
                     "660e8400-e29b-41d4-a716-446655440001",
                     "550e8400-e29b-41d4-a716-446655440000",
                     "770e8400-e29b-41d4-a716-446655440002"
@@ -309,15 +309,15 @@ class IslandReorder(BaseModel):
     )
 
 
-class IslandDeleteResponse(BaseModel):
+class SpaceDeleteResponse(BaseModel):
     """
-    Schema for island deletion confirmation.
+    Schema for space deletion confirmation.
 
-    Used in DELETE /api/islands/{id} endpoint.
+    Used in DELETE /api/spaces/{id} endpoint.
     """
 
     success: bool = Field(..., description="Whether deletion was successful")
-    island_id: UUID = Field(..., description="ID of the deleted island")
+    space_id: UUID = Field(..., description="ID of the deleted space")
     objects_deleted: int = Field(
         ...,
         ge=0,
@@ -329,9 +329,9 @@ class IslandDeleteResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "success": True,
-                "island_id": "550e8400-e29b-41d4-a716-446655440000",
+                "space_id": "550e8400-e29b-41d4-a716-446655440000",
                 "objects_deleted": 12,
-                "message": "Island 'Work Projects' and 12 objects deleted successfully"
+                "message": "Space 'Work Projects' and 12 objects deleted successfully"
             }
         }
     )

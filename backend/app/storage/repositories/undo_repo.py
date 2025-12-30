@@ -20,7 +20,7 @@ class UndoEventRepository:
 
     async def create_event(
         self,
-        island_id: str,
+        space_id: str,
         event_type: str,
         event_data: dict,
     ) -> UndoEvent:
@@ -29,12 +29,12 @@ class UndoEventRepository:
         # SQLite lacks RETURNING in older versions; fetch back the row after insert/refresh.
         next_seq_subq = (
             select(func.coalesce(func.max(UndoEvent.sequence), 0) + 1)
-            .where(UndoEvent.island_id == island_id)
+            .where(UndoEvent.space_id == space_id)
         )
         next_sequence = (await self.session.execute(next_seq_subq)).scalar_one()
 
         event = UndoEvent(
-            island_id=island_id,
+            space_id=space_id,
             sequence=next_sequence,
             event_type=event_type,
             event_data=event_data,
@@ -45,11 +45,11 @@ class UndoEventRepository:
         await self.session.refresh(event)
         return event
 
-    async def get_last_undoable_event(self, island_id: str) -> Optional[UndoEvent]:
+    async def get_last_undoable_event(self, space_id: str) -> Optional[UndoEvent]:
         """Get the last event that can be undone (is_undone=False)."""
         stmt = (
             select(UndoEvent)
-            .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == False))
+            .where(and_(UndoEvent.space_id == space_id, UndoEvent.is_undone == False))
             # Highest sequence = most recent applied event
             .order_by(desc(UndoEvent.sequence))
             .limit(1)
@@ -57,11 +57,11 @@ class UndoEventRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_last_redoable_event(self, island_id: str) -> Optional[UndoEvent]:
+    async def get_last_redoable_event(self, space_id: str) -> Optional[UndoEvent]:
         """Get the last event that can be redone (is_undone=True)."""
         stmt = (
             select(UndoEvent)
-            .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True))
+            .where(and_(UndoEvent.space_id == space_id, UndoEvent.is_undone == True))
             # Lowest undone sequence = next redo step (walk forward one)
             .order_by(asc(UndoEvent.sequence))
             .limit(1)
@@ -95,11 +95,11 @@ class UndoEventRepository:
 
         return event
 
-    async def clear_redoable_events(self, island_id: str) -> int:
-        """Delete all redoable events (is_undone=True) for an island."""
+    async def clear_redoable_events(self, space_id: str) -> int:
+        """Delete all redoable events (is_undone=True) for an space."""
         stmt = (
             delete(UndoEvent)
-            .where(and_(UndoEvent.island_id == island_id, UndoEvent.is_undone == True))
+            .where(and_(UndoEvent.space_id == space_id, UndoEvent.is_undone == True))
         )
         result = await self.session.execute(stmt)
         await self.session.flush()
@@ -107,14 +107,14 @@ class UndoEventRepository:
 
     async def get_events(
         self,
-        island_id: str,
+        space_id: str,
         skip: int = 0,
         limit: int = 100,
     ) -> List[UndoEvent]:
-        """Get undo events for an island with pagination."""
+        """Get undo events for an space with pagination."""
         stmt = (
             select(UndoEvent)
-            .where(UndoEvent.island_id == island_id)
+            .where(UndoEvent.space_id == space_id)
             # Stable ordering for paginated reads
             .order_by(desc(UndoEvent.sequence))
             .offset(skip)
@@ -123,15 +123,15 @@ class UndoEventRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_event_count(self, island_id: str) -> int:
-        """Get total count of events for an island."""
-        stmt = select(UndoEvent).where(UndoEvent.island_id == island_id)
+    async def get_event_count(self, space_id: str) -> int:
+        """Get total count of events for an space."""
+        stmt = select(UndoEvent).where(UndoEvent.space_id == space_id)
         result = await self.session.execute(stmt)
         return len(result.scalars().all())
 
-    async def clear_all_events(self, island_id: str) -> int:
-        """Delete all undo events for an island."""
-        stmt = select(UndoEvent).where(UndoEvent.island_id == island_id)
+    async def clear_all_events(self, space_id: str) -> int:
+        """Delete all undo events for an space."""
+        stmt = select(UndoEvent).where(UndoEvent.space_id == space_id)
         result = await self.session.execute(stmt)
         events = result.scalars().all()
 
@@ -143,18 +143,18 @@ class UndoEventRepository:
         return count
 
     async def clear_all(self) -> int:
-        """Delete all undo events for all islands."""
+        """Delete all undo events for all spaces."""
         result = await self.session.execute(delete(UndoEvent))
         await self.session.flush()
         return result.rowcount or 0
 
-    async def trim_to_limit(self, island_id: str, limit: int) -> int:
-        """Keep only the most recent `limit` events for an island; delete older ones."""
+    async def trim_to_limit(self, space_id: str, limit: int) -> int:
+        """Keep only the most recent `limit` events for an space; delete older ones."""
         # Keep the newest `limit` events by sequence, delete older in one statement.
         # Find cutoff sequence at offset `limit`.
         cutoff_stmt = (
             select(UndoEvent.sequence)
-            .where(UndoEvent.island_id == island_id)
+            .where(UndoEvent.space_id == space_id)
             .order_by(desc(UndoEvent.sequence))
             .offset(limit)
             .limit(1)
@@ -163,7 +163,7 @@ class UndoEventRepository:
         if cutoff is None:
             return 0
         delete_stmt = delete(UndoEvent).where(
-            and_(UndoEvent.island_id == island_id, UndoEvent.sequence < cutoff)
+            and_(UndoEvent.space_id == space_id, UndoEvent.sequence < cutoff)
         )
         result = await self.session.execute(delete_stmt)
         await self.session.flush()

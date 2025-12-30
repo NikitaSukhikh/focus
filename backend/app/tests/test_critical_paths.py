@@ -6,17 +6,17 @@ import pytest
 from sqlalchemy.exc import OperationalError
 
 from app.models.object import FileObjectCreate, TextObjectCreate
-from app.models.island import IslandCreate
+from app.models.space import SpaceCreate
 
 
 @pytest.mark.asyncio
 async def test_undo_sequence_monotonic_under_concurrency(test_modules):
-    island_id = "island-concurrency"
+    space_id = "space-concurrency"
 
     async def create_evt(n):
         async with test_modules.db.AsyncSessionLocal() as session:
             repo = test_modules.undo_repo.UndoEventRepository(session)
-            event = await repo.create_event(island_id=island_id, event_type="test", event_data={"n": n})
+            event = await repo.create_event(space_id=space_id, event_type="test", event_data={"n": n})
             await session.commit()
             return event
 
@@ -31,31 +31,31 @@ async def test_undo_sequence_monotonic_under_concurrency(test_modules):
 
 @pytest.mark.asyncio
 async def test_objects_tag_filter_totals_and_pagination(test_modules):
-    island_repo = test_modules.islands_repo.IslandsRepository()
+    space_repo = test_modules.spaces_repo.SpacesRepository()
     objects_repo = test_modules.objects_repo.ObjectsRepository()
 
     async with test_modules.db.AsyncSessionLocal() as session:
-        island = await island_repo.create_island(IslandCreate(name="Tags"), session=session)
+        space = await space_repo.create_space(SpaceCreate(name="Tags"), session=session)
         await objects_repo.create_object(
-            island.id,
+            space.id,
             FileObjectCreate(title="a-b", file_path="/tmp/a", tags=["a", "b"]),
             session=session,
         )
         await objects_repo.create_object(
-            island.id,
+            space.id,
             FileObjectCreate(title="a", file_path="/tmp/a2", tags=["a"]),
             session=session,
         )
         await objects_repo.create_object(
-            island.id,
+            space.id,
             FileObjectCreate(title="b", file_path="/tmp/a3", tags=["b"]),
             session=session,
         )
         await session.commit()
 
         try:
-            result = await objects_repo.get_objects_by_island(
-                island.id,
+            result = await objects_repo.get_objects_by_space(
+                space.id,
                 tags=["a", "b"],
                 skip=0,
                 limit=10,
@@ -71,27 +71,27 @@ async def test_objects_tag_filter_totals_and_pagination(test_modules):
 
 @pytest.mark.asyncio
 async def test_create_object_rolls_back_on_failure(test_modules):
-    island_repo = test_modules.islands_repo.IslandsRepository()
+    space_repo = test_modules.spaces_repo.SpacesRepository()
     objects_service = test_modules.objects_service.ObjectsService()
 
     async with test_modules.db.AsyncSessionLocal() as session:
-        island = await island_repo.create_island(IslandCreate(name="Txn"), session=session)
+        space = await space_repo.create_space(SpaceCreate(name="Txn"), session=session)
         await session.commit()
 
         async def fail(*args, **kwargs):
             raise RuntimeError("boom")
 
-        objects_service.islands_repo.update_island_object_count = fail
+        objects_service.spaces_repo.update_space_object_count = fail
 
         with pytest.raises(RuntimeError):
             await objects_service.create_object(
-                island_id=island.id,
+                space_id=space.id,
                 object_data=TextObjectCreate(title="note", content="content"),
                 session=session,
             )
 
-        remaining = await objects_service.objects_repo.get_objects_by_island(
-            island_id=island.id, session=session
+        remaining = await objects_service.objects_repo.get_objects_by_space(
+            space_id=space.id, session=session
         )
         assert remaining.total == 0
 

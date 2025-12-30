@@ -13,5 +13,5 @@ for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
 )
 
 REM Start the server
-echo Starting Ocean backend server...
+echo Starting Focus backend server...
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
