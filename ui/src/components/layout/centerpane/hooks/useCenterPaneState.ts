@@ -11,16 +11,31 @@
  * - Syncing state when island selection changes
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIslandStore } from '../../../../stores/islandStore';
 import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
+import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon, IconKind, ArrowSegment } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { isGmailUrl } from '../utils';
 import { calculateContentHeight } from '../boundaries';
+
+const looksLikeFavicon = (src?: string) => {
+  const s = (src || '').toLowerCase();
+  return s.endsWith('.ico') || s.includes('favicon');
+};
+
+const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) => {
+  const targetUrl = resolvedUrl || originalUrl;
+  const candidateImage = metadata?.og_image || metadata?.thumbnail_url || metadata?.image;
+  if (candidateImage && !looksLikeFavicon(candidateImage)) {
+    return candidateImage;
+  }
+  return metadata?.favicon_url || buildFaviconUrl(targetUrl);
+};
 
 export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | null>) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -42,6 +57,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
     const viewportHeight = paneRef.current?.getBoundingClientRect().height || 600;
     return calculateContentHeight(currentIcons, viewportHeight);
   }, [iconsByIsland, selectedIsland, paneRef]);
+
+  // Track which links have already been refreshed per island to avoid repeated fetches.
+  const refreshedLinksRef = useRef<Map<string, Set<string>>>(new Map());
 
   // Load existing objects as icons when island changes
   useEffect(() => {
@@ -148,6 +166,80 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         console.error('Failed to load objects for island', islandId, err);
       });
   }, [selectedIsland?.id]);
+
+  // Refresh link metadata once per island load to keep titles/favicons current.
+  useEffect(() => {
+    const islandId = selectedIsland?.id;
+    if (!islandId) return;
+
+    const alreadyRefreshed = refreshedLinksRef.current.get(islandId) || new Set<string>();
+    const icons = iconsByIsland[islandId] || [];
+    const linksNeedingRefresh = icons.filter(
+      (icon) => icon.type === 'link' && icon.url && !alreadyRefreshed.has(icon.id)
+    );
+
+    if (!linksNeedingRefresh.length) return;
+
+    let cancelled = false;
+    const timers: number[] = [];
+
+    linksNeedingRefresh.forEach((icon, idx) => {
+      const timer = window.setTimeout(async () => {
+        if (cancelled || !selectedIsland?.id) return;
+
+        try {
+          const params = new URLSearchParams({ url: icon.url || '' });
+          const response = await fetch(`/api/metadata/url?${params.toString()}`);
+          if (!response.ok) return;
+
+          const metadata = await response.json();
+          const resolvedUrl = metadata.resolved_url || icon.url || '';
+          const updatedTitle = truncateLinkTitle(
+            metadata.title || metadata.og_title || icon.defaultTitle || icon.title
+          );
+          const updatedDescription =
+            metadata.description || metadata.og_description || icon.defaultDescription || icon.description || '';
+          const updatedFavicon = pickFavicon(metadata, resolvedUrl, icon.url || '');
+
+          setIconsByIsland((prev) => {
+            const current = prev[islandId] || [];
+            return {
+              ...prev,
+              [islandId]: current.map((i) =>
+                i.id === icon.id
+                  ? {
+                      ...i,
+                      defaultTitle: updatedTitle,
+                      defaultDescription: updatedDescription,
+                      title: i.customTitle ? i.title : updatedTitle,
+                      description: i.customDescription ?? updatedDescription,
+                      faviconUrl: updatedFavicon,
+                      url: resolvedUrl,
+                    }
+                  : i
+              ),
+            };
+          });
+
+          await objectsApi.updateLink(icon.id, resolvedUrl, updatedTitle, updatedDescription, updatedFavicon);
+          window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: icon.id } }));
+        } catch (err) {
+          console.error('[METADATA_REFRESH] Failed to refresh link metadata:', err);
+        } finally {
+          const set = refreshedLinksRef.current.get(islandId) || new Set<string>();
+          set.add(icon.id);
+          refreshedLinksRef.current.set(islandId, set);
+        }
+      }, idx * 150); // slight stagger to avoid burst
+
+      timers.push(timer);
+    });
+
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, [iconsByIsland, selectedIsland?.id]);
 
   // Listen for tile updates from preview pane
   useEffect(() => {
