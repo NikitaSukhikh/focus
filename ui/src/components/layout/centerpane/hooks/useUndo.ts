@@ -4,9 +4,9 @@
  * Purpose: Provides a single undo/redo system for all center pane events
  * Responsibilities:
  * - Managing Ctrl+Z (undo) and Ctrl+Shift+Z (redo) keyboard handlers
- * - Processing undo/redo events in strict chronological order (by timestamp)
+ * - Applying the most recent undo/redo event returned by the server
  * - Delegating actions to appropriate handlers based on event type
- * - Handling tile restoration/deletion, arrow restoration/deletion, and text creation/deletion
+ * - Handling tile create/move/delete, arrow create/move/delete, and text create/move/delete flows
  */
 
 import { useEffect, useRef } from 'react';

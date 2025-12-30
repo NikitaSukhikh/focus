@@ -7,6 +7,7 @@ API endpoints for Island (workspace) CRUD operations.
 from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, status, Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.island import (
     IslandCreate,
@@ -25,6 +26,7 @@ from app.services.islands_service import (
 from app.api.deps import validate_uuid
 from app.core.exceptions import AppError, BadRequestError, ConflictError, NotFoundError
 from app.core.logging import get_logger
+from app.storage.db import get_session
 
 
 logger = get_logger(__name__)
@@ -47,7 +49,8 @@ async def list_islands(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     sort_by: Optional[str] = Query(None, description="Field to sort by (e.g., 'name', 'created_at', 'position')"),
-    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order (asc or desc)")
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order (asc or desc)"),
+    session: AsyncSession = Depends(get_session)
 ) -> IslandList:
     """
     List all islands with pagination.
@@ -66,7 +69,8 @@ async def list_islands(
             skip=skip,
             limit=limit,
             sort_by=sort_by,
-            sort_order=sort_order
+            sort_order=sort_order,
+            session=session
         )
 
         logger.info(
@@ -99,7 +103,8 @@ async def list_islands(
     tags=["Islands"]
 )
 async def create_island(
-    island_data: IslandCreate
+    island_data: IslandCreate,
+    session: AsyncSession = Depends(get_session)
 ) -> IslandResponse:
     """
     Create a new island.
@@ -117,7 +122,7 @@ async def create_island(
         500: Internal server error
     """
     try:
-        island = await islands_service.create_island(island_data)
+        island = await islands_service.create_island(island_data, session=session)
 
         logger.info(f"Created island: {island.name}")
 
@@ -159,7 +164,8 @@ async def create_island(
     tags=["Islands"]
 )
 async def get_island(
-    island_id: UUID = Depends(validate_uuid)
+    island_id: UUID = Depends(validate_uuid),
+    session: AsyncSession = Depends(get_session)
 ) -> IslandResponse:
     """
     Get an island by ID.
@@ -175,7 +181,7 @@ async def get_island(
         500: Internal server error
     """
     try:
-        island = await islands_service.get_island(island_id)
+        island = await islands_service.get_island(island_id, session=session)
 
         logger.debug(
             f"Retrieved island: {island.name}",
@@ -213,7 +219,8 @@ async def get_island(
 )
 async def update_island(
     island_data: IslandUpdate,
-    island_id: UUID = Depends(validate_uuid)
+    island_id: UUID = Depends(validate_uuid),
+    session: AsyncSession = Depends(get_session)
 ) -> IslandResponse:
     """
     Update an island.
@@ -232,7 +239,7 @@ async def update_island(
         500: Internal server error
     """
     try:
-        island = await islands_service.update_island(island_id, island_data)
+        island = await islands_service.update_island(island_id, island_data, session=session)
 
         logger.info(
             f"Updated island: {island.name}",
@@ -285,7 +292,8 @@ async def update_island(
     tags=["Islands"]
 )
 async def delete_island(
-    island_id: UUID = Depends(validate_uuid)
+    island_id: UUID = Depends(validate_uuid),
+    session: AsyncSession = Depends(get_session)
 ) -> IslandDeleteResponse:
     """
     Delete an island and all its objects.
@@ -303,7 +311,7 @@ async def delete_island(
         500: Internal server error
     """
     try:
-        result = await islands_service.delete_island(island_id)
+        result = await islands_service.delete_island(island_id, session=session)
 
         logger.info(
             f"Deleted island and {result.objects_deleted} objects",
@@ -343,7 +351,8 @@ async def delete_island(
     tags=["Islands"]
 )
 async def reorder_islands(
-    reorder_data: IslandReorder
+    reorder_data: IslandReorder,
+    session: AsyncSession = Depends(get_session)
 ) -> list[IslandResponse]:
     """
     Reorder islands.
@@ -361,7 +370,7 @@ async def reorder_islands(
         500: Internal server error
     """
     try:
-        islands = await islands_service.reorder_islands(reorder_data.island_ids)
+        islands = await islands_service.reorder_islands(reorder_data.island_ids, session=session)
 
         logger.info(
             f"Reordered {len(islands)} islands",
@@ -400,7 +409,8 @@ async def reorder_islands(
 async def search_islands(
     q: str = Query(..., min_length=1, description="Search query"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return")
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    session: AsyncSession = Depends(get_session)
 ) -> IslandList:
     """
     Search islands by name or description.
@@ -420,7 +430,8 @@ async def search_islands(
         islands = await islands_service.search_islands(
             search_query=q,
             skip=skip,
-            limit=limit
+            limit=limit,
+            session=session
         )
 
         logger.debug(
@@ -448,7 +459,7 @@ async def search_islands(
     description="Get total number of islands.",
     tags=["Islands"]
 )
-async def get_island_count() -> dict:
+async def get_island_count(session: AsyncSession = Depends(get_session)) -> dict:
     """
     Get total count of islands.
 
@@ -459,7 +470,7 @@ async def get_island_count() -> dict:
         500: Internal server error
     """
     try:
-        count = await islands_service.get_island_count()
+        count = await islands_service.get_island_count(session=session)
 
         logger.debug(f"Island count: {count}")
 
