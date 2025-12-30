@@ -17,8 +17,8 @@ import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
 
 interface InlineEditorParams {
-  selectedIsland: any;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  selectedSpace: any;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
 }
 
@@ -31,8 +31,8 @@ export interface InlineEditorState {
 }
 
 export const useInlineTextEditor = ({
-  selectedIsland,
-  setIconsByIsland,
+  selectedSpace,
+  setIconsBySpace,
   clampToBoundaries,
 }: InlineEditorParams) => {
   const [editorState, setEditorState] = useState<InlineEditorState>({
@@ -67,7 +67,7 @@ export const useInlineTextEditor = ({
   };
 
   const saveNote = useCallback(async () => {
-    if (!selectedIsland || !editorState.content.trim()) {
+    if (!selectedSpace || !editorState.content.trim()) {
       setEditorState({ isActive: false, x: 0, y: 0, content: '' });
       return;
     }
@@ -93,11 +93,11 @@ export const useInlineTextEditor = ({
           throw new Error('Failed to update text note');
         }
 
-        setIconsByIsland((prev) => {
-          const current = prev[selectedIsland.id] || [];
+        setIconsBySpace((prev) => {
+          const current = prev[selectedSpace.id] || [];
           return {
             ...prev,
-            [selectedIsland.id]: current.map((icon) =>
+            [selectedSpace.id]: current.map((icon) =>
               icon.id === editingId
                 ? { ...icon, title, content: formattedContent, description: formattedContent.substring(0, 100) }
                 : icon
@@ -106,7 +106,7 @@ export const useInlineTextEditor = ({
         });
       } else {
         // Create new note
-        const created = await objectsApi.create(selectedIsland.id, {
+        const created = await objectsApi.create(selectedSpace.id, {
           type: 'text',
           title,
           content: formattedContent,
@@ -125,14 +125,14 @@ export const useInlineTextEditor = ({
           content: formattedContent,
         };
 
-        setIconsByIsland((prev) => {
-          const current = prev[selectedIsland.id] || [];
-          return { ...prev, [selectedIsland.id]: [...current, newIcon] };
+        setIconsBySpace((prev) => {
+          const current = prev[selectedSpace.id] || [];
+          return { ...prev, [selectedSpace.id]: [...current, newIcon] };
         });
 
         // Add to backend undo history
         undoApi
-          .createEvent(selectedIsland.id, {
+          .createEvent(selectedSpace.id, {
             event_type: 'text_create',
             event_data: {
             text: {
@@ -153,7 +153,7 @@ export const useInlineTextEditor = ({
       console.error('Failed to save text note:', err);
       alert('Failed to save note. Please try again.');
     }
-  }, [selectedIsland, editorState, clampToBoundaries, setIconsByIsland]);
+  }, [selectedSpace, editorState, clampToBoundaries, setIconsBySpace]);
 
   const cancelEdit = useCallback(() => {
     setEditorState({ isActive: false, x: 0, y: 0, content: '' });

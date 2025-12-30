@@ -7,7 +7,7 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "Ocean",
+    "productName": "Focus",
     "version": "0.1.0"
   },
   "tauri": {
@@ -55,7 +55,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.ocean.app",
+      "identifier": "com.focus.app",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -71,7 +71,7 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "Ocean",
+        "title": "Focus",
         "width": 1280,
         "height": 800,
         "minWidth": 800,

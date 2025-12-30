@@ -33,16 +33,16 @@ def get_undo_repo(session: AsyncSession = Depends(get_session)) -> UndoEventRepo
 # ============================================================================
 
 @router.post(
-    "/islands/{island_id}/undo-events",
+    "/spaces/{space_id}/undo-events",
     response_model=UndoEventResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create undo event",
-    description="Record a new undo event for an island. Clears redo stack.",
+    description="Record a new undo event for an space. Clears redo stack.",
     tags=["Undo"]
 )
 async def create_undo_event(
     event: UndoEventCreate,
-    island_id: str,
+    space_id: str,
     undo_repo: UndoEventRepository = Depends(get_undo_repo),
 ) -> UndoEventResponse:
     """
@@ -53,7 +53,7 @@ async def create_undo_event(
 
     Args:
         event: Undo event data
-        island_id: ID of the island
+        space_id: ID of the space
         undo_repo: Undo repository dependency
 
     Returns:
@@ -61,14 +61,14 @@ async def create_undo_event(
     """
     try:
         result = await undo_service.create_undo_event(
-            island_id=island_id,
+            space_id=space_id,
             event_create=event,
             undo_repo=undo_repo,
         )
 
         logger.info(
-            f"Created undo event for island {island_id}: {event.event_type}",
-            extra={"island_id": island_id, "event_type": event.event_type}
+            f"Created undo event for space {space_id}: {event.event_type}",
+            extra={"space_id": space_id, "event_type": event.event_type}
         )
 
         return result
@@ -79,15 +79,15 @@ async def create_undo_event(
 
 
 @router.post(
-    "/islands/{island_id}/undo",
+    "/spaces/{space_id}/undo",
     response_model=UndoRedoResponse,
     status_code=status.HTTP_200_OK,
     summary="Undo last event",
-    description="Undo the last undoable event for an island.",
+    description="Undo the last undoable event for an space.",
     tags=["Undo"]
 )
 async def undo_last_event(
-    island_id: str,
+    space_id: str,
     undo_repo: UndoEventRepository = Depends(get_undo_repo),
 ) -> UndoRedoResponse:
     """
@@ -96,7 +96,7 @@ async def undo_last_event(
     Returns the event that was undone so the client can reverse it.
 
     Args:
-        island_id: ID of the island
+        space_id: ID of the space
         undo_repo: Undo repository dependency
 
     Returns:
@@ -104,17 +104,17 @@ async def undo_last_event(
     """
     try:
         result = await undo_service.undo_last_event(
-            island_id=island_id,
+            space_id=space_id,
             undo_repo=undo_repo,
         )
 
         if result.success:
             logger.info(
-                f"Undone event for island {island_id}",
-                extra={"island_id": island_id, "event_id": result.event.id if result.event else None}
+                f"Undone event for space {space_id}",
+                extra={"space_id": space_id, "event_id": result.event.id if result.event else None}
             )
         else:
-            logger.debug(f"No events to undo for island {island_id}")
+            logger.debug(f"No events to undo for space {space_id}")
 
         return result
 
@@ -124,15 +124,15 @@ async def undo_last_event(
 
 
 @router.post(
-    "/islands/{island_id}/redo",
+    "/spaces/{space_id}/redo",
     response_model=UndoRedoResponse,
     status_code=status.HTTP_200_OK,
     summary="Redo last undone event",
-    description="Redo the last undone event for an island.",
+    description="Redo the last undone event for an space.",
     tags=["Undo"]
 )
 async def redo_last_event(
-    island_id: str,
+    space_id: str,
     undo_repo: UndoEventRepository = Depends(get_undo_repo),
 ) -> UndoRedoResponse:
     """
@@ -141,7 +141,7 @@ async def redo_last_event(
     Returns the event that was redone so the client can reapply it.
 
     Args:
-        island_id: ID of the island
+        space_id: ID of the space
         undo_repo: Undo repository dependency
 
     Returns:
@@ -149,17 +149,17 @@ async def redo_last_event(
     """
     try:
         result = await undo_service.redo_last_event(
-            island_id=island_id,
+            space_id=space_id,
             undo_repo=undo_repo,
         )
 
         if result.success:
             logger.info(
-                f"Redone event for island {island_id}",
-                extra={"island_id": island_id, "event_id": result.event.id if result.event else None}
+                f"Redone event for space {space_id}",
+                extra={"space_id": space_id, "event_id": result.event.id if result.event else None}
             )
         else:
-            logger.debug(f"No events to redo for island {island_id}")
+            logger.debug(f"No events to redo for space {space_id}")
 
         return result
 
@@ -169,21 +169,21 @@ async def redo_last_event(
 
 
 @router.delete(
-    "/islands/{island_id}/undo-events",
+    "/spaces/{space_id}/undo-events",
     status_code=status.HTTP_200_OK,
     summary="Clear undo history",
-    description="Clear all undo/redo history for an island.",
+    description="Clear all undo/redo history for an space.",
     tags=["Undo"]
 )
 async def clear_undo_history(
-    island_id: str,
+    space_id: str,
     undo_repo: UndoEventRepository = Depends(get_undo_repo),
 ) -> dict:
     """
-    Clear all undo/redo history for an island.
+    Clear all undo/redo history for an space.
 
     Args:
-        island_id: ID of the island
+        space_id: ID of the space
         undo_repo: Undo repository dependency
 
     Returns:
@@ -191,13 +191,13 @@ async def clear_undo_history(
     """
     try:
         count = await undo_service.clear_undo_history(
-            island_id=island_id,
+            space_id=space_id,
             undo_repo=undo_repo,
         )
 
         logger.info(
-            f"Cleared undo history for island {island_id}: {count} events",
-            extra={"island_id": island_id, "count": count}
+            f"Cleared undo history for space {space_id}: {count} events",
+            extra={"space_id": space_id, "count": count}
         )
 
         return {"cleared": count, "message": f"Cleared {count} events"}

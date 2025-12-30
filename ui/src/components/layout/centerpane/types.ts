@@ -61,7 +61,7 @@ export interface CenterPaneProps {
 
 export interface CenterPaneHandle {
   addFiles: () => Promise<void>;
-  getTilesForIsland: (islandId: string) => DroppedIcon[];
+  getTilesForSpace: (spaceId: string) => DroppedIcon[];
   openAddLinkDialog: () => void;
 }
 

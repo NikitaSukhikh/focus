@@ -16,7 +16,7 @@ export const DIMENSIONS = {
     DEFAULT_WIDTH: 220,
     MIN_WIDTH: 200,
     MAX_WIDTH: 400,
-    STORAGE_KEY: 'ocean-sidebar-width',
+    STORAGE_KEY: 'focus-sidebar-width',
   },
 
   // Preview Pane
@@ -32,7 +32,7 @@ export const DIMENSIONS = {
     MIN_WIDTH: 500,
     MAX_WIDTH: 1000,
     HEIGHT: 340,
-    STORAGE_KEY: 'ocean-conversation-width',
+    STORAGE_KEY: 'focus-conversation-width',
   },
 
   // Quick Add Popup

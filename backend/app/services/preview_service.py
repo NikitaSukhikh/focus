@@ -200,7 +200,7 @@ class PreviewService:
                 head = await client.head(
                     url,
                     follow_redirects=True,
-                    headers={"User-Agent": "Ocean/1.0 (Preview Generator)"},
+                    headers={"User-Agent": "Focus/1.0 (Preview Generator)"},
                 )
                 etag = head.headers.get("etag") or head.headers.get("last-modified")
                 content_length = head.headers.get("content-length")
@@ -215,7 +215,7 @@ class PreviewService:
                 response = await client.get(
                     url,
                     follow_redirects=True,
-                    headers={"User-Agent": "Ocean/1.0 (Preview Generator)"}
+                    headers={"User-Agent": "Focus/1.0 (Preview Generator)"}
                 )
                 response.raise_for_status()
                 # Enforce body size cap

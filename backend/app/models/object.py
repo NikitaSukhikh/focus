@@ -1,7 +1,7 @@
 """
 Object Pydantic Models
 
-Data models for Object entities - items stored on islands (links, files, service objects).
+Data models for Object entities - items stored on spaces (links, files, service objects).
 Supports polymorphic object types: Link, File, GoogleDrive, Gmail, Text.
 
 CRITICAL DISTINCTION - TEXT vs FILE Objects:
@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator, ConfigDict, mod
 
 class ObjectType(str, Enum):
     """
-    Types of objects that can be stored on islands.
+    Types of objects that can be stored on spaces.
 
     IMPORTANT: TEXT and FILE are different!
     - TEXT: Plain text written in UI (stored in DB)
@@ -84,7 +84,7 @@ class ObjectBase(BaseModel):
     position: Optional[int] = Field(
         None,
         ge=0,
-        description="Position on the island canvas"
+        description="Position on the space canvas"
     )
     x: Optional[float] = Field(
         None,
@@ -164,7 +164,7 @@ class LinkObjectData(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "url": "https://github.com/anthropics/ocean",
+                "url": "https://github.com/anthropics/focus",
                 "favicon_url": "https://github.com/favicon.ico",
                 "thumbnail_url": "https://opengraph.githubassets.com/..."
             }
@@ -633,7 +633,7 @@ class ObjectResponse(ObjectBase):
     """
 
     id: UUID = Field(..., description="Unique object identifier")
-    island_id: UUID = Field(..., description="ID of the island this object belongs to")
+    space_id: UUID = Field(..., description="ID of the space this object belongs to")
     type: ObjectType = Field(..., description="Object type")
     default_title: str = Field(..., description="Original/default title from metadata or system")
     default_description: Optional[str] = Field(
@@ -656,14 +656,14 @@ class ObjectResponse(ObjectBase):
         json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
-                "island_id": "660e8400-e29b-41d4-a716-446655440001",
+                "space_id": "660e8400-e29b-41d4-a716-446655440001",
                 "type": "link",
-                "title": "GitHub - Ocean Project",
+                "title": "GitHub - Focus Project",
                 "description": "Desktop workspace organizer",
                 "tags": ["development", "github", "tools"],
                 "position": 0,
                 "metadata": {
-                    "url": "https://github.com/anthropics/ocean",
+                    "url": "https://github.com/anthropics/focus",
                     "favicon_url": "https://github.com/favicon.ico"
                 },
                 "thumbnail_url": "/cache/thumbnails/abc123.jpg",
@@ -689,7 +689,7 @@ class ObjectList(BaseModel):
                 "objects": [
                     {
                         "id": "550e8400-e29b-41d4-a716-446655440000",
-                        "island_id": "660e8400-e29b-41d4-a716-446655440001",
+                        "space_id": "660e8400-e29b-41d4-a716-446655440001",
                         "type": "link",
                         "title": "GitHub",
                         "description": None,
@@ -708,7 +708,7 @@ class ObjectList(BaseModel):
 
 
 class ObjectReorder(BaseModel):
-    """Schema for reordering objects on an island."""
+    """Schema for reordering objects on an space."""
 
     object_ids: List[UUID] = Field(
         ...,

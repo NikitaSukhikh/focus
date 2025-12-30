@@ -1,6 +1,6 @@
 # Tauri Desktop App Setup ✅
 
-Ocean is now configured to run as a **standalone desktop application** using Tauri!
+Focus is now configured to run as a **standalone desktop application** using Tauri!
 
 ## What Was Added
 
@@ -80,8 +80,8 @@ npm run tauri:dev
 The Tauri app is configured in `ui/src-tauri/tauri.conf.json`:
 
 - **Window size**: 1400x900 (min 800x600)
-- **App name**: Ocean
-- **Identifier**: com.ocean.app
+- **App name**: Focus
+- **Identifier**: com.focus.app
 - **Permissions**: File system, HTTP (localhost:8000), Shell
 
 ## Building for Production

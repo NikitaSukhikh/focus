@@ -1,10 +1,10 @@
 # Authenticated Links - Seamless Link Opening
 
-Ocean now supports seamless opening of authenticated links across multiple cloud services and platforms. This feature prevents blocking pages when clicking on private links that require authentication.
+Focus now supports seamless opening of authenticated links across multiple cloud services and platforms. This feature prevents blocking pages when clicking on private links that require authentication.
 
 ## How It Works
 
-1. **Service Detection**: When you double-click a link, Ocean automatically detects which service it belongs to
+1. **Service Detection**: When you double-click a link, Focus automatically detects which service it belongs to
 2. **Token Validation**: Checks if you have valid OAuth tokens for that service
 3. **Account Selection**: If multiple accounts are available, shows a selection dialog
 4. **Seamless Opening**: Opens the link with the correct authentication context
@@ -51,7 +51,7 @@ Ocean now supports seamless opening of authenticated links across multiple cloud
 
 ### Opening Links
 
-Simply double-click any link in Ocean. The system will:
+Simply double-click any link in Focus. The system will:
 
 1. Detect if the link requires authentication
 2. Check your stored credentials
@@ -66,7 +66,7 @@ For Google services, you can connect multiple accounts:
 1. Click the Google icon in the top bar
 2. Sign in with each account you want to add
 3. When opening links, choose which account to use
-4. Ocean remembers your preference
+4. Focus remembers your preference
 
 ## Technical Details
 

@@ -18,21 +18,21 @@ import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 
 interface FileHandlingParams {
-  selectedIsland: any;
+  selectedSpace: any;
   paneRef: React.RefObject<HTMLDivElement | null>;
-  setIconsByIsland: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
 }
 
 export const useCenterPaneFileHandling = ({
-  selectedIsland,
+  selectedSpace,
   paneRef,
-  setIconsByIsland,
+  setIconsBySpace,
   clampToBoundaries,
 }: FileHandlingParams) => {
 
   const handleAddFiles = useCallback(async () => {
-    if (!selectedIsland || !paneRef.current) return;
+    if (!selectedSpace || !paneRef.current) return;
 
     try {
       const selected = await openFilePicker({
@@ -78,28 +78,28 @@ export const useCenterPaneFileHandling = ({
           filePath: filePath,
         };
 
-        setIconsByIsland((prev) => ({
+        setIconsBySpace((prev) => ({
           ...prev,
-          [selectedIsland.id]: [...(prev[selectedIsland.id] || []), optimisticIcon],
+          [selectedSpace.id]: [...(prev[selectedSpace.id] || []), optimisticIcon],
         }));
 
         objectsApi
-          .create(selectedIsland.id, payload)
+          .create(selectedSpace.id, payload)
           .then((created) => {
             const meta = (created.metadata || {}) as Record<string, any>;
             const createdFilePath = meta.file_path as string;
             const tag = normalizeTag((created as any).tag ?? meta.tag);
 
-            setIconsByIsland((prev) => ({
+            setIconsBySpace((prev) => ({
               ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).map((i) =>
+              [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
                 i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, tag } : i
               ),
             }));
 
             // Add to backend undo history
             undoApi
-              .createEvent(selectedIsland.id, {
+              .createEvent(selectedSpace.id, {
                 event_type: 'tile_create',
                 event_data: {
                   tile: {
@@ -117,16 +117,16 @@ export const useCenterPaneFileHandling = ({
           })
           .catch((err) => {
             console.error('Failed to create file object:', err);
-            setIconsByIsland((prev) => ({
+            setIconsBySpace((prev) => ({
               ...prev,
-              [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== tempId),
+              [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
             }));
           });
       });
     } catch (err) {
       console.error('Failed to open file picker:', err);
     }
-  }, [selectedIsland, paneRef, clampToBoundaries, setIconsByIsland]);
+  }, [selectedSpace, paneRef, clampToBoundaries, setIconsBySpace]);
 
   return {
     handleAddFiles,

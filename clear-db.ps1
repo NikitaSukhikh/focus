@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$defaultDbPath = Join-Path $repoRoot "backend/storage/local_files/data/ocean.db"
+$defaultDbPath = Join-Path $repoRoot "backend/storage/local_files/data/focus.db"
 
 if (-not $DatabasePath) {
     $DatabasePath = $defaultDbPath

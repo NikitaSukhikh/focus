@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, session } from 'electron';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname } from 'path';
@@ -11,15 +12,44 @@ const isMac = process.platform === 'darwin';
 
 let mainWindow: BrowserWindow | null = null;
 
+const getIconPath = () => {
+  const devCandidates = [
+    path.join(__dirname, '../src/assets/focus.ico'),
+    path.join(__dirname, '../src/assets/focus.png'),
+    path.resolve(process.cwd(), 'src', 'assets', 'focus.ico'),
+    path.resolve(process.cwd(), 'src', 'assets', 'focus.png'),
+    path.resolve(process.cwd(), 'ui', 'src', 'assets', 'focus.ico'),
+    path.resolve(process.cwd(), 'ui', 'src', 'assets', 'focus.png'),
+  ];
+
+  const prodCandidates = [
+    path.join(process.resourcesPath, 'focus.ico'),
+    path.join(process.resourcesPath, 'focus.icns'),
+    path.join(process.resourcesPath, 'focus.png'),
+  ];
+
+  const candidates = app.isPackaged ? prodCandidates : devCandidates;
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      console.log('[Electron] Using icon:', candidate);
+      return candidate;
+    }
+  }
+
+  // Fallback to default icon
+  console.warn('[Electron] No icon found, using default Electron icon');
+  return undefined;
+};
+
 const logWebviewStorageInfo = async () => {
   try {
-    const webviewSession = session.fromPartition('persist:ocean-webview');
+    const webviewSession = session.fromPartition('persist:focus-webview');
     const storagePath = webviewSession.getStoragePath();
     const cookies = await webviewSession.cookies.get({});
     console.log(
       '[Electron] Webview storage',
       JSON.stringify({
-        partition: 'persist:ocean-webview',
+        partition: 'persist:focus-webview',
         storagePath,
         cookieCount: cookies.length,
       })
@@ -45,7 +75,8 @@ async function createMainWindow() {
     minWidth: 800,
     minHeight: 600,
     show: true, // Show immediately instead of waiting
-    title: 'Ocean',
+    title: 'Focus',
+    icon: getIconPath(),
     autoHideMenuBar: true, // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
       // Use the Vite/Webpack-provided preload entry point
@@ -92,7 +123,7 @@ app.whenReady().then(() => {
   });
 
   // Configure webview session to handle sites that block embedding
-  const webviewSession = session.fromPartition('persist:ocean-webview');
+  const webviewSession = session.fromPartition('persist:focus-webview');
   webviewSession.webRequest.onHeadersReceived((details, callback) => {
     const headers = { ...details.responseHeaders };
 
@@ -168,7 +199,7 @@ ipcMain.handle('desktop:arrange-windows-side-by-side', async (_event) => {
     // Calculate dimensions - full height, half width for side-by-side layout
     const halfWidth = Math.floor(screenWidth / 2);
 
-    // Don't resize Ocean window - keep it as is
+    // Don't resize Focus window - keep it as is
     // Only position the File Explorer window
 
     // On Windows, use PowerShell to position and configure File Explorer

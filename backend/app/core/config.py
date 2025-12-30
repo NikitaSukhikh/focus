@@ -1,7 +1,7 @@
 """
 Application configuration using Pydantic Settings.
 
-This module provides centralized configuration management for the Ocean backend,
+This module provides centralized configuration management for the Focus backend,
 loading settings from environment variables with validation and type checking.
 """
 
@@ -72,7 +72,7 @@ class DatabaseSettings(BaseSettings):
     """Database configuration settings."""
 
     path: str = Field(
-        default="./storage/local_files/data/ocean.db",
+        default="./storage/local_files/data/focus.db",
         description="Path to SQLite database file"
     )
     pool_size: int = Field(default=5, ge=1, description="Database connection pool size")
@@ -348,7 +348,7 @@ class LoggingSettings(BaseSettings):
         description="Log output destination"
     )
     file_path: str = Field(
-        default="./logs/ocean.log",
+        default="./logs/focus.log",
         description="Log file path"
     )
     file_rotation: bool = Field(

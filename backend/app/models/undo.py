@@ -57,8 +57,8 @@ class UndoEventResponse(UndoEventBase):
     """Model for undo event responses."""
 
     id: UUID
-    island_id: UUID
-    sequence: int = Field(..., description="Monotonic per-island sequence number for deterministic ordering")
+    space_id: UUID
+    sequence: int = Field(..., description="Monotonic per-space sequence number for deterministic ordering")
     timestamp: datetime
     is_undone: bool
 

@@ -5,10 +5,11 @@ import { FONT_ROLES } from '../../../styles/fontManager';
 import { useTopBarLogic } from './useTopBarLogic';
 import { TopBarProps, TopBarHandle } from './types';
 import { TagsButton, TagsMenu, useTagsDropdown, TagColor } from './tags';
+import focusLogo from '../../../assets/focus.png';
 
 export type { TopBarHandle } from './types';
 
-// TopBar renders the global header controls (sidebar toggle, island title editor, search, preview toggles, zoom) and wires them to layout state.
+// TopBar renders the global header controls (sidebar toggle, space title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onTagsClick, isTagsOpen, onTagSelect } = props;
 
@@ -52,6 +53,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
         <div className="flex items-center gap-2 mr-2">
+          <img src={focusLogo} alt="Focus logo" className="w-8 h-8 rounded-lg shadow-sm" />
           <span
             style={{
               ...FONT_ROLES.topbarTitle,
@@ -61,29 +63,29 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               letterSpacing: '0.02em',
             }}
           >
-            Ocean
+            Focus
           </span>
         </div>
       </div>
 
-      {/* Center section - Island Name (absolute positioned) */}
+      {/* Center section - Space Name (absolute positioned) */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ zIndex: Z_INDEX.BASE }}>
         <div className="pointer-events-auto">
-          {logic.selectedIsland ? (
-            logic.isEditingIslandName ? (
+          {logic.selectedSpace ? (
+            logic.isEditingSpaceName ? (
               <input
-                ref={logic.islandNameInputRef}
+                ref={logic.spaceNameInputRef}
                 type="text"
-                value={logic.editingIslandName}
-                onChange={(e) => logic.setEditingIslandName(e.target.value)}
-                onKeyDown={logic.handleIslandNameKeyDown}
-                onBlur={logic.handleIslandNameSubmit}
+                value={logic.editingSpaceName}
+                onChange={(e) => logic.setEditingSpaceName(e.target.value)}
+                onKeyDown={logic.handleSpaceNameKeyDown}
+                onBlur={logic.handleSpaceNameSubmit}
                 className="text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center max-w-md"
                 style={FONT_ROLES.topbarTitle}
               />
             ) : (
               <h1
-                onDoubleClick={() => logic.setIsEditingIslandName(true)}
+                onDoubleClick={() => logic.setIsEditingSpaceName(true)}
                 className="cursor-pointer transition-colors"
                 style={{
                   ...FONT_ROLES.topbarTitle,
@@ -97,11 +99,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 }}
                 title="Double-click to rename"
               >
-                {logic.selectedIsland.name}
+                {logic.selectedSpace.name}
               </h1>
             )
           ) : (
-            <span style={{ ...FONT_ROLES.topbarTitle, color: 'var(--color-text-muted)' }}>No Island Selected</span>
+            <span style={{ ...FONT_ROLES.topbarTitle, color: 'var(--color-text-muted)' }}>No Space Selected</span>
           )}
         </div>
       </div>

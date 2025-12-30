@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, Plus, Settings } from 'lucide-react';
-import { useIslandStore } from '../../../stores/islandStore';
+import { useSpaceStore } from '../../../stores/spaceStore';
 import { objectsApi } from '../../../api/objects';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
-import { IslandItem } from './IslandItem';
+import { SpaceItem } from './SpaceItem';
 import { LeftSidebarProps } from './types';
 import { mapObjectToPayload, generateUniqueName } from './utils';
 
-// LeftSidebar lists available islands and handles basic island CRUD/duplication.
+// LeftSidebar lists available spaces and handles basic space CRUD/duplication.
 export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -17,46 +17,46 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
 
-  const islands = useIslandStore((state) => state.islands);
-  const selectedIslandId = useIslandStore((state) => state.selectedIslandId);
-  const selectIsland = useIslandStore((state) => state.selectIsland);
-  const addLocalIsland = useIslandStore((state) => state.addLocalIsland);
-  const commitIsland = useIslandStore((state) => state.commitIsland);
-  const deleteIsland = useIslandStore((state) => state.deleteIsland);
-  const createIsland = useIslandStore((state) => state.createIsland);
-  const loadIslands = useIslandStore((state) => state.loadIslands);
-  const initialize = useIslandStore((state) => state.initialize);
-  const setDuplicating = useIslandStore((state) => state.setDuplicating);
+  const spaces = useSpaceStore((state) => state.spaces);
+  const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
+  const selectSpace = useSpaceStore((state) => state.selectSpace);
+  const addLocalSpace = useSpaceStore((state) => state.addLocalSpace);
+  const commitSpace = useSpaceStore((state) => state.commitSpace);
+  const deleteSpace = useSpaceStore((state) => state.deleteSpace);
+  const createSpace = useSpaceStore((state) => state.createSpace);
+  const loadSpaces = useSpaceStore((state) => state.loadSpaces);
+  const initialize = useSpaceStore((state) => state.initialize);
+  const setDuplicating = useSpaceStore((state) => state.setDuplicating);
 
   useEffect(() => {
     initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAddIsland = async () => {
-    const defaultName = 'My First Island';
-    const tempId = addLocalIsland(defaultName);
+  const handleAddSpace = async () => {
+    const defaultName = 'My First Space';
+    const tempId = addLocalSpace(defaultName);
     setEditingId(tempId);
-    selectIsland(tempId);
+    selectSpace(tempId);
   };
 
-  const handleRenameIsland = async (id: string, newName: string) => {
-    await commitIsland(id, newName);
+  const handleRenameSpace = async (id: string, newName: string) => {
+    await commitSpace(id, newName);
     setEditingId(null);
   };
 
-  const handleDeleteIsland = (id: string) => {
+  const handleDeleteSpace = (id: string) => {
     setPendingDeleteId(id);
   };
 
-  const handleConfirmDeleteIsland = async () => {
+  const handleConfirmDeleteSpace = async () => {
     if (!pendingDeleteId) return;
 
     setIsDeleting(true);
     try {
-      await deleteIsland(pendingDeleteId);
+      await deleteSpace(pendingDeleteId);
     } catch (err) {
-      console.error('Failed to delete island', err);
+      console.error('Failed to delete space', err);
     } finally {
       setIsDeleting(false);
       setPendingDeleteId(null);
@@ -84,7 +84,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         yesButtonRef.current?.focus();
       } else if (event.key === 'Enter') {
         if (document.activeElement === yesButtonRef.current) {
-          handleConfirmDeleteIsland();
+          handleConfirmDeleteSpace();
         } else {
           handleCloseDeleteDialog();
         }
@@ -100,22 +100,22 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
     requestAnimationFrame(() => noButtonRef.current?.focus());
   }, [pendingDeleteId, isDeleting]);
 
-  const handleDuplicateIsland = async (id: string) => {
-    const source = islands.find((i) => i.id === id);
+  const handleDuplicateSpace = async (id: string) => {
+    const source = spaces.find((i) => i.id === id);
     if (!source) return;
 
-    const existingNames = new Set(islands.map((i) => i.name.toLowerCase()));
+    const existingNames = new Set(spaces.map((i) => i.name.toLowerCase()));
     const base = `${source.name} Copy`;
     const newName = generateUniqueName(base, existingNames);
 
-    const newIsland = await createIsland(newName);
-    if (!newIsland) return;
+    const newSpace = await createSpace(newName);
+    if (!newSpace) return;
 
     // Set duplicating state to show loading spinner
     setDuplicating(true);
 
     // Preserve the current selection before duplication
-    const currentSelection = selectedIslandId;
+    const currentSelection = selectedSpaceId;
 
     try {
       const objects = await objectsApi.list(id);
@@ -125,7 +125,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         const payload = mapObjectToPayload(obj);
         if (!payload) return null;
         try {
-          return await objectsApi.create(newIsland.id, payload);
+          return await objectsApi.create(newSpace.id, payload);
         } catch (err) {
           console.error('Failed to duplicate object', { obj, err });
           return null;
@@ -134,22 +134,22 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
 
       await Promise.all(createPromises);
     } catch (err) {
-      console.error('Failed to duplicate island objects', err);
+      console.error('Failed to duplicate space objects', err);
     } finally {
       // Clear duplicating state
       setDuplicating(false);
     }
 
-    // Reload islands list to show the new duplicated island, maintaining the original selection
+    // Reload spaces list to show the new duplicated space, maintaining the original selection
     if (currentSelection) {
-      await loadIslands(currentSelection);
+      await loadSpaces(currentSelection);
     } else {
-      await loadIslands();
+      await loadSpaces();
     }
   };
 
-  const handleSelectIsland = (id: string) => {
-    selectIsland(id);
+  const handleSelectSpace = (id: string) => {
+    selectSpace(id);
   };
 
   return (
@@ -175,10 +175,10 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--primary-color)' }}>Islands</h2>
+          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--primary-color)' }}>Spaces</h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleAddIsland}
+              onClick={handleAddSpace}
               className="p-1.5 rounded-lg transition-colors"
               style={{
                 color: 'var(--color-text-secondary)',
@@ -194,7 +194,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
                 e.currentTarget.style.color = 'var(--color-text-secondary)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
-              title="New Island"
+              title="New Space"
             >
               <Plus size={18} />
             </button>
@@ -222,30 +222,30 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
           </div>
         </div>
 
-        {/* Islands List */}
+        {/* Spaces List */}
         <div className="flex-1 overflow-y-auto sidebar-scroll p-3">
-          {islands.length === 0 ? (
+          {spaces.length === 0 ? (
             <div className="text-center py-4" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>
-              No islands yet. Click + to create one.
+              No spaces yet. Click + to create one.
             </div>
           ) : (
             <div className="space-y-2">
-              {islands.map((island) => {
-                const isSelected = island.id === selectedIslandId;
+              {spaces.map((space) => {
+                const isSelected = space.id === selectedSpaceId;
 
                 return (
-                  <IslandItem
-                    key={island.id}
-                    id={island.id}
-                    name={island.name}
+                  <SpaceItem
+                    key={space.id}
+                    id={space.id}
+                    name={space.name}
                     isActive={isSelected}
-                    isEditing={editingId === island.id}
-                    onRename={handleRenameIsland}
-                    onDelete={handleDeleteIsland}
-                    onDuplicate={handleDuplicateIsland}
-                    onStartEdit={() => setEditingId(island.id)}
+                    isEditing={editingId === space.id}
+                    onRename={handleRenameSpace}
+                    onDelete={handleDeleteSpace}
+                    onDuplicate={handleDuplicateSpace}
+                    onStartEdit={() => setEditingId(space.id)}
                     onCancelEdit={() => setEditingId(null)}
-                    onClick={() => handleSelectIsland(island.id)}
+                    onClick={() => handleSelectSpace(space.id)}
                   />
                 );
               })}
@@ -314,8 +314,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
                 className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Island</h3>
-                <p className="text-sm text-slate-700 mb-6">Are you sure you wnat to delete this island with all data?</p>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Space</h3>
+                <p className="text-sm text-slate-700 mb-6">Are you sure you wnat to delete this space with all data?</p>
 
                 <div className="flex items-center justify-end gap-2">
                   <button
@@ -329,7 +329,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
                   </button>
                   <button
                     type="button"
-                    onClick={handleConfirmDeleteIsland}
+                    onClick={handleConfirmDeleteSpace}
                     className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200 focus-visible:ring-offset-2"
                     disabled={isDeleting}
                     ref={yesButtonRef}
