@@ -31,6 +31,40 @@ export const useDebouncedPositionUpdate = () => {
     };
   }, []);
 
+  const flushPending = useCallback(async () => {
+    // Cancel all timers and execute immediately
+    const promises: Promise<any>[] = [];
+
+    timersRef.current.forEach((timer) => clearTimeout(timer));
+    timersRef.current.clear();
+
+    pendingPositionsRef.current.forEach((pos, objectId) => {
+      const promise = objectsApi.updatePosition(objectId, pos.x, pos.y).catch((err) => {
+        console.error('[DebouncedPositionUpdate] Failed to flush position:', err);
+      });
+      promises.push(promise);
+    });
+
+    pendingPositionsRef.current.clear();
+
+    await Promise.allSettled(promises);
+  }, []);
+
+  // Flush pending updates on unload so latest positions persist
+  useEffect(() => {
+    const handleFlush = () => {
+      void flushPending();
+    };
+
+    window.addEventListener('beforeunload', handleFlush);
+    window.addEventListener('pagehide', handleFlush);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleFlush);
+      window.removeEventListener('pagehide', handleFlush);
+    };
+  }, [flushPending]);
+
   const updatePosition = useCallback((objectId: string, x: number, y: number) => {
     // Store the pending position
     pendingPositionsRef.current.set(objectId, { x, y });
@@ -54,25 +88,6 @@ export const useDebouncedPositionUpdate = () => {
     }, DEBOUNCE_MS);
 
     timersRef.current.set(objectId, timer);
-  }, []);
-
-  const flushPending = useCallback(async () => {
-    // Cancel all timers and execute immediately
-    const promises: Promise<any>[] = [];
-
-    timersRef.current.forEach((timer) => clearTimeout(timer));
-    timersRef.current.clear();
-
-    pendingPositionsRef.current.forEach((pos, objectId) => {
-      const promise = objectsApi.updatePosition(objectId, pos.x, pos.y).catch((err) => {
-        console.error('[DebouncedPositionUpdate] Failed to flush position:', err);
-      });
-      promises.push(promise);
-    });
-
-    pendingPositionsRef.current.clear();
-
-    await Promise.allSettled(promises);
   }, []);
 
   return { updatePosition, flushPending };

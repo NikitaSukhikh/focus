@@ -47,6 +47,12 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     const icons = logic.iconsByIsland[logic.selectedIsland.id] || [];
     return icons.filter((icon) => logic.selectedIconIds.includes(icon.id));
   }, [logic.iconsByIsland, logic.selectedIconIds, logic.selectedIsland]);
+  const INLINE_PREVIEW_LIMIT = 6;
+  const inlinePreviewIcons = useMemo(
+    () => selectedIcons.slice(0, INLINE_PREVIEW_LIMIT),
+    [selectedIcons]
+  );
+  const hiddenInlinePreviewCount = Math.max(0, selectedIcons.length - inlinePreviewIcons.length);
 
   const ghostSize = useMemo(() => {
     const fallback = { width: 128, height: 128 };
@@ -600,13 +606,18 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
           <div style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-muted)' }}>
             Inline previews ({selectedIcons.length})
           </div>
+          {hiddenInlinePreviewCount > 0 && (
+            <div className="text-xs text-slate-500" style={{ ...FONT_ROLES.paneBodyMuted }}>
+              Showing first {INLINE_PREVIEW_LIMIT} items — {hiddenInlinePreviewCount} more selected.
+            </div>
+          )}
           <div
             className="grid gap-4"
             style={{
               gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             }}
           >
-            {selectedIcons.map((icon) => {
+            {inlinePreviewIcons.map((icon) => {
               const embed = getVideoEmbed(icon.url);
               if (!embed) {
                 return (
