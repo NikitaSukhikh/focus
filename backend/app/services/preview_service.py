@@ -64,12 +64,16 @@ class PreviewService:
     # HTTP client settings
     HTTP_TIMEOUT = 10.0  # seconds
     MAX_CONTENT_LENGTH = 1024 * 1024 * 5  # 5MB max for URL fetching
+    MAX_BODY_BYTES = 1024 * 1024 * 2  # 2MB hard cap for HTML body fetch
+    CACHE_TTL_SECONDS = 60 * 10  # 10 minutes
 
     def __init__(self):
         """Initialize the preview service."""
         self.settings = settings
         self.text_service = text_preview_service
         self.thumbnail_service = file_thumbnail_service
+        # Simple in-memory cache for URL metadata keyed by (url, etag/last-modified)
+        self._metadata_cache: dict[str, tuple[dict[str, Any], float]] = {}
 
     async def generate_preview(
         self,
@@ -85,6 +89,25 @@ class PreviewService:
             Union[PreviewResponse, PreviewError]: Preview data or error
         """
         try:
+            if obj.type == ObjectType.LINK:
+                return await self._generate_link_preview(obj)
+            # If metadata already includes a thumbnail or og data, short-circuit for speed.
+            if obj.type == ObjectType.LINK and obj.metadata.get("og_title") and obj.metadata.get("og_image"):
+                return LinkPreview(
+                    object_id=obj.id,
+                    object_type=ObjectType.LINK,
+                    title=obj.title,
+                    description=obj.description,
+                    tags=obj.tags,
+                    url=obj.metadata.get("url"),
+                    favicon_url=obj.metadata.get("favicon_url"),
+                    thumbnail_url=obj.metadata.get("og_image"),
+                    site_name=obj.metadata.get("site_name"),
+                    og_title=obj.metadata.get("og_title"),
+                    og_description=obj.metadata.get("og_description"),
+                    og_image=obj.metadata.get("og_image"),
+                )
+
             if obj.type == ObjectType.LINK:
                 return await self._generate_link_preview(obj)
             elif obj.type == ObjectType.FILE:
@@ -165,14 +188,39 @@ class PreviewService:
         """
         metadata = {}
 
+        # Cache key based on URL; etag will be added once we fetch headers.
+        now = datetime.utcnow().timestamp()
+        cached = self._metadata_cache.get(url)
+        if cached and now - cached[1] <= self.CACHE_TTL_SECONDS:
+            return cached[0]
+
         try:
             async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
+                # First do a HEAD to get lightweight etag/size.
+                head = await client.head(
+                    url,
+                    follow_redirects=True,
+                    headers={"User-Agent": "Ocean/1.0 (Preview Generator)"},
+                )
+                etag = head.headers.get("etag") or head.headers.get("last-modified")
+                content_length = head.headers.get("content-length")
+                if content_length and int(content_length) > self.MAX_CONTENT_LENGTH:
+                    raise ValueError("Content too large for preview")
+
+                cache_key = f"{url}:{etag}" if etag else url
+                cached_by_etag = self._metadata_cache.get(cache_key)
+                if cached_by_etag and now - cached_by_etag[1] <= self.CACHE_TTL_SECONDS:
+                    return cached_by_etag[0]
+
                 response = await client.get(
                     url,
                     follow_redirects=True,
                     headers={"User-Agent": "Ocean/1.0 (Preview Generator)"}
                 )
                 response.raise_for_status()
+                # Enforce body size cap
+                if len(response.content) > self.MAX_BODY_BYTES:
+                    raise ValueError("Response body too large for preview parsing")
 
                 # Parse HTML
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -271,6 +319,9 @@ class PreviewService:
                     extra={"url": url, "metadata_keys": list(metadata.keys())}
                 )
 
+                # Cache the metadata
+                self._metadata_cache[cache_key] = (metadata, now)
+
         except Exception as e:
             logger.warning(f"Failed to fetch URL metadata for {url}: {e}")
 
@@ -359,6 +410,9 @@ class PreviewService:
                     logger.debug(f"Audio file detected: {file_path}")
                 except Exception as e:
                     logger.warning(f"Failed to extract audio metadata: {e}")
+
+            # TODO: Consider dispatching a background job to refresh thumbnails/previews asynchronously
+            # using a task queue if generation becomes heavy.
 
         return FilePreview(
             object_id=obj.id,
