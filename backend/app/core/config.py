@@ -304,6 +304,22 @@ class SecuritySettings(BaseSettings):
             pass
         return v
 
+    @field_validator("encryption_key")
+    @classmethod
+    def validate_encryption_key(cls, v):
+        """
+        Ensure encryption key is sufficiently strong.
+        Accepts either a Fernet urlsafe base64 key (44 chars ending with '=') or a raw string >=32 chars (derives).
+        """
+        key = (v or "").strip()
+        if len(key) == 44 and key.endswith("="):
+            return key
+        if len(key) < 32:
+            raise ValueError(
+                f"ENCRYPTION_KEY must be a Fernet key or at least 32 characters (got {len(key)})."
+            )
+        return key
+
 
 class LoggingSettings(BaseSettings):
     """Logging configuration settings."""
