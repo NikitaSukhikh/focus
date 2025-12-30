@@ -8,6 +8,7 @@ Supports polymorphic objects: Link, File, Text, GoogleDrive, Gmail.
 from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, status, Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object import (
     ObjectCreate,
@@ -27,6 +28,7 @@ from app.services.objects_service import (
 from app.api.deps import validate_uuid
 from app.core.exceptions import AppError, BadRequestError, NotFoundError
 from app.core.logging import get_logger
+from app.storage.db import get_session
 
 
 logger = get_logger(__name__)
@@ -49,7 +51,8 @@ async def list_objects_on_island(
     island_id: UUID,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
-    type_filter: Optional[ObjectType] = Query(None, description="Filter by object type")
+    type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
     List all objects on an island.
@@ -71,7 +74,8 @@ async def list_objects_on_island(
             island_id=island_id,
             skip=skip,
             limit=limit,
-            object_type=type_filter
+            object_type=type_filter,
+            session=session
         )
 
         logger.info(
@@ -109,7 +113,8 @@ async def list_objects_on_island(
 )
 async def create_object(
     island_id: UUID,
-    object_data: ObjectCreate
+    object_data: ObjectCreate,
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectResponse:
     """
     Create a new object on an island.
@@ -134,7 +139,7 @@ async def create_object(
         500: Internal server error
     """
     try:
-        obj = await objects_service.create_object(island_id, object_data)
+        obj = await objects_service.create_object(island_id, object_data, session=session)
 
         logger.info(
             f"Created {obj.type} object: {obj.title}",
@@ -191,7 +196,8 @@ async def create_object(
     tags=["Objects"]
 )
 async def get_object(
-    object_id: UUID
+    object_id: UUID,
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectResponse:
     """
     Get an object by ID.
@@ -207,7 +213,7 @@ async def get_object(
         500: Internal server error
     """
     try:
-        obj = await objects_service.get_object(object_id)
+        obj = await objects_service.get_object(object_id, session=session)
 
         logger.debug(
             f"Retrieved object: {obj.title}",
@@ -245,7 +251,8 @@ async def get_object(
 )
 async def patch_object(
     object_id: UUID,
-    object_data: ObjectUpdate
+    object_data: ObjectUpdate,
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectResponse:
     """
     Partially update an object (same as PUT but semantically for partial updates).
@@ -263,7 +270,7 @@ async def patch_object(
         500: Internal server error
     """
     try:
-        obj = await objects_service.update_object(object_id, object_data)
+        obj = await objects_service.update_object(object_id, object_data, session=session)
 
         logger.info(
             f"Patched object: {obj.title}",
@@ -309,7 +316,8 @@ async def patch_object(
 )
 async def update_object(
     object_id: UUID,
-    object_data: ObjectUpdate
+    object_data: ObjectUpdate,
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectResponse:
     """
     Update an object.
@@ -327,7 +335,7 @@ async def update_object(
         500: Internal server error
     """
     try:
-        obj = await objects_service.update_object(object_id, object_data)
+        obj = await objects_service.update_object(object_id, object_data, session=session)
 
         logger.info(
             f"Updated object: {obj.title}",
@@ -372,7 +380,8 @@ async def update_object(
     tags=["Objects"]
 )
 async def delete_object(
-    object_id: UUID
+    object_id: UUID,
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectDeleteResponse:
     """
     Delete an object.
@@ -388,7 +397,7 @@ async def delete_object(
         500: Internal server error
     """
     try:
-        result = await objects_service.delete_object(object_id)
+        result = await objects_service.delete_object(object_id, session=session)
 
         logger.info(
             f"Deleted object",
@@ -425,7 +434,8 @@ async def delete_object(
     tags=["Objects"]
 )
 async def reorder_objects(
-    reorder_data: ObjectReorder
+    reorder_data: ObjectReorder,
+    session: AsyncSession = Depends(get_session)
 ) -> list[ObjectResponse]:
     """
     Reorder objects within an island.
@@ -441,7 +451,7 @@ async def reorder_objects(
         500: Internal server error
     """
     try:
-        objects = await objects_service.reorder_objects(reorder_data.object_ids)
+        objects = await objects_service.reorder_objects(reorder_data.object_ids, session=session)
 
         logger.info(
             f"Reordered {len(objects)} objects",
@@ -483,7 +493,8 @@ async def search_objects(
     type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
     island_id: Optional[UUID] = Query(None, description="Filter by island"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return")
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
     Search objects across all islands or within a specific island.
@@ -509,7 +520,8 @@ async def search_objects(
             type_filter=type_filter,
             island_id=island_id,
             skip=skip,
-            limit=limit
+            limit=limit,
+            session=session
         )
 
         logger.debug(
@@ -546,7 +558,8 @@ async def search_objects(
 async def get_objects_by_type(
     object_type: ObjectType,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return")
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
     Get all objects of a specific type.
@@ -566,7 +579,8 @@ async def get_objects_by_type(
         objects = await objects_service.get_objects_by_type(
             object_type=object_type,
             skip=skip,
-            limit=limit
+            limit=limit,
+            session=session
         )
 
         logger.debug(
@@ -598,7 +612,8 @@ async def get_objects_by_type(
 async def get_objects_by_tags(
     tags: List[str] = Query(..., description="Tags to filter by (AND logic)"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return")
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
     Get objects by tags (AND logic - object must have all specified tags).
@@ -618,7 +633,8 @@ async def get_objects_by_tags(
         objects = await objects_service.get_objects_by_tags(
             tags=tags,
             skip=skip,
-            limit=limit
+            limit=limit,
+            session=session
         )
 
         logger.debug(
