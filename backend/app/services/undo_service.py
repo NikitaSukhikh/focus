@@ -59,22 +59,27 @@ async def create_undo_event(
     """
     logger.info(f"Creating undo event for island {island_id}: {event_create.event_type}")
 
-    # Clear redo stack when new action performed
-    cleared = await undo_repo.clear_redoable_events(island_id)
-    if cleared > 0:
-        logger.debug(f"Cleared {cleared} redoable events")
+    # Use a transaction so redo clear + insert + trim commit together.
+    async with undo_repo.session.begin():
+        # Clear redo stack when new action performed
+        cleared = await undo_repo.clear_redoable_events(island_id)
+        if cleared > 0:
+            logger.debug(f"Cleared {cleared} redoable events")
 
-    # Create new event
-    event = await undo_repo.create_event(
-        island_id=island_id,
-        event_type=event_create.event_type,
-        event_data=event_create.event_data,
-    )
+        # Create new event
+        event = await undo_repo.create_event(
+            island_id=island_id,
+            event_type=event_create.event_type,
+            event_data=event_create.event_data,
+        )
 
-    # Trim old events
-    trimmed = await undo_repo.trim_to_limit(island_id, max_events)
-    if trimmed > 0:
-        logger.debug(f"Trimmed {trimmed} old events")
+        # Trim old events
+        trimmed = await undo_repo.trim_to_limit(island_id, max_events)
+        if trimmed > 0:
+            logger.debug(f"Trimmed {trimmed} old events")
+
+    # Refresh so caller gets committed values
+    await undo_repo.session.refresh(event)
 
     return UndoEventResponse.model_validate(event)
 

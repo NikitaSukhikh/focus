@@ -540,7 +540,8 @@ class ObjectsRepository:
                 obj.default_description = description_update
 
             if metadata_updates:
-                current_meta = obj.metadata_json or {}
+                # Copy before update so SQLAlchemy sees a new object and persists JSON changes.
+                current_meta = dict(obj.metadata_json or {})
                 current_meta.update(metadata_updates)
                 obj.metadata_json = current_meta
 
