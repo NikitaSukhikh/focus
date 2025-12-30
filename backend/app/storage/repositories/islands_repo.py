@@ -38,11 +38,19 @@ class IslandsRepository:
     Currently uses in-memory storage; will be updated to use database.
     """
 
+    def _get_session(self, session: AsyncSession | None) -> tuple[AsyncSession, bool]:
+        """
+        Return a session and flag indicating if it was provided by caller.
+        """
+        if session is not None:
+            return session, True
+        return AsyncSessionLocal(), False
+
     # ========================================================================
     # Create
     # ========================================================================
 
-    async def create_island(self, island_data: IslandCreate) -> IslandResponse:
+    async def create_island(self, island_data: IslandCreate, session: AsyncSession | None = None) -> IslandResponse:
         """
         Create a new island.
 
@@ -53,8 +61,9 @@ class IslandsRepository:
             IslandResponse: Created island with metadata
 
         """
-        async with AsyncSessionLocal() as session:
-            position = await session.scalar(select(func.count(Island.id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            position = await session_to_use.scalar(select(func.count(Island.id)))
             island = Island(
                 id=str(uuid4()),
                 name=island_data.name,
@@ -64,19 +73,24 @@ class IslandsRepository:
                 position=position or 0,
                 object_count=0,
             )
-            session.add(island)
-            await session.commit()
-            await session.refresh(island)
+            session_to_use.add(island)
+            await session_to_use.flush()
+            if not external:
+                await session_to_use.commit()
+                await session_to_use.refresh(island)
 
             logger.info(f"Created island: {island.name}")
 
             return IslandResponse.model_validate(island)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Read
     # ========================================================================
 
-    async def get_island_by_id(self, island_id: UUID) -> Optional[IslandResponse]:
+    async def get_island_by_id(self, island_id: UUID, session: AsyncSession | None = None) -> Optional[IslandResponse]:
         """
         Get an island by ID.
 
@@ -87,8 +101,9 @@ class IslandsRepository:
             IslandResponse if found, None otherwise
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Island).where(Island.id == str(island_id))
             )
             island = result.scalar_one_or_none()
@@ -96,6 +111,9 @@ class IslandsRepository:
                 logger.warning(f"Island not found: {island_id}")
                 return None
             return IslandResponse.model_validate(island)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_all_islands(
         self,
@@ -103,6 +121,7 @@ class IslandsRepository:
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        session: AsyncSession | None = None,
     ) -> IslandList:
         """
         Get all islands with pagination and sorting.
@@ -126,9 +145,10 @@ class IslandsRepository:
 
         ordering = desc(sort_column) if sort_order.lower() == "desc" else asc(sort_column)
 
-        async with AsyncSessionLocal() as session:
-            total = await session.scalar(select(func.count(Island.id)))
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            total = await session_to_use.scalar(select(func.count(Island.id)))
+            result = await session_to_use.execute(
                 select(Island)
                 .order_by(ordering)
                 .offset(skip)
@@ -143,8 +163,11 @@ class IslandsRepository:
             )
 
             return IslandList(islands=island_responses, total=total or 0)
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def get_islands_by_ids(self, island_ids: List[UUID]) -> List[IslandResponse]:
+    async def get_islands_by_ids(self, island_ids: List[UUID], session: AsyncSession | None = None) -> List[IslandResponse]:
         """
         Get multiple islands by their IDs.
 
@@ -155,8 +178,9 @@ class IslandsRepository:
             List[IslandResponse]: List of found islands
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Island).where(Island.id.in_([str(i) for i in island_ids]))
             )
             rows = result.scalars().all()
@@ -166,8 +190,11 @@ class IslandsRepository:
                 extra={"requested": len(island_ids), "found": len(islands)}
             )
             return islands
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def get_island_count(self) -> int:
+    async def get_island_count(self, session: AsyncSession | None = None) -> int:
         """
         Get total count of islands.
 
@@ -175,8 +202,12 @@ class IslandsRepository:
             int: Total number of islands
 
         """
-        async with AsyncSessionLocal() as session:
-            return await session.scalar(select(func.count(Island.id))) or 0
+        session_to_use, external = self._get_session(session)
+        try:
+            return await session_to_use.scalar(select(func.count(Island.id))) or 0
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Update
@@ -185,7 +216,8 @@ class IslandsRepository:
     async def update_island(
         self,
         island_id: UUID,
-        island_data: IslandUpdate
+        island_data: IslandUpdate,
+        session: AsyncSession | None = None
     ) -> Optional[IslandResponse]:
         """
         Update an existing island.
@@ -198,8 +230,9 @@ class IslandsRepository:
             IslandResponse if updated, None if not found
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Island).where(Island.id == str(island_id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Island).where(Island.id == str(island_id)))
             island = result.scalar_one_or_none()
             if island is None:
                 logger.warning(f"Cannot update - island not found: {island_id}")
@@ -217,8 +250,11 @@ class IslandsRepository:
                 setattr(island, key, value)
             island.updated_at = datetime.utcnow()
 
-            await session.commit()
-            await session.refresh(island)
+            if not external:
+                await session_to_use.commit()
+                await session_to_use.refresh(island)
+            else:
+                await session_to_use.flush()
 
             logger.info(
                 f"Updated island: {island.name}",
@@ -226,11 +262,15 @@ class IslandsRepository:
             )
 
             return IslandResponse.model_validate(island)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def update_island_object_count(
         self,
         island_id: UUID,
-        delta: int = 1
+        delta: int = 1,
+        session: AsyncSession | None = None
     ) -> Optional[IslandResponse]:
         """
         Update the object count for an island.
@@ -243,8 +283,9 @@ class IslandsRepository:
             IslandResponse if updated, None if not found
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Island).where(Island.id == str(island_id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Island).where(Island.id == str(island_id)))
             island = result.scalar_one_or_none()
             if island is None:
                 logger.warning(f"Cannot update count - island not found: {island_id}")
@@ -252,8 +293,11 @@ class IslandsRepository:
 
             island.object_count = max(0, (island.object_count or 0) + delta)
             island.updated_at = datetime.utcnow()
-            await session.commit()
-            await session.refresh(island)
+            if not external:
+                await session_to_use.commit()
+                await session_to_use.refresh(island)
+            else:
+                await session_to_use.flush()
 
             logger.debug(
                 f"Updated object count for island {island_id}",
@@ -261,12 +305,15 @@ class IslandsRepository:
             )
 
             return IslandResponse.model_validate(island)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Delete
     # ========================================================================
 
-    async def delete_island(self, island_id: UUID) -> bool:
+    async def delete_island(self, island_id: UUID, session: AsyncSession | None = None) -> bool:
         """
         Delete an island.
 
@@ -279,8 +326,9 @@ class IslandsRepository:
         Returns:
             bool: True if deleted, False if not found
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Island).where(Island.id == str(island_id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Island).where(Island.id == str(island_id)))
             island = result.scalar_one_or_none()
 
             if island is None:
@@ -291,11 +339,14 @@ class IslandsRepository:
             island_position = island.position
 
             # Delete the island (cascade will delete related objects)
-            await session.delete(island)
-            await session.commit()
+            await session_to_use.delete(island)
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
 
             # Reorder remaining islands to fill the gap
-            await self._compact_positions()
+            await self._compact_positions(session=session_to_use)
 
             logger.info(
                 f"Deleted island: {island_name}",
@@ -303,32 +354,42 @@ class IslandsRepository:
             )
 
             return True
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def delete_all_islands(self) -> int:
+    async def delete_all_islands(self, session: AsyncSession | None = None) -> int:
         """
         Delete all islands (used for testing).
 
         Returns:
             int: Number of islands deleted
         """
-        async with AsyncSessionLocal() as session:
+        session_to_use, external = self._get_session(session)
+        try:
             # Count islands before deletion
-            count_result = await session.execute(select(func.count()).select_from(Island))
+            count_result = await session_to_use.execute(select(func.count()).select_from(Island))
             count = count_result.scalar_one()
 
             # Delete all islands
-            await session.execute(delete(Island))
-            await session.commit()
+            await session_to_use.execute(delete(Island))
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
 
             logger.warning(f"Deleted all islands", extra={"count": count})
 
             return count
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Reorder
     # ========================================================================
 
-    async def reorder_islands(self, island_ids: List[UUID]) -> List[IslandResponse]:
+    async def reorder_islands(self, island_ids: List[UUID], session: AsyncSession | None = None) -> List[IslandResponse]:
         """
         Reorder islands by providing a new ordered list of IDs.
 
@@ -341,9 +402,10 @@ class IslandsRepository:
         Raises:
             ValueError: If island IDs don't match existing islands
         """
-        async with AsyncSessionLocal() as session:
+        session_to_use, external = self._get_session(session)
+        try:
             # Validate IDs
-            result = await session.execute(select(Island.id))
+            result = await session_to_use.execute(select(Island.id))
             existing_ids = {UUID(i) for i in result.scalars().all()}
             provided_ids = set(island_ids)
             if existing_ids != provided_ids:
@@ -358,14 +420,17 @@ class IslandsRepository:
 
             now = datetime.utcnow()
             for position, island_id in enumerate(island_ids):
-                await session.execute(
+                await session_to_use.execute(
                     update(Island)
                     .where(Island.id == str(island_id))
                     .values(position=position, updated_at=now)
                 )
-            await session.commit()
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
 
-            result = await session.execute(select(Island).where(Island.id.in_([str(i) for i in island_ids])))
+            result = await session_to_use.execute(select(Island).where(Island.id.in_([str(i) for i in island_ids])))
             rows = {row.id: row for row in result.scalars().all()}
             reordered = [IslandResponse.model_validate(rows[str(i)]) for i in island_ids if str(i) in rows]
 
@@ -375,30 +440,40 @@ class IslandsRepository:
             )
 
             return reordered
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Helper Methods
     # ========================================================================
 
-    async def _compact_positions(self) -> None:
+    async def _compact_positions(self, session: AsyncSession | None = None) -> None:
         """
         Compact island positions to eliminate gaps.
 
         After deleting an island, this ensures positions are sequential
         starting from 0.
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Island).order_by(Island.position.asc()))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Island).order_by(Island.position.asc()))
             islands = result.scalars().all()
             now = datetime.utcnow()
             for new_position, island in enumerate(islands):
                 if island.position != new_position:
                     island.position = new_position
                     island.updated_at = now
-            await session.commit()
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
             logger.debug(f"Compacted positions for {len(islands)} islands")
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def exists(self, island_id: UUID) -> bool:
+    async def exists(self, island_id: UUID, session: AsyncSession | None = None) -> bool:
         """
         Check if an island exists.
 
@@ -409,17 +484,22 @@ class IslandsRepository:
             bool: True if exists, False otherwise
 
         """
-        async with AsyncSessionLocal() as session:
-            exists = await session.scalar(
+        session_to_use, external = self._get_session(session)
+        try:
+            exists = await session_to_use.scalar(
                 select(func.count(Island.id)).where(Island.id == str(island_id))
             )
             return bool(exists)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def search_islands(
         self,
         search_query: Optional[str] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> IslandList:
         """
         Search islands by name or description.
@@ -433,7 +513,8 @@ class IslandsRepository:
             IslandList: Matching islands
 
         """
-        async with AsyncSessionLocal() as session:
+        session_to_use, external = self._get_session(session)
+        try:
             stmt = select(Island)
             if search_query:
                 pattern = f"%{search_query.lower()}%"
@@ -441,8 +522,8 @@ class IslandsRepository:
                     func.lower(Island.name).like(pattern) |
                     func.lower(Island.description).like(pattern)
                 )
-            total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
-            result = await session.execute(
+            total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
+            result = await session_to_use.execute(
                 stmt.order_by(Island.position.asc()).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
@@ -452,6 +533,9 @@ class IslandsRepository:
                 extra={"query": search_query, "returned": len(islands)}
             )
             return IslandList(islands=islands, total=total or 0)
+        finally:
+            if not external:
+                await session_to_use.close()
 
 
 # ============================================================================

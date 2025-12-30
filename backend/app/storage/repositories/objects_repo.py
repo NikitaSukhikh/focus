@@ -47,6 +47,14 @@ class ObjectsRepository:
     Currently uses in-memory storage; will be updated to use database.
     """
 
+    def _get_session(self, session: AsyncSession | None) -> tuple[AsyncSession, bool]:
+        """
+        Return a session and flag indicating if it was provided by the caller.
+        """
+        if session is not None:
+            return session, True
+        return AsyncSessionLocal(), False
+
     # ========================================================================
     # Create
     # ========================================================================
@@ -60,7 +68,8 @@ class ObjectsRepository:
             GoogleDriveObjectCreate,
             GmailObjectCreate,
             TextObjectCreate
-        ]
+        ],
+        session: AsyncSession | None = None
     ) -> ObjectResponse:
         """
         Create a new object on an island.
@@ -73,8 +82,9 @@ class ObjectsRepository:
             ObjectResponse: Created object with metadata
 
         """
-        async with AsyncSessionLocal() as session:
-            position = await session.scalar(
+        session_to_use, external = self._get_session(session)
+        try:
+            position = await session_to_use.scalar(
                 select(func.count(Object.id)).where(Object.island_id == str(island_id))
             )
             metadata = self._extract_metadata(object_data)
@@ -104,9 +114,11 @@ class ObjectsRepository:
                 metadata_json=metadata,
                 position=position or 0,
             )
-            session.add(obj)
-            await session.commit()
-            await session.refresh(obj)
+            session_to_use.add(obj)
+            await session_to_use.flush()
+            if not external:
+                await session_to_use.commit()
+                await session_to_use.refresh(obj)
 
             logger.info(
                 f"Created {object_data.type} object: {object_data.title}",
@@ -119,6 +131,9 @@ class ObjectsRepository:
             )
 
             return self._to_response(obj)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     def _extract_metadata(self, object_data: ObjectCreate) -> Dict[str, Any]:
         """
@@ -180,7 +195,7 @@ class ObjectsRepository:
     # Read
     # ========================================================================
 
-    async def get_object_by_id(self, object_id: UUID) -> Optional[ObjectResponse]:
+    async def get_object_by_id(self, object_id: UUID, session: AsyncSession | None = None) -> Optional[ObjectResponse]:
         """
         Get an object by ID.
 
@@ -191,8 +206,9 @@ class ObjectsRepository:
             ObjectResponse if found, None otherwise
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Object).where(Object.id == str(object_id))
             )
             obj = result.scalar_one_or_none()
@@ -200,6 +216,9 @@ class ObjectsRepository:
                 logger.warning(f"Object not found: {object_id}")
                 return None
             return self._to_response(obj)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_objects_by_island(
         self,
@@ -211,6 +230,7 @@ class ObjectsRepository:
         search_query: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        session: AsyncSession | None = None,
     ) -> ObjectList:
         """
         Get all objects on an island with filtering, pagination, and sorting.
@@ -237,7 +257,8 @@ class ObjectsRepository:
         }.get(sort_by or "position", Object.position)
         ordering = desc(sort_column) if sort_order.lower() == "desc" else asc(sort_column)
 
-        async with AsyncSessionLocal() as session:
+        session_to_use, external = self._get_session(session)
+        try:
             stmt = select(Object).where(Object.island_id == str(island_id))
             if object_type:
                 stmt = stmt.where(Object.type == object_type.value if hasattr(object_type, "value") else object_type)
@@ -247,8 +268,8 @@ class ObjectsRepository:
                     func.lower(Object.title).like(pattern) |
                     func.lower(Object.description).like(pattern)
                 )
-            total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
-            result = await session.execute(
+            total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
+            result = await session_to_use.execute(
                 stmt.order_by(ordering).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
@@ -277,8 +298,11 @@ class ObjectsRepository:
             )
 
             return ObjectList(objects=object_responses, total=total or 0)
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def get_objects_by_ids(self, object_ids: List[UUID]) -> List[ObjectResponse]:
+    async def get_objects_by_ids(self, object_ids: List[UUID], session: AsyncSession | None = None) -> List[ObjectResponse]:
         """
         Get multiple objects by their IDs.
 
@@ -289,8 +313,9 @@ class ObjectsRepository:
             List[ObjectResponse]: List of found objects
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Object).where(Object.id.in_([str(i) for i in object_ids]))
             )
             rows = result.scalars().all()
@@ -300,12 +325,16 @@ class ObjectsRepository:
                 extra={"requested": len(object_ids), "found": len(objects)}
             )
             return objects
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_objects_by_type(
         self,
         object_type: ObjectType,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> ObjectList:
         """
         Get all objects of a specific type across all islands.
@@ -319,10 +348,11 @@ class ObjectsRepository:
             ObjectList: Paginated list of objects
 
         """
-        async with AsyncSessionLocal() as session:
+        session_to_use, external = self._get_session(session)
+        try:
             stmt = select(Object).where(Object.type == object_type.value if hasattr(object_type, "value") else object_type)
-            total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
-            result = await session.execute(
+            total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
+            result = await session_to_use.execute(
                 stmt.order_by(desc(Object.created_at)).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
@@ -332,8 +362,11 @@ class ObjectsRepository:
                 extra={"type": object_type, "total": total}
             )
             return ObjectList(objects=object_responses, total=total or 0)
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def get_object_count_by_island(self, island_id: UUID) -> int:
+    async def get_object_count_by_island(self, island_id: UUID, session: AsyncSession | None = None) -> int:
         """
         Get the count of objects on an island.
 
@@ -344,18 +377,24 @@ class ObjectsRepository:
             int: Number of objects on the island
 
         """
-        async with AsyncSessionLocal() as session:
-            return await session.scalar(
+        session_to_use, external = self._get_session(session)
+        try:
+            return await session_to_use.scalar(
                 select(func.count(Object.id)).where(Object.island_id == str(island_id))
             ) or 0
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def search_objects(
         self,
         search_query: str,
         tags: Optional[List[str]] = None,
         object_type: Optional[ObjectType] = None,
+        island_id: Optional[UUID] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> ObjectList:
         """
         Search objects across all islands.
@@ -371,8 +410,11 @@ class ObjectsRepository:
             ObjectList: Matching objects
 
         """
-        async with AsyncSessionLocal() as session:
+        session_to_use, external = self._get_session(session)
+        try:
             stmt = select(Object)
+            if island_id:
+                stmt = stmt.where(Object.island_id == str(island_id))
             if search_query:
                 pattern = f"%{search_query.lower()}%"
                 stmt = stmt.where(
@@ -381,8 +423,8 @@ class ObjectsRepository:
                 )
             if object_type:
                 stmt = stmt.where(Object.type == (object_type.value if hasattr(object_type, "value") else object_type))
-            total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
-            result = await session.execute(
+            total = await session_to_use.scalar(select(func.count()).select_from(stmt.subquery()))
+            result = await session_to_use.execute(
                 stmt.order_by(desc(Object.created_at)).offset(skip).limit(limit)
             )
             rows = result.scalars().all()
@@ -398,6 +440,9 @@ class ObjectsRepository:
                 extra={"query": search_query, "returned": len(object_responses)}
             )
             return ObjectList(objects=object_responses, total=total or 0)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Update
@@ -406,7 +451,8 @@ class ObjectsRepository:
     async def update_object(
         self,
         object_id: UUID,
-        object_data: ObjectUpdate
+        object_data: ObjectUpdate,
+        session: AsyncSession | None = None
     ) -> Optional[ObjectResponse]:
         """
         Update an existing object.
@@ -419,8 +465,9 @@ class ObjectsRepository:
             ObjectResponse if updated, None if not found
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Object).where(Object.id == str(object_id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Object).where(Object.id == str(object_id)))
             obj = result.scalar_one_or_none()
             if obj is None:
                 logger.warning(f"Cannot update - object not found: {object_id}")
@@ -475,8 +522,11 @@ class ObjectsRepository:
             )
 
             obj.updated_at = datetime.utcnow()
-            await session.commit()
-            await session.refresh(obj)
+            if not external:
+                await session_to_use.commit()
+                await session_to_use.refresh(obj)
+            else:
+                await session_to_use.flush()
 
             logger.info(
                 f"Updated object: {obj.title}",
@@ -495,11 +545,15 @@ class ObjectsRepository:
             )
 
             return self._to_response(obj)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def update_object_thumbnail(
         self,
         object_id: UUID,
-        thumbnail_url: str
+        thumbnail_url: str,
+        session: AsyncSession | None = None
     ) -> Optional[ObjectResponse]:
         """
         Update the thumbnail URL for an object.
@@ -512,8 +566,9 @@ class ObjectsRepository:
             ObjectResponse if updated, None if not found
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Object).where(Object.id == str(object_id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Object).where(Object.id == str(object_id)))
             obj = result.scalar_one_or_none()
             if obj is None:
                 logger.warning(f"Cannot update thumbnail - object not found: {object_id}")
@@ -523,8 +578,11 @@ class ObjectsRepository:
             meta["thumbnail_url"] = thumbnail_url
             obj.metadata_json = meta
             obj.updated_at = datetime.utcnow()
-            await session.commit()
-            await session.refresh(obj)
+            if not external:
+                await session_to_use.commit()
+                await session_to_use.refresh(obj)
+            else:
+                await session_to_use.flush()
 
             logger.debug(
                 f"Updated thumbnail for object {object_id}",
@@ -532,12 +590,15 @@ class ObjectsRepository:
             )
 
             return ObjectResponse.model_validate(obj)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Delete
     # ========================================================================
 
-    async def delete_object(self, object_id: UUID) -> bool:
+    async def delete_object(self, object_id: UUID, session: AsyncSession | None = None) -> bool:
         """
         Delete an object.
 
@@ -548,16 +609,20 @@ class ObjectsRepository:
             bool: True if deleted, False if not found
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(Object).where(Object.id == str(object_id)))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(select(Object).where(Object.id == str(object_id)))
             obj = result.scalar_one_or_none()
             if obj is None:
                 logger.warning(f"Cannot delete - object not found: {object_id}")
                 return False
             island_id = obj.island_id
-            await session.delete(obj)
-            await session.commit()
-            await self._compact_positions(UUID(island_id))
+            await session_to_use.delete(obj)
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
+            await self._compact_positions(UUID(island_id), session=session_to_use)
             logger.info(
                 f"Deleted object: {obj.title}",
                 extra={
@@ -567,8 +632,11 @@ class ObjectsRepository:
                 }
             )
             return True
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def delete_objects_by_island(self, island_id: UUID) -> int:
+    async def delete_objects_by_island(self, island_id: UUID, session: AsyncSession | None = None) -> int:
         """
         Delete all objects on an island (cascade deletion).
 
@@ -579,19 +647,26 @@ class ObjectsRepository:
             int: Number of objects deleted
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 delete(Object).where(Object.island_id == str(island_id))
             )
             deleted = result.rowcount or 0
-            await session.commit()
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
             logger.info(
                 f"Deleted {deleted} objects from island {island_id}",
                 extra={"island_id": str(island_id), "count": deleted}
             )
             return deleted
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def delete_all_objects(self) -> int:
+    async def delete_all_objects(self, session: AsyncSession | None = None) -> int:
         """
         Delete all objects (used for testing).
 
@@ -599,12 +674,19 @@ class ObjectsRepository:
             int: Number of objects deleted
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(delete(Object))
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(delete(Object))
             deleted = result.rowcount or 0
-            await session.commit()
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
             logger.warning(f"Deleted all objects", extra={"count": deleted})
             return deleted
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Reorder
@@ -613,7 +695,8 @@ class ObjectsRepository:
     async def reorder_objects(
         self,
         island_id: UUID,
-        object_ids: List[UUID]
+        object_ids: List[UUID],
+        session: AsyncSession | None = None
     ) -> List[ObjectResponse]:
         """
         Reorder objects on an island.
@@ -629,8 +712,9 @@ class ObjectsRepository:
             ValueError: If object IDs don't match island's objects
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Object.id).where(Object.island_id == str(island_id))
             )
             existing_ids = {UUID(i) for i in result.scalars().all()}
@@ -647,13 +731,16 @@ class ObjectsRepository:
 
             now = datetime.utcnow()
             for position, object_id in enumerate(object_ids):
-                await session.execute(
+                await session_to_use.execute(
                     update(Object)
                     .where(Object.id == str(object_id))
                     .values(position=position, updated_at=now)
                 )
-            await session.commit()
-            result = await session.execute(select(Object).where(Object.id.in_([str(i) for i in object_ids])))
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
+            result = await session_to_use.execute(select(Object).where(Object.id.in_([str(i) for i in object_ids])))
             rows = {r.id: r for r in result.scalars().all()}
             reordered = [self._to_response(rows[str(i)]) for i in object_ids if str(i) in rows]
             logger.info(
@@ -661,12 +748,15 @@ class ObjectsRepository:
                 extra={"island_id": str(island_id), "object_count": len(object_ids)}
             )
             return reordered
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Helper Methods
     # ========================================================================
 
-    async def _compact_positions(self, island_id: UUID) -> None:
+    async def _compact_positions(self, island_id: UUID, session: AsyncSession | None = None) -> None:
         """
         Compact object positions on an island to eliminate gaps.
 
@@ -674,8 +764,9 @@ class ObjectsRepository:
             island_id: Island UUID
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Object).where(Object.island_id == str(island_id)).order_by(Object.position.asc())
             )
             island_objects = result.scalars().all()
@@ -684,13 +775,19 @@ class ObjectsRepository:
                 if obj.position != new_position:
                     obj.position = new_position
                     obj.updated_at = now
-            await session.commit()
+            if not external:
+                await session_to_use.commit()
+            else:
+                await session_to_use.flush()
             logger.debug(
                 f"Compacted positions for {len(island_objects)} objects on island {island_id}",
                 extra={"island_id": str(island_id), "object_count": len(island_objects)}
             )
+        finally:
+            if not external:
+                await session_to_use.close()
 
-    async def exists(self, object_id: UUID) -> bool:
+    async def exists(self, object_id: UUID, session: AsyncSession | None = None) -> bool:
         """
         Check if an object exists.
 
@@ -701,17 +798,22 @@ class ObjectsRepository:
             bool: True if exists, False otherwise
 
         """
-        async with AsyncSessionLocal() as session:
-            exists = await session.scalar(
+        session_to_use, external = self._get_session(session)
+        try:
+            exists = await session_to_use.scalar(
                 select(func.count(Object.id)).where(Object.id == str(object_id))
             )
             return bool(exists)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_objects_by_tag(
         self,
         tag: str,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> ObjectList:
         """
         Get all objects with a specific tag.
@@ -725,8 +827,9 @@ class ObjectsRepository:
             ObjectList: Objects with the specified tag
 
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
+        session_to_use, external = self._get_session(session)
+        try:
+            result = await session_to_use.execute(
                 select(Object).order_by(desc(Object.created_at)).offset(skip).limit(limit * 2)
             )
             rows = result.scalars().all()
@@ -740,6 +843,9 @@ class ObjectsRepository:
                 extra={"tag": tag, "returned": len(object_responses)}
             )
             return ObjectList(objects=object_responses, total=total)
+        finally:
+            if not external:
+                await session_to_use.close()
 
     def _compute_display_fields(
         self,

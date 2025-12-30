@@ -31,6 +31,7 @@ from typing import List, Optional, Union
 from uuid import UUID
 from pathlib import Path
 import mimetypes
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object import (
     ObjectType,
@@ -49,6 +50,7 @@ from app.storage.repositories.objects_repo import objects_repository
 from app.storage.repositories.islands_repo import islands_repository
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file
 from app.core.logging import get_logger
+from app.storage.db import AsyncSessionLocal
 
 
 logger = get_logger(__name__)
@@ -113,6 +115,14 @@ class ObjectsService:
         self.objects_repo = objects_repository
         self.islands_repo = islands_repository
 
+    def _get_session(self, session: AsyncSession | None) -> tuple[AsyncSession, bool]:
+        """
+        Return session and whether caller supplied it.
+        """
+        if session is not None:
+            return session, True
+        return AsyncSessionLocal(), False
+
     # ========================================================================
     # Create
     # ========================================================================
@@ -126,7 +136,8 @@ class ObjectsService:
             GoogleDriveObjectCreate,
             GmailObjectCreate,
             TextObjectCreate
-        ]
+        ],
+        session: AsyncSession | None = None
     ) -> ObjectResponse:
         """
         Create a new object with type-specific validation.
@@ -144,41 +155,47 @@ class ObjectsService:
             InvalidObjectDataError: If object data is invalid
             FileNotFoundError: If file object's file doesn't exist
         """
-        # Validate island exists
-        await self._check_island_exists(island_id)
+        session_to_use, external = self._get_session(session)
 
-        # Check object limit for island
-        await self._check_object_limit(island_id)
+        try:
+            async with session_to_use.begin():
+                await self._check_island_exists(island_id, session=session_to_use)
+                await self._check_object_limit(island_id, session=session_to_use)
+                await self._validate_object_data(object_data)
 
-        # Type-specific validation
-        await self._validate_object_data(object_data)
+                obj = await self.objects_repo.create_object(
+                    island_id,
+                    object_data,
+                    session=session_to_use
+                )
 
-        # Create object
-        obj = await self.objects_repo.create_object(island_id, object_data)
+                await self.islands_repo.update_island_object_count(
+                    island_id,
+                    delta=1,
+                    session=session_to_use
+                )
 
-        # Update island's object count
-        await self.islands_repo.update_island_object_count(island_id, delta=1)
+            # TODO: Trigger thumbnail generation asynchronously
+            logger.info(
+                f"Created {obj.type} object: {obj.title}",
+                extra={
+                    "object_id": str(obj.id),
+                    "island_id": str(island_id),
+                    "type": obj.type,
+                    "title": obj.title
+                }
+            )
 
-        # TODO: Trigger thumbnail generation asynchronously
-        # await self._generate_thumbnail(obj)
-
-        logger.info(
-            f"Created {obj.type} object: {obj.title}",
-            extra={
-                "object_id": str(obj.id),
-                "island_id": str(island_id),
-                "type": obj.type,
-                "title": obj.title
-            }
-        )
-
-        return obj
+            return obj
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Read
     # ========================================================================
 
-    async def get_object(self, object_id: UUID) -> ObjectResponse:
+    async def get_object(self, object_id: UUID, session: AsyncSession | None = None) -> ObjectResponse:
         """
         Get an object by ID.
 
@@ -191,12 +208,17 @@ class ObjectsService:
         Raises:
             ObjectNotFoundError: If object not found
         """
-        obj = await self.objects_repo.get_object_by_id(object_id)
+        session_to_use, external = self._get_session(session)
+        try:
+            obj = await self.objects_repo.get_object_by_id(object_id, session=session_to_use)
 
-        if obj is None:
-            raise ObjectNotFoundError(f"Object not found: {object_id}")
+            if obj is None:
+                raise ObjectNotFoundError(f"Object not found: {object_id}")
 
-        return obj
+            return obj
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_objects_by_island(
         self,
@@ -208,6 +230,7 @@ class ObjectsService:
         search_query: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        session: AsyncSession | None = None,
     ) -> ObjectList:
         """
         Get all objects on an island with filtering and sorting.
@@ -228,42 +251,49 @@ class ObjectsService:
         Raises:
             IslandNotFoundError: If island doesn't exist
         """
-        # Validate island exists
-        await self._check_island_exists(island_id)
+        session_to_use, external = self._get_session(session)
+        try:
+            await self._check_island_exists(island_id, session=session_to_use)
 
-        objects = await self.objects_repo.get_objects_by_island(
-            island_id=island_id,
-            skip=skip,
-            limit=limit,
-            object_type=object_type,
-            tags=tags,
-            search_query=search_query,
-            sort_by=sort_by,
-            sort_order=sort_order
-        )
+            objects = await self.objects_repo.get_objects_by_island(
+                island_id=island_id,
+                skip=skip,
+                limit=limit,
+                object_type=object_type,
+                tags=tags,
+                search_query=search_query,
+                sort_by=sort_by,
+                sort_order=sort_order,
+                session=session_to_use
+            )
 
-        logger.debug(
-            f"Retrieved {len(objects.objects)} objects for island {island_id}",
-            extra={
-                "island_id": str(island_id),
-                "total": objects.total,
-                "filters": {
-                    "type": object_type,
-                    "tags": tags,
-                    "search": search_query
+            logger.debug(
+                f"Retrieved {len(objects.objects)} objects for island {island_id}",
+                extra={
+                    "island_id": str(island_id),
+                    "total": objects.total,
+                    "filters": {
+                        "type": object_type,
+                        "tags": tags,
+                        "search": search_query
+                    }
                 }
-            }
-        )
+            )
 
-        return objects
+            return objects
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def search_objects(
         self,
         search_query: str,
         tags: Optional[List[str]] = None,
         object_type: Optional[ObjectType] = None,
+        island_id: Optional[UUID] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> ObjectList:
         """
         Search objects across all islands.
@@ -278,26 +308,34 @@ class ObjectsService:
         Returns:
             ObjectList: Matching objects
         """
-        objects = await self.objects_repo.search_objects(
-            search_query=search_query,
-            tags=tags,
-            object_type=object_type,
-            skip=skip,
-            limit=limit
-        )
+        session_to_use, external = self._get_session(session)
+        try:
+            objects = await self.objects_repo.search_objects(
+                search_query=search_query,
+                tags=tags,
+                object_type=object_type,
+                island_id=island_id,
+                skip=skip,
+                limit=limit,
+                session=session_to_use
+            )
 
-        logger.debug(
-            f"Search found {objects.total} objects",
-            extra={"query": search_query, "returned": len(objects.objects)}
-        )
+            logger.debug(
+                f"Search found {objects.total} objects",
+                extra={"query": search_query, "returned": len(objects.objects)}
+            )
 
-        return objects
+            return objects
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_objects_by_type(
         self,
         object_type: ObjectType,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> ObjectList:
         """
         Get all objects of a specific type.
@@ -310,24 +348,31 @@ class ObjectsService:
         Returns:
             ObjectList: Objects of the specified type
         """
-        objects = await self.objects_repo.get_objects_by_type(
-            object_type=object_type,
-            skip=skip,
-            limit=limit
-        )
+        session_to_use, external = self._get_session(session)
+        try:
+            objects = await self.objects_repo.get_objects_by_type(
+                object_type=object_type,
+                skip=skip,
+                limit=limit,
+                session=session_to_use
+            )
 
-        logger.debug(
-            f"Retrieved {objects.total} {object_type} objects",
-            extra={"type": object_type, "returned": len(objects.objects)}
-        )
+            logger.debug(
+                f"Retrieved {objects.total} {object_type} objects",
+                extra={"type": object_type, "returned": len(objects.objects)}
+            )
 
-        return objects
+            return objects
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def get_objects_by_tag(
         self,
         tag: str,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        session: AsyncSession | None = None
     ) -> ObjectList:
         """
         Get all objects with a specific tag.
@@ -340,18 +385,39 @@ class ObjectsService:
         Returns:
             ObjectList: Objects with the tag
         """
-        objects = await self.objects_repo.get_objects_by_tag(
-            tag=tag,
-            skip=skip,
-            limit=limit
-        )
+        session_to_use, external = self._get_session(session)
+        try:
+            objects = await self.objects_repo.get_objects_by_tag(
+                tag=tag,
+                skip=skip,
+                limit=limit,
+                session=session_to_use
+            )
 
-        logger.debug(
-            f"Found {objects.total} objects with tag '{tag}'",
-            extra={"tag": tag, "returned": len(objects.objects)}
-        )
+            logger.debug(
+                f"Found {objects.total} objects with tag '{tag}'",
+                extra={"tag": tag, "returned": len(objects.objects)}
+            )
 
-        return objects
+            return objects
+        finally:
+            if not external:
+                await session_to_use.close()
+
+    async def get_objects_by_tags(
+        self,
+        tags: List[str],
+        skip: int = 0,
+        limit: int = 100,
+        session: AsyncSession | None = None
+    ) -> ObjectList:
+        """
+        Compatibility helper for multi-tag queries (AND logic placeholder).
+        Currently uses the first tag for filtering to match existing repository behavior.
+        """
+        if not tags:
+            return ObjectList(objects=[], total=0)
+        return await self.get_objects_by_tag(tags[0], skip=skip, limit=limit, session=session)
 
     # ========================================================================
     # Update
@@ -360,7 +426,8 @@ class ObjectsService:
     async def update_object(
         self,
         object_id: UUID,
-        object_data: ObjectUpdate
+        object_data: ObjectUpdate,
+        session: AsyncSession | None = None
     ) -> ObjectResponse:
         """
         Update an object with validation.
@@ -376,38 +443,42 @@ class ObjectsService:
             ObjectNotFoundError: If object not found
             InvalidObjectDataError: If update data is invalid
         """
-        # Check object exists
-        existing_obj = await self.objects_repo.get_object_by_id(object_id)
-        if existing_obj is None:
-            raise ObjectNotFoundError(f"Object not found: {object_id}")
+        session_to_use, external = self._get_session(session)
+        try:
+            async with session_to_use.begin():
+                existing_obj = await self.objects_repo.get_object_by_id(object_id, session=session_to_use)
+                if existing_obj is None:
+                    raise ObjectNotFoundError(f"Object not found: {object_id}")
 
-        # Validate update data
-        if object_data.title:
-            self._validate_title(object_data.title)
-        if object_data.default_title:
-            self._validate_title(object_data.default_title)
-        self._validate_custom_title(object_data.custom_title)
+                if object_data.title:
+                    self._validate_title(object_data.title)
+                if object_data.default_title:
+                    self._validate_title(object_data.default_title)
+                self._validate_custom_title(object_data.custom_title)
 
-        if object_data.tags is not None:
-            self._validate_tags(object_data.tags)
+                if object_data.tags is not None:
+                    self._validate_tags(object_data.tags)
 
-        # Update object
-        updated_obj = await self.objects_repo.update_object(object_id, object_data)
+                updated_obj = await self.objects_repo.update_object(object_id, object_data, session=session_to_use)
 
-        if updated_obj is None:
-            raise ObjectNotFoundError(f"Object not found during update: {object_id}")
+                if updated_obj is None:
+                    raise ObjectNotFoundError(f"Object not found during update: {object_id}")
 
-        logger.info(
-            f"Updated object: {updated_obj.title}",
-            extra={"object_id": str(object_id), "title": updated_obj.title}
-        )
+            logger.info(
+                f"Updated object: {updated_obj.title}",
+                extra={"object_id": str(object_id), "title": updated_obj.title}
+            )
 
-        return updated_obj
+            return updated_obj
+        finally:
+            if not external:
+                await session_to_use.close()
 
     async def reorder_objects(
         self,
         island_id: UUID,
-        object_ids: List[UUID]
+        object_ids: List[UUID],
+        session: AsyncSession | None = None
     ) -> List[ObjectResponse]:
         """
         Reorder objects on an island.
@@ -423,11 +494,12 @@ class ObjectsService:
             IslandNotFoundError: If island doesn't exist
             InvalidObjectDataError: If object IDs are invalid
         """
-        # Validate island exists
-        await self._check_island_exists(island_id)
+        session_to_use, external = self._get_session(session)
 
         try:
-            reordered = await self.objects_repo.reorder_objects(island_id, object_ids)
+            async with session_to_use.begin():
+                await self._check_island_exists(island_id, session=session_to_use)
+                reordered = await self.objects_repo.reorder_objects(island_id, object_ids, session=session_to_use)
 
             logger.info(
                 f"Reordered {len(object_ids)} objects on island {island_id}",
@@ -438,12 +510,15 @@ class ObjectsService:
 
         except ValueError as e:
             raise InvalidObjectDataError(f"Invalid reorder data: {e}")
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Delete
     # ========================================================================
 
-    async def delete_object(self, object_id: UUID) -> ObjectDeleteResponse:
+    async def delete_object(self, object_id: UUID, session: AsyncSession | None = None) -> ObjectDeleteResponse:
         """
         Delete an object.
 
@@ -456,46 +531,46 @@ class ObjectsService:
         Raises:
             ObjectNotFoundError: If object not found
         """
-        # Check object exists and get its data
-        obj = await self.objects_repo.get_object_by_id(object_id)
-        if obj is None:
-            raise ObjectNotFoundError(f"Object not found: {object_id}")
+        session_to_use, external = self._get_session(session)
+        try:
+            async with session_to_use.begin():
+                obj = await self.objects_repo.get_object_by_id(object_id, session=session_to_use)
+                if obj is None:
+                    raise ObjectNotFoundError(f"Object not found: {object_id}")
 
-        island_id = obj.island_id
-        object_title = obj.title
+                island_id = obj.island_id
+                object_title = obj.title
 
-        # Delete the object
-        deleted = await self.objects_repo.delete_object(object_id)
+                deleted = await self.objects_repo.delete_object(object_id, session=session_to_use)
 
-        if not deleted:
-            raise ObjectNotFoundError(f"Object not found during deletion: {object_id}")
+                if not deleted:
+                    raise ObjectNotFoundError(f"Object not found during deletion: {object_id}")
 
-        # Update island's object count
-        await self.islands_repo.update_island_object_count(island_id, delta=-1)
+                await self.islands_repo.update_island_object_count(island_id, delta=-1, session=session_to_use)
 
-        # TODO: Delete associated thumbnail if exists
-        # await self._delete_thumbnail(obj)
+            logger.info(
+                f"Deleted object: {object_title}",
+                extra={
+                    "object_id": str(object_id),
+                    "island_id": str(island_id),
+                    "title": object_title
+                }
+            )
 
-        logger.info(
-            f"Deleted object: {object_title}",
-            extra={
-                "object_id": str(object_id),
-                "island_id": str(island_id),
-                "title": object_title
-            }
-        )
-
-        return ObjectDeleteResponse(
-            success=True,
-            object_id=object_id,
-            message=f"Object '{object_title}' deleted successfully"
-        )
+            return ObjectDeleteResponse(
+                success=True,
+                object_id=object_id,
+                message=f"Object '{object_title}' deleted successfully"
+            )
+        finally:
+            if not external:
+                await session_to_use.close()
 
     # ========================================================================
     # Validation Helpers
     # ========================================================================
 
-    async def _check_island_exists(self, island_id: UUID) -> None:
+    async def _check_island_exists(self, island_id: UUID, session: AsyncSession | None = None) -> None:
         """
         Check if an island exists.
 
@@ -505,11 +580,11 @@ class ObjectsService:
         Raises:
             IslandNotFoundError: If island doesn't exist
         """
-        exists = await self.islands_repo.exists(island_id)
+        exists = await self.islands_repo.exists(island_id, session=session)
         if not exists:
             raise IslandNotFoundError(f"Island not found: {island_id}")
 
-    async def _check_object_limit(self, island_id: UUID) -> None:
+    async def _check_object_limit(self, island_id: UUID, session: AsyncSession | None = None) -> None:
         """
         Check if object limit for island has been reached.
 
@@ -519,7 +594,7 @@ class ObjectsService:
         Raises:
             ObjectLimitExceededError: If limit exceeded
         """
-        current_count = await self.objects_repo.get_object_count_by_island(island_id)
+        current_count = await self.objects_repo.get_object_count_by_island(island_id, session=session)
 
         if current_count >= self.MAX_OBJECTS_PER_ISLAND:
             raise ObjectLimitExceededError(
