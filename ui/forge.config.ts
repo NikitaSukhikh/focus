@@ -6,6 +6,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Optional Windows code signing (set env vars to enable)
+const windowsPfxPath = process.env.WINDOWS_PFX_PATH;
+const windowsPfxPassword = process.env.WINDOWS_PFX_PASSWORD;
+const windowsSignParams = process.env.WINDOWS_SIGN_PARAMS;
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
@@ -24,6 +29,13 @@ const config: ForgeConfig = {
       name: '@electron-forge/maker-squirrel',
       config: {
         authors: 'Focus Team',
+        // Enable signing when WINDOWS_PFX_PATH/PASSWORD are provided
+        ...(windowsPfxPath && { certificateFile: windowsPfxPath }),
+        ...(windowsPfxPassword && { certificatePassword: windowsPfxPassword }),
+        // Optionally pass raw signtool params (e.g., timestamp server)
+        ...(windowsSignParams && { signWithParams: windowsSignParams }),
+        // Name the installer executable
+        setupExe: 'focus.exe',
       },
     },
     {
