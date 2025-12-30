@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Edit2, Trash2, Copy } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
-import { IslandItemProps } from './types';
+import { SpaceItemProps } from './types';
 
-// IslandItem renders a single island row with inline rename, selection, and context menu actions used inside the sidebar list.
-export function IslandItem({
+// SpaceItem renders a single space row with inline rename, selection, and context menu actions used inside the sidebar list.
+export function SpaceItem({
   id,
   name,
   isActive,
@@ -16,7 +16,7 @@ export function IslandItem({
   onStartEdit,
   onCancelEdit,
   onClick,
-}: IslandItemProps) {
+}: SpaceItemProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [editValue, setEditValue] = useState(name);

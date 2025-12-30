@@ -7,9 +7,9 @@ import { ArrowSegment } from '../types';
 interface UseArrowDrawingProps {
   zoom: number;
   paneRef: React.RefObject<HTMLDivElement | null>;
-  selectedIslandId?: string;
-  arrowsByIsland: Record<string, ArrowSegment[]>;
-  setArrowsByIsland: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
+  selectedSpaceId?: string;
+  arrowsBySpace: Record<string, ArrowSegment[]>;
+  setArrowsBySpace: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
   contentHeight: number;
   toCanvasCoords: (clientX: number, clientY: number) => { x: number; y: number };
   contextMenuOpen: boolean;
@@ -22,9 +22,9 @@ const ARROW_PADDING = 120;
 export const useArrowDrawing = ({
   zoom,
   paneRef,
-  selectedIslandId,
-  arrowsByIsland,
-  setArrowsByIsland,
+  selectedSpaceId,
+  arrowsBySpace,
+  setArrowsBySpace,
   contentHeight,
   toCanvasCoords,
   contextMenuOpen,
@@ -53,19 +53,19 @@ export const useArrowDrawing = ({
     setDraggingArrowId(null);
     arrowDragStateRef.current = null;
     arrowDragMovedRef.current = false;
-  }, [selectedIslandId]);
+  }, [selectedSpaceId]);
 
   const deleteArrow = useCallback(
     (arrowId: string) => {
-      if (!selectedIslandId) return;
+      if (!selectedSpaceId) return;
 
       let arrowToDelete: ArrowSegment | undefined;
 
-      setArrowsByIsland((prev) => {
-        const current = prev[selectedIslandId] || [];
+      setArrowsBySpace((prev) => {
+        const current = prev[selectedSpaceId] || [];
         arrowToDelete = current.find((a) => a.id === arrowId);
         if (!current.length) return prev;
-        return { ...prev, [selectedIslandId]: current.filter((segment) => segment.id !== arrowId) };
+        return { ...prev, [selectedSpaceId]: current.filter((segment) => segment.id !== arrowId) };
       });
 
       setSelectedArrowId((prev) => (prev === arrowId ? null : prev));
@@ -73,7 +73,7 @@ export const useArrowDrawing = ({
       if (arrowToDelete) {
         // Track deletion in undo log so keyboard/context actions stay reversible
         undoApi
-          .createEvent(selectedIslandId, {
+          .createEvent(selectedSpaceId, {
             event_type: 'arrow_delete',
             event_data: {
               arrow: {
@@ -91,13 +91,13 @@ export const useArrowDrawing = ({
       });
       window.dispatchEvent(new CustomEvent('arrow:deleted', { detail: { arrowId } }));
     },
-    [selectedIslandId, setArrowsByIsland]
+    [selectedSpaceId, setArrowsBySpace]
   );
 
   const currentArrows = useMemo(() => {
-    if (!selectedIslandId) return [];
-    return arrowsByIsland[selectedIslandId] || [];
-  }, [arrowsByIsland, selectedIslandId]);
+    if (!selectedSpaceId) return [];
+    return arrowsBySpace[selectedSpaceId] || [];
+  }, [arrowsBySpace, selectedSpaceId]);
 
   const toArrowCoords = (clientX: number, clientY: number) => {
     const base = toCanvasCoords(clientX, clientY);
@@ -110,7 +110,7 @@ export const useArrowDrawing = ({
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
-    if (!paneRef.current || !selectedIslandId) return;
+    if (!paneRef.current || !selectedSpaceId) return;
     if (contextMenuOpen) return;
 
     const target = e.target as HTMLElement;
@@ -125,7 +125,7 @@ export const useArrowDrawing = ({
 
   const startArrowDrag = (segment: ArrowSegment, e: React.PointerEvent<SVGLineElement>) => {
     if (e.button !== 0) return;
-    if (!selectedIslandId) return;
+    if (!selectedSpaceId) return;
 
     e.preventDefault();
     e.stopPropagation();
@@ -176,7 +176,7 @@ export const useArrowDrawing = ({
       return;
     }
 
-    if (!paneRef.current || !selectedIslandId) {
+    if (!paneRef.current || !selectedSpaceId) {
       setDraftArrow(null);
       arrowStartRef.current = null;
       setHasArrowMovement(false);
@@ -214,13 +214,13 @@ export const useArrowDrawing = ({
       end,
     };
 
-    const islandId = selectedIslandId;
+    const spaceId = selectedSpaceId;
 
-    setArrowsByIsland((prev) => {
-      const current = prev[selectedIslandId] || [];
+    setArrowsBySpace((prev) => {
+      const current = prev[selectedSpaceId] || [];
       return {
         ...prev,
-        [selectedIslandId]: [...current, newArrow],
+        [selectedSpaceId]: [...current, newArrow],
       };
     });
     setSelectedArrowId(newArrow.id);
@@ -230,7 +230,7 @@ export const useArrowDrawing = ({
 
     void (async () => {
       try {
-        const created = await objectsApi.create(islandId, {
+        const created = await objectsApi.create(spaceId, {
           type: 'text',
           title: 'Arrow',
           content: 'Arrow connection',
@@ -243,11 +243,11 @@ export const useArrowDrawing = ({
           end_y: newArrow.end.y,
           content: 'Arrow connection',
         });
-        setArrowsByIsland((prev) => {
-          const current = prev[islandId] || [];
+        setArrowsBySpace((prev) => {
+          const current = prev[spaceId] || [];
           return {
             ...prev,
-            [islandId]: current.map((segment) =>
+            [spaceId]: current.map((segment) =>
               segment.id === newArrow.id ? { ...segment, id: created.id } : segment
             ),
           };
@@ -256,7 +256,7 @@ export const useArrowDrawing = ({
 
         // Add to backend undo history
         undoApi
-          .createEvent(islandId, {
+          .createEvent(spaceId, {
             event_type: 'arrow_create',
             event_data: {
               arrow: {
@@ -271,11 +271,11 @@ export const useArrowDrawing = ({
         window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id } }));
       } catch (err) {
         console.error('Failed to persist arrow', err);
-        setArrowsByIsland((prev) => {
-          const current = prev[selectedIslandId] || [];
+        setArrowsBySpace((prev) => {
+          const current = prev[selectedSpaceId] || [];
           return {
             ...prev,
-            [selectedIslandId]: current.filter((segment) => segment.id !== newArrow.id),
+            [selectedSpaceId]: current.filter((segment) => segment.id !== newArrow.id),
           };
         });
         setSelectedArrowId(null);
@@ -288,7 +288,7 @@ export const useArrowDrawing = ({
 
     // Track pointer-driven arrow moves and emit undo/redo events on release
     const handlePointerMove = (e: PointerEvent) => {
-      if (!selectedIslandId) return;
+      if (!selectedSpaceId) return;
       const dragState = arrowDragStateRef.current;
       if (!dragState) return;
 
@@ -317,11 +317,11 @@ export const useArrowDrawing = ({
         arrowDragMovedRef.current = true;
       }
 
-      setArrowsByIsland((prev) => {
-        const currentArrows = prev[selectedIslandId] || [];
+      setArrowsBySpace((prev) => {
+        const currentArrows = prev[selectedSpaceId] || [];
         return {
           ...prev,
-          [selectedIslandId]: currentArrows.map((a) =>
+          [selectedSpaceId]: currentArrows.map((a) =>
             a.id === dragState.arrowId ? { ...a, start: nextStart, end: nextEnd } : a
           ),
         };
@@ -333,7 +333,7 @@ export const useArrowDrawing = ({
       arrowDragStateRef.current = null;
       setDraggingArrowId(null);
 
-      if (!selectedIslandId || !dragState) return;
+      if (!selectedSpaceId || !dragState) return;
       if (!arrowDragMovedRef.current || !dragState.last) return;
 
       const finalStart = dragState.last.start;
@@ -354,7 +354,7 @@ export const useArrowDrawing = ({
 
       // Record undo/redo event
       undoApi
-        .createEvent(selectedIslandId, {
+        .createEvent(selectedSpaceId, {
           event_type: 'arrow_move',
           event_data: {
             arrow: {
@@ -378,12 +378,12 @@ export const useArrowDrawing = ({
       window.removeEventListener('pointerup', handlePointerUp, true);
       window.removeEventListener('pointercancel', handlePointerUp, true);
     };
-  }, [draggingArrowId, selectedIslandId, setArrowsByIsland]);
+  }, [draggingArrowId, selectedSpaceId, setArrowsBySpace]);
 
   useEffect(() => {
     const handleDeleteArrow = (e: KeyboardEvent) => {
       if (!(e.key === 'Delete' || e.key === 'Backspace')) return;
-      if (!selectedArrowId || !selectedIslandId) return;
+      if (!selectedArrowId || !selectedSpaceId) return;
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       e.preventDefault();
@@ -394,7 +394,7 @@ export const useArrowDrawing = ({
 
     window.addEventListener('keydown', handleDeleteArrow, true);
     return () => window.removeEventListener('keydown', handleDeleteArrow, true);
-  }, [deleteArrow, selectedArrowId, selectedIslandId]);
+  }, [deleteArrow, selectedArrowId, selectedSpaceId]);
 
 
   const allArrowSegments = useMemo(() => {

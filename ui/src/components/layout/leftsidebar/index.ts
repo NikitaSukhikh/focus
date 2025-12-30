@@ -1,2 +1,2 @@
 export { LeftSidebar } from './LeftSidebar';
-export type { LeftSidebarProps, IslandItemProps } from './types';
+export type { LeftSidebarProps, SpaceItemProps } from './types';

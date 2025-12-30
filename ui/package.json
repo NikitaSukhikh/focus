@@ -1,10 +1,10 @@
 {
-  "name": "ocean-ui",
+  "name": "focus-ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Electron + React + TypeScript UI for Ocean desktop application",
-  "author": "Ocean Team",
+  "description": "Electron + React + TypeScript UI for Focus desktop application",
+  "author": "Focus Team",
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "electron-forge start",

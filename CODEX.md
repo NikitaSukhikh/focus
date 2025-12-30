@@ -1,4 +1,4 @@
-You are full stack developer working on desktop App called 'Ocean'.
+You are full stack developer working on desktop App called 'Focus'.
 
 Programmatic Languages: 
 - backend - Python/FastAPI (uvicorn)/SQLAlchemy

@@ -42,9 +42,9 @@ def get_settings_dependency() -> Settings:
 #         AsyncSession: Database session
 #
 #     Example:
-#         @app.get("/islands")
-#         async def get_islands(db: AsyncSession = Depends(get_db_session)):
-#             result = await db.execute(select(Island))
+#         @app.get("/spaces")
+#         async def get_spaces(db: AsyncSession = Depends(get_db_session)):
+#             result = await db.execute(select(Space))
 #             return result.scalars().all()
 #     """
 #     async with async_session_maker() as session:
@@ -289,8 +289,8 @@ class PaginationParams:
             limit: Maximum number of items to return
 
         Example:
-            @app.get("/islands")
-            async def get_islands(pagination: PaginationParams = Depends()):
+            @app.get("/spaces")
+            async def get_spaces(pagination: PaginationParams = Depends()):
                 # Use pagination.skip and pagination.limit
                 pass
         """
@@ -347,9 +347,9 @@ def validate_uuid(request: Request) -> str:
         HTTPException: If the value is not a valid UUID
 
     Example:
-        @app.get("/islands/{island_id}")
-        async def get_island(island_id: str = Depends(validate_uuid)):
-            # Now we know island_id is a valid UUID
+        @app.get("/spaces/{space_id}")
+        async def get_space(space_id: str = Depends(validate_uuid)):
+            # Now we know space_id is a valid UUID
     """
     import uuid
 

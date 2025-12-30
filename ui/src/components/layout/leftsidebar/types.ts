@@ -5,7 +5,7 @@ export interface LeftSidebarProps {
   onResizeStart: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export interface IslandItemProps {
+export interface SpaceItemProps {
   id: string;
   name: string;
   isActive?: boolean;

@@ -40,25 +40,25 @@ router = APIRouter()
 # ============================================================================
 
 @router.get(
-    "/islands/{island_id}/objects",
+    "/spaces/{space_id}/objects",
     response_model=ObjectList,
     status_code=status.HTTP_200_OK,
-    summary="List objects on island",
-    description="Get all objects on a specific island with pagination.",
+    summary="List objects on space",
+    description="Get all objects on a specific space with pagination.",
     tags=["Objects"]
 )
-async def list_objects_on_island(
-    island_id: UUID,
+async def list_objects_on_space(
+    space_id: UUID,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
     session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
-    List all objects on an island.
+    List all objects on an space.
 
     Args:
-        island_id: Island UUID
+        space_id: Space UUID
         skip: Number of records to skip
         limit: Maximum number of records to return
         type_filter: Optional filter by object type
@@ -70,8 +70,8 @@ async def list_objects_on_island(
         500: Internal server error
     """
     try:
-        objects = await objects_service.get_objects_by_island(
-            island_id=island_id,
+        objects = await objects_service.get_objects_by_space(
+            space_id=space_id,
             skip=skip,
             limit=limit,
             object_type=type_filter,
@@ -79,9 +79,9 @@ async def list_objects_on_island(
         )
 
         logger.info(
-            f"Listed {len(objects.objects)} objects on island",
+            f"Listed {len(objects.objects)} objects on space",
             extra={
-                "island_id": str(island_id),
+                "space_id": str(space_id),
                 "total": objects.total,
                 "type_filter": type_filter
             }
@@ -92,7 +92,7 @@ async def list_objects_on_island(
     except Exception as e:
         logger.exception(
             "Failed to list objects",
-            extra={"island_id": str(island_id), "skip": skip, "limit": limit, "type_filter": str(type_filter)}
+            extra={"space_id": str(space_id), "skip": skip, "limit": limit, "type_filter": str(type_filter)}
         )
         raise AppError(
             "Unable to retrieve objects right now. Please try again.",
@@ -104,20 +104,20 @@ async def list_objects_on_island(
 
 
 @router.post(
-    "/islands/{island_id}/objects",
+    "/spaces/{space_id}/objects",
     response_model=ObjectResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create object on island",
-    description="Create a new object on the specified island.",
+    summary="Create object on space",
+    description="Create a new object on the specified space.",
     tags=["Objects"]
 )
 async def create_object(
-    island_id: UUID,
+    space_id: UUID,
     object_data: ObjectCreate,
     session: AsyncSession = Depends(get_session)
 ) -> ObjectResponse:
     """
-    Create a new object on an island.
+    Create a new object on an space.
 
     Supports polymorphic object types:
     - LINK: URL bookmark with metadata
@@ -127,7 +127,7 @@ async def create_object(
     - GMAIL: Gmail thread/message reference
 
     Args:
-        island_id: Island UUID
+        space_id: Space UUID
         object_data: Object creation data (polymorphic)
 
     Returns:
@@ -135,17 +135,17 @@ async def create_object(
 
     Raises:
         400: Invalid object data or limit exceeded
-        404: Island not found
+        404: Space not found
         500: Internal server error
     """
     try:
-        obj = await objects_service.create_object(island_id, object_data, session=session)
+        obj = await objects_service.create_object(space_id, object_data, session=session)
 
         logger.info(
             f"Created {obj.type} object: {obj.title}",
             extra={
                 "object_id": str(obj.id),
-                "island_id": str(island_id),
+                "space_id": str(space_id),
                 "type": obj.type
             }
         )
@@ -177,7 +177,7 @@ async def create_object(
         )
 
     except Exception as e:
-        logger.exception("Failed to create object", extra={"island_id": str(island_id)})
+        logger.exception("Failed to create object", extra={"space_id": str(space_id)})
         raise AppError(
             "Unable to create the object right now.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -430,7 +430,7 @@ async def delete_object(
     response_model=list[ObjectResponse],
     status_code=status.HTTP_200_OK,
     summary="Reorder objects",
-    description="Reorder objects within an island by providing an ordered list of object IDs.",
+    description="Reorder objects within an space by providing an ordered list of object IDs.",
     tags=["Objects"]
 )
 async def reorder_objects(
@@ -438,7 +438,7 @@ async def reorder_objects(
     session: AsyncSession = Depends(get_session)
 ) -> list[ObjectResponse]:
     """
-    Reorder objects within an island.
+    Reorder objects within an space.
 
     Args:
         reorder_data: Ordered list of object IDs
@@ -491,19 +491,19 @@ async def search_objects(
     q: Optional[str] = Query(None, description="Search query (title, description, metadata)"),
     tags: Optional[List[str]] = Query(None, description="Filter by tags (AND logic)"),
     type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
-    island_id: Optional[UUID] = Query(None, description="Filter by island"),
+    space_id: Optional[UUID] = Query(None, description="Filter by space"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
-    Search objects across all islands or within a specific island.
+    Search objects across all spaces or within a specific space.
 
     Args:
         q: Search query string (searches title, description, and metadata)
         tags: List of tags to filter by (AND logic - object must have all tags)
         type_filter: Filter by object type
-        island_id: Optional island filter
+        space_id: Optional space filter
         skip: Number of records to skip
         limit: Maximum number of records to return
 
@@ -518,7 +518,7 @@ async def search_objects(
             search_query=q,
             tags=tags,
             type_filter=type_filter,
-            island_id=island_id,
+            space_id=space_id,
             skip=skip,
             limit=limit,
             session=session
@@ -530,7 +530,7 @@ async def search_objects(
                 "query": q,
                 "tags": tags,
                 "type_filter": type_filter,
-                "island_id": str(island_id) if island_id else None
+                "space_id": str(space_id) if space_id else None
             }
         )
 

@@ -25,7 +25,7 @@ export interface UndoEventCreate {
 
 export interface UndoEventResponse {
   id: string;
-  island_id: string;
+  space_id: string;
   sequence: number;
   event_type: UndoEventType;
   event_data: Record<string, any>;
@@ -44,8 +44,8 @@ export const undoApi = {
    * Create a new undo event.
    * This clears the redo stack.
    */
-  async createEvent(islandId: string, event: UndoEventCreate): Promise<UndoEventResponse> {
-    const res = await fetch(`${API_BASE}/islands/${islandId}/undo-events`, {
+  async createEvent(spaceId: string, event: UndoEventCreate): Promise<UndoEventResponse> {
+    const res = await fetch(`${API_BASE}/spaces/${spaceId}/undo-events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
@@ -63,8 +63,8 @@ export const undoApi = {
    * Undo the last event.
    * Returns the event that was undone so the client can reverse it.
    */
-  async undo(islandId: string): Promise<UndoRedoResponse> {
-    const res = await fetch(`${API_BASE}/islands/${islandId}/undo`, {
+  async undo(spaceId: string): Promise<UndoRedoResponse> {
+    const res = await fetch(`${API_BASE}/spaces/${spaceId}/undo`, {
       method: 'POST',
     });
 
@@ -80,8 +80,8 @@ export const undoApi = {
    * Redo the last undone event.
    * Returns the event that was redone so the client can reapply it.
    */
-  async redo(islandId: string): Promise<UndoRedoResponse> {
-    const res = await fetch(`${API_BASE}/islands/${islandId}/redo`, {
+  async redo(spaceId: string): Promise<UndoRedoResponse> {
+    const res = await fetch(`${API_BASE}/spaces/${spaceId}/redo`, {
       method: 'POST',
     });
 
@@ -94,10 +94,10 @@ export const undoApi = {
   },
 
   /**
-   * Clear all undo/redo history for an island.
+   * Clear all undo/redo history for an space.
    */
-  async clearHistory(islandId: string): Promise<{ cleared: number; message: string }> {
-    const res = await fetch(`${API_BASE}/islands/${islandId}/undo-events`, {
+  async clearHistory(spaceId: string): Promise<{ cleared: number; message: string }> {
+    const res = await fetch(`${API_BASE}/spaces/${spaceId}/undo-events`, {
       method: 'DELETE',
     });
 

@@ -2,7 +2,7 @@
 Structured logging configuration with context tracking.
 
 This module provides a centralized logging system with JSON formatting,
-context tracking, and request correlation for the Ocean backend.
+context tracking, and request correlation for the Focus backend.
 """
 
 import logging
@@ -414,8 +414,8 @@ def _example_usage():
     log_info(
         logger,
         "User action performed",
-        action="create_island",
-        island_name="My Island",
+        action="create_space",
+        space_name="My Space",
         object_count=5
     )
 
@@ -423,7 +423,7 @@ def _example_usage():
     try:
         raise ValueError("Something went wrong")
     except ValueError:
-        log_exception(logger, "Failed to process request", operation="create_island")
+        log_exception(logger, "Failed to process request", operation="create_space")
 
     # Manual context setting (without context manager)
     set_request_context(request_id="req-789")

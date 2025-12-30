@@ -1,19 +1,44 @@
 import { app, session, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = dirname(__filename$1);
 const isMac = process.platform === "darwin";
 let mainWindow = null;
+const getIconPath = () => {
+  const devCandidates = [
+    path.join(__dirname$1, "../src/assets/focus.ico"),
+    path.join(__dirname$1, "../src/assets/focus.png"),
+    path.resolve(process.cwd(), "src", "assets", "focus.ico"),
+    path.resolve(process.cwd(), "src", "assets", "focus.png"),
+    path.resolve(process.cwd(), "ui", "src", "assets", "focus.ico"),
+    path.resolve(process.cwd(), "ui", "src", "assets", "focus.png")
+  ];
+  const prodCandidates = [
+    path.join(process.resourcesPath, "focus.ico"),
+    path.join(process.resourcesPath, "focus.icns"),
+    path.join(process.resourcesPath, "focus.png")
+  ];
+  const candidates = app.isPackaged ? prodCandidates : devCandidates;
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      console.log("[Electron] Using icon:", candidate);
+      return candidate;
+    }
+  }
+  console.warn("[Electron] No icon found, using default Electron icon");
+  return void 0;
+};
 const logWebviewStorageInfo = async () => {
   try {
-    const webviewSession = session.fromPartition("persist:ocean-webview");
+    const webviewSession = session.fromPartition("persist:focus-webview");
     const storagePath = webviewSession.getStoragePath();
     const cookies = await webviewSession.cookies.get({});
     console.log(
       "[Electron] Webview storage",
       JSON.stringify({
-        partition: "persist:ocean-webview",
+        partition: "persist:focus-webview",
         storagePath,
         cookieCount: cookies.length
       })
@@ -32,7 +57,8 @@ async function createMainWindow() {
     minHeight: 600,
     show: true,
     // Show immediately instead of waiting
-    title: "Ocean",
+    title: "Focus",
+    icon: getIconPath(),
     autoHideMenuBar: true,
     // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
@@ -67,7 +93,7 @@ app.whenReady().then(() => {
     console.error("[Electron] Failed to create main window:", err);
     app.quit();
   });
-  const webviewSession = session.fromPartition("persist:ocean-webview");
+  const webviewSession = session.fromPartition("persist:focus-webview");
   webviewSession.webRequest.onHeadersReceived((details, callback) => {
     const headers = { ...details.responseHeaders };
     delete headers["x-frame-options"];
@@ -172,9 +198,9 @@ ipcMain.handle("desktop:write-file-to-clipboard", async (_event, filePath) => {
   }
   try {
     const { clipboard, nativeImage } = await import("electron");
-    const fs = await import("fs");
+    const fs2 = await import("fs");
     const path2 = await import("path");
-    if (!fs.existsSync(filePath)) {
+    if (!fs2.existsSync(filePath)) {
       console.error("[Electron] File not found:", filePath);
       return false;
     }

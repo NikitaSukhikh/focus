@@ -3,16 +3,16 @@
  *
  * Purpose: Manages core state and data loading for the center pane canvas
  * Responsibilities:
- * - Managing icons state by island (iconsByIsland)
+ * - Managing icons state by space (iconsBySpace)
  * - Loading objects from API and mapping to DroppedIcon format
  * - Tracking selected icon and drag-over state
  * - Calculating dynamic content height based on icon positions
  * - Handling keyboard delete for selected icons
- * - Syncing state when island selection changes
+ * - Syncing state when space selection changes
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useIslandStore } from '../../../../stores/islandStore';
+import { useSpaceStore } from '../../../../stores/spaceStore';
 import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
@@ -39,8 +39,8 @@ const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) =>
 
 export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | null>) => {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [iconsByIsland, setIconsByIsland] = useState<Record<string, DroppedIcon[]>>({});
-  const [arrowsByIsland, setArrowsByIsland] = useState<Record<string, ArrowSegment[]>>({});
+  const [iconsBySpace, setIconsBySpace] = useState<Record<string, DroppedIcon[]>>({});
+  const [arrowsBySpace, setArrowsBySpace] = useState<Record<string, ArrowSegment[]>>({});
   const [selectedIconIds, setSelectedIconIds] = useState<string[]>([]);
   const [dragGhost, setDragGhost] = useState<{
     id: string;
@@ -49,25 +49,25 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
     type: IconKind;
   } | null>(null);
 
-  const selectedIsland = useIslandStore((state) => state.getSelectedIsland());
+  const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
   const addEvent = useUndoHistoryStore((state) => state.addEvent);
 
   const contentHeight = useMemo(() => {
-    const currentIcons = selectedIsland ? iconsByIsland[selectedIsland.id] || [] : [];
+    const currentIcons = selectedSpace ? iconsBySpace[selectedSpace.id] || [] : [];
     const viewportHeight = paneRef.current?.getBoundingClientRect().height || 600;
     return calculateContentHeight(currentIcons, viewportHeight);
-  }, [iconsByIsland, selectedIsland, paneRef]);
+  }, [iconsBySpace, selectedSpace, paneRef]);
 
-  // Track which links have already been refreshed per island to avoid repeated fetches.
+  // Track which links have already been refreshed per space to avoid repeated fetches.
   const refreshedLinksRef = useRef<Map<string, Set<string>>>(new Map());
 
-  // Load existing objects as icons when island changes
+  // Load existing objects as icons when space changes
   useEffect(() => {
-    const islandId = selectedIsland?.id;
-    if (!islandId) return;
+    const spaceId = selectedSpace?.id;
+    if (!spaceId) return;
 
     objectsApi
-      .list(islandId)
+      .list(spaceId)
       .then((objects) => {
         const arrows: ArrowSegment[] = [];
         const mapped: DroppedIcon[] = objects
@@ -159,21 +159,21 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             });
           }
         });
-        setIconsByIsland((prev) => ({ ...prev, [islandId]: mapped }));
-        setArrowsByIsland((prev) => ({ ...prev, [islandId]: arrows }));
+        setIconsBySpace((prev) => ({ ...prev, [spaceId]: mapped }));
+        setArrowsBySpace((prev) => ({ ...prev, [spaceId]: arrows }));
       })
       .catch((err) => {
-        console.error('Failed to load objects for island', islandId, err);
+        console.error('Failed to load objects for space', spaceId, err);
       });
-  }, [selectedIsland?.id]);
+  }, [selectedSpace?.id]);
 
-  // Refresh link metadata once per island load to keep titles/favicons current.
+  // Refresh link metadata once per space load to keep titles/favicons current.
   useEffect(() => {
-    const islandId = selectedIsland?.id;
-    if (!islandId) return;
+    const spaceId = selectedSpace?.id;
+    if (!spaceId) return;
 
-    const alreadyRefreshed = refreshedLinksRef.current.get(islandId) || new Set<string>();
-    const icons = iconsByIsland[islandId] || [];
+    const alreadyRefreshed = refreshedLinksRef.current.get(spaceId) || new Set<string>();
+    const icons = iconsBySpace[spaceId] || [];
     const linksNeedingRefresh = icons.filter(
       (icon) => icon.type === 'link' && icon.url && !alreadyRefreshed.has(icon.id)
     );
@@ -185,7 +185,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     linksNeedingRefresh.forEach((icon, idx) => {
       const timer = window.setTimeout(async () => {
-        if (cancelled || !selectedIsland?.id) return;
+        if (cancelled || !selectedSpace?.id) return;
 
         try {
           const params = new URLSearchParams({ url: icon.url || '' });
@@ -201,11 +201,11 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             metadata.description || metadata.og_description || icon.defaultDescription || icon.description || '';
           const updatedFavicon = pickFavicon(metadata, resolvedUrl, icon.url || '');
 
-          setIconsByIsland((prev) => {
-            const current = prev[islandId] || [];
+          setIconsBySpace((prev) => {
+            const current = prev[spaceId] || [];
             return {
               ...prev,
-              [islandId]: current.map((i) =>
+              [spaceId]: current.map((i) =>
                 i.id === icon.id
                   ? {
                       ...i,
@@ -226,9 +226,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         } catch (err) {
           console.error('[METADATA_REFRESH] Failed to refresh link metadata:', err);
         } finally {
-          const set = refreshedLinksRef.current.get(islandId) || new Set<string>();
+          const set = refreshedLinksRef.current.get(spaceId) || new Set<string>();
           set.add(icon.id);
-          refreshedLinksRef.current.set(islandId, set);
+          refreshedLinksRef.current.set(spaceId, set);
         }
       }, idx * 150); // slight stagger to avoid burst
 
@@ -239,7 +239,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
       cancelled = true;
       timers.forEach((t) => window.clearTimeout(t));
     };
-  }, [iconsByIsland, selectedIsland?.id]);
+  }, [iconsBySpace, selectedSpace?.id]);
 
   // Listen for tile updates from preview pane
   useEffect(() => {
@@ -247,13 +247,13 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
       const customEvent = e as CustomEvent<{ tileId: string; title: string; content: string }>;
       const { tileId, title, content } = customEvent.detail;
 
-      if (!selectedIsland) return;
+      if (!selectedSpace) return;
 
-      setIconsByIsland((prev) => {
-        const current = prev[selectedIsland.id] || [];
+      setIconsBySpace((prev) => {
+        const current = prev[selectedSpace.id] || [];
         return {
           ...prev,
-          [selectedIsland.id]: current.map((icon) =>
+          [selectedSpace.id]: current.map((icon) =>
             icon.id === tileId
               ? { ...icon, title, content, description: content.substring(0, 100) }
               : icon
@@ -264,7 +264,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     window.addEventListener('tile:updated', handleTileUpdated);
     return () => window.removeEventListener('tile:updated', handleTileUpdated);
-  }, [selectedIsland, setIconsByIsland]);
+  }, [selectedSpace, setIconsBySpace]);
 
   // Sync link updates (title/description/custom/default) from other UI surfaces (e.g., sidebar)
   useEffect(() => {
@@ -292,13 +292,13 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         faviconUrl,
       } = customEvent.detail;
 
-      if (!selectedIsland) return;
+      if (!selectedSpace) return;
 
-      setIconsByIsland((prev) => {
-        const current = prev[selectedIsland.id] || [];
+      setIconsBySpace((prev) => {
+        const current = prev[selectedSpace.id] || [];
         return {
           ...prev,
-          [selectedIsland.id]: current.map((icon) =>
+          [selectedSpace.id]: current.map((icon) =>
             icon.id === linkId
               ? {
                   ...icon,
@@ -319,13 +319,13 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     window.addEventListener('link:updated', handleLinkUpdated);
     return () => window.removeEventListener('link:updated', handleLinkUpdated);
-  }, [selectedIsland, setIconsByIsland]);
+  }, [selectedSpace, setIconsBySpace]);
 
   // Handle keyboard delete for selected icon
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const primarySelectedId = selectedIconIds[0];
-      if ((e.key === 'Delete' || e.key === 'Backspace') && primarySelectedId && selectedIsland) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && primarySelectedId && selectedSpace) {
         const target = e.target as HTMLElement;
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
@@ -334,7 +334,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         console.log('[DELETE] Removing icon from canvas:', primarySelectedId);
 
         // Find the tile to save to history
-        const tileToDelete = (iconsByIsland[selectedIsland.id] || []).find((i) => i.id === primarySelectedId);
+        const tileToDelete = (iconsBySpace[selectedSpace.id] || []).find((i) => i.id === primarySelectedId);
         if (tileToDelete) {
           // Keep keyboard delete in both local undo store and server undo log
           const isTextTile = tileToDelete.type === 'text';
@@ -364,13 +364,13 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           // Local history store
           addEvent(
             isTextTile
-              ? { type: 'text_delete', islandId: selectedIsland.id, text: textEventPayload }
-              : { type: 'tile_delete', islandId: selectedIsland.id, tile: tileEventPayload }
+              ? { type: 'text_delete', spaceId: selectedSpace.id, text: textEventPayload }
+              : { type: 'tile_delete', spaceId: selectedSpace.id, tile: tileEventPayload }
           );
 
           // Persist undo event to backend
           undoApi
-            .createEvent(selectedIsland.id, {
+            .createEvent(selectedSpace.id, {
               event_type: isTextTile ? 'text_delete' : 'tile_delete',
               event_data: isTextTile ? { text: textEventPayload } : { tile: tileEventPayload },
             })
@@ -380,9 +380,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         // Dispatch event before deleting to notify preview pane
         window.dispatchEvent(new CustomEvent('tile:deleted', { detail: { tileId: primarySelectedId } }));
 
-        setIconsByIsland((prev) => ({
+        setIconsBySpace((prev) => ({
           ...prev,
-          [selectedIsland.id]: (prev[selectedIsland.id] || []).filter((i) => i.id !== primarySelectedId),
+          [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== primarySelectedId),
         }));
 
         objectsApi.markDeleted(primarySelectedId).catch((err) => {
@@ -394,22 +394,22 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIconIds, selectedIsland, iconsByIsland, addEvent]);
+  }, [selectedIconIds, selectedSpace, iconsBySpace, addEvent]);
 
   return {
     isDragOver,
     setIsDragOver,
-    iconsByIsland,
-    setIconsByIsland,
-    arrowsByIsland,
-    setArrowsByIsland,
+    iconsBySpace,
+    setIconsBySpace,
+    arrowsBySpace,
+    setArrowsBySpace,
     selectedIconId: selectedIconIds[0] ?? null,
     setSelectedIconId: (id: string | null) => setSelectedIconIds(id ? [id] : []),
     selectedIconIds,
     setSelectedIconIds,
     dragGhost,
     setDragGhost,
-    selectedIsland,
+    selectedSpace,
     contentHeight,
   };
 };

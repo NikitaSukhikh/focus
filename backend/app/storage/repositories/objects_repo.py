@@ -80,7 +80,7 @@ class ObjectsRepository:
 
     async def create_object(
         self,
-        island_id: UUID,
+        space_id: UUID,
         object_data: Union[
             LinkObjectCreate,
             FileObjectCreate,
@@ -91,10 +91,10 @@ class ObjectsRepository:
         session: AsyncSession | None = None
     ) -> ObjectResponse:
         """
-        Create a new object on an island.
+        Create a new object on an space.
 
         Args:
-            island_id: ID of the island to add the object to
+            space_id: ID of the space to add the object to
             object_data: Object creation data (polymorphic)
 
         Returns:
@@ -104,7 +104,7 @@ class ObjectsRepository:
         session_to_use, external = self._get_session(session)
         try:
             position = await session_to_use.scalar(
-                select(func.count(Object.id)).where(Object.island_id == str(island_id))
+                select(func.count(Object.id)).where(Object.space_id == str(space_id))
             )
             metadata = self._extract_metadata(object_data)
             default_title = object_data.title
@@ -121,7 +121,7 @@ class ObjectsRepository:
 
             obj = Object(
                 id=str(uuid4()),
-                island_id=str(island_id),
+                space_id=str(space_id),
                 type=object_data.type,
                 title=display_title,
                 description=display_description,
@@ -143,7 +143,7 @@ class ObjectsRepository:
                 f"Created {object_data.type} object: {object_data.title}",
                 extra={
                     "object_id": obj.id,
-                    "island_id": str(island_id),
+                    "space_id": str(space_id),
                     "type": object_data.type,
                     "position": obj.position
                 }
@@ -239,9 +239,9 @@ class ObjectsRepository:
             if not external:
                 await session_to_use.close()
 
-    async def get_objects_by_island(
+    async def get_objects_by_space(
         self,
-        island_id: UUID,
+        space_id: UUID,
         skip: int = 0,
         limit: int = 100,
         object_type: Optional[ObjectType] = None,
@@ -252,10 +252,10 @@ class ObjectsRepository:
         session: AsyncSession | None = None,
     ) -> ObjectList:
         """
-        Get all objects on an island with filtering, pagination, and sorting.
+        Get all objects on an space with filtering, pagination, and sorting.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
             skip: Number of records to skip (offset)
             limit: Maximum number of records to return
             object_type: Filter by object type
@@ -278,7 +278,7 @@ class ObjectsRepository:
 
         session_to_use, external = self._get_session(session)
         try:
-            stmt = select(Object).where(Object.island_id == str(island_id))
+            stmt = select(Object).where(Object.space_id == str(space_id))
             if object_type:
                 stmt = stmt.where(Object.type == object_type.value if hasattr(object_type, "value") else object_type)
             if search_query:
@@ -296,9 +296,9 @@ class ObjectsRepository:
             object_responses = [self._to_response(r) for r in rows]
 
             logger.debug(
-                f"Retrieved {len(object_responses)} objects for island {island_id} (total: {total})",
+                f"Retrieved {len(object_responses)} objects for space {space_id} (total: {total})",
                 extra={
-                    "island_id": str(island_id),
+                    "space_id": str(space_id),
                     "skip": skip,
                     "limit": limit,
                     "total": total,
@@ -350,7 +350,7 @@ class ObjectsRepository:
         session: AsyncSession | None = None
     ) -> ObjectList:
         """
-        Get all objects of a specific type across all islands.
+        Get all objects of a specific type across all spaces.
 
         Args:
             object_type: Object type to filter by
@@ -379,42 +379,42 @@ class ObjectsRepository:
             if not external:
                 await session_to_use.close()
 
-    async def get_object_count_by_island(self, island_id: UUID, session: AsyncSession | None = None) -> int:
+    async def get_object_count_by_space(self, space_id: UUID, session: AsyncSession | None = None) -> int:
         """
-        Get the count of objects on an island.
+        Get the count of objects on an space.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Returns:
-            int: Number of objects on the island
+            int: Number of objects on the space
 
         """
         session_to_use, external = self._get_session(session)
         try:
             return await session_to_use.scalar(
-                select(func.count(Object.id)).where(Object.island_id == str(island_id))
+                select(func.count(Object.id)).where(Object.space_id == str(space_id))
             ) or 0
         finally:
             if not external:
                 await session_to_use.close()
 
-    async def get_object_counts_by_island_ids(
+    async def get_object_counts_by_space_ids(
         self,
-        island_ids: list[UUID],
+        space_ids: list[UUID],
         session: AsyncSession | None = None
     ) -> dict[str, int]:
         """
-        Get object counts for multiple islands in one query.
+        Get object counts for multiple spaces in one query.
         """
-        if not island_ids:
+        if not space_ids:
             return {}
         session_to_use, external = self._get_session(session)
         try:
             stmt = (
-                select(Object.island_id, func.count(Object.id))
-                .where(Object.island_id.in_([str(i) for i in island_ids]))
-                .group_by(Object.island_id)
+                select(Object.space_id, func.count(Object.id))
+                .where(Object.space_id.in_([str(i) for i in space_ids]))
+                .group_by(Object.space_id)
             )
             result = await session_to_use.execute(stmt)
             return {row[0]: row[1] for row in result.all()}
@@ -427,13 +427,13 @@ class ObjectsRepository:
         search_query: str,
         tags: Optional[List[str]] = None,
         object_type: Optional[ObjectType] = None,
-        island_id: Optional[UUID] = None,
+        space_id: Optional[UUID] = None,
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None
     ) -> ObjectList:
         """
-        Search objects across all islands.
+        Search objects across all spaces.
 
         Args:
             search_query: Search string (case-insensitive)
@@ -449,8 +449,8 @@ class ObjectsRepository:
         session_to_use, external = self._get_session(session)
         try:
             stmt = select(Object)
-            if island_id:
-                stmt = stmt.where(Object.island_id == str(island_id))
+            if space_id:
+                stmt = stmt.where(Object.space_id == str(space_id))
             if search_query:
                 pattern = f"%{search_query.lower()}%"
                 stmt = stmt.where(
@@ -648,18 +648,18 @@ class ObjectsRepository:
             if obj is None:
                 logger.warning(f"Cannot delete - object not found: {object_id}")
                 return False
-            island_id = obj.island_id
+            space_id = obj.space_id
             await session_to_use.delete(obj)
             if not external:
                 await session_to_use.commit()
             else:
                 await session_to_use.flush()
-            await self._compact_positions(UUID(island_id), session=session_to_use)
+            await self._compact_positions(UUID(space_id), session=session_to_use)
             logger.info(
                 f"Deleted object: {obj.title}",
                 extra={
                     "object_id": str(object_id),
-                    "island_id": str(island_id),
+                    "space_id": str(space_id),
                     "position": obj.position
                 }
             )
@@ -668,12 +668,12 @@ class ObjectsRepository:
             if not external:
                 await session_to_use.close()
 
-    async def delete_objects_by_island(self, island_id: UUID, session: AsyncSession | None = None) -> int:
+    async def delete_objects_by_space(self, space_id: UUID, session: AsyncSession | None = None) -> int:
         """
-        Delete all objects on an island (cascade deletion).
+        Delete all objects on an space (cascade deletion).
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         Returns:
             int: Number of objects deleted
@@ -682,7 +682,7 @@ class ObjectsRepository:
         session_to_use, external = self._get_session(session)
         try:
             result = await session_to_use.execute(
-                delete(Object).where(Object.island_id == str(island_id))
+                delete(Object).where(Object.space_id == str(space_id))
             )
             deleted = result.rowcount or 0
             if not external:
@@ -690,8 +690,8 @@ class ObjectsRepository:
             else:
                 await session_to_use.flush()
             logger.info(
-                f"Deleted {deleted} objects from island {island_id}",
-                extra={"island_id": str(island_id), "count": deleted}
+                f"Deleted {deleted} objects from space {space_id}",
+                extra={"space_id": str(space_id), "count": deleted}
             )
             return deleted
         finally:
@@ -726,28 +726,28 @@ class ObjectsRepository:
 
     async def reorder_objects(
         self,
-        island_id: UUID,
+        space_id: UUID,
         object_ids: List[UUID],
         session: AsyncSession | None = None
     ) -> List[ObjectResponse]:
         """
-        Reorder objects on an island.
+        Reorder objects on an space.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
             object_ids: Ordered list of object UUIDs
 
         Returns:
             List[ObjectResponse]: Reordered objects
 
         Raises:
-            ValueError: If object IDs don't match island's objects
+            ValueError: If object IDs don't match space's objects
 
         """
         session_to_use, external = self._get_session(session)
         try:
             result = await session_to_use.execute(
-                select(Object.id).where(Object.island_id == str(island_id))
+                select(Object.id).where(Object.space_id == str(space_id))
             )
             existing_ids = {UUID(i) for i in result.scalars().all()}
             provided_ids = set(object_ids)
@@ -776,8 +776,8 @@ class ObjectsRepository:
             rows = {r.id: r for r in result.scalars().all()}
             reordered = [self._to_response(rows[str(i)]) for i in object_ids if str(i) in rows]
             logger.info(
-                f"Reordered {len(object_ids)} objects on island {island_id}",
-                extra={"island_id": str(island_id), "object_count": len(object_ids)}
+                f"Reordered {len(object_ids)} objects on space {space_id}",
+                extra={"space_id": str(space_id), "object_count": len(object_ids)}
             )
             return reordered
         finally:
@@ -788,22 +788,22 @@ class ObjectsRepository:
     # Helper Methods
     # ========================================================================
 
-    async def _compact_positions(self, island_id: UUID, session: AsyncSession | None = None) -> None:
+    async def _compact_positions(self, space_id: UUID, session: AsyncSession | None = None) -> None:
         """
-        Compact object positions on an island to eliminate gaps.
+        Compact object positions on an space to eliminate gaps.
 
         Args:
-            island_id: Island UUID
+            space_id: Space UUID
 
         """
         session_to_use, external = self._get_session(session)
         try:
             result = await session_to_use.execute(
-                select(Object).where(Object.island_id == str(island_id)).order_by(Object.position.asc())
+                select(Object).where(Object.space_id == str(space_id)).order_by(Object.position.asc())
             )
-            island_objects = result.scalars().all()
+            space_objects = result.scalars().all()
             now = datetime.utcnow()
-            for new_position, obj in enumerate(island_objects):
+            for new_position, obj in enumerate(space_objects):
                 if obj.position != new_position:
                     obj.position = new_position
                     obj.updated_at = now
@@ -812,8 +812,8 @@ class ObjectsRepository:
             else:
                 await session_to_use.flush()
             logger.debug(
-                f"Compacted positions for {len(island_objects)} objects on island {island_id}",
-                extra={"island_id": str(island_id), "object_count": len(island_objects)}
+                f"Compacted positions for {len(space_objects)} objects on space {space_id}",
+                extra={"space_id": str(space_id), "object_count": len(space_objects)}
             )
         finally:
             if not external:
@@ -910,7 +910,7 @@ class ObjectsRepository:
         return ObjectResponse.model_validate(
             {
                 "id": obj.id,
-                "island_id": obj.island_id,
+                "space_id": obj.space_id,
                 "type": obj.type,
                 "title": display_title,
                 "description": display_description,

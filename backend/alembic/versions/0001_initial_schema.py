@@ -1,4 +1,4 @@
-"""Initial schema for Ocean backend."""
+"""Initial schema for Focus backend."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ depends_on = None
 
 def upgrade() -> None:
     op.create_table(
-        "islands",
+        "spaces",
         sa.Column("id", sa.String(), primary_key=True),
         sa.Column("name", sa.String(length=100), nullable=False, index=True),
         sa.Column("description", sa.Text(), nullable=True),
@@ -29,7 +29,7 @@ def upgrade() -> None:
     op.create_table(
         "objects",
         sa.Column("id", sa.String(), primary_key=True),
-        sa.Column("island_id", sa.String(), sa.ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("space_id", sa.String(), sa.ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("type", sa.String(length=50), nullable=False),
         sa.Column("title", sa.String(length=400), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
@@ -43,7 +43,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     )
-    op.create_index("idx_objects_island_type", "objects", ["island_id", "type"])
+    op.create_index("idx_objects_space_type", "objects", ["space_id", "type"])
 
     op.create_table(
         "google_tokens",
@@ -79,23 +79,23 @@ def upgrade() -> None:
     op.create_table(
         "undo_events",
         sa.Column("id", sa.String(), primary_key=True),
-        sa.Column("island_id", sa.String(), sa.ForeignKey("islands.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("space_id", sa.String(), sa.ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("sequence", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("event_type", sa.String(length=50), nullable=False),
         sa.Column("event_data", sa.JSON(), nullable=False),
         sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("is_undone", sa.Boolean(), nullable=False, server_default=sa.text("0"), index=True),
     )
-    op.create_index("idx_undo_events_island_sequence", "undo_events", ["island_id", "sequence"], unique=True)
-    op.create_index("idx_undo_events_island_undone", "undo_events", ["island_id", "is_undone", "sequence"])
+    op.create_index("idx_undo_events_space_sequence", "undo_events", ["space_id", "sequence"], unique=True)
+    op.create_index("idx_undo_events_space_undone", "undo_events", ["space_id", "is_undone", "sequence"])
 
 
 def downgrade() -> None:
-    op.drop_index("idx_undo_events_island_undone", table_name="undo_events")
-    op.drop_index("idx_undo_events_island_sequence", table_name="undo_events")
+    op.drop_index("idx_undo_events_space_undone", table_name="undo_events")
+    op.drop_index("idx_undo_events_space_sequence", table_name="undo_events")
     op.drop_table("undo_events")
     op.drop_table("assistant_tokens")
     op.drop_table("google_tokens")
-    op.drop_index("idx_objects_island_type", table_name="objects")
+    op.drop_index("idx_objects_space_type", table_name="objects")
     op.drop_table("objects")
-    op.drop_table("islands")
+    op.drop_table("spaces")

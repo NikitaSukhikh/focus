@@ -30,7 +30,7 @@ export function MessageList({ messages, isSending }: MessageListProps) {
               Start a Chat
             </h3>
             <p className="text-sm text-slate-600 max-w-xs mx-auto">
-              Ask questions about your islands and objects
+              Ask questions about your spaces and objects
             </p>
           </div>
         ) : (

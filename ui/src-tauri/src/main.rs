@@ -23,5 +23,5 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Ocean application");
+        .expect("error while running Focus application");
 }

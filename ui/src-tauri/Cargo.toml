@@ -1,8 +1,8 @@
 [package]
-name = "ocean"
+name = "focus"
 version = "0.1.0"
-description = "Ocean - Desktop workspace organizer"
-authors = ["Ocean Team"]
+description = "Focus - Desktop workspace organizer"
+authors = ["Focus Team"]
 license = ""
 repository = ""
 edition = "2021"

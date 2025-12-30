@@ -12,7 +12,7 @@ interface DeletedTile {
   filePath?: string;
   serviceKey?: string;
   service?: string;
-  islandId: string;
+  spaceId: string;
 }
 
 interface DeletedTilesStore {
