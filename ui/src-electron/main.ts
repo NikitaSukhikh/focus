@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, session } from 'electron';
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -11,6 +12,7 @@ const __dirname = dirname(__filename);
 const isMac = process.platform === 'darwin';
 
 let mainWindow: BrowserWindow | null = null;
+let backendProcess: ChildProcessWithoutNullStreams | null = null;
 
 const getIconPath = () => {
   const devCandidates = [
@@ -39,6 +41,58 @@ const getIconPath = () => {
   // Fallback to default icon
   console.warn('[Electron] No icon found, using default Electron icon');
   return undefined;
+};
+
+const getBackendPath = () => {
+  // Packaged app reads from resources; dev uses checked-in binary for convenience.
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'focus-backend.exe');
+  }
+  return path.resolve(__dirname, '../resources/focus-backend.exe');
+};
+
+const getBackendCwd = () => {
+  // Run backend from resources so relative storage/log paths live with the app.
+  if (app.isPackaged) {
+    return process.resourcesPath;
+  }
+  // In dev, run from repo root/backend if available; otherwise use binary directory.
+  const repoBackend = path.resolve(__dirname, '../../backend');
+  if (fs.existsSync(repoBackend)) {
+    return repoBackend;
+  }
+  return path.resolve(__dirname, '../resources');
+};
+
+const startBackend = () => {
+  const backendPath = getBackendPath();
+  if (!fs.existsSync(backendPath)) {
+    console.warn('[Electron] Backend binary not found at', backendPath);
+    return;
+  }
+
+  console.log('[Electron] Starting backend:', backendPath);
+  backendProcess = spawn(backendPath, [], {
+    stdio: 'inherit',
+    cwd: getBackendCwd(),
+  });
+
+  backendProcess.on('exit', (code, signal) => {
+    console.log('[Electron] Backend exited', { code, signal });
+    backendProcess = null;
+  });
+
+  backendProcess.on('error', (err) => {
+    console.error('[Electron] Backend process error', err);
+  });
+};
+
+const stopBackend = () => {
+  if (backendProcess && !backendProcess.killed) {
+    console.log('[Electron] Stopping backend...');
+    backendProcess.kill();
+  }
+  backendProcess = null;
 };
 
 const logWebviewStorageInfo = async () => {
@@ -117,6 +171,8 @@ async function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+  startBackend();
+
   createMainWindow().catch((err) => {
     console.error('[Electron] Failed to create main window:', err);
     app.quit();
@@ -156,8 +212,13 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (!isMac) {
+    stopBackend();
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  stopBackend();
 });
 
 ipcMain.handle('desktop:open-dialog', async (_event, options) => {

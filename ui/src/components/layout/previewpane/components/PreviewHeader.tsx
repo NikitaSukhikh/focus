@@ -14,9 +14,9 @@ interface PreviewHeaderProps {
 export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow }: PreviewHeaderProps) {
   return (
     <div className="flex flex-col" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2 min-w-0">
-          <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--primary-color)' }}>Preview</h2>
+          <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Preview</h2>
           {title && type !== 'text' && (
             <span className="truncate" style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-muted)' }}>
               - {title}
@@ -28,17 +28,17 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow }: P
             onClick={onOpenFullWindow}
             className="p-1.5 rounded-lg transition-colors"
             style={{
-              color: 'var(--color-text-secondary)',
+              color: 'var(--color-text-muted)',
               transition: 'all var(--transition-base)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--glass-bg)';
-              e.currentTarget.style.color = 'var(--primary-color)';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
               e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.color = 'var(--color-text-muted)';
               e.currentTarget.style.boxShadow = 'none';
             }}
             title="Open in full window"
@@ -48,41 +48,41 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow }: P
           {url && (
             <button
               onClick={() => url && openExternalUrl(url)}
-              className="p-1.5 rounded-lg transition-colors"
-              style={{
-                color: 'var(--color-text-secondary)',
-                transition: 'all var(--transition-base)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--glass-bg)';
-                e.currentTarget.style.color = 'var(--primary-color)';
-                e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--color-text-secondary)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-              title="Open in external browser"
-            >
-              <ExternalLink size={18} />
+            className="p-1.5 rounded-lg transition-colors"
+            style={{
+              color: 'var(--color-text-muted)',
+              transition: 'all var(--transition-base)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--glass-bg)';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-muted)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+            title="Open in external browser"
+          >
+            <ExternalLink size={18} />
             </button>
           )}
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg transition-colors"
             style={{
-              color: 'var(--color-text-secondary)',
+              color: 'var(--color-text-muted)',
               transition: 'all var(--transition-base)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--glass-bg)';
-              e.currentTarget.style.color = 'var(--primary-color)';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
               e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.color = 'var(--color-text-muted)';
               e.currentTarget.style.boxShadow = 'none';
             }}
             title="Close preview"

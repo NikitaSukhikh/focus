@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { useAudioSync } from './useAudioSync';
 
 interface AudioMetadata {
   duration: number;
@@ -29,6 +30,10 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
   const [metadata, setMetadata] = useState<AudioMetadata | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const { dispatchSync, isApplyingRef } = useAudioSync(filePath, audioRef, {
+    onRemoteTimeUpdate: setCurrentTime,
+    onRemotePlayStateChange: setIsPlaying,
+  });
 
   // Build audio URL using API endpoint
   const audioUrl = `/api/thumbnails/audio-file?${new URLSearchParams({ file_path: filePath }).toString()}`;
@@ -57,19 +62,49 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateTime = () => {
+      const nextTime = audio.currentTime;
+      setCurrentTime(nextTime);
+      if (!isApplyingRef.current) {
+        dispatchSync({ currentTime: nextTime });
+      }
+    };
     const updateDuration = () => setDuration(audio.duration);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      if (!isApplyingRef.current) {
+        dispatchSync({ isPlaying: true }, { assumeLeadership: true });
+      }
+    };
+    const handlePause = () => {
+      setIsPlaying(false);
+      if (!isApplyingRef.current) {
+        dispatchSync({ isPlaying: false });
+      }
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (!isApplyingRef.current) {
+        dispatchSync({ isPlaying: false, currentTime: audio.duration || 0 });
+      }
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('durationchange', updateDuration);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('durationchange', updateDuration);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [dispatchSync, isApplyingRef]);
 
   const togglePlayPause = () => {
     const audio = audioRef.current;
@@ -77,10 +112,11 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
 
     if (isPlaying) {
       audio.pause();
-    } else {
-      audio.play();
+      dispatchSync({ isPlaying: false }, { assumeLeadership: true });
+      return;
     }
-    setIsPlaying(!isPlaying);
+
+    audio.play().catch(() => setIsPlaying(false));
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +126,10 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
     const newTime = parseFloat(e.target.value);
     audio.currentTime = newTime;
     setCurrentTime(newTime);
+    if (isPlaying && audio.paused) {
+      audio.play().catch(() => setIsPlaying(false));
+    }
+    dispatchSync({ currentTime: newTime, isPlaying }, { assumeLeadership: true });
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

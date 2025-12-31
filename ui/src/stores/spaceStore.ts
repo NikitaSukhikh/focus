@@ -21,22 +21,16 @@ interface SpaceStore {
 }
 
 const STORAGE_KEY = 'focus:selectedSpaceId';
-const USER_DATA_FLAG = 'focus:hasUserData';
 
-const markHasUserData = () => {
+const persistSelectedSpace = (id: string | null) => {
   try {
-    localStorage.setItem(USER_DATA_FLAG, '1');
+    if (id) {
+      localStorage.setItem(STORAGE_KEY, id);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   } catch (err) {
-    console.warn('Unable to persist user data flag', err);
-  }
-};
-
-const hasUserData = () => {
-  try {
-    return localStorage.getItem(USER_DATA_FLAG) === '1';
-  } catch (err) {
-    console.warn('Unable to read user data flag', err);
-    return false;
+    console.warn('Unable to persist selected space id', err);
   }
 };
 
@@ -70,20 +64,6 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         return;
       }
 
-      // If this is the first launch with no data, create the default space once.
-      if (!hasUserData() && data.spaces.length === 0) {
-        try {
-          const created = await spacesApi.create({ name: 'My First Space' });
-          markHasUserData();
-          // Reload to keep ordering consistent and select the new space.
-          await get().loadSpaces(created.id);
-          return;
-        } catch (err) {
-          console.error('Failed to create default space', err);
-          // Fall through to set empty state so UI can recover.
-        }
-      }
-
       const currentSelected = preferredSelectedId ?? get().selectedSpaceId;
       const nextSelected =
         (currentSelected && data.spaces.some((i) => i.id === currentSelected))
@@ -94,10 +74,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         spaces: data.spaces,
         selectedSpaceId: nextSelected
       });
-
-      if (data.spaces.length > 0) {
-        markHasUserData();
-      }
+      persistSelectedSpace(nextSelected);
     } catch (error) {
       console.error('Failed to load spaces:', error);
       set({ spaces: [] });
@@ -106,6 +83,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
 
   selectSpace: (id: string | null) => {
     set({ selectedSpaceId: id });
+    persistSelectedSpace(id);
   },
 
   getSelectedSpace: () => {
@@ -132,7 +110,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
       spaces: [draft, ...spaces],
       selectedSpaceId: tempId,
     });
-    markHasUserData();
+    persistSelectedSpace(tempId);
     return tempId;
   },
 
@@ -144,6 +122,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         const spaces = get().spaces.filter((i) => i.id !== id);
         const updatedSpaces = [created, ...spaces];
         set({ spaces: updatedSpaces, selectedSpaceId: created.id });
+        persistSelectedSpace(created.id);
         // Background refresh to stay in sync with backend ordering/counts.
         void get().loadSpaces(created.id);
         return created;
@@ -155,6 +134,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
 
     // Otherwise, update existing.
     await get().updateSpace(id, name);
+    persistSelectedSpace(id);
     return get().spaces.find((i) => i.id === id) || null;
   },
 
@@ -163,7 +143,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
       const newSpace = await spacesApi.create({ name });
       await get().loadSpaces(newSpace.id);
       set({ selectedSpaceId: newSpace.id });
-      markHasUserData();
+      persistSelectedSpace(newSpace.id);
       return newSpace;
     } catch (error) {
       console.error('Failed to create space:', error);
@@ -179,10 +159,12 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         spaces: previousSpaces.map((i) => (i.id === id ? { ...i, name } : i)),
         selectedSpaceId: id,
       });
+      persistSelectedSpace(id);
 
       const updated = await spacesApi.update(id, { name });
       const spaces = get().spaces.map((i) => (i.id === id ? updated : i));
       set({ spaces, selectedSpaceId: id });
+      persistSelectedSpace(id);
       // Background refresh to sync ordering/counts.
       void get().loadSpaces(id);
     } catch (error) {
@@ -206,6 +188,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         : newSpaces[0]?.id || null;
 
     set({ spaces: newSpaces, selectedSpaceId: nextSelected });
+    persistSelectedSpace(nextSelected);
 
     // Skip backend call for local-only temp spaces
     if (id.startsWith('temp-')) {
