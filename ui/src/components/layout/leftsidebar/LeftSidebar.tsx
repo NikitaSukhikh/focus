@@ -4,10 +4,12 @@ import { ChevronLeft, Plus, Settings } from 'lucide-react';
 import { useSpaceStore } from '../../../stores/spaceStore';
 import { objectsApi } from '../../../api/objects';
 import { Z_INDEX } from '../../../constants/zIndex';
+import { DIMENSIONS } from '../../../constants/panelDimensions';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { SpaceItem } from './SpaceItem';
 import { LeftSidebarProps } from './types';
 import { mapObjectToPayload, generateUniqueName } from './utils';
+import { SHORTCUT_HINT_LINES } from '../../../constants/shortcutHints';
 
 // LeftSidebar lists available spaces and handles basic space CRUD/duplication.
 export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSidebarProps) {
@@ -16,6 +18,9 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
   const [isDeleting, setIsDeleting] = useState(false);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
+  const topBarHeight = DIMENSIONS.TOPBAR.HEIGHT;
+  const sidebarTop = `${topBarHeight}px`;
+  const sidebarHeight = `calc(100% - ${topBarHeight}px)`;
 
   const spaces = useSpaceStore((state) => state.spaces);
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
@@ -156,7 +161,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
     <>
       <aside
         className={`
-          fixed top-0 left-0 h-full
+          fixed left-0
           glass-panel
           flex flex-col
           transition-transform duration-200 ease-in-out
@@ -166,32 +171,33 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         id="left-sidebar"
         style={{
           width: `${width}px`,
-          top: '56px',
-          height: 'calc(100% - 56px)',
+          top: sidebarTop,
+          height: sidebarHeight,
           zIndex: Z_INDEX.SIDEBAR,
           background: 'var(--background-light)',
           borderRight: '1px solid var(--color-border-strong)',
+          color: 'var(--color-text-secondary)',
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--primary-color)' }}>Spaces</h2>
+        <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Spaces</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={handleAddSpace}
               className="p-1.5 rounded-lg transition-colors"
               style={{
-                color: 'var(--color-text-secondary)',
+                color: 'var(--color-text-muted)',
                 transition: 'all var(--transition-base)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--glass-bg)';
-                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
                 e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.color = 'var(--color-text-muted)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
               title="New Space"
@@ -202,17 +208,17 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
               onClick={onClose}
               className="p-1.5 rounded-lg transition-colors"
               style={{
-                color: 'var(--color-text-secondary)',
+                color: 'var(--color-text-muted)',
                 transition: 'all var(--transition-base)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--glass-bg)';
-                e.currentTarget.style.color = 'var(--primary-color)';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
                 e.currentTarget.style.boxShadow = '0 0 10px var(--shadow)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--color-text-secondary)';
+                e.currentTarget.style.color = 'var(--color-text-muted)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
               title="Close sidebar"
@@ -226,7 +232,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
         <div className="flex-1 overflow-y-auto sidebar-scroll p-3">
           {spaces.length === 0 ? (
             <div className="text-center py-4" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>
-              No spaces yet. Click + to create one.
+              No spaces yet. Click '+' or press 'Ctrl+Y' to create one
             </div>
           ) : (
             <div className="space-y-2">
@@ -255,9 +261,17 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
 
         {/* Footer */}
         <div
-          className="px-4 py-3 border-t border-slate-200 flex items-center justify-start"
+          className="px-4 py-3 border-t border-slate-200 flex flex-col items-start gap-2"
           style={{ background: 'var(--background-light)' }}
         >
+          <div
+            className="text-sm"
+            style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)', textAlign: 'left' }}
+          >
+            {SHORTCUT_HINT_LINES.map((line) => (
+              <div key={line}>{line}</div>
+            ))}
+          </div>
           <button
             className="p-2 rounded-lg transition-colors"
             style={{
@@ -288,8 +302,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
           style={{
             zIndex: Z_INDEX.RESIZE_HANDLE,
             left: `${width}px`,
-            top: '56px',
-            height: 'calc(100% - 56px)',
+            top: sidebarTop,
+            height: sidebarHeight,
           }}
           onMouseDown={onResizeStart}
         />

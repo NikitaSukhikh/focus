@@ -8,7 +8,7 @@
 export const DIMENSIONS = {
   // Top Bar
   TOPBAR: {
-    HEIGHT: 56, // h-14 = 56px (14 * 4px)
+    HEIGHT: 48, // Slimmer top bar height
   },
 
   // Left Sidebar
