@@ -165,6 +165,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         opacity: collapsed ? 0 : 1,
         pointerEvents: collapsed ? 'none' : 'auto',
         background: 'var(--background-light)',
+        color: 'var(--color-text-secondary)',
       }}
       aria-hidden={collapsed}
     >
@@ -176,7 +177,10 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         onOpenFullWindow={handleOpenFullWindow}
       />
 
-      <div className="flex-1 overflow-auto relative flex flex-col custom-scroll" style={{ background: 'var(--background-dark)', overflowX: 'auto', overflowY: 'auto' }}>
+      <div
+        className="flex-1 overflow-auto relative flex flex-col custom-scroll"
+        style={{ background: 'var(--background-dark)', overflowX: 'auto', overflowY: 'auto', color: 'var(--color-text-secondary)' }}
+      >
         <NavigationControls
           onNavigateNext={navigation.navigateNext}
           onNavigatePrevious={navigation.navigatePrevious}

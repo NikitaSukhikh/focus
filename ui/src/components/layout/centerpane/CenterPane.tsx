@@ -12,6 +12,7 @@ import { useSpaceStore } from '../../../stores/spaceStore';
 import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from './hooks/useArrowDrawing';
 import { ARROW_SETTINGS } from './arrowSettings';
+import { SHORTCUT_HINT_TEXT } from '../../../constants/shortcutHints';
 
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
@@ -53,6 +54,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     [selectedIcons]
   );
   const hiddenInlinePreviewCount = Math.max(0, selectedIcons.length - inlinePreviewIcons.length);
+  const isEmptyState = !(logic.selectedSpace && (logic.iconsBySpace[logic.selectedSpace.id]?.length ?? 0) > 0);
 
   const ghostSize = useMemo(() => {
     const fallback = { width: 128, height: 128 };
@@ -346,10 +348,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               minHeight: `${contentHeightWithArrows / Math.max(zoom, 0.01)}px`,
             }}
           >
-            {(logic.selectedSpace && logic.iconsBySpace[logic.selectedSpace.id]?.length) ? null : (
-              <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>Drop integrations or links here. Use the + button to add files.</div>
-            )}
-
             {logic.dragGhost && (
               <div
                 style={{
@@ -595,6 +593,26 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
             </>
           )}
         </div>
+
+        {isEmptyState && (
+          <div
+            className="absolute inset-0 pointer-events-none flex items-center justify-center px-4"
+            style={{ zIndex: Z_INDEX.CONTENT_PREVIEW_EMPTY }}
+          >
+            <div
+              style={{
+                ...FONT_ROLES.paneBodyMuted,
+                color: 'var(--color-text-muted)',
+                textAlign: 'left',
+                whiteSpace: 'pre-line',
+                fontSize: '18px',
+                lineHeight: '38px',
+              }}
+            >
+              {SHORTCUT_HINT_TEXT}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Inline preview grid for multi-selected links (YouTube/Vimeo embeds) */}

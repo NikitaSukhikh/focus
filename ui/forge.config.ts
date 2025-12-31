@@ -11,6 +11,9 @@ const windowsPfxPath = process.env.WINDOWS_PFX_PATH;
 const windowsPfxPassword = process.env.WINDOWS_PFX_PASSWORD;
 const windowsSignParams = process.env.WINDOWS_SIGN_PARAMS;
 
+// Backend binary included as an extra resource (built via PyInstaller)
+const backendBinaryPath = path.join(__dirname, 'resources', 'focus-backend.exe');
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
@@ -21,6 +24,7 @@ const config: ForgeConfig = {
       path.join(__dirname, 'src', 'assets', 'focus.png'),
       path.join(__dirname, 'src', 'assets', 'focus.ico'),
       path.join(__dirname, 'src', 'assets', 'focus.icns'),
+      backendBinaryPath,
     ],
   },
   rebuildConfig: {},
