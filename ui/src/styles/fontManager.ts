@@ -1,3 +1,5 @@
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from './typographics';
+
 type FontDefinition = {
   fontFamily: string;
   fontWeight: number | string;
@@ -7,9 +9,9 @@ type FontDefinition = {
 };
 
 export const FONT_STACKS = {
-  sans: 'var(--font-sans)',
-  display: 'var(--font-display)',
-  mono: 'var(--font-mono)',
+  sans: TYPOGRAPHY_FONTS.BASE_SANS,
+  display: TYPOGRAPHY_FONTS.BASE_DISPLAY,
+  mono: TYPOGRAPHY_FONTS.BASE_MONO,
 };
 
 /**
@@ -19,79 +21,65 @@ export const FONT_STACKS = {
 export const FONT_ROLES: Record<string, FontDefinition> = {
   // Top bar
   topbarTitle: {
-    fontFamily: FONT_STACKS.display,
-    fontWeight: 700,
-    fontSize: '20px',
-    lineHeight: '26px',
-    letterSpacing: '0.01em',
+    fontFamily: TYPOGRAPHY_FONTS.TOPBAR_HEADER,
+    fontWeight: 600,
+    ...TYPOGRAPHY_SIZES.TOPBAR_HEADER,
   },
   topbarControl: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.TOPBAR_CONTROL,
     fontWeight: 600,
-    fontSize: '14px',
-    lineHeight: '20px',
+    ...TYPOGRAPHY_SIZES.TOPBAR_CONTROL,
   },
   topbarMeta: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.TOPBAR_META,
     fontWeight: 500,
-    fontSize: '12px',
-    lineHeight: '18px',
-    letterSpacing: '0.01em',
+    ...TYPOGRAPHY_SIZES.TOPBAR_META,
   },
 
   // Left sidebar
   sidebarTitle: {
-    fontFamily: FONT_STACKS.display,
+    fontFamily: TYPOGRAPHY_FONTS.SIDEBAR_TITLE,
     fontWeight: 700,
-    fontSize: '18px',
-    lineHeight: '24px',
+    ...TYPOGRAPHY_SIZES.SIDEBAR_TITLE,
   },
   sidebarItem: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.SIDEBAR_ITEM,
     fontWeight: 600,
-    fontSize: '14px',
-    lineHeight: '20px',
+    ...TYPOGRAPHY_SIZES.SIDEBAR_ITEM,
   },
   sidebarHint: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.SIDEBAR_HINT,
     fontWeight: 500,
-    fontSize: '13px',
-    lineHeight: '20px',
+    ...TYPOGRAPHY_SIZES.SIDEBAR_HINT,
   },
 
   // Panes (preview, assistant, center canvas)
   paneTitle: {
-    fontFamily: FONT_STACKS.display,
+    fontFamily: TYPOGRAPHY_FONTS.PANE_TITLE,
     fontWeight: 700,
-    fontSize: '18px',
-    lineHeight: '24px',
+    ...TYPOGRAPHY_SIZES.PANE_TITLE,
   },
   paneSubtitle: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.PANE_SUBTITLE,
     fontWeight: 500,
-    fontSize: '14px',
-    lineHeight: '20px',
+    ...TYPOGRAPHY_SIZES.PANE_SUBTITLE,
   },
   paneBody: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.PANE_BODY,
     fontWeight: 500,
-    fontSize: '14px',
-    lineHeight: '22px',
+    ...TYPOGRAPHY_SIZES.PANE_BODY,
   },
   paneBodyMuted: {
-    fontFamily: FONT_STACKS.sans,
+    fontFamily: TYPOGRAPHY_FONTS.PANE_BODY_MUTED,
     fontWeight: 500,
-    fontSize: '13px',
-    lineHeight: '20px',
+    ...TYPOGRAPHY_SIZES.PANE_BODY_MUTED,
   },
 
   // Monospace / system text
   code: {
-    fontFamily: FONT_STACKS.mono,
+    fontFamily: TYPOGRAPHY_FONTS.CODE,
     fontWeight: 400,
-    fontSize: '13px',
-    lineHeight: '20px',
-    letterSpacing: '-0.01em',
+    ...TYPOGRAPHY_SIZES.CODE,
   },
 };
 

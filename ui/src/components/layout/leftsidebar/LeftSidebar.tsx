@@ -18,7 +18,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
   const [isDeleting, setIsDeleting] = useState(false);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
-  const topBarHeight = DIMENSIONS.TOPBAR.HEIGHT;
+  const [topBarHeight, setTopBarHeight] = useState(DIMENSIONS.TOPBAR.HEIGHT);
   const sidebarTop = `${topBarHeight}px`;
   const sidebarHeight = `calc(100% - ${topBarHeight}px)`;
 
@@ -36,6 +36,20 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
   useEffect(() => {
     initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const updateTopBarHeight = () => {
+      const topBarElement = document.getElementById('top-bar');
+      if (!topBarElement) return;
+
+      const measuredHeight = topBarElement.getBoundingClientRect().height;
+      setTopBarHeight(measuredHeight);
+    };
+
+    updateTopBarHeight();
+    window.addEventListener('resize', updateTopBarHeight);
+    return () => window.removeEventListener('resize', updateTopBarHeight);
   }, []);
 
   const handleAddSpace = async () => {

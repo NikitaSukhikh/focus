@@ -1,19 +1,6 @@
-import { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { useAudioSync } from './useAudioSync';
-
-interface AudioMetadata {
-  duration: number;
-  duration_formatted: string;
-  bitrate: number;
-  sample_rate: number;
-  channels: number;
-  file_size: number;
-  file_size_human: string;
-  artist?: string;
-  album?: string;
-  title?: string;
-}
+import { useAudioMetadata } from './useAudioMetadata';
+import { useSharedAudioController } from './useSharedAudioController';
 
 interface AudioPlayerProps {
   filePath: string;
@@ -21,138 +8,30 @@ interface AudioPlayerProps {
 }
 
 export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [metadata, setMetadata] = useState<AudioMetadata | null>(null);
-  const [metadataError, setMetadataError] = useState<string | null>(null);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const { dispatchSync, isApplyingRef } = useAudioSync(filePath, audioRef, {
-    onRemoteTimeUpdate: setCurrentTime,
-    onRemotePlayStateChange: setIsPlaying,
-  });
-
-  // Build audio URL using API endpoint
-  const audioUrl = `/api/thumbnails/audio-file?${new URLSearchParams({ file_path: filePath }).toString()}`;
-
-  // Load audio metadata
-  useEffect(() => {
-    const params = new URLSearchParams({ file_path: filePath });
-    fetch(`/api/thumbnails/audio-metadata?${params.toString()}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load metadata');
-        return res.json();
-      })
-      .then(data => {
-        setMetadata(data);
-        setMetadataError(null);
-      })
-      .catch(err => {
-        console.error('[AudioPlayer] Failed to fetch audio metadata:', err);
-        setMetadataError('Failed to load audio metadata');
-        setMetadata(null);
-      });
-  }, [filePath]);
-
-  // Update current time
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => {
-      const nextTime = audio.currentTime;
-      setCurrentTime(nextTime);
-      if (!isApplyingRef.current) {
-        dispatchSync({ currentTime: nextTime });
-      }
-    };
-    const updateDuration = () => setDuration(audio.duration);
-    const handlePlay = () => {
-      setIsPlaying(true);
-      if (!isApplyingRef.current) {
-        dispatchSync({ isPlaying: true }, { assumeLeadership: true });
-      }
-    };
-    const handlePause = () => {
-      setIsPlaying(false);
-      if (!isApplyingRef.current) {
-        dispatchSync({ isPlaying: false });
-      }
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      if (!isApplyingRef.current) {
-        dispatchSync({ isPlaying: false, currentTime: audio.duration || 0 });
-      }
-    };
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('durationchange', updateDuration);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('durationchange', updateDuration);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [dispatchSync, isApplyingRef]);
+  const { state, controls } = useSharedAudioController(filePath);
+  const { isPlaying, currentTime, duration, volume, isMuted, error: audioError } = state;
+  const { metadata, metadataError } = useAudioMetadata(filePath);
 
   const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
     if (isPlaying) {
-      audio.pause();
-      dispatchSync({ isPlaying: false }, { assumeLeadership: true });
+      controls.pause();
       return;
     }
-
-    audio.play().catch(() => setIsPlaying(false));
+    controls.play();
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
     const newTime = parseFloat(e.target.value);
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-    if (isPlaying && audio.paused) {
-      audio.play().catch(() => setIsPlaying(false));
-    }
-    dispatchSync({ currentTime: newTime, isPlaying }, { assumeLeadership: true });
+    controls.seek(newTime);
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
     const newVolume = parseFloat(e.target.value);
-    audio.volume = newVolume;
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
+    controls.setVolume(newVolume);
   };
 
   const toggleMute = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isMuted) {
-      audio.volume = volume || 0.5;
-      setIsMuted(false);
-    } else {
-      audio.volume = 0;
-      setIsMuted(true);
-    }
+    controls.toggleMute();
   };
 
   const formatTime = (seconds: number): string => {
@@ -175,30 +54,6 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
   return (
     <div className="flex-1 overflow-auto">
       <div className="p-8 max-w-4xl mx-auto">
-        {/* Audio Element */}
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => setIsPlaying(false)}
-          onError={(e) => {
-            console.error('[AudioPlayer] Audio error:', e);
-            setAudioError('Failed to load audio file. The file may be corrupted or in an unsupported format.');
-            setIsPlaying(false);
-          }}
-          onLoadStart={() => {
-            console.log('[AudioPlayer] Loading audio from:', audioUrl);
-            setAudioError(null);
-          }}
-          onCanPlay={() => {
-            console.log('[AudioPlayer] Audio can play');
-          }}
-          controls={false}
-        >
-          <track kind="captions" src="data:text/vtt," label="Captions not provided" />
-        </audio>
-
         {/* Title Section */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2 text-slate-800">
@@ -229,7 +84,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
               max={duration || 0}
               value={currentTime}
               onChange={handleTimeChange}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)`
               }}
@@ -267,7 +122,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
                 step="0.01"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-24 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                className="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 100%)`
                 }}

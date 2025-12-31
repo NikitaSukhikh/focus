@@ -2,6 +2,7 @@ import React, { forwardRef, useImperativeHandle } from 'react';
 import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomIn, ZoomOut } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '../../../styles/typographics';
 import { useTopBarLogic } from './useTopBarLogic';
 import { TopBarProps, TopBarHandle } from './types';
 import { TopBarSearch } from './TopBarSearch';
@@ -20,7 +21,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   useImperativeHandle(ref, () => ({}), []);
 
   return (
-    <header className="h-8 glass-panel flex items-center px-4 relative" style={{ zIndex: Z_INDEX.TOPBAR, borderBottom: '1px solid var(--color-border-subtle)' }}>
+    <header
+      id="top-bar"
+      className="h-8 glass-panel flex items-center px-4 relative"
+      style={{ zIndex: Z_INDEX.TOPBAR, borderBottom: '1px solid var(--color-border-subtle)' }}
+    >
       {/* Left section */}
       <div
         className="flex items-center gap-3 transition-all duration-200"
@@ -56,10 +61,9 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           />
           <span
             style={{
-              ...FONT_ROLES.topbarTitle,
+              fontFamily: TYPOGRAPHY_FONTS.TOPBAR_APPNAME,
               fontWeight: 800,
-              fontSize: '22px',
-              letterSpacing: '0.02em',
+              ...TYPOGRAPHY_SIZES.TOPBAR_APPNAME,
               background: 'linear-gradient(180deg, #2c64ff 0%, #6647ff 50%, #ab33ff 100%)',
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
