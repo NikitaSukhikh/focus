@@ -6,6 +6,7 @@ Provides REST API for Spaces, Objects, Previews, Google OAuth, and AI Assistant.
 """
 
 # Load .env file before importing settings
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -34,6 +35,11 @@ from app.storage.repositories.undo_repo import UndoEventRepository
 
 # Initialize settings and logging
 settings = get_settings()
+
+# When running as a frozen binary (PyInstaller), force production-like settings to avoid dev reload/watchers.
+if getattr(sys, "frozen", False):
+    settings.server.environment = "production"
+    settings.server.debug = False
 setup_logging()
 logger = get_logger(__name__)
 
@@ -215,7 +221,7 @@ def run_server():
         "app.main:app",
         host=settings.server.host,
         port=settings.server.port,
-        reload=settings.is_development,
+        reload=settings.is_development and not getattr(sys, "frozen", False),
         log_level=settings.logging.level.lower(),
     )
 

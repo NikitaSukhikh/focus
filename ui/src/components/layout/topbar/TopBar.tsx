@@ -20,7 +20,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   useImperativeHandle(ref, () => ({}), []);
 
   return (
-    <header className="h-14 glass-panel flex items-center px-4 relative" style={{ zIndex: Z_INDEX.TOPBAR, borderBottom: '1px solid var(--color-border-subtle)' }}>
+    <header className="h-8 glass-panel flex items-center px-4 relative" style={{ zIndex: Z_INDEX.TOPBAR, borderBottom: '1px solid var(--color-border-subtle)' }}>
       {/* Left section */}
       <div
         className="flex items-center gap-3 transition-all duration-200"
@@ -48,17 +48,27 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
         <div className="flex items-center gap-2 mr-2">
-          <img src={focusLogo} alt="Focus logo" className="w-8 h-8 rounded-lg shadow-sm" />
+          <img
+            src={focusLogo}
+            alt="Focus logo"
+            className="rounded-lg shadow-sm"
+            style={{ width: '22px', height: '22px' }}
+          />
           <span
             style={{
               ...FONT_ROLES.topbarTitle,
               fontWeight: 800,
               fontSize: '22px',
-              color: 'var(--primary-color)',
               letterSpacing: '0.02em',
+              background: 'linear-gradient(180deg, #2c64ff 0%, #6647ff 50%, #ab33ff 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              WebkitTextFillColor: 'transparent',
+              display: 'inline-flex',
             }}
           >
-            Focus
+            <span style={{ fontWeight: 900 }}>F</span>ocus
           </span>
         </div>
       </div>

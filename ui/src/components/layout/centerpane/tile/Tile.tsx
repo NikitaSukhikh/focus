@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TileProps } from '../types';
 import { authenticatedLinksService } from '../../../../services/authenticatedLinks';
 import { getVideoEmbed } from '../../../../utils/videoEmbeds';
+import { detectFileType } from '../../../../utils/fileTypes';
 import { Z_INDEX } from '../../../../constants/zIndex';
 import { useDragHandling } from './useDragHandling';
 import { useThumbnail } from './useThumbnail';
@@ -9,8 +10,9 @@ import { useImageMetadata } from './useImageMetadata';
 import { useRenaming } from './useRenaming';
 import { useContextMenu } from './useContextMenu';
 import { useAccountSelection } from './useAccountSelection';
-import { HOVER_SAFE_PADDING, EMBED_LINK_WIDTH, EMBED_LINK_HEIGHT, NON_EMBED_LINK_SIZE, getThumbnailDimensions } from './dimensionHelpers';
+import { HOVER_SAFE_PADDING, EMBED_LINK_WIDTH, EMBED_LINK_HEIGHT, NON_EMBED_LINK_SIZE, AUDIO_EMBED_HEIGHT, AUDIO_EMBED_WIDTH, getThumbnailDimensions } from './dimensionHelpers';
 import { VideoEmbedContent } from './VideoEmbedContent';
+import { AudioEmbedContent } from './AudioEmbedContent';
 import { LinkContent } from './LinkContent';
 import { TextContent } from './TextContent';
 import { DefaultContent } from './DefaultContent';
@@ -39,8 +41,9 @@ export function Tile({
   onEdit
 }: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [isInteractionLocked, setIsInteractionLocked] = useState(false);
 
-  const { isDragging, skipTransition, handleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
+  const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
   const { imageMetadata } = useImageMetadata(type, filePath);
   const {
@@ -143,9 +146,22 @@ export function Tile({
 
   const hoverScaleClass = isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.02]';
   const videoEmbed = type === 'link' ? getVideoEmbed(url) : null;
-  const tileWidth = type === 'link' ? (videoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE) : undefined;
-  const tileHeight = type === 'link' ? (videoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE) : undefined;
+  const isAudioFile = type === 'file' && filePath ? detectFileType(filePath).category === 'audio' : false;
+  const tileWidth = type === 'link'
+    ? (videoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE)
+    : (isAudioFile ? AUDIO_EMBED_WIDTH : undefined);
+  const tileHeight = type === 'link'
+    ? (videoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE)
+    : (isAudioFile ? AUDIO_EMBED_HEIGHT : undefined);
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (isInteractionLocked) {
+      e.preventDefault();
+      return;
+    }
+    rawHandleDragStart(e);
+  };
 
   const renderContent = () => {
     if (type === 'link' && videoEmbed) {
@@ -161,6 +177,24 @@ export function Tile({
           renameInputRef={renameInputRef}
           isSelected={isSelected}
           hoverScaleClass={hoverScaleClass}
+        />
+      );
+    }
+
+    if (type === 'file' && isAudioFile && filePath) {
+      return (
+        <AudioEmbedContent
+          filePath={filePath}
+          title={title}
+          isRenaming={isRenaming}
+          renamingValue={renamingValue}
+          setRenamingValue={setRenamingValue}
+          handleRenameKeyDown={handleRenameKeyDown}
+          handleRenameSubmit={handleRenameSubmit}
+          renameInputRef={renameInputRef}
+          isSelected={isSelected}
+          hoverScaleClass={hoverScaleClass}
+          onInteractionChange={setIsInteractionLocked}
         />
       );
     }
@@ -236,7 +270,7 @@ export function Tile({
     <>
       <button
         data-icon-tile
-        draggable="true"
+        draggable={!isInteractionLocked}
         ref={dragRef as any}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -250,7 +284,7 @@ export function Tile({
         }
         className={`
           group absolute select-none
-          ${type === 'link' ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing
+          ${type === 'link' || isAudioFile ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing
           outline-none focus:outline-none
           ${isDragging ? 'invisible' : ''}
         `}
@@ -264,8 +298,8 @@ export function Tile({
           padding: type === 'text' ? 0 : HOVER_SAFE_PADDING,
           border: 'none',
           background: 'transparent',
-          width: type === 'link' ? `${tileWidth}px` : type === 'text' ? 'auto' : undefined,
-          height: type === 'link' ? `${tileHeight}px` : type === 'text' ? 'auto' : undefined,
+          width: tileWidth ? `${tileWidth}px` : type === 'text' ? 'auto' : undefined,
+          height: tileHeight ? `${tileHeight}px` : type === 'text' ? 'auto' : undefined,
           zIndex: isSelected ? Z_INDEX.CONTENT_SELECTED : isDragging ? Z_INDEX.CONTENT_DRAGGING : Z_INDEX.CONTENT_DEFAULT
         } as any}
       >

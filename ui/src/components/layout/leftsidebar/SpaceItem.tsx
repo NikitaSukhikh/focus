@@ -121,21 +121,21 @@ export function SpaceItem({
         className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 cursor-pointer"
         style={{
           background: isActive ? 'var(--glass-bg)' : 'transparent',
-          color: isActive ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+          color: isActive ? 'var(--primary-color)' : 'var(--color-text-muted)',
           border: isActive ? '1px solid var(--color-border-strong)' : '1px solid transparent',
           boxShadow: isActive ? '0 0 15px var(--shadow)' : 'none',
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
             e.currentTarget.style.background = 'var(--glass-bg)';
-            e.currentTarget.style.color = 'var(--color-text-primary)';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
             e.currentTarget.style.borderColor = 'var(--color-border-subtle)';
           }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
             e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
+            e.currentTarget.style.color = 'var(--color-text-muted)';
             e.currentTarget.style.borderColor = 'transparent';
           }
         }}
