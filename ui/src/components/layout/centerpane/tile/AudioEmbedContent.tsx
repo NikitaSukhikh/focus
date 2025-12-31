@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { RenameInput } from './RenameInput';
-import { useAudioSync } from '../../../media/useAudioSync';
+import { useAudioMetadata } from '../../../media/useAudioMetadata';
+import { useSharedAudioController } from '../../../media/useSharedAudioController';
 
 interface AudioEmbedContentProps {
   filePath: string;
@@ -31,73 +32,9 @@ export function AudioEmbedContent({
   hoverScaleClass,
   onInteractionChange,
 }: AudioEmbedContentProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const { dispatchSync, isApplyingRef } = useAudioSync(filePath, audioRef, {
-    onRemoteTimeUpdate: setCurrentTime,
-    onRemotePlayStateChange: setIsPlaying,
-  });
-
-  const audioUrl = useMemo(() => {
-    const params = new URLSearchParams({ file_path: filePath });
-    return `/api/thumbnails/audio-file?${params.toString()}`;
-  }, [filePath]);
-
-  useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-  }, [audioUrl]);
-
-  useEffect(() => {
-    const audioEl = audioRef.current;
-    if (!audioEl) return;
-
-    const handleLoaded = () => {
-      setDuration(Number.isFinite(audioEl.duration) ? audioEl.duration : 0);
-    };
-    const handleTimeUpdate = () => {
-      const nextTime = audioEl.currentTime || 0;
-      setCurrentTime(nextTime);
-      if (!isApplyingRef.current) {
-        dispatchSync({ currentTime: nextTime });
-      }
-    };
-    const handlePlay = () => {
-      setIsPlaying(true);
-      if (!isApplyingRef.current) {
-        dispatchSync({ isPlaying: true }, { assumeLeadership: true });
-      }
-    };
-    const handlePause = () => {
-      setIsPlaying(false);
-      if (!isApplyingRef.current) {
-        dispatchSync({ isPlaying: false });
-      }
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      if (!isApplyingRef.current) {
-        dispatchSync({ isPlaying: false, currentTime: audioEl.duration || 0 });
-      }
-    };
-
-    audioEl.addEventListener('loadedmetadata', handleLoaded);
-    audioEl.addEventListener('timeupdate', handleTimeUpdate);
-    audioEl.addEventListener('play', handlePlay);
-    audioEl.addEventListener('pause', handlePause);
-    audioEl.addEventListener('ended', handleEnded);
-
-    return () => {
-      audioEl.removeEventListener('loadedmetadata', handleLoaded);
-      audioEl.removeEventListener('timeupdate', handleTimeUpdate);
-      audioEl.removeEventListener('play', handlePlay);
-      audioEl.removeEventListener('pause', handlePause);
-      audioEl.removeEventListener('ended', handleEnded);
-    };
-  }, [audioUrl, dispatchSync, isApplyingRef]);
+  const { state, controls } = useSharedAudioController(filePath);
+  const { isPlaying, currentTime, duration, volume, isMuted, error: audioError } = state;
+  const { metadata } = useAudioMetadata(filePath);
 
   useEffect(() => {
     return () => {
@@ -105,54 +42,58 @@ export function AudioEmbedContent({
     };
   }, [onInteractionChange]);
 
-  const formatTime = (value: number) => {
-    if (!isFinite(value) || value < 0) return '0:00';
-    const minutes = Math.floor(value / 60);
-    const seconds = Math.floor(value % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const formatTime = (seconds: number): string => {
+    if (!isFinite(seconds) || seconds < 0) return '0:00';
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleTogglePlay = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    const audioEl = audioRef.current;
-    if (!audioEl) return;
-
     if (isPlaying) {
-      audioEl.pause();
-      dispatchSync({ isPlaying: false }, { assumeLeadership: true });
+      controls.pause();
     } else {
-      audioEl.play().catch(() => {
-        setIsPlaying(false);
-      });
+      controls.play();
     }
   };
 
   const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    const audioEl = audioRef.current;
-    if (!audioEl) return;
-
     const newTime = parseFloat(e.target.value);
-    audioEl.currentTime = newTime;
-    setCurrentTime(newTime);
-    if (isPlaying && audioEl.paused) {
-      audioEl.play().catch(() => setIsPlaying(false));
-    }
-    dispatchSync({ currentTime: newTime, isPlaying }, { assumeLeadership: true });
+    controls.seek(newTime);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const newVolume = parseFloat(e.target.value);
+    controls.setVolume(newVolume);
+  };
+
+  const toggleMute = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    controls.toggleMute();
   };
 
   const markInteraction = (locked: boolean) => onInteractionChange?.(locked);
 
+  const timelinePercent = duration ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const volumePercent = (isMuted ? 0 : volume) * 100;
+  const displayTitle = metadata?.title || title || 'Audio File';
+  const displayArtist = metadata?.artist;
+  const displayAlbum = metadata?.album;
+  const displayDuration = metadata?.duration_formatted || formatTime(duration);
+
   return (
     <div className={`w-full h-full flex flex-col transition-transform duration-150 ${hoverScaleClass}`}>
-      <div className="w-full h-full rounded-xl border border-slate-800/80 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-lg text-white flex flex-col justify-between gap-3 p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-end gap-[3px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-inner" aria-hidden>
-            <span className="w-1.5 h-3 bg-emerald-400/80 rounded-sm animate-pulse" />
-            <span className="w-1.5 h-6 bg-cyan-400/80 rounded-sm animate-[pulse_1.4s_ease-in-out_infinite]" />
-            <span className="w-1.5 h-4 bg-sky-400/80 rounded-sm animate-[pulse_1.1s_ease-in-out_infinite]" />
-            <span className="w-1.5 h-5 bg-blue-400/80 rounded-sm animate-[pulse_1.25s_ease-in-out_infinite]" />
-          </div>
+      <div className="w-full h-full rounded-xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.14)] text-slate-900 flex flex-col overflow-hidden">
+        <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             {isRenaming ? (
               <RenameInput
@@ -164,71 +105,116 @@ export function AudioEmbedContent({
               />
             ) : (
               <>
-                <div className={`text-sm font-semibold line-clamp-2 leading-tight ${isSelected ? 'text-emerald-200' : 'text-white'}`}>
-                  {title}
-                </div>
-                <div className="text-xs text-slate-300 mt-0.5">Audio preview</div>
+                <div className="text-sm font-semibold leading-tight truncate text-slate-900">{displayTitle}</div>
+                {displayArtist && (
+                  <div className="text-xs text-slate-600 truncate">{displayArtist}</div>
+                )}
+                {displayAlbum && (
+                  <div className="text-xs text-slate-500 truncate">{displayAlbum}</div>
+                )}
+                <div className="text-[11px] text-slate-500 truncate mt-0.5">{filePath}</div>
               </>
             )}
           </div>
-          <button
-            type="button"
-            onClick={handleTogglePlay}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              markInteraction(true);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              markInteraction(false);
-            }}
-            onPointerLeave={() => markInteraction(false)}
-            className={`w-11 h-11 flex items-center justify-center rounded-full shadow-md transition-all ${
-              isPlaying ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-white/15 hover:bg-white/25'
-            }`}
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-          </button>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <input
-            type="range"
-            min="0"
-            max={duration || 0}
-            step="0.01"
-            value={currentTime}
-            onChange={handleScrub}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              markInteraction(true);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              markInteraction(false);
-            }}
-            onPointerLeave={() => markInteraction(false)}
-            className="w-full h-2 rounded-full appearance-none bg-white/15"
-            style={{
-              background: `linear-gradient(to right, rgba(52,211,153,0.9) 0%, rgba(52,211,153,0.9) ${(duration ? (currentTime / duration) * 100 : 0)}%, rgba(255,255,255,0.15) ${(duration ? (currentTime / duration) * 100 : 0)}%, rgba(255,255,255,0.15) 100%)`
-            }}
-          />
-          <div className="flex justify-between text-[11px] text-slate-200">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+        <div className="flex-1 px-4 py-3 flex flex-col gap-3 overflow-hidden">
+          {audioError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+              {audioError}
+            </div>
+          )}
+
+          <div>
+            <input
+              type="range"
+              min="0"
+              max={duration || 0}
+              step="0.01"
+              value={currentTime}
+              onChange={handleScrub}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                markInteraction(true);
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                markInteraction(false);
+              }}
+              onPointerLeave={() => markInteraction(false)}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${timelinePercent}%, #e2e8f0 ${timelinePercent}%, #e2e8f0 100%)`
+              }}
+            />
+            <div className="flex justify-between text-[11px] text-slate-600 mt-1">
+              <span>{formatTime(currentTime)}</span>
+              <span>{displayDuration}</span>
+            </div>
           </div>
-        </div>
 
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => setIsPlaying(false)}
-          onError={() => setIsPlaying(false)}
-          preload="metadata"
-        />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleTogglePlay}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                markInteraction(true);
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                markInteraction(false);
+              }}
+              onPointerLeave={() => markInteraction(false)}
+              className="w-12 h-12 flex items-center justify-center bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+            </button>
+
+            <div className="flex items-center gap-2 flex-1">
+              <button
+                type="button"
+                onClick={toggleMute}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  markInteraction(true);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  markInteraction(false);
+                }}
+                onPointerLeave={() => markInteraction(false)}
+                className="p-2 text-slate-600 hover:text-purple-600 transition-colors"
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  markInteraction(true);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  markInteraction(false);
+                }}
+                onPointerLeave={() => markInteraction(false)}
+                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${volumePercent}%, #e2e8f0 ${volumePercent}%, #e2e8f0 100%)`
+                }}
+              />
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
