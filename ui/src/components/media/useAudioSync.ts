@@ -4,12 +4,15 @@ interface AudioSyncEventDetail {
   filePath: string;
   currentTime?: number;
   isPlaying?: boolean;
+  volume?: number;
+  isMuted?: boolean;
   sourceId: string;
 }
 
 interface UseAudioSyncHandlers {
   onRemoteTimeUpdate?: (time: number) => void;
   onRemotePlayStateChange?: (isPlaying: boolean) => void;
+  onRemoteVolumeChange?: (volume: number, isMuted: boolean) => void;
 }
 
 export function useAudioSync(
@@ -18,6 +21,7 @@ export function useAudioSync(
   handlers: UseAudioSyncHandlers
 ) {
   const { onRemotePlayStateChange, onRemoteTimeUpdate } = handlers;
+  const { onRemoteVolumeChange } = handlers;
   const syncSourceId = useMemo(
     () => `audio-sync-${Math.random().toString(36).slice(2)}`,
     []
@@ -31,7 +35,9 @@ export function useAudioSync(
       options: { assumeLeadership?: boolean } = {}
     ) => {
       const { assumeLeadership = false } = options;
-      if (!filePath || isApplyingRef.current) return;
+      const allowWhileApplying = assumeLeadership;
+      if (!filePath) return;
+      if (isApplyingRef.current && !allowWhileApplying) return;
 
       if (assumeLeadership) {
         isLeaderRef.current = true;
@@ -67,20 +73,26 @@ export function useAudioSync(
       }
 
       if (typeof detail.isPlaying === 'boolean') {
-        if (detail.isPlaying) {
-          audio.pause();
-          onRemotePlayStateChange?.(true);
-        } else {
-          audio.pause();
-          onRemotePlayStateChange?.(false);
-        }
+        // Followers stay paused (single audible source) but mirror play state for UI
+        audio.pause();
+        onRemotePlayStateChange?.(detail.isPlaying);
+      }
+
+      const hasVolume = typeof detail.volume === 'number' && Number.isFinite(detail.volume);
+      const hasMute = typeof detail.isMuted === 'boolean';
+      if (hasVolume || hasMute) {
+        const nextVolume = hasVolume ? Math.max(0, Math.min(1, detail.volume ?? 0)) : audio.volume;
+        const nextMuted = hasMute ? !!detail.isMuted : nextVolume === 0;
+        const appliedVolume = nextMuted ? 0 : nextVolume;
+        audio.volume = appliedVolume;
+        onRemoteVolumeChange?.(appliedVolume, nextMuted);
       }
 
       requestAnimationFrame(() => {
         isApplyingRef.current = false;
       });
     },
-    [audioRef, filePath, onRemotePlayStateChange, onRemoteTimeUpdate, syncSourceId]
+    [audioRef, filePath, onRemotePlayStateChange, onRemoteTimeUpdate, onRemoteVolumeChange, syncSourceId]
   );
 
   useEffect(() => {
