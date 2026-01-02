@@ -33,7 +33,6 @@ logs/
 
 # Lock files (optional - uncomment if you want to ignore them)
 package-lock.json
-Cargo.lock
 
 # Editor
 .vscode/*
@@ -42,10 +41,6 @@ Cargo.lock
 *.swp
 *.swo
 *~
-
-# Tauri
-**/src-tauri/target
-**/dist
 
 # Python
 __pycache__/
