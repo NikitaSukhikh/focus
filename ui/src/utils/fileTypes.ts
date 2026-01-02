@@ -55,12 +55,21 @@ const DOCUMENT_EXTENSIONS = new Set([
   'docx',
   'xls',
   'xlsx',
+  'xlsm',
   'ppt',
   'pptx',
   'odt',
   'ods',
   'odp',
   'rtf',
+]);
+
+// Excel file extensions (subset of documents)
+const EXCEL_EXTENSIONS = new Set([
+  'xls',
+  'xlsx',
+  'xlsm',
+  'ods',
 ]);
 
 // Text file extensions
@@ -197,6 +206,7 @@ function getDocumentMimeType(extension: string): string {
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     xls: 'application/vnd.ms-excel',
     xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
     ppt: 'application/vnd.ms-powerpoint',
     pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     odt: 'application/vnd.oasis.opendocument.text',
@@ -235,4 +245,34 @@ export function convertPathToAssetUrl(filePath: string): string {
  */
 export function getFileName(filePath: string): string {
   return filePath.split(/[\\/]/).pop() || '';
+}
+
+/**
+ * Check if file is an Excel spreadsheet
+ */
+export function isExcelFile(filePath: string): boolean {
+  const extension = getFileExtension(filePath);
+  return EXCEL_EXTENSIONS.has(extension);
+}
+
+/**
+ * Check if HTML file is likely a renderable webpage or a code template
+ * Returns true if it should be treated as code (shown in text editor)
+ * Returns false if it should be rendered (shown in webview)
+ */
+export function isHtmlCodeFile(filePath: string): boolean {
+  const fileName = getFileName(filePath).toLowerCase();
+
+  // Common project/template HTML files that should be treated as code
+  const codeFilePatterns = [
+    'index.html',
+    'template.html',
+    'base.html',
+    'layout.html',
+    '_',  // Partial templates often start with underscore
+    'component',
+    'snippet',
+  ];
+
+  return codeFilePatterns.some(pattern => fileName.includes(pattern));
 }

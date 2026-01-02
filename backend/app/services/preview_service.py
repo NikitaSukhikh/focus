@@ -393,11 +393,13 @@ class PreviewService:
             # Generate text preview for text files
             elif mime_type and mime_type.startswith('text/'):
                 try:
+                    # Load full file content (no line limit) for preview pane
+                    # The frontend will handle scrolling and display
                     text_content, _ = self.text_service.get_text_preview(
                         file_path,
-                        max_lines=settings.storage.text_preview_lines
+                        max_lines=None  # Load entire file
                     )
-                    text_preview = text_content[:500]  # Limit preview length
+                    text_preview = text_content  # Return full content
                 except Exception as e:
                     logger.warning(f"Failed to generate text preview: {e}")
 
