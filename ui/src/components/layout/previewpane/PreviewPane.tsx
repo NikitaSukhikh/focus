@@ -16,6 +16,8 @@ import { ImagePreview } from './components/ImagePreview';
 import { DocumentPreview } from './components/DocumentPreview';
 import { VideoPreview } from './components/VideoPreview';
 import { WebviewPreview } from './components/WebviewPreview';
+import { HTMLPreview } from './components/HTMLPreview';
+import { MarkdownPreview } from './components/MarkdownPreview';
 import { DroppedIcon } from '../centerpane/types';
 
 /* eslint-disable react/no-unknown-property */
@@ -62,17 +64,17 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     onClose();
   };
 
-  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, documentPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
   const imageMetadata = useImageMetadata(isImageFile, filePath);
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile, documentPreviewUrl);
   const textPreviewBody = useTextPreview(type, content, title);
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
 
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
-  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile;
+  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
 
   // Tile navigation
   const navigation = useTileNavigation({
@@ -207,6 +209,14 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
           />
         )}
 
+        {isMarkdownFile && (
+          <MarkdownPreview
+            filePath={filePath}
+            content={content}
+            title={title}
+          />
+        )}
+
         {isTextFile && (
           <div className="flex-1 overflow-auto bg-white">
             <div className="p-6 max-w-4xl mx-auto">
@@ -247,6 +257,13 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
 
         {videoEmbed && (
           <VideoPreview videoEmbed={videoEmbed} title={title} />
+        )}
+
+        {htmlPreviewUrl && (
+          <HTMLPreview
+            htmlPreviewUrl={htmlPreviewUrl}
+            title={title}
+          />
         )}
 
         <WebviewPreview

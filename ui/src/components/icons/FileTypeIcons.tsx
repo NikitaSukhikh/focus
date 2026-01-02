@@ -85,7 +85,7 @@ export function PowerPointIcon({ size = 48, className = '' }: FileIconProps) {
   );
 }
 
-// Text File Icon
+// Text File Icon with dynamic extension display
 export function TextFileIcon({ size = 48, className = '' }: FileIconProps) {
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
@@ -100,8 +100,25 @@ export function TextFileIcon({ size = 48, className = '' }: FileIconProps) {
   );
 }
 
-// Audio File Icon
-export function AudioFileIcon({ size = 48, className = '' }: FileIconProps) {
+// Code File Icon with dynamic extension display
+export function CodeFileIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
+  const ext = extension.toUpperCase().slice(0, 4); // Limit to 4 chars for display
+  return (
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+      <FileText size={size} className="text-indigo-600" />
+      <div
+        className="absolute bottom-0 right-0 bg-indigo-600 text-white text-xs font-bold px-1 rounded"
+        style={{ fontSize: size * 0.2 }}
+      >
+        {ext}
+      </div>
+    </div>
+  );
+}
+
+// Audio File Icon with dynamic extension display
+export function AudioFileIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
+  const ext = extension ? extension.toUpperCase().slice(0, 4) : 'MP3'; // Limit to 4 chars for display
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
       <Music size={size} className="text-purple-600" />
@@ -109,7 +126,7 @@ export function AudioFileIcon({ size = 48, className = '' }: FileIconProps) {
         className="absolute bottom-0 right-0 bg-purple-600 text-white text-xs font-bold px-1 rounded"
         style={{ fontSize: size * 0.2 }}
       >
-        MP3
+        {ext}
       </div>
     </div>
   );
@@ -122,6 +139,7 @@ export function GenericFileIcon({ size = 48, className = '' }: FileIconProps) {
 
 /**
  * Get the appropriate icon component for a file type
+ * For code/text files, returns a wrapper component that passes the extension
  */
 export function getFileTypeIcon(extension: string): React.ComponentType<FileIconProps> {
   const ext = extension.toLowerCase();
@@ -131,6 +149,8 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
   if (ext === 'odt') return OdtIcon;
   if (['xls', 'xlsx', 'ods'].includes(ext)) return ExcelIcon;
   if (['ppt', 'pptx', 'odp'].includes(ext)) return PowerPointIcon;
+
+  // Audio files with specific extension display
   if (
     [
       'mp3',
@@ -150,18 +170,13 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
       'wv',
       'mka',
     ].includes(ext)
-  )
-    return AudioFileIcon;
+  ) {
+    return (props: FileIconProps) => <AudioFileIcon {...props} extension={ext} />;
+  }
+
+  // Code and text files with specific extension display
   if (
     [
-      'txt',
-      'md',
-      'markdown',
-      'json',
-      'xml',
-      'html',
-      'htm',
-      'css',
       'js',
       'ts',
       'tsx',
@@ -178,6 +193,9 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
       'rb',
       'swift',
       'kt',
+      'json',
+      'xml',
+      'css',
       'yaml',
       'yml',
       'toml',
@@ -187,9 +205,21 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
       'sh',
       'bash',
       'log',
+      'md',
+      'markdown',
     ].includes(ext)
-  )
-    return TextFileIcon;
+  ) {
+    // Return a wrapper component that passes the extension
+    return (props: FileIconProps) => <CodeFileIcon {...props} extension={ext} />;
+  }
+
+  // HTML files - could be code or renderable, show extension
+  if (['html', 'htm'].includes(ext)) {
+    return (props: FileIconProps) => <CodeFileIcon {...props} extension={ext} />;
+  }
+
+  // Plain text files
+  if (ext === 'txt') return TextFileIcon;
 
   return GenericFileIcon;
 }

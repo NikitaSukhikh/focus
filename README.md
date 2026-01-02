@@ -48,6 +48,22 @@ An **Object** is a unit stored on an Space (displayed as a tile/card):
 ### Focus & Preview
 A single click focuses an object on the Space canvas (right to the central pane). Canvas shows a larger preview and metadata (file details, link preview, Drive/Gmail details if connected).
 
+#### Supported File Types for Preview
+
+**Documents:**
+- Word: `.docx`, `.doc`, `.odt`
+- Excel: `.xlsx`, `.xls`, `.xlsm`, `.ods`
+- PDF: `.pdf`
+- HTML: `.html`, `.htm` (rendered as interactive webpages)
+
+**Media:**
+- Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.svg`, `.tiff`, `.ico`, `.heic`, `.heif`
+- Audio: `.mp3`, `.wav`, `.flac`, `.ogg`, `.m4a`, `.aac`, `.wma`, `.opus`, `.aiff`, `.alac`, `.ape`, `.wv`, `.mka`
+- Video: YouTube and Vimeo embeds
+
+**Text/Code:**
+- `.txt`, `.md`, `.json`, `.xml`, `.css`, `.js`, `.ts`, `.tsx`, `.jsx`, `.py`, `.java`, `.c`, `.cpp`, `.h`, `.cs`, `.go`, `.rs`, `.php`, `.rb`, `.swift`, `.kt`, `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg`, `.conf`, `.sh`, `.bash`, `.log`
+
 
 
 The far right sidebar is a conversation with AI assistant, integrated via API. 

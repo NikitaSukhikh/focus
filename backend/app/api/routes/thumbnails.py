@@ -10,6 +10,7 @@ from pathlib import Path
 
 from app.services.thumbnails.file_thumbnail import file_thumbnail_service
 from app.services.documents.document_preview import document_preview_service
+from app.services.documents.excel_preview import excel_preview_service
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file, format_duration
 from app.core.logging import get_logger
 
@@ -452,15 +453,17 @@ async def get_document_preview(
                 detail=f"Path is not a file: {file_path}",
             )
 
+        # Check if file is Excel
+        if excel_preview_service.is_excel(file_path):
+            html_path = excel_preview_service.convert_excel_to_html(file_path)
         # Check if file is a supported document
-        if not document_preview_service.is_document(file_path):
+        elif document_preview_service.is_document(file_path):
+            html_path = document_preview_service.convert_docx_to_html(file_path)
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File is not a supported document format",
             )
-
-        # Convert document to HTML
-        html_path = document_preview_service.convert_docx_to_html(file_path)
 
         logger.debug(f"Serving document preview: {html_path}")
 

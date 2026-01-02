@@ -268,7 +268,7 @@ export function Tile({
 
   return (
     <>
-      <button
+      <div
         data-icon-tile
         draggable={!isInteractionLocked}
         ref={dragRef as any}
@@ -304,7 +304,7 @@ export function Tile({
         } as any}
       >
         {renderContent()}
-      </button>
+      </div>
 
       <TileContextMenu
         show={showContextMenu}
