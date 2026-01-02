@@ -1,5 +1,0 @@
-# Prettier ignore patterns.
-
-dist
-node_modules
-src-tauri/target
