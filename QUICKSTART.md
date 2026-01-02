@@ -4,12 +4,7 @@
 
 ### Option 1: Desktop App (Recommended) 🖥️
 
-Run Focus as a **standalone desktop application** using Tauri.
-
-#### Prerequisites
-- **Rust** must be installed:
-  - Windows: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
-  - Linux/Mac: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+Run Focus as a **standalone desktop application** using Electron.
 
 #### Steps
 
@@ -21,47 +16,23 @@ npm install
 
 2. **Run the desktop app:**
 ```bash
-npm run tauri:dev
-```
-
-Or use the helper script:
-```bash
-# Windows
-.\run-desktop.ps1
-
-# Linux/Mac
-./run-desktop.sh
+npm run dev
 ```
 
 This will launch Focus in a **native desktop window** (no browser needed)!
 
-### Option 2: Browser Mode (Development) 🌐
+### Option 2: Build for Production 📦
 
-Run the UI in your browser for quick development/testing.
+Build Focus for distribution.
 
 #### Steps
 
-1. **Install dependencies:**
 ```bash
 cd ui
-npm install
+npm run build
 ```
 
-2. **Start development server:**
-```bash
-npm run dev
-```
-
-The UI will be available at **http://localhost:5173**
-
-Or use the helper script:
-```bash
-# Windows
-.\run-ui.ps1
-
-# Linux/Mac
-./run-ui.sh
-```
+This will create platform-specific installers in the `out/` directory.
 
 ## What You'll See
 
@@ -145,7 +116,7 @@ The UI uses the same styling as the assistant:
 
 ## Technologies
 
-- **Tauri 1.7** - Desktop app framework (Rust-based)
+- **Electron 31** - Desktop app framework
 - **React 18** - UI library
 - **TypeScript 5** - Type safety
 - **Vite 7** - Build tool
@@ -159,12 +130,12 @@ To create a distributable desktop application:
 
 ```bash
 cd ui
-npm run tauri:build
+npm run build
 ```
 
-This will create platform-specific installers in `ui/src-tauri/target/release/bundle/`:
-- **Windows**: `.msi` and `.exe` installers
+This will create platform-specific installers in the `out/` directory:
+- **Windows**: `.exe` installer
 - **macOS**: `.dmg` and `.app` bundle
-- **Linux**: `.deb`, `.AppImage`, and others
+- **Linux**: `.deb`, `.rpm`, and others
 
 Enjoy exploring Focus! 🌊

@@ -9,7 +9,7 @@ Focus is a desktop application that lets users collect “objects” (links and 
 Focus also supports storing **Gmail** and **Google Drive** entry points as objects. Users connect via **Google OAuth** through a dedicated “Connect Google” flow.
 
 Tech stack:
-- **Frontend/UI**: Tauri + React + TypeScript
+- **Frontend/UI**: Electron + React + TypeScript
 - **Backend**: Python (venv) + Uvicorn (FastAPI assumed)
 
 ---
@@ -56,7 +56,7 @@ The far right sidebar is a conversation with AI assistant, integrated via API.
 
 ## Architecture
 
-Focus runs as a desktop shell (Tauri) hosting a React UI. A local Python backend provides:
+Focus runs as a desktop shell (Electron) hosting a React UI. A local Python backend provides:
 
 - persistence (Spaces, object metadata)
 - file preview / thumbnail generation (optional, depending on implementation)
@@ -66,9 +66,7 @@ Focus runs as a desktop shell (Tauri) hosting a React UI. A local Python backend
 
 ### Suggested communication model
 - UI ↔ backend over `http://127.0.0.1:<PORT>` using JSON APIs.
-- The backend is started by Tauri during dev/runtime (or run separately for local development).
-
-> If you use a different model (Tauri `invoke` commands / IPC), keep this README’s “API base URL” approach as a reference and adjust accordingly.
+- The backend is started by Electron during dev/runtime (or run separately for local development).
 
 ---
 
@@ -87,7 +85,7 @@ focus/ ## Root folder. We are already inside it.
     package-lock.json            # or pnpm-lock.yaml / yarn.lock
     tsconfig.json
     tsconfig.node.json           # we use Vite
-    vite.config.ts               # also for Vite (recommended for Tauri)
+    vite.config.ts               # also for Vite (recommended for Electron)
     index.html                   # also for Vite
     public/
       icons/
@@ -221,9 +219,9 @@ focus/ ## Root folder. We are already inside it.
         http/
           client.ts               # fetch wrapper, base URL, interceptors
           endpoints.ts
-        tauri/
-          window.ts               # Tauri window helpers (optional)
-          fs.ts                   # if using Tauri FS APIs (optional)
+        electron/
+          window.ts               # Electron window helpers (optional)
+          fs.ts                   # if using Electron FS APIs (optional)
 
       state/
         store.ts                  # Redux store / Zustand root / Context provider
@@ -237,15 +235,10 @@ focus/ ## Root folder. We are already inside it.
         id.ts
         time.ts
 
-    src-tauri/
-      tauri.conf.json
-      Cargo.toml
-      build.rs
-      icons/
-      src/
-        main.rs                   # bootstraps Tauri + backend process (if applicable)
-        commands.rs               # optional Tauri commands
-        backend.rs                # spawn/manage python backend (optional)
+    electron/
+      main.ts                     # Electron main process
+      preload.ts                  # Electron preload script
+      forge.config.ts             # Electron Forge configuration
 
     .env.example                  # UI env (VITE_API_BASE_URL, etc.)
     .eslintrc.cjs
