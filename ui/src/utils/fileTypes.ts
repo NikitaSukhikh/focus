@@ -217,12 +217,9 @@ export function canShowImageThumbnail(filePath: string): boolean {
 }
 
 /**
- * Convert Windows file path to URL-safe format for Tauri
+ * Convert Windows file path to URL-safe format
  */
 export function convertPathToAssetUrl(filePath: string): string {
-  // Tauri uses the convertFileSrc API to safely load local files
-  // For now, we'll use the file protocol directly
-  // In production, you should use Tauri's convertFileSrc
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
     return filePath;
   }
@@ -230,7 +227,6 @@ export function convertPathToAssetUrl(filePath: string): string {
   // Convert Windows backslashes to forward slashes
   const normalizedPath = filePath.replace(/\\/g, '/');
 
-  // Return as-is for now - Tauri will handle conversion
   return `asset://localhost/${normalizedPath}`;
 }
 

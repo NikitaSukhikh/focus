@@ -19,7 +19,6 @@ React + TypeScript + Vite frontend for Focus desktop application.
 
 - Node.js >= 20
 - npm >= 9
-- **Rust** (for desktop app): [Install Rust](https://www.rust-lang.org/tools/install)
 
 ### Setup
 
@@ -35,37 +34,24 @@ cp .env.example .env
 
 ### Running as Desktop App (Recommended)
 
-3. Run with Tauri:
-```bash
-npm run tauri:dev
-```
-
-This launches Focus as a **native desktop application** (no browser needed).
-
-### Running in Browser (Development)
-
-3. Start Vite dev server:
+3. Run with Electron:
 ```bash
 npm run dev
 ```
 
-The app will be available at http://localhost:5173
+This launches Focus as a **native desktop application** (no browser needed).
 
 ## Available Scripts
 
 **Desktop App:**
-- `npm run tauri:dev` - Run as desktop app (development)
-- `npm run tauri:build` - Build desktop app for production
-- `npm run tauri` - Run Tauri CLI commands
-
-**Web Development:**
-- `npm run dev` - Start Vite development server (browser mode)
-- `npm run build` - Build for production
+- `npm run dev` - Run as desktop app (development)
+- `npm run build` - Build desktop app for production
 - `npm run preview` - Preview production build
 
 **Code Quality:**
 - `npm run lint` - Run ESLint
 - `npm run format` - Format code with Prettier
+- `npm run sync-tokens` - Sync design tokens
 
 ## Project Structure
 
