@@ -11,6 +11,7 @@ import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigatio
 import { usePreviewTextEditor } from '../previewpane/hooks/usePreviewTextEditor';
 import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
 import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection';
+import { MarkdownPreview } from '../previewpane/components/MarkdownPreview';
 import { DroppedIcon } from '../centerpane/types';
 
 /* eslint-disable react/no-unknown-property */
@@ -64,12 +65,12 @@ export function FullWindowPreview({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textContentRef = useRef<HTMLDivElement>(null);
 
-  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, isMarkdownFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
 
   const videoEmbed = getVideoEmbed(url);
 
   // Only use webview logic when not showing an image, audio, or document
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
   const currentTitle = localTitle ?? title;
@@ -455,7 +456,7 @@ export function FullWindowPreview({
             &gt;
           </button>
 
-          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile && (
+          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile && !isMarkdownFile && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>
                 No preview available.
@@ -499,6 +500,14 @@ export function FullWindowPreview({
                 </div>
               )}
             </>
+          )}
+
+          {isMarkdownFile && (
+            <MarkdownPreview
+              filePath={filePath}
+              content={content}
+              title={title}
+            />
           )}
 
           {isTextFile && (
