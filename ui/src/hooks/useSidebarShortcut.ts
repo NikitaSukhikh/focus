@@ -12,8 +12,10 @@
 import { useEffect } from 'react';
 import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
 
-export const useSidebarShortcut = (isSidebarOpen: boolean, openSidebar: () => void, closeSidebar: () => void) => {
+export const useSidebarShortcut = (isSidebarOpen: boolean, openSidebar: () => void, closeSidebar: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {
+    if (isDialogOpen) return;
+
     const handleShortcut = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isLeftHotkey = isModifierOnlyKey(e) && e.code === 'ArrowLeft';
@@ -36,5 +38,5 @@ export const useSidebarShortcut = (isSidebarOpen: boolean, openSidebar: () => vo
       window.removeEventListener('keydown', handleShortcut, true);
       document.removeEventListener('keydown', handleShortcut, true);
     };
-  }, [isSidebarOpen, openSidebar, closeSidebar]);
+  }, [isSidebarOpen, openSidebar, closeSidebar, isDialogOpen]);
 };
