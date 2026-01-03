@@ -300,6 +300,10 @@ export function App() {
     void hydrateTextFilePreview(tileData, isFullWindowOpen);
   };
 
+  const openQuickAdd = () => {
+    setIsQuickAddOpen(true);
+  };
+
   const handleQuickAddFiles = () => {
     centerPaneRef.current?.addFiles();
   };
@@ -337,6 +341,7 @@ export function App() {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         zoom={zoom}
+        onOpenQuickAdd={openQuickAdd}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -363,8 +368,8 @@ export function App() {
                 zoom={zoom}
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
-                onOpenQuickAdd={() => setIsQuickAddOpen(true)}
-                 onObjectClick={(target: PreviewTarget) => {
+                onOpenQuickAdd={openQuickAdd}
+                onObjectClick={(target: PreviewTarget) => {
                   const normalized = normalizePreviewTarget(target || {});
                   setPreviewData(normalized);
                   setIsPreviewOpen(true);
