@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Minus, Square, X, Maximize2, Minimize2 } from 'lucide-react';
 
 export const WindowControls: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -35,15 +34,23 @@ export const WindowControls: React.FC = () => {
         onClick={handleMinimize}
         className="h-full px-4 hover:bg-white/10 transition-colors"
         title="Minimize"
+        style={{
+          fontFamily: 'Segoe MDL2 Assets, sans-serif',
+          fontSize: '10px',
+        }}
       >
-        <Minus size={14} />
+        &#xE921;
       </button>
       <button
         onClick={handleMaximize}
         className="h-full px-4 hover:bg-white/10 transition-colors"
-        title={isMaximized ? 'Restore' : 'Maximize'}
+        title={isMaximized ? 'Restore Down' : 'Maximize'}
+        style={{
+          fontFamily: 'Segoe MDL2 Assets, sans-serif',
+          fontSize: '10px',
+        }}
       >
-        {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        {isMaximized ? '\uE923' : '\uE922'}
       </button>
       <button
         onClick={handleClose}
@@ -51,6 +58,8 @@ export const WindowControls: React.FC = () => {
         style={{
           width: '30px',
           aspectRatio: '1/1',
+          fontFamily: 'Segoe MDL2 Assets, sans-serif',
+          fontSize: '10px',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = '#E81123';
@@ -60,7 +69,7 @@ export const WindowControls: React.FC = () => {
         }}
         title="Close"
       >
-        <X size={14} />
+        &#xE8BB;
       </button>
     </div>
   );
