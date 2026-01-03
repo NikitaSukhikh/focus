@@ -1,9 +1,9 @@
 /**
  * Sidebar Toggle Keyboard Shortcut Hook
  *
- * Purpose: Manages Ctrl/Cmd+L keyboard shortcut for toggling the sidebar
+ * Purpose: Manages Ctrl/Cmd+Left keyboard shortcut for toggling the sidebar
  * Responsibilities:
- * - Listening for Ctrl/Cmd+L keyboard events
+ * - Listening for Ctrl/Cmd+Left keyboard events
  * - Preventing shortcut conflicts with text fields
  * - Calling toggle handler when shortcut is activated
  */
@@ -15,7 +15,7 @@ export const useSidebarShortcut = (toggleSidebar: () => void) => {
   useEffect(() => {
     const handleShortcut = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const isSidebarHotkey = isModifierOnlyKey(e) && e.code === 'KeyL';
+      const isSidebarHotkey = isModifierOnlyKey(e) && e.code === 'ArrowLeft';
 
       if (!isSidebarHotkey || isTextFieldTarget(target)) return;
 
