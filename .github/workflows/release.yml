@@ -112,17 +112,18 @@ jobs:
       - name: Generate SHA256 checksums
         working-directory: ui/out/make
         run: |
-          Get-ChildItem -Recurse -File | ForEach-Object {
+          Get-ChildItem -Recurse -File -Include *.exe,*.nupkg | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
             "$($hash.Hash)  $($_.Name)" | Out-File -Append -FilePath checksums.txt
           }
+          Get-Content checksums.txt
 
-      - name: Upload Windows artifacts
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: windows-release-${{ needs.verify-tag.outputs.tag_name }}
+          name: windows-installer-${{ needs.verify-tag.outputs.tag_name }}
           path: |
-            ui/out/make/**/*
+            ui/out/make/squirrel.windows/**/*
             ui/out/make/checksums.txt
           retention-days: 30
 
@@ -136,10 +137,10 @@ jobs:
         with:
           ref: ${{ needs.verify-tag.outputs.tag_name }}
 
-      - name: Download Windows artifacts
+      - name: Download Windows installer
         uses: actions/download-artifact@v4
         with:
-          name: windows-release-${{ needs.verify-tag.outputs.tag_name }}
+          name: windows-installer-${{ needs.verify-tag.outputs.tag_name }}
           path: artifacts/windows
 
       - name: Create Release Notes

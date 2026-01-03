@@ -32,14 +32,12 @@ const config: ForgeConfig = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        authors: 'Focus Team',
-        // Enable signing when WINDOWS_PFX_PATH/PASSWORD are provided
+        name: 'Focus',
+        authors: 'Nikita Sukhikh',
+        // Code signing (if certificate available)
         ...(windowsPfxPath && { certificateFile: windowsPfxPath }),
         ...(windowsPfxPassword && { certificatePassword: windowsPfxPassword }),
-        // Optionally pass raw signtool params (e.g., timestamp server)
         ...(windowsSignParams && { signWithParams: windowsSignParams }),
-        // Name the installer executable
-        setupExe: 'focus.exe',
       },
     },
     {
