@@ -130,15 +130,10 @@ Sign up at [invoice-generator.com](https://invoice-generator.com) to get your AP
 
 ### 2. Set Environment Variable
 
-Add to your `.env` file:
+Add to your `.env` file (keep it private and never commit it):
 
 ```bash
 INVOICE_GEN_API_KEY=your_api_key_here
-```
-
-The API key is already configured in your `.env` file:
-```
-INVOICE_GEN_API_KEY=sk_NXNP6xFVC4SQs32RT3MEqamF3RGh6vj2
 ```
 
 ### 3. Configuration in Code
