@@ -15,6 +15,7 @@ export interface TopBarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   zoom: number;
+  onOpenQuickAdd: () => void;
   onTagsClick?: () => void;
   isTagsOpen?: boolean;
   onTagSelect?: (color: TagColor) => void;
