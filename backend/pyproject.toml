@@ -1,0 +1,5 @@
+ [project]
+ name = "focus-backend"
+ version = "0.1.0"
+ description = "FastAPI backend for the Focus desktop application"
+ license = { text = "Apache-2.0" }

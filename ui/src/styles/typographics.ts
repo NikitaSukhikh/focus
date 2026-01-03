@@ -7,26 +7,58 @@ type TypographySize = {
 // Font families mapped to semantic roles so components can import consistent stacks.
 export const TYPOGRAPHY_FONTS = {
   BASE_SANS: 'var(--font-sans)',
-  BASE_DISPLAY: 'var(--font-display)',
+  BASE_DISPLAY: 'var(--font-sans)',
   BASE_MONO: 'var(--font-mono)',
-  TOPBAR_HEADER: 'var(--font-display)',
-  TOPBAR_APPNAME: 'var(--font-display)',
+  TOPBAR_HEADER: 'var(--font-sans)',
+  TOPBAR_APPNAME: 'var(--font-sans)',
   TOPBAR_CONTROL: 'var(--font-sans)',
   TOPBAR_META: 'var(--font-sans)',
-  SIDEBAR_TITLE: 'var(--font-display)',
+  SIDEBAR_TITLE: 'var(--font-sans)',
   SIDEBAR_ITEM: 'var(--font-sans)',
   SIDEBAR_HINT: 'var(--font-sans)',
-  PANE_TITLE: 'var(--font-display)',
+  PANE_TITLE: 'var(--font-sans)',
   PANE_SUBTITLE: 'var(--font-sans)',
   PANE_BODY: 'var(--font-sans)',
   PANE_BODY_MUTED: 'var(--font-sans)',
   CODE: 'var(--font-mono)',
 } as const;
 
+// Font weights mapped to the same semantic roles as sizes for consistent thickness across the UI.
+export const TYPOGRAPHY_WEIGHTS = {
+  TOPBAR_HEADER: 600,
+  TOPBAR_APPNAME: 600,
+  TOPBAR_CONTROL: 600,
+  TOPBAR_META: 500,
+  SIDEBAR_TITLE: 700,
+  SIDEBAR_ITEM: 600,
+  SIDEBAR_HINT: 500,
+  PANE_TITLE: 700,
+  PANE_SUBTITLE: 500,
+  PANE_BODY: 500,
+  PANE_BODY_MUTED: 500,
+  CODE: 400,
+} as const;
+
+// Font opacities mapped to the same roles so transparency stays consistent.
+export const TYPOGRAPHY_OPACITY = {
+  TOPBAR_HEADER: 1,
+  TOPBAR_APPNAME: 1,
+  TOPBAR_CONTROL: 1,
+  TOPBAR_META: 1,
+  SIDEBAR_TITLE: 1,
+  SIDEBAR_ITEM: 1,
+  SIDEBAR_HINT: 1,
+  PANE_TITLE: 1,
+  PANE_SUBTITLE: 1,
+  PANE_BODY: 1,
+  PANE_BODY_MUTED: 1,
+  CODE: 1,
+} as const;
+
 // Font sizes and line-heights mapped to semantic roles for a single source of truth.
 export const TYPOGRAPHY_SIZES = {
   TOPBAR_HEADER: {
-    fontSize: '18px',
+    fontSize: '16px',
     lineHeight: '26px',
     letterSpacing: '0.01em',
   },
@@ -57,7 +89,7 @@ export const TYPOGRAPHY_SIZES = {
     lineHeight: '20px',
   },
   PANE_TITLE: {
-    fontSize: '18px',
+    fontSize: '16px',
     lineHeight: '24px',
   },
   PANE_SUBTITLE: {
@@ -81,3 +113,5 @@ export const TYPOGRAPHY_SIZES = {
 
 export type TypographyFontKey = keyof typeof TYPOGRAPHY_FONTS;
 export type TypographySizeKey = keyof typeof TYPOGRAPHY_SIZES;
+export type TypographyWeightKey = keyof typeof TYPOGRAPHY_WEIGHTS;
+export type TypographyOpacityKey = keyof typeof TYPOGRAPHY_OPACITY;
