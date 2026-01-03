@@ -4,6 +4,8 @@ export const SHORTCUT_HINT_LINES = [
   "'Ctrl+Left/Right' - open/close sidebar",
   "'Ctrl+Down/Up' - navigate spaces",
   "'Ctrl+Enter' - load selected space",
+  "'Ctrl+N' - rename focused space",
+  "'Ctrl+Delete' - delete focused space",
   "'Ctrl+U' - toggle preview pane",
 ] as const;
 
