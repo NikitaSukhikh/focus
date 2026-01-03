@@ -86,7 +86,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
               onChange={handleTimeChange}
               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)`
+                background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)`
               }}
             />
             <div className="flex justify-between text-sm text-slate-600 mt-2">
@@ -100,7 +100,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
             {/* Play/Pause Button */}
             <button
               onClick={togglePlayPause}
-              className="w-14 h-14 flex items-center justify-center bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md"
+              className="w-14 h-14 flex items-center justify-center bg-purple-600/70 text-white rounded-full hover:bg-purple-700/70 transition-colors shadow-md"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause size={24} /> : <Play size={24} />}
@@ -124,7 +124,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
                 onChange={handleVolumeChange}
                 className="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 100%)`
+                  background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 100%)`
                 }}
               />
             </div>

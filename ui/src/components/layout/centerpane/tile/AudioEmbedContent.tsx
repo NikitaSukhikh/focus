@@ -144,7 +144,7 @@ export function AudioEmbedContent({
               onPointerLeave={() => markInteraction(false)}
               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${timelinePercent}%, #e2e8f0 ${timelinePercent}%, #e2e8f0 100%)`
+                background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${timelinePercent}%, #e2e8f0 ${timelinePercent}%, #e2e8f0 100%)`
               }}
             />
             <div className="flex justify-between text-[11px] text-slate-600 mt-1">
@@ -166,7 +166,7 @@ export function AudioEmbedContent({
                 markInteraction(false);
               }}
               onPointerLeave={() => markInteraction(false)}
-              className="w-12 h-12 flex items-center justify-center bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md"
+              className="w-12 h-12 flex items-center justify-center bg-purple-600/70 text-white rounded-full hover:bg-purple-700/70 transition-colors shadow-md"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause size={20} /> : <Play size={20} />}
@@ -208,7 +208,7 @@ export function AudioEmbedContent({
                 onPointerLeave={() => markInteraction(false)}
                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${volumePercent}%, #e2e8f0 ${volumePercent}%, #e2e8f0 100%)`
+                  background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${volumePercent}%, #e2e8f0 ${volumePercent}%, #e2e8f0 100%)`
                 }}
               />
             </div>
