@@ -12,6 +12,9 @@ Tech stack:
 - **Frontend/UI**: Electron + React + TypeScript
 - **Backend**: Python (venv) + Uvicorn (FastAPI assumed)
 
+## License
+Apache-2.0
+
 ---
 
 ## Contents
