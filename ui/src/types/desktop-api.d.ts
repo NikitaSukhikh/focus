@@ -7,6 +7,16 @@ declare global {
     openDialog: (_options: import('electron').OpenDialogOptions) => Promise<import('electron').OpenDialogReturnValue>;
     openExternal: (_url: string) => Promise<void>;
     openAuthWindow: (_payload: { url: string; title?: string; width?: number; height?: number }) => Promise<void>;
+    showItemInFolder: (_filePath: string) => Promise<void>;
+    arrangeWindowsSideBySide: () => Promise<boolean>;
+    writeFileToClipboard: (_filePath: string) => Promise<boolean>;
+    clearClipboard: () => Promise<boolean>;
+    closeFileExplorer: () => Promise<boolean>;
+    // Window controls
+    minimizeWindow: () => Promise<void>;
+    maximizeWindow: () => Promise<void>;
+    closeWindow: () => Promise<void>;
+    isWindowMaximized: () => Promise<boolean>;
     // TODO: Add preview-specific APIs when renderer contract is finalized.
   }
 
