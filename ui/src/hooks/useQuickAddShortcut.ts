@@ -11,8 +11,10 @@
 import { useEffect } from 'react';
 import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
 
-export const useQuickAddShortcut = (toggleQuickAdd: () => void) => {
+export const useQuickAddShortcut = (toggleQuickAdd: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {
+    if (isDialogOpen) return;
+
     const handleQuickAdd = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (!isModifierOnlyKey(e) || isTextFieldTarget(target)) return;
@@ -28,5 +30,5 @@ export const useQuickAddShortcut = (toggleQuickAdd: () => void) => {
       window.removeEventListener('keydown', handleQuickAdd, true);
       document.removeEventListener('keydown', handleQuickAdd, true);
     };
-  }, [toggleQuickAdd]);
+  }, [toggleQuickAdd, isDialogOpen]);
 };

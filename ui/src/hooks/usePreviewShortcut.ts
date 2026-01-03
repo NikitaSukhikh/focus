@@ -11,8 +11,10 @@
 import { useEffect } from 'react';
 import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
 
-export const usePreviewShortcut = (togglePreview: () => void) => {
+export const usePreviewShortcut = (togglePreview: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {
+    if (isDialogOpen) return;
+
     const handleTogglePreview = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (!isModifierOnlyKey(e) || isTextFieldTarget(target)) return;
@@ -28,5 +30,5 @@ export const usePreviewShortcut = (togglePreview: () => void) => {
       window.removeEventListener('keydown', handleTogglePreview, true);
       document.removeEventListener('keydown', handleTogglePreview, true);
     };
-  }, [togglePreview]);
+  }, [togglePreview, isDialogOpen]);
 };

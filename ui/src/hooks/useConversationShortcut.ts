@@ -11,8 +11,10 @@
 import { useEffect } from 'react';
 import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
 
-export const useConversationShortcut = (toggleConversation: () => void) => {
+export const useConversationShortcut = (toggleConversation: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {
+    if (isDialogOpen) return;
+
     const handleToggleConversation = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (!isModifierOnlyKey(e) || isTextFieldTarget(target)) return;
@@ -28,5 +30,5 @@ export const useConversationShortcut = (toggleConversation: () => void) => {
       window.removeEventListener('keydown', handleToggleConversation, true);
       document.removeEventListener('keydown', handleToggleConversation, true);
     };
-  }, [toggleConversation]);
+  }, [toggleConversation, isDialogOpen]);
 };
