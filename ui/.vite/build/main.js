@@ -103,6 +103,10 @@ async function createMainWindow() {
     // Show immediately instead of waiting
     title: "Focus",
     icon: getIconPath(),
+    frame: false,
+    // Remove default title bar for custom implementation
+    thickFrame: false,
+    // Disable thick frame to prevent resize tooltip
     autoHideMenuBar: true,
     // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
@@ -377,4 +381,20 @@ ipcMain.handle("desktop:close-file-explorer", async () => {
     console.error("[Electron] Failed to close external windows:", err);
     return false;
   }
+});
+ipcMain.handle("window:minimize", () => {
+  mainWindow?.minimize();
+});
+ipcMain.handle("window:maximize", () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow?.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+ipcMain.handle("window:close", () => {
+  mainWindow?.close();
+});
+ipcMain.handle("window:is-maximized", () => {
+  return mainWindow?.isMaximized() ?? false;
 });
