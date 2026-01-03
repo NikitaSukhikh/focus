@@ -65,3 +65,5 @@ backend/app/assistant/backend/invoices/
 
 # Claude Code files
 .claude
+CODEX.md
+CLAUDE.md
