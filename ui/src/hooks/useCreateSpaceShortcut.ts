@@ -24,13 +24,15 @@ const buildUniqueName = (baseName: string, existingNames: Set<string>): string =
   return candidate;
 };
 
-export const useCreateSpaceShortcut = () => {
+export const useCreateSpaceShortcut = (isDialogOpen: boolean = false) => {
   const spaces = useSpaceStore((state) => state.spaces);
   const createSpace = useSpaceStore((state) => state.createSpace);
   const selectSpace = useSpaceStore((state) => state.selectSpace);
   const isCreatingRef = useRef(false);
 
   useEffect(() => {
+    if (isDialogOpen) return;
+
     const handleShortcut = async (e: KeyboardEvent) => {
       if (!isModifierOnlyKey(e) || e.code !== 'KeyY') return;
 
@@ -60,5 +62,5 @@ export const useCreateSpaceShortcut = () => {
       window.removeEventListener('keydown', handleShortcut, true);
       document.removeEventListener('keydown', handleShortcut, true);
     };
-  }, [spaces, createSpace, selectSpace]);
+  }, [spaces, createSpace, selectSpace, isDialogOpen]);
 };

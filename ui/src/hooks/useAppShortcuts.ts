@@ -21,12 +21,15 @@ interface AppShortcutsHandlers {
   toggleConversation: () => void;
   togglePreview: () => void;
   toggleQuickAdd: () => void;
+  isDialogOpen?: boolean;
 }
 
 export const useAppShortcuts = (handlers: AppShortcutsHandlers) => {
-  useSidebarShortcut(handlers.isSidebarOpen, handlers.openSidebar, handlers.closeSidebar);
-  useConversationShortcut(handlers.toggleConversation);
-  usePreviewShortcut(handlers.togglePreview);
-  useQuickAddShortcut(handlers.toggleQuickAdd);
-  useCreateSpaceShortcut();
+  const isDialogOpen = handlers.isDialogOpen || false;
+
+  useSidebarShortcut(handlers.isSidebarOpen, handlers.openSidebar, handlers.closeSidebar, isDialogOpen);
+  useConversationShortcut(handlers.toggleConversation, isDialogOpen);
+  usePreviewShortcut(handlers.togglePreview, isDialogOpen);
+  useQuickAddShortcut(handlers.toggleQuickAdd, isDialogOpen);
+  useCreateSpaceShortcut(isDialogOpen);
 };
