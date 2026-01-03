@@ -19,5 +19,14 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.invoke('desktop:open-auth-window', payload),
   closeFileExplorer: () =>
     ipcRenderer.invoke('desktop:close-file-explorer'),
+  // Window controls
+  minimizeWindow: () =>
+    ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () =>
+    ipcRenderer.invoke('window:maximize'),
+  closeWindow: () =>
+    ipcRenderer.invoke('window:close'),
+  isWindowMaximized: () =>
+    ipcRenderer.invoke('window:is-maximized'),
   // TODO: Add preview/webview helpers once renderer-side API is defined.
 });

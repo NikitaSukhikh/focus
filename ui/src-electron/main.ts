@@ -131,6 +131,8 @@ async function createMainWindow() {
     show: true, // Show immediately instead of waiting
     title: 'Focus',
     icon: getIconPath(),
+    frame: false, // Remove default title bar for custom implementation
+    thickFrame: false, // Disable thick frame to prevent resize tooltip
     autoHideMenuBar: true, // Auto-hide menu bar (press Alt to show temporarily)
     webPreferences: {
       // Use the Vite/Webpack-provided preload entry point
@@ -464,6 +466,27 @@ ipcMain.handle('desktop:close-file-explorer', async () => {
     console.error('[Electron] Failed to close external windows:', err);
     return false;
   }
+});
+
+// Window control IPC handlers
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.handle('window:maximize', () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow?.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+
+ipcMain.handle('window:close', () => {
+  mainWindow?.close();
+});
+
+ipcMain.handle('window:is-maximized', () => {
+  return mainWindow?.isMaximized() ?? false;
 });
 
 // TODO: Implement preview overlay in Electron (either <webview> or frameless child window) once renderer wiring is ready.
