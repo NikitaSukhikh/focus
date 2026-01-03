@@ -14,6 +14,7 @@ import { PANEL_DIMENSIONS } from './constants/panelDimensions';
 import { useSpaceStore } from './stores/spaceStore';
 import { usePersistedSpace } from './stores/hooks/usePersistedSpace';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
+import { useSpaceNavigationShortcut } from './hooks/useSpaceNavigationShortcut';
 import { useTelegramEventListener } from './hooks/useTelegramEventListener';
 import { usePersistedNumber } from './hooks/usePersistedNumber';
 import { useBeforeUnload } from './hooks/useBeforeUnload';
@@ -29,6 +30,8 @@ export function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [isGridMode, setIsGridMode] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [previewData, setPreviewData] = useState<{
@@ -56,13 +59,22 @@ export function App() {
 
   usePersistedSpace();
 
+  // Calculate if any dialog is open
+  const isAnyDialogOpen = isQuickAddOpen || isDeleteDialogOpen || isAddLinkDialogOpen;
+
   // Setup all keyboard shortcuts
   useAppShortcuts({
-    toggleSidebar: () => setIsSidebarOpen((prev) => !prev),
+    isSidebarOpen,
+    openSidebar: () => setIsSidebarOpen(true),
+    closeSidebar: () => setIsSidebarOpen(false),
     toggleConversation: () => setIsConversationOpen((prev) => !prev),
     togglePreview: () => setIsPreviewOpen((prev) => !prev),
     toggleQuickAdd: () => setIsQuickAddOpen((prev) => !prev),
+    isDialogOpen: isAnyDialogOpen,
   });
+
+  // Setup space navigation shortcuts
+  const { highlightedSpaceId, renameRequestedSpaceId, renameRequestTimestamp, deleteRequestedSpaceId, deleteRequestTimestamp } = useSpaceNavigationShortcut(isSidebarOpen, isAnyDialogOpen);
 
   // Setup custom event listeners
   useTelegramEventListener(() => {
@@ -72,6 +84,27 @@ export function App() {
 
   // Ensure pending requests are flushed before app closes
   useBeforeUnload();
+
+  // Track dialog states
+  useEffect(() => {
+    const handleDeleteDialogChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ isOpen: boolean }>;
+      setIsDeleteDialogOpen(customEvent.detail.isOpen);
+    };
+
+    const handleAddLinkDialogChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ isOpen: boolean }>;
+      setIsAddLinkDialogOpen(customEvent.detail.isOpen);
+    };
+
+    window.addEventListener('dialog:delete', handleDeleteDialogChange);
+    window.addEventListener('dialog:addlink', handleAddLinkDialogChange);
+
+    return () => {
+      window.removeEventListener('dialog:delete', handleDeleteDialogChange);
+      window.removeEventListener('dialog:addlink', handleAddLinkDialogChange);
+    };
+  }, []);
 
   // Clear preview when switching spaces
   useEffect(() => {
@@ -312,6 +345,11 @@ export function App() {
           onClose={() => setIsSidebarOpen(false)}
           width={sidebarWidth}
           onResizeStart={startResizingSidebar}
+          highlightedSpaceId={highlightedSpaceId}
+          renameRequestedSpaceId={renameRequestedSpaceId}
+          renameRequestTimestamp={renameRequestTimestamp}
+          deleteRequestedSpaceId={deleteRequestedSpaceId}
+          deleteRequestTimestamp={deleteRequestTimestamp}
         />
 
         <main
