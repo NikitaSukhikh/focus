@@ -9,6 +9,7 @@ export function SpaceItem({
   id,
   name,
   isActive,
+  isHighlighted,
   isEditing,
   onRename,
   onDuplicate,
@@ -122,21 +123,23 @@ export function SpaceItem({
         style={{
           background: isActive ? 'var(--glass-bg)' : 'transparent',
           color: isActive ? 'var(--primary-color)' : 'var(--color-text-muted)',
-          border: isActive ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+          border: (isActive && isHighlighted) ? '1px solid #000000' : (isActive ? '1px solid var(--color-border-strong)' : (isHighlighted ? '1px solid #000000' : '1px solid rgba(0, 0, 0, 0.1)')),
           boxShadow: isActive ? '0 0 15px var(--shadow)' : 'none',
         }}
         onMouseEnter={(e) => {
-          if (!isActive) {
+          if (!isActive && !isHighlighted) {
             e.currentTarget.style.background = 'var(--glass-bg)';
             e.currentTarget.style.color = 'var(--color-text-secondary)';
             e.currentTarget.style.borderColor = 'var(--color-border-subtle)';
           }
         }}
         onMouseLeave={(e) => {
-          if (!isActive) {
+          if (!isActive && !isHighlighted) {
             e.currentTarget.style.background = 'transparent';
             e.currentTarget.style.color = 'var(--color-text-muted)';
-            e.currentTarget.style.borderColor = 'transparent';
+            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+          } else if (isHighlighted) {
+            e.currentTarget.style.borderColor = '#000000';
           }
         }}
       >

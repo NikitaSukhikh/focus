@@ -54,6 +54,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
     setPendingLinkPosition({ x, y });
     setEditingLink(null);
     setIsAddLinkDialogOpen(true);
+    window.dispatchEvent(new CustomEvent('dialog:addlink', { detail: { isOpen: true } }));
   };
 
   const openLinkEditDialog = (link: DroppedIcon) => {
@@ -68,6 +69,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
       faviconUrl: link.faviconUrl,
     });
     setIsAddLinkDialogOpen(true);
+    window.dispatchEvent(new CustomEvent('dialog:addlink', { detail: { isOpen: true } }));
   };
 
   const handleAddLink = async (
@@ -181,6 +183,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
       } finally {
         setIsAddLinkDialogOpen(false);
         setEditingLink(null);
+        window.dispatchEvent(new CustomEvent('dialog:addlink', { detail: { isOpen: false } }));
       }
       return;
     }
@@ -309,6 +312,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
 
       setIsAddLinkDialogOpen(false);
       setPendingLinkPosition(null);
+      window.dispatchEvent(new CustomEvent('dialog:addlink', { detail: { isOpen: false } }));
     } catch (err) {
       console.error('Failed to create link:', err);
       alert('Failed to add link. Please try again.');
@@ -319,6 +323,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
     setIsAddLinkDialogOpen(false);
     setPendingLinkPosition(null);
     setEditingLink(null);
+    window.dispatchEvent(new CustomEvent('dialog:addlink', { detail: { isOpen: false } }));
   };
 
   // Keep editing dialog in sync if link is updated elsewhere

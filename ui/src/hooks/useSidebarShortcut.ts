@@ -1,26 +1,35 @@
 /**
  * Sidebar Toggle Keyboard Shortcut Hook
  *
- * Purpose: Manages Ctrl/Cmd+Left keyboard shortcut for toggling the sidebar
+ * Purpose: Manages Ctrl/Cmd+Left/Right keyboard shortcuts for opening/closing the sidebar
  * Responsibilities:
- * - Listening for Ctrl/Cmd+Left keyboard events
+ * - Listening for Ctrl/Cmd+Left to open sidebar
+ * - Listening for Ctrl/Cmd+Right to close sidebar
  * - Preventing shortcut conflicts with text fields
- * - Calling toggle handler when shortcut is activated
+ * - Only executing actions when state change is needed
  */
 
 import { useEffect } from 'react';
 import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
 
-export const useSidebarShortcut = (toggleSidebar: () => void) => {
+export const useSidebarShortcut = (isSidebarOpen: boolean, openSidebar: () => void, closeSidebar: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {
+    if (isDialogOpen) return;
+
     const handleShortcut = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const isSidebarHotkey = isModifierOnlyKey(e) && e.code === 'ArrowLeft';
+      const isLeftHotkey = isModifierOnlyKey(e) && e.code === 'ArrowLeft';
+      const isRightHotkey = isModifierOnlyKey(e) && e.code === 'ArrowRight';
 
-      if (!isSidebarHotkey || isTextFieldTarget(target)) return;
+      if ((!isLeftHotkey && !isRightHotkey) || isTextFieldTarget(target)) return;
 
-      preventDefaultAndStop(e);
-      toggleSidebar();
+      if (isLeftHotkey && !isSidebarOpen) {
+        preventDefaultAndStop(e);
+        openSidebar();
+      } else if (isRightHotkey && isSidebarOpen) {
+        preventDefaultAndStop(e);
+        closeSidebar();
+      }
     };
 
     window.addEventListener('keydown', handleShortcut, true);
@@ -29,5 +38,5 @@ export const useSidebarShortcut = (toggleSidebar: () => void) => {
       window.removeEventListener('keydown', handleShortcut, true);
       document.removeEventListener('keydown', handleShortcut, true);
     };
-  }, [toggleSidebar]);
+  }, [isSidebarOpen, openSidebar, closeSidebar, isDialogOpen]);
 };
