@@ -1,0 +1,176 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-tag:
+    name: Verify Git Tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
+      commit_sha: ${{ steps.get_commit.outputs.commit_sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get tag name
+        id: get_tag
+        run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Get commit SHA
+        id: get_commit
+        run: echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Verify tag points to commit
+        run: |
+          TAG_COMMIT=$(git rev-list -n 1 ${{ steps.get_tag.outputs.tag_name }})
+          if [ "$TAG_COMMIT" != "${{ steps.get_commit.outputs.commit_sha }}" ]; then
+            echo "ERROR: Tag does not point to checked out commit"
+            exit 1
+          fi
+          echo "✓ Tag ${{ steps.get_tag.outputs.tag_name }} verified for commit ${{ steps.get_commit.outputs.commit_sha }}"
+
+  build-backend:
+    name: Build Backend Binary
+    needs: verify-tag
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-tag.outputs.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        working-directory: backend/app/assistant/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build backend with PyInstaller
+        working-directory: backend/app/assistant/backend
+        run: |
+          pyinstaller --onefile --name focus-backend main.py
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-${{ needs.verify-tag.outputs.tag_name }}
+          path: backend/app/assistant/backend/dist/focus-backend.exe
+          retention-days: 7
+
+  build-windows:
+    name: Build Windows Release
+    needs: [verify-tag, build-backend]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-tag.outputs.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download backend binary
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binary-${{ needs.verify-tag.outputs.tag_name }}
+          path: ui/resources
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Build Electron app
+        working-directory: ui
+        run: npm run build
+        env:
+          # Add Windows code signing if certificates are available
+          WINDOWS_PFX_PATH: ${{ secrets.WINDOWS_PFX_PATH }}
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+          WINDOWS_SIGN_PARAMS: ${{ secrets.WINDOWS_SIGN_PARAMS }}
+
+      - name: Generate SHA256 checksums
+        working-directory: ui/out/make
+        run: |
+          Get-ChildItem -Recurse -File | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)" | Out-File -Append -FilePath checksums.txt
+          }
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ needs.verify-tag.outputs.tag_name }}
+          path: |
+            ui/out/make/**/*
+            ui/out/make/checksums.txt
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: [verify-tag, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-tag.outputs.tag_name }}
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release-${{ needs.verify-tag.outputs.tag_name }}
+          path: artifacts/windows
+
+      - name: Create Release Notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## Release ${{ needs.verify-tag.outputs.tag_name }}
+
+          **Commit:** ${{ needs.verify-tag.outputs.commit_sha }}
+          **Built:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ### Verification
+          This release was built from tagged commit ${{ needs.verify-tag.outputs.commit_sha }}.
+
+          To verify the build:
+          ```bash
+          git verify-tag ${{ needs.verify-tag.outputs.tag_name }}
+          git checkout ${{ needs.verify-tag.outputs.tag_name }}
+          ```
+
+          ### Checksums
+          See `checksums.txt` in the release assets.
+          EOF
+          echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.verify-tag.outputs.tag_name }}
+          name: Focus ${{ needs.verify-tag.outputs.tag_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/windows/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

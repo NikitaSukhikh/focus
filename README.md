@@ -28,6 +28,7 @@ Apache-2.0
 - [Google OAuth (Gmail + Drive)](#google-oauth-gmail--drive)
 - [Development Workflow](#development-workflow)
 - [Build & Packaging](#build--packaging)
+- [Releases & Code Signing](#releases--code-signing)
 - [Quality: Linting, Formatting, Tests](#quality-linting-formatting-tests)
 - [Troubleshooting](#troubleshooting)
 - [Security Notes](#security-notes)
@@ -340,3 +341,90 @@ focus/ ## Root folder. We are already inside it.
   scripts/
     dev.sh                        # optional: start backend + ui dev
     dev.ps1
+    create-release.ps1            # helper for creating releases with proper tags
+    verify-release.ps1            # verify release artifacts correspond to tags
+
+  .github/
+    workflows/
+      release.yml                 # automated release builds on tag push
+
+---
+
+## Releases & Code Signing
+
+Focus uses a verified release process ensuring **release artifacts correspond to tagged commits**.
+
+### Creating a Release
+
+Use the provided helper script:
+
+```powershell
+# Create a release (interactive)
+.\scripts\create-release.ps1 -Version 1.0.0
+
+# Create a signed release (requires GPG)
+.\scripts\create-release.ps1 -Version 1.0.0 -Sign
+
+# Dry run (preview without making changes)
+.\scripts\create-release.ps1 -Version 1.0.0 -DryRun
+```
+
+Or manually:
+```bash
+# Update version in ui/package.json
+# Commit the version change
+git add ui/package.json
+git commit -m "Bump version to 1.0.0"
+
+# Create and push tag
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin main
+git push origin v1.0.0
+```
+
+### Automated Build Process
+
+When you push a tag (e.g., `v1.0.0`), GitHub Actions automatically:
+1. ✓ Verifies the tag points to the correct commit
+2. ✓ Builds the backend binary (PyInstaller)
+3. ✓ Builds the Electron app
+4. ✓ Generates SHA256 checksums for all artifacts
+5. ✓ Creates a GitHub Release with build metadata
+6. ✓ Records the exact commit SHA in release notes
+
+### Verifying Releases
+
+Certificate authorities or users can verify artifacts:
+
+```powershell
+# Verify a release tag and commit
+.\scripts\verify-release.ps1 -Tag v1.0.0
+
+# Verify artifact integrity
+.\scripts\verify-release.ps1 -Tag v1.0.0 -ArtifactPath path\to\focus.exe
+```
+
+### Code Signing Certificates
+
+For obtaining **free code signing certificates**:
+
+1. **Your repository now meets the requirements**:
+   - ✓ Release artifacts correspond to tagged commits
+   - ✓ Build process is transparent and reproducible
+   - ✓ Checksums verify artifact integrity
+   - ✓ GitHub Actions provides immutable build logs
+
+2. **Apply to certificate providers**:
+   - [SignPath Foundation](https://signpath.org/) - Free for open-source
+   - Platform stores (Windows Store, Mac App Store)
+
+3. **Add certificates to GitHub Secrets**:
+   ```
+   WINDOWS_PFX_PATH - Certificate file path
+   WINDOWS_PFX_PASSWORD - Certificate password
+   WINDOWS_SIGN_PARAMS - Additional signing parameters
+   ```
+
+The workflow in [.github/workflows/release.yml](.github/workflows/release.yml) will automatically sign builds when certificates are configured.
+
+For detailed instructions, see [RELEASE.md](RELEASE.md).
