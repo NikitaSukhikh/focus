@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "description": "Electron + React + TypeScript UI for Focus desktop application",
-  "author": "Focus Team",
+  "license": "Apache-2.0",
+  "author": "Nikita Sukhikh",
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "electron-forge start",

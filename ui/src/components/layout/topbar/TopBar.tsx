@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomIn, ZoomOut } from 'lucide-react';
+import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomOut, Plus } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '../../../styles/typographics';
@@ -14,7 +14,7 @@ export type { TopBarHandle } from './types';
 
 // TopBar renders the global header controls (sidebar toggle, space title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
-  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onTagsClick, isTagsOpen, onTagSelect } = props;
+  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onOpenQuickAdd, onTagsClick, isTagsOpen, onTagSelect } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
 
@@ -24,7 +24,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   return (
     <header
       id="top-bar"
-      className="h-8 glass-panel flex items-center px-4 relative"
+      className="h-10 glass-panel flex items-center px-4 relative"
       style={{
         zIndex: Z_INDEX.TOPBAR,
         borderBottom: '1px solid var(--color-border-subtle)',
@@ -83,6 +83,29 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           >
             Focus
           </span>
+          <button
+            onClick={onOpenQuickAdd}
+            className="p-1.5 rounded-lg flex items-center justify-center transition-all"
+            style={{
+              background: 'var(--glass-bg)',
+              color: 'var(--color-text-primary)',
+              boxShadow: '0 6px 14px rgba(0,0,0,0.08)',
+              border: '1px solid var(--color-border-subtle)',
+              marginLeft: '8px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)';
+            }}
+            title="Add links/files"
+            aria-label="Add links/files"
+          >
+            <Plus size={16} />
+          </button>
         </div>
       </div>
 
