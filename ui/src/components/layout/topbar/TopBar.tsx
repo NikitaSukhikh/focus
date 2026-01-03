@@ -24,7 +24,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   return (
     <header
       id="top-bar"
-      className="h-8 glass-panel flex items-center px-4 relative"
+      className="h-10 glass-panel flex items-center px-4 relative"
       style={{
         zIndex: Z_INDEX.TOPBAR,
         borderBottom: '1px solid var(--color-border-subtle)',
