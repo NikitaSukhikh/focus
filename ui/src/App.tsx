@@ -14,6 +14,7 @@ import { PANEL_DIMENSIONS } from './constants/panelDimensions';
 import { useSpaceStore } from './stores/spaceStore';
 import { usePersistedSpace } from './stores/hooks/usePersistedSpace';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
+import { useSpaceNavigationShortcut } from './hooks/useSpaceNavigationShortcut';
 import { useTelegramEventListener } from './hooks/useTelegramEventListener';
 import { usePersistedNumber } from './hooks/usePersistedNumber';
 import { useBeforeUnload } from './hooks/useBeforeUnload';
@@ -58,11 +59,16 @@ export function App() {
 
   // Setup all keyboard shortcuts
   useAppShortcuts({
-    toggleSidebar: () => setIsSidebarOpen((prev) => !prev),
+    isSidebarOpen,
+    openSidebar: () => setIsSidebarOpen(true),
+    closeSidebar: () => setIsSidebarOpen(false),
     toggleConversation: () => setIsConversationOpen((prev) => !prev),
     togglePreview: () => setIsPreviewOpen((prev) => !prev),
     toggleQuickAdd: () => setIsQuickAddOpen((prev) => !prev),
   });
+
+  // Setup space navigation shortcuts
+  const { highlightedSpaceId } = useSpaceNavigationShortcut(isSidebarOpen);
 
   // Setup custom event listeners
   useTelegramEventListener(() => {
@@ -312,6 +318,7 @@ export function App() {
           onClose={() => setIsSidebarOpen(false)}
           width={sidebarWidth}
           onResizeStart={startResizingSidebar}
+          highlightedSpaceId={highlightedSpaceId}
         />
 
         <main

@@ -15,14 +15,16 @@ import { useQuickAddShortcut } from './useQuickAddShortcut';
 import { useCreateSpaceShortcut } from './useCreateSpaceShortcut';
 
 interface AppShortcutsHandlers {
-  toggleSidebar: () => void;
+  isSidebarOpen: boolean;
+  openSidebar: () => void;
+  closeSidebar: () => void;
   toggleConversation: () => void;
   togglePreview: () => void;
   toggleQuickAdd: () => void;
 }
 
 export const useAppShortcuts = (handlers: AppShortcutsHandlers) => {
-  useSidebarShortcut(handlers.toggleSidebar);
+  useSidebarShortcut(handlers.isSidebarOpen, handlers.openSidebar, handlers.closeSidebar);
   useConversationShortcut(handlers.toggleConversation);
   usePreviewShortcut(handlers.togglePreview);
   useQuickAddShortcut(handlers.toggleQuickAdd);
