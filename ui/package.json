@@ -1,55 +1,55 @@
 {
-  "name": "focus-ui",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "Electron + React + TypeScript UI for Focus desktop application",
-  "license": "Apache-2.0",
-  "author": "Nikita Sukhikh",
-  "main": ".vite/build/main.js",
-  "scripts": {
-    "dev": "electron-forge start",
-    "build": "electron-forge make",
-    "preview": "vite preview",
-    "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\"",
-    "sync-tokens": "node scripts/syncTokens.mjs"
-  },
-  "engines": {
-    "node": ">=20",
-    "npm": ">=9"
-  },
-  "dependencies": {
-    "@tailwindcss/typography": "^0.5.19",
-    "lucide-react": "^0.441.0",
-    "marked": "^17.0.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zustand": "^4.5.2"
-  },
-  "devDependencies": {
-    "@electron-forge/cli": "^7.4.0",
-    "@electron-forge/maker-deb": "^7.4.0",
-    "@electron-forge/maker-rpm": "^7.4.0",
-    "@electron-forge/maker-squirrel": "^7.4.0",
-    "@electron-forge/maker-zip": "^7.4.0",
-    "@electron-forge/plugin-vite": "^7.4.0",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "@vitejs/plugin-react": "^5.1.0",
-    "autoprefixer": "^10.4.20",
-    "electron": "^35.7.5",
-    "esbuild": "^0.24.2",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-react": "^7.37.2",
-    "eslint-plugin-react-hooks": "^5.0.0",
-    "postcss": "^8.4.47",
-    "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.3",
-    "vite": "^7.2.7"
-  }
+    "name":  "focus-ui",
+    "version":  "1.0.0",
+    "private":  true,
+    "type":  "module",
+    "description":  "Electron + React + TypeScript UI for Focus desktop application",
+    "license":  "Apache-2.0",
+    "author":  "Nikita Sukhikh",
+    "main":  ".vite/build/main.js",
+    "scripts":  {
+                    "dev":  "electron-forge start",
+                    "build":  "electron-forge make",
+                    "preview":  "vite preview",
+                    "lint":  "eslint \"src/**/*.{ts,tsx}\"",
+                    "format":  "prettier --write \"src/**/*.{ts,tsx,css,json,md}\"",
+                    "sync-tokens":  "node scripts/syncTokens.mjs"
+                },
+    "engines":  {
+                    "node":  "\u003e=20",
+                    "npm":  "\u003e=9"
+                },
+    "dependencies":  {
+                         "@tailwindcss/typography":  "^0.5.19",
+                         "lucide-react":  "^0.441.0",
+                         "marked":  "^17.0.1",
+                         "react":  "^18.3.1",
+                         "react-dom":  "^18.3.1",
+                         "zustand":  "^4.5.2"
+                     },
+    "devDependencies":  {
+                            "@electron-forge/cli":  "^7.4.0",
+                            "@electron-forge/maker-deb":  "^7.4.0",
+                            "@electron-forge/maker-rpm":  "^7.4.0",
+                            "@electron-forge/maker-squirrel":  "^7.4.0",
+                            "@electron-forge/maker-zip":  "^7.4.0",
+                            "@electron-forge/plugin-vite":  "^7.4.0",
+                            "@types/react":  "^18.3.11",
+                            "@types/react-dom":  "^18.3.0",
+                            "@typescript-eslint/parser":  "^7.18.0",
+                            "@vitejs/plugin-react":  "^5.1.0",
+                            "autoprefixer":  "^10.4.20",
+                            "electron":  "^35.7.5",
+                            "esbuild":  "^0.24.2",
+                            "eslint":  "^8.57.1",
+                            "eslint-config-prettier":  "^9.1.0",
+                            "eslint-plugin-jsx-a11y":  "^6.10.2",
+                            "eslint-plugin-react":  "^7.37.2",
+                            "eslint-plugin-react-hooks":  "^5.0.0",
+                            "postcss":  "^8.4.47",
+                            "prettier":  "^3.3.3",
+                            "tailwindcss":  "^3.4.13",
+                            "typescript":  "^5.6.3",
+                            "vite":  "^7.2.7"
+                        }
 }
