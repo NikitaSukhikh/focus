@@ -12,7 +12,7 @@ import { mapObjectToPayload, generateUniqueName } from './utils';
 import { SHORTCUT_HINT_LINES } from '../../../constants/shortcutHints';
 
 // LeftSidebar lists available spaces and handles basic space CRUD/duplication.
-export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSidebarProps) {
+export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId }: LeftSidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -252,6 +252,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
             <div className="space-y-2">
               {spaces.map((space) => {
                 const isSelected = space.id === selectedSpaceId;
+                const isHighlighted = space.id === highlightedSpaceId;
 
                 return (
                   <SpaceItem
@@ -259,6 +260,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart }: LeftSideb
                     id={space.id}
                     name={space.name}
                     isActive={isSelected}
+                    isHighlighted={isHighlighted}
                     isEditing={editingId === space.id}
                     onRename={handleRenameSpace}
                     onDelete={handleDeleteSpace}
