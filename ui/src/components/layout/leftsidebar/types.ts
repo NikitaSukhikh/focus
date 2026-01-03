@@ -4,6 +4,10 @@ export interface LeftSidebarProps {
   width: number;
   onResizeStart: React.MouseEventHandler<HTMLDivElement>;
   highlightedSpaceId?: string | null;
+  renameRequestedSpaceId?: string | null;
+  renameRequestTimestamp?: number;
+  deleteRequestedSpaceId?: string | null;
+  deleteRequestTimestamp?: number;
 }
 
 export interface SpaceItemProps {

@@ -12,7 +12,7 @@ import { mapObjectToPayload, generateUniqueName } from './utils';
 import { SHORTCUT_HINT_LINES } from '../../../constants/shortcutHints';
 
 // LeftSidebar lists available spaces and handles basic space CRUD/duplication.
-export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId }: LeftSidebarProps) {
+export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId, renameRequestedSpaceId, renameRequestTimestamp, deleteRequestedSpaceId, deleteRequestTimestamp }: LeftSidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -37,6 +37,20 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
     initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Handle rename request from keyboard shortcut
+  useEffect(() => {
+    if (renameRequestedSpaceId && renameRequestTimestamp) {
+      setEditingId(renameRequestedSpaceId);
+    }
+  }, [renameRequestedSpaceId, renameRequestTimestamp]);
+
+  // Handle delete request from keyboard shortcut
+  useEffect(() => {
+    if (deleteRequestedSpaceId && deleteRequestTimestamp) {
+      handleDeleteSpace(deleteRequestedSpaceId);
+    }
+  }, [deleteRequestedSpaceId, deleteRequestTimestamp]);
 
   useEffect(() => {
     const updateTopBarHeight = () => {
@@ -66,6 +80,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
 
   const handleDeleteSpace = (id: string) => {
     setPendingDeleteId(id);
+    window.dispatchEvent(new CustomEvent('dialog:delete', { detail: { isOpen: true } }));
   };
 
   const handleConfirmDeleteSpace = async () => {
@@ -79,12 +94,14 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
     } finally {
       setIsDeleting(false);
       setPendingDeleteId(null);
+      window.dispatchEvent(new CustomEvent('dialog:delete', { detail: { isOpen: false } }));
     }
   };
 
   const handleCloseDeleteDialog = () => {
     if (isDeleting) return;
     setPendingDeleteId(null);
+    window.dispatchEvent(new CustomEvent('dialog:delete', { detail: { isOpen: false } }));
   };
 
   useEffect(() => {
@@ -252,7 +269,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
             <div className="space-y-2">
               {spaces.map((space) => {
                 const isSelected = space.id === selectedSpaceId;
-                const isHighlighted = space.id === highlightedSpaceId;
+                // Show as highlighted if explicitly highlighted, OR if it's the selected space and no other space is highlighted
+                const isHighlighted = space.id === highlightedSpaceId || (isSelected && !highlightedSpaceId);
 
                 return (
                   <SpaceItem
@@ -360,7 +378,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
                   <button
                     type="button"
                     onClick={handleConfirmDeleteSpace}
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200 focus-visible:ring-offset-2"
+                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
                     disabled={isDeleting}
                     ref={yesButtonRef}
                   >
