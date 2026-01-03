@@ -69,3 +69,6 @@ backend/app/assistant/backend/data/gdrive_tokens/
 CODEX.md
 CLAUDE.md
 AUTHENTICATED_LINKS.md
+
+# Windows reserved names
+nul

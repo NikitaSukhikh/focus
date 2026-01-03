@@ -54,22 +54,22 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        working-directory: backend/app/assistant/backend
+        working-directory: backend
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
           pip install -r requirements.txt
 
       - name: Build backend with PyInstaller
-        working-directory: backend/app/assistant/backend
+        working-directory: backend
         run: |
-          pyinstaller --onefile --name focus-backend main.py
+          pyinstaller focus-backend.spec
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-binary-${{ needs.verify-tag.outputs.tag_name }}
-          path: backend/app/assistant/backend/dist/focus-backend.exe
+          path: backend/dist/focus-backend.exe
           retention-days: 7
 
   build-windows:
