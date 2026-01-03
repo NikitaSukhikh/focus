@@ -37,7 +37,7 @@ googleapis-common-protos==1.66.0
 
 # Env & security
 python-dotenv==1.0.1
-cryptography==44.0.0
+cryptography>=44.0.1
 
 # Dev/test
 pytest==8.3.4
