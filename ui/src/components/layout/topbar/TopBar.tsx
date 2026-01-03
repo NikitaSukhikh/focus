@@ -8,7 +8,7 @@ import { TopBarProps, TopBarHandle } from './types';
 import { TopBarSearch } from './TopBarSearch';
 import { TopBarTags } from './TopBarTags';
 import { WindowControls } from './WindowControls';
-import focusLogo from '../../../assets/focus.png';
+import focusLogo from '../../../assets/target.png';
 
 export type { TopBarHandle } from './types';
 
@@ -68,9 +68,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             src={focusLogo}
             alt="Focus logo"
             className="rounded-lg shadow-sm"
-            style={{ 
+            style={{
               marginLeft: '-10px',
-              width: '20px', height: '20px' }}
+              width: '20px',
+              height: '20px'
+            }}
           />
           <span
             style={{
@@ -269,7 +271,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
         </button>
 
         {/* Window Controls */}
-        <div className="ml-2 -mr-4">
+        <div className="ml-0 -mr-2">
           <WindowControls />
         </div>
       </div>
