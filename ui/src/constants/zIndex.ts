@@ -32,7 +32,7 @@ export const Z_INDEX = {
   RESIZE_HANDLE: 40,
 
   // Sidebar layer - fixed navigation
-  TOPBAR: 100,
+  TOPBAR: 1150,
   SIDEBAR: 110,
 
   // Overlay layer - modal backdrops
