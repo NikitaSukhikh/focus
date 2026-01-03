@@ -7,6 +7,7 @@ import { useTopBarLogic } from './useTopBarLogic';
 import { TopBarProps, TopBarHandle } from './types';
 import { TopBarSearch } from './TopBarSearch';
 import { TopBarTags } from './TopBarTags';
+import { WindowControls } from './WindowControls';
 import focusLogo from '../../../assets/focus.png';
 
 export type { TopBarHandle } from './types';
@@ -24,12 +25,22 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     <header
       id="top-bar"
       className="h-8 glass-panel flex items-center px-4 relative"
-      style={{ zIndex: Z_INDEX.TOPBAR, borderBottom: '1px solid var(--color-border-subtle)' }}
+      style={{
+        zIndex: Z_INDEX.TOPBAR,
+        borderBottom: '1px solid var(--color-border-subtle)',
+        // @ts-ignore - Electron specific CSS property
+        WebkitAppRegion: 'drag',
+      }}
     >
       {/* Left section */}
       <div
         className="flex items-center gap-3 transition-all duration-200"
-        style={{ marginLeft: '0', zIndex: Z_INDEX.BASE_RAISED }}
+        style={{
+          marginLeft: '-16px',
+          zIndex: Z_INDEX.BASE_RAISED,
+          // @ts-ignore - Electron specific CSS property
+          WebkitAppRegion: 'no-drag',
+        }}
       >
         <button
           onClick={onToggleSidebar}
@@ -57,22 +68,20 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             src={focusLogo}
             alt="Focus logo"
             className="rounded-lg shadow-sm"
-            style={{ width: '22px', height: '22px' }}
+            style={{ 
+              marginLeft: '-10px',
+              width: '20px', height: '20px' }}
           />
           <span
             style={{
-              fontFamily: TYPOGRAPHY_FONTS.TOPBAR_APPNAME,
-              fontWeight: 800,
-              ...TYPOGRAPHY_SIZES.TOPBAR_APPNAME,
-              background: 'linear-gradient(180deg, #2c64ff 0%, #6647ff 50%, #ab33ff 100%)',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              color: 'transparent',
-              WebkitTextFillColor: 'transparent',
-              display: 'inline-flex',
+              fontFamily: 'Segoe UI, sans-serif',
+              fontSize: '13px',
+              fontWeight: 400,
+              color: '#000',
+              opacity: 1,
             }}
           >
-            <span style={{ fontWeight: 900 }}>F</span>ocus
+            Focus
           </span>
         </div>
       </div>
@@ -121,7 +130,14 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       <div className="flex-1"></div>
 
       {/* Right section */}
-      <div className="flex items-center gap-2" style={{ zIndex: Z_INDEX.BASE_RAISED }}>
+      <div
+        className="flex items-center gap-2"
+        style={{
+          zIndex: Z_INDEX.BASE_RAISED,
+          // @ts-ignore - Electron specific CSS property
+          WebkitAppRegion: 'no-drag',
+        }}
+      >
         {/* To be implemented in the future: search menu (hidden) */}
         <TopBarSearch searchQuery={logic.searchQuery} setSearchQuery={logic.setSearchQuery} />
 
@@ -228,6 +244,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
         >
           <MessageCircle size={20} />
         </button>
+
+        {/* Window Controls */}
+        <div className="ml-2 -mr-4">
+          <WindowControls />
+        </div>
       </div>
 
     </header>

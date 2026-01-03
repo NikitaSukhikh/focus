@@ -9,6 +9,11 @@ electron.contextBridge.exposeInMainWorld("desktopAPI", {
   writeFileToClipboard: (filePath) => electron.ipcRenderer.invoke("desktop:write-file-to-clipboard", filePath),
   clearClipboard: () => electron.ipcRenderer.invoke("desktop:clear-clipboard"),
   openAuthWindow: (payload) => electron.ipcRenderer.invoke("desktop:open-auth-window", payload),
-  closeFileExplorer: () => electron.ipcRenderer.invoke("desktop:close-file-explorer")
+  closeFileExplorer: () => electron.ipcRenderer.invoke("desktop:close-file-explorer"),
+  // Window controls
+  minimizeWindow: () => electron.ipcRenderer.invoke("window:minimize"),
+  maximizeWindow: () => electron.ipcRenderer.invoke("window:maximize"),
+  closeWindow: () => electron.ipcRenderer.invoke("window:close"),
+  isWindowMaximized: () => electron.ipcRenderer.invoke("window:is-maximized")
   // TODO: Add preview/webview helpers once renderer-side API is defined.
 });
