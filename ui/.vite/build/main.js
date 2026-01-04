@@ -6,6 +6,16 @@ import { fileURLToPath } from "url";
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = dirname(__filename$1);
 const isMac = process.platform === "darwin";
+const backendExecutableByPlatform = {
+  win32: "focus-backend.exe",
+  darwin: "focus-backend",
+  linux: "focus-backend",
+  aix: "focus-backend",
+  freebsd: "focus-backend",
+  openbsd: "focus-backend",
+  android: "focus-backend",
+  sunos: "focus-backend"
+};
 let mainWindow = null;
 let backendProcess = null;
 let isFullWindowPreviewOpen = false;
@@ -39,11 +49,15 @@ const requestCloseFullWindowPreview = () => {
   }
   mainWindow.webContents.send("fullwindow-preview:close-request");
 };
+const getBackendExecutableName = () => {
+  return backendExecutableByPlatform[process.platform] ?? "focus-backend";
+};
 const getBackendPath = () => {
+  const executableName = getBackendExecutableName();
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "focus-backend.exe");
+    return path.join(process.resourcesPath, executableName);
   }
-  return path.resolve(__dirname$1, "../resources/focus-backend.exe");
+  return path.resolve(__dirname$1, "../resources", executableName);
 };
 const getBackendCwd = () => {
   if (app.isPackaged) {

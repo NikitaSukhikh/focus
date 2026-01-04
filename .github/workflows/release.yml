@@ -75,6 +75,43 @@ jobs:
           path: backend/dist/focus-backend.exe
           retention-days: 7
 
+  build-backend-macos:
+    name: Build Backend Binary (macOS)
+    needs: verify-tag
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-tag.outputs.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Pandoc (required by pypandoc)
+        run: brew install pandoc
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build backend with PyInstaller
+        working-directory: backend
+        run: |
+          pyinstaller focus-backend.spec
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-macos-${{ needs.verify-tag.outputs.tag_name }}
+          path: backend/dist/focus-backend
+          retention-days: 7
+
   build-windows:
     name: Build Windows Release
     needs: [verify-tag, build-backend]
@@ -127,9 +164,57 @@ jobs:
             ui/out/make/checksums.txt
           retention-days: 30
 
+  build-macos:
+    name: Build macOS Release
+    needs: [verify-tag, build-backend-macos]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-tag.outputs.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download backend binary
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binary-macos-${{ needs.verify-tag.outputs.tag_name }}
+          path: ui/resources
+
+      - name: Make backend executable
+        run: chmod +x ui/resources/focus-backend
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Build Electron app
+        working-directory: ui
+        run: npm run build
+
+      - name: Generate SHA256 checksums
+        working-directory: ui/out/make
+        run: |
+          find . -type f \( -name "*.dmg" -o -name "*.zip" \) -print0 | xargs -0 shasum -a 256 >> checksums-macos.txt
+          cat checksums-macos.txt
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer-${{ needs.verify-tag.outputs.tag_name }}
+          path: |
+            ui/out/make/**/*.dmg
+            ui/out/make/**/*.zip
+            ui/out/make/checksums-macos.txt
+          retention-days: 30
+
   create-release:
     name: Create GitHub Release
-    needs: [verify-tag, build-windows]
+    needs: [verify-tag, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code at tag
@@ -142,6 +227,12 @@ jobs:
         with:
           name: windows-installer-${{ needs.verify-tag.outputs.tag_name }}
           path: artifacts/windows
+
+      - name: Download macOS installer
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installer-${{ needs.verify-tag.outputs.tag_name }}
+          path: artifacts/macos
 
       - name: Create Release Notes
         id: release_notes
@@ -162,7 +253,9 @@ jobs:
           ```
 
           ### Checksums
-          See `checksums.txt` in the release assets.
+          See platform-specific checksum files in the release assets:
+          - Windows: `checksums.txt`
+          - macOS: `checksums-macos.txt`
           EOF
           echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
 
@@ -176,5 +269,6 @@ jobs:
           prerelease: false
           files: |
             artifacts/windows/**/*
+            artifacts/macos/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -32,6 +32,10 @@ cd ui
 npm run build
 ```
 
+Before building, ensure the platform backend binary is present in `ui/resources`:
+- Windows: `focus-backend.exe` (from `pyinstaller focus-backend.spec` on Windows)
+- macOS: `focus-backend` (from `pyinstaller focus-backend.spec` on macOS)
+
 This will create platform-specific installers in the `out/` directory.
 
 ## What You'll See

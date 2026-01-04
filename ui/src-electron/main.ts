@@ -11,6 +11,17 @@ const __dirname = dirname(__filename);
 
 const isMac = process.platform === 'darwin';
 
+const backendExecutableByPlatform: Record<NodeJS.Platform, string> = {
+  win32: 'focus-backend.exe',
+  darwin: 'focus-backend',
+  linux: 'focus-backend',
+  aix: 'focus-backend',
+  freebsd: 'focus-backend',
+  openbsd: 'focus-backend',
+  android: 'focus-backend',
+  sunos: 'focus-backend',
+};
+
 let mainWindow: BrowserWindow | null = null;
 let backendProcess: ChildProcessWithoutNullStreams | null = null;
 let isFullWindowPreviewOpen = false;
@@ -51,12 +62,17 @@ const requestCloseFullWindowPreview = () => {
   mainWindow.webContents.send('fullwindow-preview:close-request');
 };
 
+const getBackendExecutableName = () => {
+  return backendExecutableByPlatform[process.platform] ?? 'focus-backend';
+};
+
 const getBackendPath = () => {
+  const executableName = getBackendExecutableName();
   // Packaged app reads from resources; dev uses checked-in binary for convenience.
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'focus-backend.exe');
+    return path.join(process.resourcesPath, executableName);
   }
-  return path.resolve(__dirname, '../resources/focus-backend.exe');
+  return path.resolve(__dirname, '../resources', executableName);
 };
 
 const getBackendCwd = () => {

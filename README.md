@@ -2,6 +2,9 @@
 
 Focus is a desktop application that lets users collect “objects” (links and files) onto customizable workspaces called **Spaces** for fast access. The UI is a three-pane layout:
 
+
+If you're looking for an end-user guide, see `USER_GUIDE.md`.
+
 - **Left sidebar**: Spaces list (usually folded by default).
 - **Central pane**: The active Space canvas containing object tiles (thumbnails for files/links, or first lines for plain text).
 - **Right sidebar**: A wide preview/inspector panel showing details and preview of the currently focused object (single click).
