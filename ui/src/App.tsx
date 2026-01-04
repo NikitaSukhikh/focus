@@ -174,6 +174,10 @@ export function App() {
     return () => window.removeEventListener('open:fullwindow', handleOpenFullWindow);
   }, []);
 
+  useEffect(() => {
+    window.desktopAPI?.setFullWindowPreviewState?.(isFullWindowOpen);
+  }, [isFullWindowOpen]);
+
   const toFileUrl = (filePath: string): string => {
     if (!filePath) return '';
     if (/^file:\/\//i.test(filePath)) {

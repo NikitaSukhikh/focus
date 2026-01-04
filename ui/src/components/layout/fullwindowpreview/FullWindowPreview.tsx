@@ -317,6 +317,21 @@ export function FullWindowPreview({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, isEditingText, handleSaveAndClose]);
 
+  useEffect(() => {
+    const unsubscribe = window.desktopAPI?.onCloseFullWindowPreviewRequest?.(() => {
+      if (!isOpen) return;
+      if (isEditingText) {
+        void handleSaveAndClose();
+      } else {
+        onClose();
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [isOpen, isEditingText, handleSaveAndClose, onClose]);
+
   const handleBackdropClick = () => {
     if (isEditingText) {
       void handleSaveAndClose();

@@ -12,6 +12,14 @@ electron.contextBridge.exposeInMainWorld("desktopAPI", {
   closeFileExplorer: () => electron.ipcRenderer.invoke("desktop:close-file-explorer"),
   // File path utilities
   getPathForFile: (file) => electron.webUtils.getPathForFile(file),
+  // Full window preview coordination
+  setFullWindowPreviewState: (isOpen) => electron.ipcRenderer.send("fullwindow-preview:state", isOpen),
+  onCloseFullWindowPreviewRequest: (callback) => {
+    const channel = "fullwindow-preview:close-request";
+    const listener = () => callback();
+    electron.ipcRenderer.on(channel, listener);
+    return () => electron.ipcRenderer.removeListener(channel, listener);
+  },
   // Window controls
   minimizeWindow: () => electron.ipcRenderer.invoke("window:minimize"),
   maximizeWindow: () => electron.ipcRenderer.invoke("window:maximize"),

@@ -12,6 +12,9 @@ declare global {
     writeFileToClipboard: (_filePath: string) => Promise<boolean>;
     clearClipboard: () => Promise<boolean>;
     closeFileExplorer: () => Promise<boolean>;
+    // Full window preview coordination
+    setFullWindowPreviewState: (_isOpen: boolean) => void;
+    onCloseFullWindowPreviewRequest: (_handler: () => void) => (() => void) | void;
     // Window controls
     minimizeWindow: () => Promise<void>;
     maximizeWindow: () => Promise<void>;

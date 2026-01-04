@@ -8,6 +8,7 @@ const __dirname$1 = dirname(__filename$1);
 const isMac = process.platform === "darwin";
 let mainWindow = null;
 let backendProcess = null;
+let isFullWindowPreviewOpen = false;
 const getIconPath = () => {
   const devCandidates = [
     path.join(__dirname$1, "../src/assets/focus.ico"),
@@ -31,6 +32,12 @@ const getIconPath = () => {
   }
   console.warn("[Electron] No icon found, using default Electron icon");
   return void 0;
+};
+const requestCloseFullWindowPreview = () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  mainWindow.webContents.send("fullwindow-preview:close-request");
 };
 const getBackendPath = () => {
   if (app.isPackaged) {
@@ -128,12 +135,22 @@ async function createMainWindow() {
   }
   console.log("[Electron] Renderer loaded successfully");
   mainWindow.setMenuBarVisibility(false);
+  mainWindow.webContents.on("before-input-event", (event, input) => {
+    const key = input.key?.toLowerCase();
+    const isAltF4 = key === "f4" && input.alt;
+    const isKeyDownEvent = input.type === "keyDown" || input.type === "rawKeyDown";
+    if (isKeyDownEvent && isAltF4 && isFullWindowPreviewOpen) {
+      event.preventDefault();
+      requestCloseFullWindowPreview();
+    }
+  });
   mainWindow.on("ready-to-show", () => {
     console.log("[Electron] Window ready to show");
     mainWindow?.show();
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
+    isFullWindowPreviewOpen = false;
   });
 }
 app.whenReady().then(() => {
@@ -172,6 +189,9 @@ app.on("window-all-closed", () => {
 });
 app.on("before-quit", () => {
   stopBackend();
+});
+ipcMain.on("fullwindow-preview:state", (_event, isOpen) => {
+  isFullWindowPreviewOpen = !!isOpen;
 });
 ipcMain.handle("desktop:open-dialog", async (_event, options) => {
   const browserWindow = BrowserWindow.getFocusedWindow() || mainWindow;

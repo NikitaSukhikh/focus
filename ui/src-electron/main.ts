@@ -172,7 +172,9 @@ async function createMainWindow() {
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
     const key = input.key?.toLowerCase();
-    if (input.type === 'keyDown' && key === 'f4' && input.alt && isFullWindowPreviewOpen) {
+    const isAltF4 = key === 'f4' && input.alt;
+    const isKeyDownEvent = input.type === 'keyDown' || input.type === 'rawKeyDown';
+    if (isKeyDownEvent && isAltF4 && isFullWindowPreviewOpen) {
       event.preventDefault();
       requestCloseFullWindowPreview();
     }
@@ -185,6 +187,7 @@ async function createMainWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    isFullWindowPreviewOpen = false;
   });
 }
 

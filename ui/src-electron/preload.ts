@@ -22,6 +22,15 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // File path utilities
   getPathForFile: (file: File) =>
     webUtils.getPathForFile(file),
+  // Full window preview coordination
+  setFullWindowPreviewState: (isOpen: boolean) =>
+    ipcRenderer.send('fullwindow-preview:state', isOpen),
+  onCloseFullWindowPreviewRequest: (callback: () => void) => {
+    const channel = 'fullwindow-preview:close-request';
+    const listener = () => callback();
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  },
   // Window controls
   minimizeWindow: () =>
     ipcRenderer.invoke('window:minimize'),
