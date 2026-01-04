@@ -195,6 +195,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             color: 'var(--color-text-primary)',
             border: '1px solid var(--color-border-subtle)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            display: 'none',
           }}
           title="ShareSpace"
           aria-label="ShareSpace"
