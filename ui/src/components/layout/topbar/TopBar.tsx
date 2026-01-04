@@ -9,6 +9,7 @@ import { TopBarSearch } from './TopBarSearch';
 import { TopBarTags } from './TopBarTags';
 import { WindowControls } from './WindowControls';
 import focusLogo from '../../../assets/focus.png';
+import shareSpaceIcon from '../../../assets/sharespace_icon.jpg';
 
 export type { TopBarHandle } from './types';
 
@@ -186,6 +187,25 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             {(zoom * 100).toFixed(0)}%
           </div>
         </div>
+
+        <button
+          className="p-2 rounded-lg transition-colors flex items-center justify-center"
+          style={{
+            background: 'var(--glass-bg)',
+            color: 'var(--color-text-primary)',
+            border: '1px solid var(--color-border-subtle)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          }}
+          title="ShareSpace"
+          aria-label="ShareSpace"
+        >
+          <img
+            src={shareSpaceIcon}
+            alt="ShareSpace"
+            className="w-5 h-5 object-contain"
+            style={{ opacity: 0.6 }}
+          />
+        </button>
 
         <button
           onClick={onToggleGrid}
