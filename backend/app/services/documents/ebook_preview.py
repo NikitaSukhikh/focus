@@ -56,6 +56,8 @@ class EbookPreviewService:
         self.settings = settings
         self.cache_dir = Path(settings.storage.cache_dir) / "ebook_previews"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.images_dir = self.cache_dir / "images"
+        self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def convert_ebook_to_html(
         self,
@@ -164,16 +166,44 @@ class EbookPreviewService:
         author = book.get_metadata('DC', 'creator')
         author = author[0][0] if author else 'Unknown Author'
 
+        # Generate cache key for this specific book
+        cache_key = self._generate_cache_key(str(path))
+
+        # Extract images from EPUB
+        image_mapping = {}
+        for item in book.get_items():
+            if item.get_type() == ebooklib.ITEM_IMAGE:
+                try:
+                    # Get the image filename
+                    img_name = item.get_name().split('/')[-1]
+                    # Create a unique name using cache key
+                    unique_img_name = f"{cache_key}_{img_name}"
+                    img_path = self.images_dir / unique_img_name
+
+                    # Save image
+                    img_path.write_bytes(item.get_content())
+
+                    # Map original name to accessible URL
+                    # Store both the full path and just the filename
+                    image_mapping[item.get_name()] = f"/api/thumbnails/ebook-image/{unique_img_name}"
+                    image_mapping[img_name] = f"/api/thumbnails/ebook-image/{unique_img_name}"
+                except Exception as e:
+                    logger.warning(f"Failed to extract image {item.get_name()}: {e}")
+
         # Start HTML document
         html_parts = [
             '<!DOCTYPE html>',
             '<html>',
             '<head>',
             '<meta charset="utf-8">',
+            '<base href="/">',
             f'<title>{html.escape(str(title))}</title>',
             '<style>',
             self._get_reader_css(),
             '</style>',
+            '<script>',
+            self._get_navigation_script(),
+            '</script>',
             '</head>',
             '<body>',
             '<div class="ebook-container">',
@@ -195,6 +225,38 @@ class EbookPreviewService:
                     # Remove script and style tags
                     for tag in soup(['script', 'style']):
                         tag.decompose()
+
+                    # Process images
+                    for img in soup.find_all('img', src=True):
+                        src = img['src']
+                        # Try to find the image in our mapping
+                        img_name = src.split('/')[-1]
+                        if src in image_mapping:
+                            img['src'] = image_mapping[src]
+                        elif img_name in image_mapping:
+                            img['src'] = image_mapping[img_name]
+
+                    # Process links to work with concatenated content
+                    for link in soup.find_all('a', href=True):
+                        href = link['href']
+                        # Handle internal links (starting with #)
+                        if href.startswith('#'):
+                            continue
+                        # Handle external links
+                        elif href.startswith(('http://', 'https://', 'mailto:')):
+                            continue
+                        # Handle links to other EPUB files
+                        else:
+                            # Convert file.html#section to #section
+                            if '#' in href:
+                                anchor = href.split('#')[1]
+                                link['href'] = '#' + anchor
+                            # For links without anchors, make them non-functional
+                            else:
+                                link.name = 'span'  # Convert <a> to <span>
+                                if 'href' in link.attrs:
+                                    del link.attrs['href']
+                                link['style'] = link.get('style', '') + ' color: #0d9488; cursor: default;'
 
                     # Get body content or entire content if no body tag
                     body = soup.find('body')
@@ -350,9 +412,55 @@ class EbookPreviewService:
 '''
         return html_content
 
+    def _get_navigation_script(self) -> str:
+        """Get JavaScript for handling internal navigation."""
+        return '''
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle all anchor clicks
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is a link or inside a link
+        let target = e.target;
+        while (target && target.tagName !== 'A') {
+            target = target.parentElement;
+        }
+
+        if (target && target.tagName === 'A') {
+            const href = target.getAttribute('href');
+
+            // Only handle internal anchor links
+            if (href && href.startsWith('#')) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Get the target element
+                const targetId = href.substring(1);
+                const targetElement = document.getElementById(targetId);
+
+                if (targetElement) {
+                    // Smooth scroll to the element
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }
+            // Prevent navigation for all other links (including javascript:void(0))
+            else if (href && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }, true); // Use capture phase to catch events early
+});
+'''
+
     def _get_reader_css(self) -> str:
         """Get CSS styles for the ebook reader."""
         return '''
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -465,6 +573,19 @@ body {
 
 .ebook-content li {
     margin: 0.5em 0;
+}
+
+.ebook-content a {
+    color: #0d9488;
+    text-decoration: none;
+    border-bottom: 1px solid #14b8a6;
+    transition: all 0.2s ease;
+}
+
+.ebook-content a:hover {
+    color: #14b8a6;
+    border-bottom-color: #0d9488;
+    background: rgba(20, 184, 166, 0.05);
 }
 
 @media (max-width: 768px) {

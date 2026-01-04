@@ -419,6 +419,71 @@ async def get_audio_metadata_endpoint(
 
 
 @router.get(
+    "/ebook-image/{image_name}",
+    response_class=FileResponse,
+    summary="Get ebook image",
+    description="Serve extracted images from ebook files.",
+)
+async def get_ebook_image(
+    image_name: str,
+):
+    """
+    Serve an image extracted from an ebook.
+
+    Args:
+        image_name: Name of the image file
+
+    Returns:
+        FileResponse: The image file
+
+    Raises:
+        HTTPException: If image not found
+    """
+    try:
+        # Get the image path
+        from app.core.config import get_settings
+        settings = get_settings()
+
+        images_dir = Path(settings.storage.cache_dir) / "ebook_previews" / "images"
+        image_path = images_dir / image_name
+
+        if not image_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Image not found: {image_name}",
+            )
+
+        if not image_path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {image_name}",
+            )
+
+        # Determine media type from file extension
+        import mimetypes
+        media_type, _ = mimetypes.guess_type(str(image_path))
+        if not media_type:
+            media_type = 'image/jpeg'
+
+        logger.debug(f"Serving ebook image: {image_path}")
+
+        return FileResponse(
+            path=str(image_path),
+            media_type=media_type,
+            filename=image_name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve ebook image: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to serve ebook image",
+        )
+
+
+@router.get(
     "/ebook-metadata",
     summary="Get ebook metadata",
     description="Extract metadata from ebook files including title and author.",
