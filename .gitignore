@@ -22,6 +22,10 @@ backend/pandoc-*.msi
 .env.test.local
 .env.production.local
 
+# Test certificates (self-signed for local builds)
+*.pfx
+test-certificate.pfx
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

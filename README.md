@@ -63,6 +63,21 @@ A single click focuses an object on the Space canvas (right to the central pane)
 - PDF: `.pdf`
 - HTML: `.html`, `.htm` (rendered as interactive webpages)
 
+**Ebooks:**
+- EPUB: `.epub` (with table of contents navigation, images, and metadata extraction)
+- FictionBook: `.fb2` (with metadata support)
+- Mobipocket: `.mobi`, `.azw`, `.azw3` (limited preview support)
+- Comic Books: `.cbz`, `.cbr`
+- Palm Database: `.pdb`
+- DjVu: `.djvu`
+
+Features:
+- Interactive reading experience with smooth scrolling
+- Table of contents navigation
+- Metadata display (title, author)
+- Image support (cover images, illustrations)
+- Tile displays book title and author instead of filename
+
 **Media:**
 - Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.svg`, `.tiff`, `.ico`, `.heic`, `.heif`
 - Audio: `.mp3`, `.wav`, `.flac`, `.ogg`, `.m4a`, `.aac`, `.wma`, `.opus`, `.aiff`, `.alac`, `.ape`, `.wv`, `.mka`

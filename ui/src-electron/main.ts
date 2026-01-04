@@ -13,6 +13,7 @@ const isMac = process.platform === 'darwin';
 
 let mainWindow: BrowserWindow | null = null;
 let backendProcess: ChildProcessWithoutNullStreams | null = null;
+let isFullWindowPreviewOpen = false;
 
 const getIconPath = () => {
   const devCandidates = [
@@ -41,6 +42,13 @@ const getIconPath = () => {
   // Fallback to default icon
   console.warn('[Electron] No icon found, using default Electron icon');
   return undefined;
+};
+
+const requestCloseFullWindowPreview = () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  mainWindow.webContents.send('fullwindow-preview:close-request');
 };
 
 const getBackendPath = () => {
@@ -162,6 +170,14 @@ async function createMainWindow() {
   // Hide the menu bar
   mainWindow.setMenuBarVisibility(false);
 
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const key = input.key?.toLowerCase();
+    if (input.type === 'keyDown' && key === 'f4' && input.alt && isFullWindowPreviewOpen) {
+      event.preventDefault();
+      requestCloseFullWindowPreview();
+    }
+  });
+
   mainWindow.on('ready-to-show', () => {
     console.log('[Electron] Window ready to show');
     mainWindow?.show();
@@ -221,6 +237,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopBackend();
+});
+
+ipcMain.on('fullwindow-preview:state', (_event, isOpen: boolean) => {
+  isFullWindowPreviewOpen = !!isOpen;
 });
 
 ipcMain.handle('desktop:open-dialog', async (_event, options) => {
