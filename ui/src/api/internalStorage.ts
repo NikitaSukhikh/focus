@@ -1,4 +1,6 @@
-const API_BASE = '/api/internal-storage';
+import { getApiBaseUrl } from '../config/api';
+
+const API_BASE = `${getApiBaseUrl()}/internal-storage`;
 
 export const internalStorageApi = {
   async open(): Promise<void> {

@@ -4,7 +4,7 @@
  * Handles communication with the backend undo/redo endpoints.
  */
 
-const API_BASE = '/api';
+import { API_BASE } from '../config/api';
 
 export type UndoEventType =
   | 'tile_create'

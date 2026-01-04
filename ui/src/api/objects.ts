@@ -1,8 +1,7 @@
 import { truncateLinkTitle } from '../utils/text';
 import { requestTracker } from '../utils/requestTracker';
 import { TagValue } from '../types/tags';
-
-const API_BASE = '/api';
+import { API_BASE } from '../config/api';
 
 export type ObjectType = 'link' | 'file' | 'google_drive' | 'gmail' | 'text';
 

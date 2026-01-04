@@ -14,18 +14,18 @@ const windowsSignParams = process.env.WINDOWS_SIGN_PARAMS;
 
 // Backend binary included as an extra resource (built via PyInstaller)
 const backendExecutableByPlatform: Record<NodeJS.Platform, string> = {
-  win32: 'focus-backend.exe',
-  darwin: 'focus-backend',
-  linux: 'focus-backend',
-  aix: 'focus-backend',
-  freebsd: 'focus-backend',
-  openbsd: 'focus-backend',
-  android: 'focus-backend',
-  sunos: 'focus-backend',
+  win32: 'Focus.exe',
+  darwin: 'Focus',
+  linux: 'Focus',
+  aix: 'Focus',
+  freebsd: 'Focus',
+  openbsd: 'Focus',
+  android: 'Focus',
+  sunos: 'Focus',
 };
 
 const platform = process.platform;
-const backendExecutableName = backendExecutableByPlatform[platform] ?? 'focus-backend';
+const backendExecutableName = backendExecutableByPlatform[platform] ?? 'Focus';
 
 const commonAssets = [path.join(__dirname, 'src', 'assets', 'focus.png')];
 const platformAssets =

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, session } from 'electron';
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -12,18 +12,19 @@ const __dirname = dirname(__filename);
 const isMac = process.platform === 'darwin';
 
 const backendExecutableByPlatform: Record<NodeJS.Platform, string> = {
-  win32: 'focus-backend.exe',
-  darwin: 'focus-backend',
-  linux: 'focus-backend',
-  aix: 'focus-backend',
-  freebsd: 'focus-backend',
-  openbsd: 'focus-backend',
-  android: 'focus-backend',
-  sunos: 'focus-backend',
+  win32: 'Focus.exe',
+  darwin: 'Focus',
+  linux: 'Focus',
+  aix: 'Focus',
+  freebsd: 'Focus',
+  openbsd: 'Focus',
+  android: 'Focus',
+  sunos: 'Focus',
 };
 
 let mainWindow: BrowserWindow | null = null;
-let backendProcess: ChildProcessWithoutNullStreams | null = null;
+let splashWindow: BrowserWindow | null = null;
+let backendProcess: ChildProcess | null = null;
 let isFullWindowPreviewOpen = false;
 
 const getIconPath = () => {
@@ -63,7 +64,7 @@ const requestCloseFullWindowPreview = () => {
 };
 
 const getBackendExecutableName = () => {
-  return backendExecutableByPlatform[process.platform] ?? 'focus-backend';
+  return backendExecutableByPlatform[process.platform] ?? 'Focus';
 };
 
 const getBackendPath = () => {
@@ -90,24 +91,41 @@ const getBackendCwd = () => {
 
 const startBackend = () => {
   const backendPath = getBackendPath();
+  const backendCwd = getBackendCwd();
+
+  console.log('[Electron] Backend path:', backendPath);
+  console.log('[Electron] Backend CWD:', backendCwd);
+  console.log('[Electron] App isPackaged:', app.isPackaged);
+  console.log('[Electron] process.resourcesPath:', process.resourcesPath);
+
   if (!fs.existsSync(backendPath)) {
-    console.warn('[Electron] Backend binary not found at', backendPath);
+    console.error('[Electron] Backend binary not found at', backendPath);
+    dialog.showErrorBox('Backend Error', `Backend executable not found at: ${backendPath}`);
     return;
   }
 
   console.log('[Electron] Starting backend:', backendPath);
   backendProcess = spawn(backendPath, [], {
-    stdio: 'inherit',
-    cwd: getBackendCwd(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: backendCwd,
   });
 
-  backendProcess.on('exit', (code, signal) => {
+  backendProcess.stdout?.on('data', (data: Buffer) => {
+    console.log('[Backend]', data.toString().trim());
+  });
+
+  backendProcess.stderr?.on('data', (data: Buffer) => {
+    console.error('[Backend]', data.toString().trim());
+  });
+
+  backendProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
     console.log('[Electron] Backend exited', { code, signal });
     backendProcess = null;
   });
 
-  backendProcess.on('error', (err) => {
+  backendProcess.on('error', (err: Error) => {
     console.error('[Electron] Backend process error', err);
+    dialog.showErrorBox('Backend Error', `Failed to start backend: ${err.message}`);
   });
 };
 
@@ -144,6 +162,27 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 // In both dev and production, preload.cjs is built to the same directory as main.js
 const PRELOAD_PATH = path.join(__dirname, 'preload.cjs');
 
+function createSplashWindow() {
+  console.log('[Electron] Creating splash window...');
+
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 260,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    show: true,
+  });
+
+  const splashPath = path.join(__dirname, 'splash.html');
+  splashWindow.loadFile(splashPath);
+
+  splashWindow.on('closed', () => {
+    splashWindow = null;
+  });
+}
+
 async function createMainWindow() {
   console.log('[Electron] Creating main window...');
 
@@ -152,7 +191,7 @@ async function createMainWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    show: true, // Show immediately instead of waiting
+    show: false, // Hidden until ready
     title: 'Focus',
     icon: getIconPath(),
     frame: false, // Remove default title bar for custom implementation
@@ -196,9 +235,23 @@ async function createMainWindow() {
     }
   });
 
-  mainWindow.on('ready-to-show', () => {
-    console.log('[Electron] Window ready to show');
+  // Timeout fallback in case did-finish-load never fires
+  const showTimeout = setTimeout(() => {
+    console.log('[Electron] Timeout reached, forcing window show...');
     mainWindow?.show();
+    splashWindow?.close();
+  }, 10000); // 10 second timeout
+
+  mainWindow.webContents.once('did-finish-load', () => {
+    console.log('[Electron] Main window ready, closing splash...');
+    clearTimeout(showTimeout);
+    mainWindow?.show();
+    splashWindow?.close();
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error('[Electron] Renderer failed to load:', errorCode, errorDescription);
+    dialog.showErrorBox('Failed to Load', `The app failed to load: ${errorDescription}`);
   });
 
   mainWindow.on('closed', () => {
@@ -209,6 +262,7 @@ async function createMainWindow() {
 
 app.whenReady().then(() => {
   startBackend();
+  createSplashWindow();
 
   createMainWindow().catch((err) => {
     console.error('[Electron] Failed to create main window:', err);

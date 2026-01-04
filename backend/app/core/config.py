@@ -97,10 +97,18 @@ class DatabaseSettings(BaseSettings):
         Resolve DB path relative to the backend directory so different
         working directories (repo root vs backend/) use the same file.
         """
+        import sys
+
         raw = Path(self.path)
         if raw.is_absolute():
             return raw
-        backend_root = Path(__file__).resolve().parents[2]
+
+        # When frozen by PyInstaller, use the directory where the exe is running
+        if getattr(sys, 'frozen', False):
+            backend_root = Path(sys.executable).parent
+        else:
+            backend_root = Path(__file__).resolve().parents[2]
+
         return (backend_root / raw).resolve()
 
 
