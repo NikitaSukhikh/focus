@@ -10,6 +10,8 @@ electron.contextBridge.exposeInMainWorld("desktopAPI", {
   clearClipboard: () => electron.ipcRenderer.invoke("desktop:clear-clipboard"),
   openAuthWindow: (payload) => electron.ipcRenderer.invoke("desktop:open-auth-window", payload),
   closeFileExplorer: () => electron.ipcRenderer.invoke("desktop:close-file-explorer"),
+  // File path utilities
+  getPathForFile: (file) => electron.webUtils.getPathForFile(file),
   // Window controls
   minimizeWindow: () => electron.ipcRenderer.invoke("window:minimize"),
   maximizeWindow: () => electron.ipcRenderer.invoke("window:maximize"),

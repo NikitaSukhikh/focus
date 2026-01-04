@@ -297,8 +297,19 @@ export const useCenterPaneDragDrop = ({
       const files = Array.from(e.dataTransfer.files);
 
       files.forEach((file, index) => {
-        // Get file path from file object
-        const filePath = (file as any).path || file.name;
+        // Get file path from file object using Electron's webUtils API
+        let filePath: string;
+        try {
+          if ((window as any).desktopAPI?.getPathForFile) {
+            filePath = (window as any).desktopAPI.getPathForFile(file);
+          } else {
+            // Fallback for older Electron or development environment
+            filePath = (file as any).path || file.name;
+          }
+        } catch (error) {
+          console.error('[DROP] Failed to get file path:', error);
+          filePath = file.name;
+        }
         const filename = file.name;
 
         console.log('[DROP] Processing file:', { filename, filePath });

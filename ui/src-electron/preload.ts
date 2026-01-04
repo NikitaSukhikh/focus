@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { OpenDialogOptions } from 'electron';
 
 contextBridge.exposeInMainWorld('desktopAPI', {
@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.invoke('desktop:open-auth-window', payload),
   closeFileExplorer: () =>
     ipcRenderer.invoke('desktop:close-file-explorer'),
+  // File path utilities
+  getPathForFile: (file: File) =>
+    webUtils.getPathForFile(file),
   // Window controls
   minimizeWindow: () =>
     ipcRenderer.invoke('window:minimize'),

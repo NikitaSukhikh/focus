@@ -5,11 +5,13 @@ interface FileTypeDetection {
   isImageFile: boolean;
   isAudioFile: boolean;
   isDocumentFile: boolean;
+  isEbookFile: boolean;
   isTextFile: boolean;
   isMarkdownFile: boolean;
   isHtmlFile: boolean;
   imagePreviewUrl: string | null;
   documentPreviewUrl: string | null;
+  ebookPreviewUrl: string | null;
   htmlPreviewUrl: string | null;
 }
 
@@ -22,6 +24,7 @@ export function useFileTypeDetection(
     const isImageFile = type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath);
     const isAudioFile = type === 'file' && filePath && /\.(mp3|wav|flac|ogg|oga|m4a|aac|wma|opus|aiff|aif|aifc|alac|ape|wv|mka)$/i.test(filePath);
     const isDocumentFile = type === 'file' && filePath && /\.(docx|doc|odt|xlsx|xls|xlsm|ods)$/i.test(filePath);
+    const isEbookFile = type === 'file' && filePath && /\.(epub|mobi|azw|azw3|fb2|cbz|cbr|pdb|djvu)$/i.test(filePath);
     const isMarkdownFile = type === 'file' && filePath && /\.(md|markdown)$/i.test(filePath);
 
     // Check if HTML file should be rendered or shown as code
@@ -41,6 +44,10 @@ export function useFileTypeDetection(
       ? `/api/thumbnails/document-preview?${new URLSearchParams({ file_path: filePath }).toString()}`
       : null;
 
+    const ebookPreviewUrl = isEbookFile && filePath
+      ? `/api/thumbnails/document-preview?${new URLSearchParams({ file_path: filePath }).toString()}`
+      : null;
+
     const htmlPreviewUrl = isHtmlFile && filePath
       ? `file://${filePath}`
       : null;
@@ -49,11 +56,13 @@ export function useFileTypeDetection(
       isImageFile,
       isAudioFile,
       isDocumentFile,
+      isEbookFile,
       isTextFile,
       isMarkdownFile,
       isHtmlFile,
       imagePreviewUrl,
       documentPreviewUrl,
+      ebookPreviewUrl,
       htmlPreviewUrl,
     };
   }, [type, filePath]);

@@ -4,6 +4,7 @@ import { getVideoEmbed } from '../../../utils/videoEmbeds';
 import { AudioPlayer } from '../../media/AudioPlayer';
 import { useFileTypeDetection } from './hooks/useFileTypeDetection';
 import { useImageMetadata } from './hooks/useImageMetadata';
+import { useEbookMetadata } from './hooks/useEbookMetadata';
 import { useDocumentPreview } from './hooks/useDocumentPreview';
 import { useTextPreview } from './hooks/useTextPreview';
 import { useTileNavigation } from './hooks/useTileNavigation';
@@ -64,17 +65,18 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     onClose();
   };
 
-  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, documentPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
   const imageMetadata = useImageMetadata(isImageFile, filePath);
-  const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile, documentPreviewUrl);
+  const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
+  const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile || isEbookFile, documentPreviewUrl || ebookPreviewUrl);
   const textPreviewBody = useTextPreview(type, content, title);
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
 
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
-  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
+  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
 
   // Tile navigation
   const navigation = useTileNavigation({
@@ -177,6 +179,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         url={url}
         onClose={onClose}
         onOpenFullWindow={handleOpenFullWindow}
+        ebookMetadata={ebookMetadata}
       />
 
       <div
@@ -246,6 +249,18 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         {documentPreviewUrl && (
           <DocumentPreview
             documentPreviewUrl={documentPreviewUrl}
+            title={title}
+            filePath={filePath}
+            documentLoading={documentLoading}
+            documentError={documentError}
+            onLoad={handleDocumentLoad}
+            onError={handleDocumentError}
+          />
+        )}
+
+        {ebookPreviewUrl && (
+          <DocumentPreview
+            documentPreviewUrl={ebookPreviewUrl}
             title={title}
             filePath={filePath}
             documentLoading={documentLoading}

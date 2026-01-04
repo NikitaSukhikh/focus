@@ -2,26 +2,46 @@ import { X, ExternalLink, Maximize2 } from 'lucide-react';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 import { openExternalUrl } from '../../../../platform';
 
+interface EbookMetadata {
+  title: string;
+  author: string | null;
+}
+
 interface PreviewHeaderProps {
   title?: string;
   type?: string;
   url?: string;
   onClose: () => void;
   onOpenFullWindow: () => void;
+  ebookMetadata?: EbookMetadata | null;
 }
 
 // PreviewHeader renders the preview title bar and the controls for opening externally, expanding to full window, or closing the pane.
-export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow }: PreviewHeaderProps) {
+export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebookMetadata }: PreviewHeaderProps) {
+  const displayTitle = ebookMetadata?.title || title;
+  const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
+
   return (
     <div className="flex flex-col" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
       <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Preview</h2>
-          {title && type !== 'text' && (
+          {showEbookInfo ? (
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="truncate" style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                {ebookMetadata.title}
+              </span>
+              {ebookMetadata.author && (
+                <span className="truncate text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  by {ebookMetadata.author}
+                </span>
+              )}
+            </div>
+          ) : displayTitle && type !== 'text' ? (
             <span className="truncate" style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-muted)' }}>
-              - {title}
+              - {displayTitle}
             </span>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <button

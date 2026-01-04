@@ -2,7 +2,7 @@
  * File type detection and utilities
  */
 
-export type FileCategory = 'image' | 'audio' | 'pdf' | 'document' | 'text' | 'unknown';
+export type FileCategory = 'image' | 'audio' | 'pdf' | 'document' | 'text' | 'ebook' | 'unknown';
 
 export interface FileTypeInfo {
   category: FileCategory;
@@ -109,6 +109,19 @@ const TEXT_EXTENSIONS = new Set([
   'log',
 ]);
 
+// Ebook file extensions
+const EBOOK_EXTENSIONS = new Set([
+  'epub',
+  'mobi',
+  'azw',
+  'azw3',
+  'fb2',
+  'cbz',
+  'cbr',
+  'pdb',
+  'djvu',
+]);
+
 /**
  * Get the file extension from a file path or name
  */
@@ -146,6 +159,14 @@ export function detectFileType(filePath: string): FileTypeInfo {
       category: 'pdf',
       extension,
       mimeType: 'application/pdf',
+    };
+  }
+
+  if (EBOOK_EXTENSIONS.has(extension)) {
+    return {
+      category: 'ebook',
+      extension,
+      mimeType: getEbookMimeType(extension),
     };
   }
 
@@ -195,6 +216,25 @@ function getAudioMimeType(extension: string): string {
   };
 
   return mimeTypes[extension] || 'audio/mpeg';
+}
+
+/**
+ * Get MIME type for ebook extensions
+ */
+function getEbookMimeType(extension: string): string {
+  const mimeTypes: Record<string, string> = {
+    epub: 'application/epub+zip',
+    mobi: 'application/x-mobipocket-ebook',
+    azw: 'application/vnd.amazon.ebook',
+    azw3: 'application/vnd.amazon.ebook',
+    fb2: 'application/x-fictionbook+xml',
+    cbz: 'application/vnd.comicbook+zip',
+    cbr: 'application/vnd.comicbook-rar',
+    pdb: 'application/vnd.palm',
+    djvu: 'image/vnd.djvu',
+  };
+
+  return mimeTypes[extension] || 'application/octet-stream';
 }
 
 /**

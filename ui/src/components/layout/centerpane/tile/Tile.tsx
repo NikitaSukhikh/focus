@@ -7,6 +7,7 @@ import { Z_INDEX } from '../../../../constants/zIndex';
 import { useDragHandling } from './useDragHandling';
 import { useThumbnail } from './useThumbnail';
 import { useImageMetadata } from './useImageMetadata';
+import { useEbookMetadata } from './useEbookMetadata';
 import { useRenaming } from './useRenaming';
 import { useContextMenu } from './useContextMenu';
 import { useAccountSelection } from './useAccountSelection';
@@ -46,6 +47,7 @@ export function Tile({
   const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
   const { imageMetadata } = useImageMetadata(type, filePath);
+  const { ebookMetadata } = useEbookMetadata(type, filePath);
   const {
     isRenaming,
     renamingValue,
@@ -253,6 +255,7 @@ export function Tile({
         isSelected={isSelected}
         hoverScaleClass={hoverScaleClass}
         imageMetadata={imageMetadata}
+        ebookMetadata={ebookMetadata}
       />
     );
   };

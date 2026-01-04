@@ -4,6 +4,11 @@ import { RenameInput } from './RenameInput';
 import { truncateDisplayPath } from '../../../../utils/text';
 import { ImageMetadata } from './useImageMetadata';
 
+interface EbookMetadata {
+  title: string;
+  author: string | null;
+}
+
 interface DefaultContentProps {
   type: string;
   url?: string;
@@ -23,6 +28,7 @@ interface DefaultContentProps {
   isSelected: boolean;
   hoverScaleClass: string;
   imageMetadata: ImageMetadata | null;
+  ebookMetadata?: EbookMetadata | null;
 }
 
 // DefaultContent shows the generic tile body for files and miscellaneous integrations, including thumbnails and optional inline rename.
@@ -45,7 +51,9 @@ export function DefaultContent({
   isSelected,
   hoverScaleClass,
   imageMetadata,
+  ebookMetadata,
 }: DefaultContentProps) {
+  const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
   return (
     <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none' }}>
       <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
@@ -73,6 +81,17 @@ export function DefaultContent({
           style={{ pointerEvents: 'auto' } as any}
           onClick={(e) => e.stopPropagation()}
         />
+      ) : showEbookInfo ? (
+        <>
+          <div className="text-sm text-slate-700 px-1 text-center mt-1 break-words font-medium" style={{ width: '100%' }}>
+            {ebookMetadata.title}
+          </div>
+          {ebookMetadata.author && (
+            <div className="text-xs text-center break-words text-slate-500">
+              by {ebookMetadata.author}
+            </div>
+          )}
+        </>
       ) : (
         <>
           <div

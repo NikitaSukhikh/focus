@@ -27,6 +27,8 @@ pywin32==311; sys_platform == 'win32'
 mutagen==1.47.0
 openpyxl==3.1.5
 xlrd==2.0.1
+ebooklib==0.20
+lxml==6.0.2
 
 # Google integrations
 google-auth==2.37.0

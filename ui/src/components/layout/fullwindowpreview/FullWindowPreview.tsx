@@ -11,6 +11,7 @@ import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigatio
 import { usePreviewTextEditor } from '../previewpane/hooks/usePreviewTextEditor';
 import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
 import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection';
+import { useEbookMetadata } from '../previewpane/hooks/useEbookMetadata';
 import { MarkdownPreview } from '../previewpane/components/MarkdownPreview';
 import { DroppedIcon } from '../centerpane/types';
 
@@ -65,12 +66,13 @@ export function FullWindowPreview({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textContentRef = useRef<HTMLDivElement>(null);
 
-  const { isImageFile, isAudioFile, isDocumentFile, isTextFile, isMarkdownFile, imagePreviewUrl, documentPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, imagePreviewUrl, documentPreviewUrl, ebookPreviewUrl } = useFileTypeDetection(type, filePath);
+  const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
 
   const videoEmbed = getVideoEmbed(url);
 
   // Only use webview logic when not showing an image, audio, or document
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
   const currentTitle = localTitle ?? title;
@@ -78,7 +80,7 @@ export function FullWindowPreview({
   const firstContentLine = currentContent
     ? (currentContent.split(/\r?\n/).find((line) => line.trim().length > 0) || '').trim()
     : '';
-  const displayTitle = (currentTitle || '').trim() || firstContentLine || 'Preview';
+  const displayTitle = ebookMetadata?.title || (currentTitle || '').trim() || firstContentLine || 'Preview';
 
   const getBodyWithoutTitle = (rawContent?: string | null, heading?: string | null) => {
     if (type !== 'text' || !rawContent) return rawContent || '';
@@ -124,16 +126,16 @@ export function FullWindowPreview({
   // Reset document error state when preview changes
   useEffect(() => {
     setDocumentError(null);
-    setDocumentLoading(!!isDocumentFile);
+    setDocumentLoading(!!(isDocumentFile || isEbookFile));
 
-    if (isDocumentFile) {
+    if (isDocumentFile || isEbookFile) {
       const timer = setTimeout(() => {
         setDocumentLoading(false);
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [documentPreviewUrl, isDocumentFile]);
+  }, [documentPreviewUrl, ebookPreviewUrl, isDocumentFile, isEbookFile]);
 
   // Handle document preview load
   const handleDocumentLoad = () => {
@@ -366,7 +368,7 @@ export function FullWindowPreview({
           className="flex items-center justify-between px-6 py-4 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
         >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex flex-col min-w-0 flex-1">
             <h2
               className="truncate"
               style={{
@@ -377,6 +379,11 @@ export function FullWindowPreview({
             >
               {displayTitle}
             </h2>
+            {ebookMetadata?.author && (
+              <p className="truncate text-sm" style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                by {ebookMetadata.author}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
@@ -456,7 +463,7 @@ export function FullWindowPreview({
             &gt;
           </button>
 
-          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !content && !isTextFile && !isMarkdownFile && (
+          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>
                 No preview available.
@@ -593,6 +600,40 @@ export function FullWindowPreview({
                 <iframe
                   src={documentPreviewUrl}
                   title={title || 'Document preview'}
+                  className="w-full h-full border-0"
+                  onLoad={handleDocumentLoad}
+                  onError={handleDocumentError}
+                  onContextMenu={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Ebook preview */}
+          {ebookPreviewUrl && (
+            <div className="flex-1 w-full h-full relative">
+              {documentLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW }}>
+                  <div style={{ ...FONT_ROLES.paneBody, color: 'var(--color-text-muted)' }}>Loading ebook...</div>
+                </div>
+              )}
+              {documentError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-white" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW }}>
+                  <div className="text-red-600 text-xl" style={FONT_ROLES.paneBody}>Ebook Preview Error</div>
+                  <div className="text-slate-600 max-w-2xl text-center break-all px-8" style={FONT_ROLES.paneBody}>
+                    {documentError}
+                  </div>
+                  <div className="text-slate-400 max-w-2xl text-center break-all px-8" style={FONT_ROLES.paneBodyMuted}>
+                    {filePath}
+                  </div>
+                </div>
+              )}
+              {!documentError && (
+                <iframe
+                  src={ebookPreviewUrl}
+                  title={title || 'Ebook preview'}
                   className="w-full h-full border-0"
                   onLoad={handleDocumentLoad}
                   onError={handleDocumentError}

@@ -11,6 +11,7 @@ from pathlib import Path
 from app.services.thumbnails.file_thumbnail import file_thumbnail_service
 from app.services.documents.document_preview import document_preview_service
 from app.services.documents.excel_preview import excel_preview_service
+from app.services.documents.ebook_preview import ebook_preview_service
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file, format_duration
 from app.core.logging import get_logger
 
@@ -418,6 +419,64 @@ async def get_audio_metadata_endpoint(
 
 
 @router.get(
+    "/ebook-metadata",
+    summary="Get ebook metadata",
+    description="Extract metadata from ebook files including title and author.",
+)
+async def get_ebook_metadata(
+    file_path: str = Query(..., description="Absolute path to the ebook file"),
+):
+    """
+    Extract metadata from an ebook file.
+
+    Args:
+        file_path: Absolute path to the ebook file
+
+    Returns:
+        dict: Ebook metadata including title and author
+
+    Raises:
+        HTTPException: If file not found or not a supported ebook
+    """
+    try:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {file_path}",
+            )
+
+        if not path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {file_path}",
+            )
+
+        # Check if file is an ebook
+        if not ebook_preview_service.is_ebook(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported ebook format",
+            )
+
+        metadata = ebook_preview_service.get_metadata(file_path)
+
+        logger.debug(f"Serving ebook metadata for: {file_path}")
+
+        return metadata
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get ebook metadata: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get ebook metadata",
+        )
+
+
+@router.get(
     "/document-preview",
     response_class=FileResponse,
     summary="Get document preview as HTML",
@@ -456,6 +515,9 @@ async def get_document_preview(
         # Check if file is Excel
         if excel_preview_service.is_excel(file_path):
             html_path = excel_preview_service.convert_excel_to_html(file_path)
+        # Check if file is an ebook
+        elif ebook_preview_service.is_ebook(file_path):
+            html_path = ebook_preview_service.convert_ebook_to_html(file_path)
         # Check if file is a supported document
         elif document_preview_service.is_document(file_path):
             html_path = document_preview_service.convert_docx_to_html(file_path)

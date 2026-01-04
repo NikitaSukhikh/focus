@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { FileText, File, FileType, Music } from 'lucide-react';
+import { FileText, File, FileType, Music, BookOpen } from 'lucide-react';
 
 interface FileIconProps {
   size?: number;
@@ -132,6 +132,22 @@ export function AudioFileIcon({ size = 48, className = '', extension = '' }: Fil
   );
 }
 
+// Ebook Icon with dynamic extension display
+export function EbookIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
+  const ext = extension ? extension.toUpperCase().slice(0, 4) : 'EPUB';
+  return (
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+      <BookOpen size={size} className="text-teal-600" />
+      <div
+        className="absolute bottom-0 right-0 bg-teal-600 text-white text-xs font-bold px-1 rounded"
+        style={{ fontSize: size * 0.2 }}
+      >
+        {ext}
+      </div>
+    </div>
+  );
+}
+
 // Generic File Icon
 export function GenericFileIcon({ size = 48, className = '' }: FileIconProps) {
   return <File size={size} className={`text-slate-500 ${className}`} />;
@@ -149,6 +165,11 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
   if (ext === 'odt') return OdtIcon;
   if (['xls', 'xlsx', 'ods'].includes(ext)) return ExcelIcon;
   if (['ppt', 'pptx', 'odp'].includes(ext)) return PowerPointIcon;
+
+  // Ebook files with specific extension display
+  if (['epub', 'mobi', 'azw', 'azw3', 'fb2', 'cbz', 'cbr', 'pdb', 'djvu'].includes(ext)) {
+    return (props: FileIconProps) => <EbookIcon {...props} extension={ext} />;
+  }
 
   // Audio files with specific extension display
   if (
