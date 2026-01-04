@@ -274,6 +274,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             color: isConversationOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
             border: isConversationOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
             boxShadow: isConversationOpen ? '0 0 10px var(--shadow)' : 'none',
+            display: 'none',
           }}
           onMouseEnter={(e) => {
             if (!isConversationOpen) {
