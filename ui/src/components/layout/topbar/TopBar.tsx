@@ -8,7 +8,7 @@ import { TopBarProps, TopBarHandle } from './types';
 import { TopBarSearch } from './TopBarSearch';
 import { TopBarTags } from './TopBarTags';
 import { WindowControls } from './WindowControls';
-import focusLogo from '../../../assets/target.png';
+import focusLogo from '../../../assets/focus.png';
 
 export type { TopBarHandle } from './types';
 
@@ -48,6 +48,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           style={{
             color: 'var(--color-text-secondary)',
             transition: 'all var(--transition-base)',
+            outline: 'none',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--glass-bg)';
@@ -70,8 +71,8 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             className="rounded-lg shadow-sm"
             style={{
               marginLeft: '-10px',
-              width: '20px',
-              height: '20px'
+              width: '18px',
+              height: '18px'
             }}
           />
           <span
