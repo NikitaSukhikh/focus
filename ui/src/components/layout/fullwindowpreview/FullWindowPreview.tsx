@@ -368,10 +368,13 @@ export function FullWindowPreview({
       {/* Full window preview */}
       <div
         ref={containerRef}
-        className="fixed inset-0 flex flex-col"
+        className="fixed flex flex-col"
         style={{
           zIndex: Z_INDEX.MODAL,
-          margin: '32px',
+          top: '32px',
+          left: '32px',
+          right: '32px',
+          bottom: '44px', // 32px margin + 12px for scrollbar
           background: 'var(--background-light)',
           borderRadius: '12px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',

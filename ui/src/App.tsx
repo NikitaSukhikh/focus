@@ -390,8 +390,9 @@ export function App() {
 
           {isPreviewOpen && (
             <div
-              className="absolute right-0 top-0 h-full"
+              className="absolute right-0 top-0"
               style={{
+                height: 'calc(100% - 12px)', // Full height minus scrollbar height (typical browser scrollbar is ~17px)
                 width: '33.333%',
                 maxWidth: '800px',
                 minWidth: '360px',

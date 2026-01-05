@@ -47,6 +47,7 @@ export function DocumentPreview({
           src={documentPreviewUrl}
           title={title || 'Document preview'}
           className="w-full h-full border-0"
+          style={{ overflow: 'auto' }}
           onLoad={onLoad}
           onError={onError}
           onContextMenu={(e) => {
