@@ -31,26 +31,51 @@ export const useCreateSpaceShortcut = (isDialogOpen: boolean = false) => {
   const isCreatingRef = useRef(false);
 
   useEffect(() => {
-    if (isDialogOpen) return;
+    if (isDialogOpen) {
+      console.log('[CREATE_SPACE_SHORTCUT] Skipping - dialog is open');
+      return;
+    }
 
     const handleShortcut = async (e: KeyboardEvent) => {
+      console.log('[CREATE_SPACE_SHORTCUT] Key pressed:', {
+        key: e.key,
+        code: e.code,
+        ctrl: e.ctrlKey,
+        meta: e.metaKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+        isModifierOnly: isModifierOnlyKey(e),
+        isKeyY: e.code === 'KeyY'
+      });
+
       if (!isModifierOnlyKey(e) || e.code !== 'KeyY') return;
 
       const target = e.target as HTMLElement | null;
-      if (isTextFieldTarget(target) || isCreatingRef.current) return;
+      if (isTextFieldTarget(target)) {
+        console.log('[CREATE_SPACE_SHORTCUT] Skipping - target is text field');
+        return;
+      }
 
+      if (isCreatingRef.current) {
+        console.log('[CREATE_SPACE_SHORTCUT] Skipping - already creating');
+        return;
+      }
+
+      console.log('[CREATE_SPACE_SHORTCUT] Creating new space...');
       preventDefaultAndStop(e);
       isCreatingRef.current = true;
 
       try {
         const existingNames = new Set(spaces.map((space) => space.name.toLowerCase()));
         const name = buildUniqueName(DEFAULT_SPACE_NAME, existingNames);
+        console.log('[CREATE_SPACE_SHORTCUT] Calling createSpace with name:', name);
         const created = await createSpace(name);
+        console.log('[CREATE_SPACE_SHORTCUT] Created space:', created);
         if (created?.id) {
           selectSpace(created.id);
         }
       } catch (err) {
-        console.error('Failed to create space via shortcut', err);
+        console.error('[CREATE_SPACE_SHORTCUT] Failed to create space via shortcut', err);
       } finally {
         isCreatingRef.current = false;
       }

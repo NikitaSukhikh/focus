@@ -35,13 +35,26 @@ export const spacesApi = {
   },
 
   async create(data: SpaceCreate): Promise<Space> {
-    const res = await fetch(`${API_BASE}/spaces`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to create space');
-    return res.json();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
+      const res = await fetch(`${API_BASE}/spaces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error('Failed to create space');
+      return res.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if ((error as Error).name === 'AbortError') {
+        throw new Error('Request timeout - is the backend running at http://localhost:8000?');
+      }
+      throw error;
+    }
   },
 
   async update(id: string, data: SpaceUpdate): Promise<Space> {

@@ -96,16 +96,33 @@ class DatabaseSettings(BaseSettings):
         """
         Resolve DB path relative to the backend directory so different
         working directories (repo root vs backend/) use the same file.
+
+        In production (frozen), stores database in user data directory to avoid
+        using development data and to support per-user installations.
         """
         import sys
+        import os
 
         raw = Path(self.path)
         if raw.is_absolute():
             return raw
 
-        # When frozen by PyInstaller, use the directory where the exe is running
-        if getattr(sys, 'frozen', False):
-            backend_root = Path(sys.executable).parent
+        # When frozen by PyInstaller, use user data directory
+        # Also check ENVIRONMENT to prevent dev mode from using production paths
+        is_frozen = getattr(sys, 'frozen', False)
+        is_dev_env = os.getenv('ENVIRONMENT', '').lower() == 'development'
+
+        if is_frozen and not is_dev_env:
+            # Use a dedicated user data directory for the app
+            if sys.platform == 'win32':
+                user_data = Path.home() / 'AppData' / 'Local' / 'Focus'
+            elif sys.platform == 'darwin':
+                user_data = Path.home() / 'Library' / 'Application Support' / 'Focus'
+            else:  # Linux and others
+                user_data = Path.home() / '.local' / 'share' / 'Focus'
+
+            user_data.mkdir(parents=True, exist_ok=True)
+            backend_root = user_data
         else:
             backend_root = Path(__file__).resolve().parents[2]
 
@@ -268,20 +285,54 @@ class StorageSettings(BaseSettings):
         case_sensitive=False
     )
 
+    def _resolve_storage_path(self, relative_path: str) -> Path:
+        """
+        Resolve storage paths using the same logic as database paths.
+        In production, use user data directory; in dev, use backend directory.
+        """
+        import sys
+        import os
+
+        path = Path(relative_path)
+        if path.is_absolute():
+            return path
+
+        is_frozen = getattr(sys, 'frozen', False)
+        is_dev_env = os.getenv('ENVIRONMENT', '').lower() == 'development'
+
+        if is_frozen and not is_dev_env:
+            # Production: use user data directory
+            if sys.platform == 'win32':
+                user_data = Path.home() / 'AppData' / 'Local' / 'Focus'
+            elif sys.platform == 'darwin':
+                user_data = Path.home() / 'Library' / 'Application Support' / 'Focus'
+            else:
+                user_data = Path.home() / '.local' / 'share' / 'Focus'
+            return (user_data / relative_path).resolve()
+        else:
+            # Development: use backend directory
+            backend_root = Path(__file__).resolve().parents[2]
+            return (backend_root / relative_path).resolve()
+
     @property
     def thumbnails_dir(self) -> Path:
         """Get the thumbnails directory path."""
-        return Path(self.cache_dir) / "thumbnails"
+        cache_path = self._resolve_storage_path(self.cache_dir)
+        return cache_path / "thumbnails"
 
     @property
     def previews_dir(self) -> Path:
         """Get the previews directory path."""
-        return Path(self.cache_dir) / "previews"
+        cache_path = self._resolve_storage_path(self.cache_dir)
+        return cache_path / "previews"
 
     def ensure_directories(self) -> None:
         """Ensure all required storage directories exist."""
-        Path(self.base_path).mkdir(parents=True, exist_ok=True)
-        Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        base = self._resolve_storage_path(self.base_path)
+        cache = self._resolve_storage_path(self.cache_dir)
+
+        base.mkdir(parents=True, exist_ok=True)
+        cache.mkdir(parents=True, exist_ok=True)
 
         # Create subdirectories
         self.thumbnails_dir.mkdir(exist_ok=True)
@@ -380,9 +431,38 @@ class LoggingSettings(BaseSettings):
         case_sensitive=False
     )
 
+    def _resolve_log_path(self) -> Path:
+        """
+        Resolve log path using the same logic as database/storage paths.
+        In production, use user data directory; in dev, use backend directory.
+        """
+        import sys
+        import os
+
+        raw = Path(self.file_path)
+        if raw.is_absolute():
+            return raw
+
+        is_frozen = getattr(sys, 'frozen', False)
+        is_dev_env = os.getenv('ENVIRONMENT', '').lower() == 'development'
+
+        if is_frozen and not is_dev_env:
+            # Production: use user data directory
+            if sys.platform == 'win32':
+                user_data = Path.home() / 'AppData' / 'Local' / 'Focus'
+            elif sys.platform == 'darwin':
+                user_data = Path.home() / 'Library' / 'Application Support' / 'Focus'
+            else:
+                user_data = Path.home() / '.local' / 'share' / 'Focus'
+            return (user_data / raw).resolve()
+        else:
+            # Development: use backend directory
+            backend_root = Path(__file__).resolve().parents[2]
+            return (backend_root / raw).resolve()
+
     def ensure_log_directory(self) -> None:
         """Ensure the log directory exists."""
-        log_path = Path(self.file_path)
+        log_path = self._resolve_log_path()
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
 

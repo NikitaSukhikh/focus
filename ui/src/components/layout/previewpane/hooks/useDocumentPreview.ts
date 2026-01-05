@@ -20,12 +20,13 @@ export function useDocumentPreview(
     setDocumentError(null);
     setDocumentLoading(!!isDocumentFile);
 
-    // Set a timeout to clear loading state if iframe doesn't fire onLoad
-    // This handles cases where iframe loads but onLoad doesn't trigger
+    // Set a timeout to show error if document takes too long to load
+    // Large XLSX files can take 30+ seconds to process
     if (isDocumentFile) {
       const timer = setTimeout(() => {
         setDocumentLoading(false);
-      }, 2000); // Give it 2 seconds to load
+        setDocumentError('Document is taking too long to load. The file may be very large or the backend may be busy.');
+      }, 60000); // Give it 60 seconds for large files
 
       return () => clearTimeout(timer);
     }

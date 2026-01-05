@@ -25,18 +25,9 @@ export function useWebviewPreloader(
       return;
     }
 
-    try {
-      const partition = view.partition;
-      const session = require('electron').remote?.session.fromPartition(partition);
-
-      if (session) {
-        session.preconnect({ url, numSockets: 2 });
-        preloadedRef.current.add(url);
-        console.log(`[Preloader] Preconnected to: ${url}`);
-      }
-    } catch (error) {
-      console.warn('[Preloader] Failed to preconnect:', error);
-    }
+    // Preconnect feature is not critical and requires electron.remote which is deprecated
+    // Skip preconnecting for now - webviews will still work, just without preconnect optimization
+    preloadedRef.current.add(url);
   }, [options.enabled, webviewRef]);
 
   const schedulePreloading = useCallback(() => {

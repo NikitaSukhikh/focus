@@ -118,10 +118,35 @@ class ExcelPreviewService:
                     )
                 html_content = self._xls_to_html(path, max_rows, max_cols)
             else:
-                # .xlsx, .xlsm, .ods files use openpyxl
-                workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
-                html_content = self._workbook_to_html(workbook, path.name, max_rows, max_cols)
-                workbook.close()
+                # .xlsx, .xlsm, .ods files - try pandas first for robustness
+                logger.info(f"Loading workbook: {path}")
+
+                try:
+                    # Try pandas first - it's more robust with problematic Excel files
+                    import pandas as pd
+                    logger.info(f"Attempting to load with pandas...")
+
+                    # Read all sheets
+                    excel_file = pd.ExcelFile(path, engine='openpyxl')
+                    html_content = self._pandas_to_html(excel_file, path.name, max_rows, max_cols)
+                    excel_file.close()
+                    logger.info(f"Successfully loaded with pandas")
+
+                except Exception as pandas_error:
+                    logger.warning(f"Pandas failed, falling back to openpyxl: {pandas_error}")
+
+                    # Fallback to openpyxl
+                    try:
+                        workbook = openpyxl.load_workbook(path, read_only=True, data_only=True, keep_links=False)
+                        logger.info(f"Workbook loaded in read-only mode")
+                    except Exception as e:
+                        logger.warning(f"Read-only mode failed, trying normal mode: {e}")
+                        workbook = openpyxl.load_workbook(path, data_only=True, keep_links=False)
+                        logger.info(f"Workbook loaded in normal mode")
+
+                    html_content = self._workbook_to_html(workbook, path.name, max_rows, max_cols)
+                    workbook.close()
+                    logger.info(f"Workbook closed successfully")
 
             # Save HTML file
             html_path.write_text(html_content, encoding='utf-8')
@@ -196,6 +221,88 @@ class ExcelPreviewService:
                 html_parts.append('</table>')
 
             html_parts.append('</div>')
+
+        html_parts.extend(self._html_footer())
+        return '\n'.join(html_parts)
+
+    def _pandas_to_html(
+        self,
+        excel_file,
+        filename: str,
+        max_rows: int,
+        max_cols: int
+    ) -> str:
+        """
+        Convert pandas ExcelFile to HTML.
+
+        Args:
+            excel_file: pandas ExcelFile object
+            filename: Original filename for display
+            max_rows: Maximum rows to render
+            max_cols: Maximum columns to render
+
+        Returns:
+            str: HTML content
+        """
+        import pandas as pd
+
+        html_parts = self._html_header(filename)
+
+        # Process each sheet
+        for sheet_idx, sheet_name in enumerate(excel_file.sheet_names):
+            if sheet_idx > 0:
+                html_parts.append('<div class="sheet-separator"></div>')
+
+            html_parts.append(f'<div class="sheet-header">{self._escape_html(sheet_name)}</div>')
+
+            try:
+                # Read sheet with pandas
+                df = pd.read_excel(excel_file, sheet_name=sheet_name, nrows=max_rows)
+
+                if df.empty:
+                    html_parts.append('<p class="empty-sheet">Empty sheet</p>')
+                    continue
+
+                # Limit columns
+                if len(df.columns) > max_cols:
+                    df = df.iloc[:, :max_cols]
+                    truncated_cols = True
+                else:
+                    truncated_cols = False
+
+                html_parts.append('<div class="table-wrapper">')
+                html_parts.append('<table>')
+
+                # Header row
+                html_parts.append('<tr>')
+                for col in df.columns:
+                    html_parts.append(f'<td class="header-cell">{self._escape_html(str(col))}</td>')
+                html_parts.append('</tr>')
+
+                # Data rows
+                for _, row in df.iterrows():
+                    html_parts.append('<tr>')
+                    for val in row:
+                        cell_value = self._format_cell_value(val)
+                        html_parts.append(f'<td class="data-cell">{self._escape_html(str(cell_value))}</td>')
+                    html_parts.append('</tr>')
+
+                html_parts.append('</table>')
+
+                # Truncation notice
+                if len(df) >= max_rows or truncated_cols:
+                    total_rows = len(df)
+                    total_cols = len(df.columns) if not truncated_cols else max_cols
+                    html_parts.append(
+                        f'<p class="truncation-notice">Showing {len(df)} rows, '
+                        f'{total_cols} columns (may be truncated)</p>'
+                    )
+
+                html_parts.append('</div>')
+
+            except Exception as e:
+                logger.warning(f"Failed to read sheet {sheet_name}: {e}")
+                html_parts.append(f'<p class="empty-sheet">Error reading sheet: {self._escape_html(str(e))}</p>')
 
         html_parts.extend(self._html_footer())
         return '\n'.join(html_parts)

@@ -34,7 +34,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
   const setDuplicating = useSpaceStore((state) => state.setDuplicating);
 
   useEffect(() => {
-    initialize();
+    // Initialize in background - don't block render if backend is slow
+    void initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

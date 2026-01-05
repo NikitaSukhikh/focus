@@ -56,11 +56,23 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
     const currentVersion = get()._fetchVersion + 1;
     set({ _fetchVersion: currentVersion });
 
+    console.log('[SPACE_STORE] loadSpaces called', { preferredSelectedId, version: currentVersion });
+
     try {
-      const data = await spacesApi.getAll();
+      // Add timeout to prevent hanging during app startup if backend is unavailable
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('loadSpaces timeout - backend may be starting up')), 5000);
+      });
+
+      const data = await Promise.race([
+        spacesApi.getAll(),
+        timeoutPromise
+      ]);
+      console.log('[SPACE_STORE] Fetched spaces from API:', data.spaces.length, data.spaces);
 
       // Ignore stale responses that returned after a newer request was sent.
       if (get()._fetchVersion !== currentVersion) {
+        console.log('[SPACE_STORE] Ignoring stale response', { currentVersion, latestVersion: get()._fetchVersion });
         return;
       }
 
@@ -70,13 +82,15 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
           ? currentSelected
           : data.spaces[0]?.id || null;
 
+      console.log('[SPACE_STORE] Setting spaces', { count: data.spaces.length, selectedId: nextSelected });
+
       set({
         spaces: data.spaces,
         selectedSpaceId: nextSelected
       });
       persistSelectedSpace(nextSelected);
     } catch (error) {
-      console.error('Failed to load spaces:', error);
+      console.error('[SPACE_STORE] Failed to load spaces:', error);
       set({ spaces: [] });
     }
   },
@@ -139,14 +153,17 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
   },
 
   createSpace: async (name: string) => {
+    console.log('[SPACE_STORE] createSpace called', { name });
     try {
       const newSpace = await spacesApi.create({ name });
+      console.log('[SPACE_STORE] Space created on backend:', newSpace);
       await get().loadSpaces(newSpace.id);
       set({ selectedSpaceId: newSpace.id });
       persistSelectedSpace(newSpace.id);
+      console.log('[SPACE_STORE] createSpace completed', { id: newSpace.id });
       return newSpace;
     } catch (error) {
-      console.error('Failed to create space:', error);
+      console.error('[SPACE_STORE] Failed to create space:', error);
       return null;
     }
   },

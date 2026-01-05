@@ -562,7 +562,11 @@ async def get_document_preview(
     Raises:
         HTTPException: If file not found or not a supported document
     """
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
     try:
+        logger.info(f"Starting document preview for: {file_path}")
         path = Path(file_path)
 
         if not path.exists():
@@ -579,7 +583,27 @@ async def get_document_preview(
 
         # Check if file is Excel
         if excel_preview_service.is_excel(file_path):
-            html_path = excel_preview_service.convert_excel_to_html(file_path)
+            logger.info(f"Converting Excel file: {file_path}")
+
+            # Run conversion in thread pool with timeout to prevent hanging
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                try:
+                    html_path = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            executor,
+                            excel_preview_service.convert_excel_to_html,
+                            file_path
+                        ),
+                        timeout=30.0  # 30 second timeout
+                    )
+                    logger.info(f"Excel conversion completed: {html_path}")
+                except asyncio.TimeoutError:
+                    logger.error(f"Excel conversion timed out after 30 seconds: {file_path}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Excel file is too large or complex to process. Conversion timed out after 30 seconds.",
+                    )
         # Check if file is an ebook
         elif ebook_preview_service.is_ebook(file_path):
             html_path = ebook_preview_service.convert_ebook_to_html(file_path)

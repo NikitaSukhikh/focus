@@ -90,6 +90,12 @@ const getBackendCwd = () => {
 };
 
 const startBackend = () => {
+  // In dev mode (non-packaged), assume backend is started manually
+  if (!app.isPackaged) {
+    console.log('[Electron] Dev mode detected - skipping backend launch (start backend manually)');
+    return;
+  }
+
   const backendPath = getBackendPath();
   const backendCwd = getBackendCwd();
 
