@@ -76,6 +76,25 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         return;
       }
 
+      // If no spaces exist, create a default space on first launch
+      if (data.spaces.length === 0) {
+        console.log('[SPACE_STORE] No spaces found, creating default space');
+        try {
+          const defaultSpace = await spacesApi.create({ name: 'My Space' });
+          console.log('[SPACE_STORE] Default space created:', defaultSpace);
+          set({
+            spaces: [defaultSpace],
+            selectedSpaceId: defaultSpace.id
+          });
+          persistSelectedSpace(defaultSpace.id);
+          return;
+        } catch (error) {
+          console.error('[SPACE_STORE] Failed to create default space:', error);
+          set({ spaces: [] });
+          return;
+        }
+      }
+
       const currentSelected = preferredSelectedId ?? get().selectedSpaceId;
       const nextSelected =
         (currentSelected && data.spaces.some((i) => i.id === currentSelected))
