@@ -23,7 +23,21 @@ export function DocumentPreview({
 }: DocumentPreviewProps) {
   return (
     <div className="flex-1 w-full relative">
-      {documentLoading && (
+      {!documentError && (
+        <iframe
+          src={documentPreviewUrl}
+          title={title || 'Document preview'}
+          className="w-full h-full border-0"
+          style={{ overflow: 'auto' }}
+          onLoad={onLoad}
+          onError={onError}
+          onContextMenu={(e) => {
+            // Allow default context menu behavior
+            e.stopPropagation();
+          }}
+        />
+      )}
+      {documentLoading && !documentError && (
         <div className="absolute inset-0 flex items-center justify-center bg-white" style={{ zIndex: Z_INDEX.CONTENT_PREVIEW }}>
           <div style={{ ...FONT_ROLES.paneBody, color: 'var(--color-text-muted)' }}>Loading document...</div>
         </div>
@@ -41,20 +55,6 @@ export function DocumentPreview({
             {filePath}
           </div>
         </div>
-      )}
-      {!documentError && (
-        <iframe
-          src={documentPreviewUrl}
-          title={title || 'Document preview'}
-          className="w-full h-full border-0"
-          style={{ overflow: 'auto' }}
-          onLoad={onLoad}
-          onError={onError}
-          onContextMenu={(e) => {
-            // Allow default context menu behavior
-            e.stopPropagation();
-          }}
-        />
       )}
     </div>
   );

@@ -595,14 +595,14 @@ async def get_document_preview(
                             excel_preview_service.convert_excel_to_html,
                             file_path
                         ),
-                        timeout=30.0  # 30 second timeout
+                        timeout=120.0  # 2 minute timeout for large files
                     )
                     logger.info(f"Excel conversion completed: {html_path}")
                 except asyncio.TimeoutError:
-                    logger.error(f"Excel conversion timed out after 30 seconds: {file_path}")
+                    logger.error(f"Excel conversion timed out after 120 seconds: {file_path}")
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Excel file is too large or complex to process. Conversion timed out after 30 seconds.",
+                        detail="Excel file is too large or complex to process. Conversion timed out after 2 minutes.",
                     )
         # Check if file is an ebook
         elif ebook_preview_service.is_ebook(file_path):

@@ -276,7 +276,10 @@ class ExcelPreviewService:
                 # Header row
                 html_parts.append('<tr>')
                 for col in df.columns:
-                    html_parts.append(f'<td class="header-cell">{self._escape_html(str(col))}</td>')
+                    col_name = self._format_cell_value(col) if col is not None else ''
+                    if not col_name:
+                        col_name = ''
+                    html_parts.append(f'<td class="header-cell">{self._escape_html(col_name)}</td>')
                 html_parts.append('</tr>')
 
                 # Data rows
@@ -383,8 +386,8 @@ class ExcelPreviewService:
             '<meta charset="utf-8">',
             f'<title>{self._escape_html(filename)}</title>',
             '<style>',
-            'body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; padding: 20px 20px 40px 20px; background: #f9fafb; user-select: text; -webkit-user-select: text; overflow-x: hidden; }',
-            '.sheet-header { font-size: 1.2em; font-weight: 600; margin: 20px 0 10px 0; color: #1e40af; padding: 10px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }',
+            'body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; padding: 8px 20px 40px 20px; background: #f9fafb; user-select: text; -webkit-user-select: text; overflow-x: hidden; }',
+            '.sheet-header { font-size: 1.2em; font-weight: 600; margin: 8px 0 8px 0; color: #1e40af; padding: 10px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }',
             '.sheet-separator { height: 20px; }',
             '.table-wrapper { overflow-x: auto; overflow-y: auto; max-height: 80vh; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 40px; border: 1px solid #e2e8f0; -webkit-overflow-scrolling: touch; }',
             '.table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }',
@@ -393,7 +396,7 @@ class ExcelPreviewService:
             '.table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }',
             '.table-wrapper::-webkit-scrollbar-corner { background: #f1f5f9; }',
             'table { border-collapse: collapse; width: auto; min-width: 100%; font-size: 0.9em; user-select: text; table-layout: auto; }',
-            'td { border: 1px solid #cbd5e1; padding: 8px 12px; white-space: nowrap; user-select: text; cursor: text; min-width: 80px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; }',
+            'td { border: 1px solid #cbd5e1; padding: 8px 12px; white-space: nowrap; user-select: text; cursor: text; min-width: 80px; }',
             '.header-cell { background-color: #e0e7ff; font-weight: 600; color: #1e40af; }',
             '.data-cell { background-color: white; }',
             'tr:hover .data-cell { background-color: #f8fafc; }',
@@ -416,6 +419,10 @@ class ExcelPreviewService:
         if value is None:
             return ''
         if isinstance(value, float):
+            # Check for NaN
+            import math
+            if math.isnan(value):
+                return ''
             # Format numbers nicely
             if value.is_integer():
                 return str(int(value))

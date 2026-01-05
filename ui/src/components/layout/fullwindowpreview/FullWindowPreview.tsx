@@ -619,6 +619,7 @@ export function FullWindowPreview({
                   src={documentPreviewUrl}
                   title={title || 'Document preview'}
                   className="w-full h-full border-0"
+                  style={{ overflow: 'auto' }}
                   onLoad={handleDocumentLoad}
                   onError={handleDocumentError}
                   onContextMenu={(e) => {

@@ -19,17 +19,6 @@ export function useDocumentPreview(
   useEffect(() => {
     setDocumentError(null);
     setDocumentLoading(!!isDocumentFile);
-
-    // Set a timeout to show error if document takes too long to load
-    // Large XLSX files can take 30+ seconds to process
-    if (isDocumentFile) {
-      const timer = setTimeout(() => {
-        setDocumentLoading(false);
-        setDocumentError('Document is taking too long to load. The file may be very large or the backend may be busy.');
-      }, 60000); // Give it 60 seconds for large files
-
-      return () => clearTimeout(timer);
-    }
   }, [documentPreviewUrl, isDocumentFile]);
 
   const handleDocumentLoad = useCallback(() => {
