@@ -4,6 +4,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname } from 'path';
+import {
+  logStartup,
+  logBackendStart,
+  logBackendError,
+  logWindowCreation,
+  logError,
+  logInfo
+} from '../src/utils/logger.js';
 
 // ES module compatibility - define __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -71,7 +79,8 @@ const getBackendPath = () => {
   const executableName = getBackendExecutableName();
   // Packaged app reads from resources; dev uses checked-in binary for convenience.
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, executableName);
+    // In onedir mode, backend is in a 'Focus' directory with the executable inside
+    return path.join(process.resourcesPath, 'Focus', executableName);
   }
   return path.resolve(__dirname, '../resources', executableName);
 };
@@ -79,7 +88,8 @@ const getBackendPath = () => {
 const getBackendCwd = () => {
   // Run backend from resources so relative storage/log paths live with the app.
   if (app.isPackaged) {
-    return process.resourcesPath;
+    // In onedir mode, run from the Focus directory where all dependencies are located
+    return path.join(process.resourcesPath, 'Focus');
   }
   // In dev, run from repo root/backend if available; otherwise use binary directory.
   const repoBackend = path.resolve(__dirname, '../../backend');
@@ -93,6 +103,7 @@ const startBackend = () => {
   // In dev mode (non-packaged), assume backend is started manually
   if (!app.isPackaged) {
     console.log('[Electron] Dev mode detected - skipping backend launch (start backend manually)');
+    logInfo('backend', 'Dev mode detected - backend should be started manually');
     return;
   }
 
@@ -104,8 +115,15 @@ const startBackend = () => {
   console.log('[Electron] App isPackaged:', app.isPackaged);
   console.log('[Electron] process.resourcesPath:', process.resourcesPath);
 
+  logInfo('backend', 'Starting backend', {
+    backendPath,
+    backendCwd,
+    isPackaged: app.isPackaged,
+  });
+
   if (!fs.existsSync(backendPath)) {
     console.error('[Electron] Backend binary not found at', backendPath);
+    logBackendError('Backend binary not found', undefined, { backendPath });
     dialog.showErrorBox('Backend Error', `Backend executable not found at: ${backendPath}`);
     return;
   }
@@ -116,23 +134,58 @@ const startBackend = () => {
     cwd: backendCwd,
   });
 
+  // Capture all output for debugging
+  let stdoutBuffer = '';
+  let stderrBuffer = '';
+
   backendProcess.stdout?.on('data', (data: Buffer) => {
-    console.log('[Backend]', data.toString().trim());
+    const output = data.toString();
+    stdoutBuffer += output;
+    console.log('[Backend stdout]', output.trim());
+    logInfo('backend_stdout', output.trim());
   });
 
   backendProcess.stderr?.on('data', (data: Buffer) => {
-    console.error('[Backend]', data.toString().trim());
+    const output = data.toString();
+    stderrBuffer += output;
+    console.error('[Backend stderr]', output.trim());
+    logError('backend_stderr', output.trim());
   });
 
   backendProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
     console.log('[Electron] Backend exited', { code, signal });
+
+    // Log captured output if backend failed
+    if (code !== 0) {
+      console.error('[Electron] Backend failed. Full stdout:', stdoutBuffer);
+      console.error('[Electron] Backend failed. Full stderr:', stderrBuffer);
+      logBackendStart('failed', {
+        exitCode: code,
+        signal,
+        stdout: stdoutBuffer.slice(-500), // Last 500 chars
+        stderr: stderrBuffer.slice(-500)
+      });
+
+      // Show error dialog with captured output
+      const errorMsg = stderrBuffer || stdoutBuffer || 'Unknown error';
+      dialog.showErrorBox(
+        'Backend Startup Failed',
+        `Backend exited with code ${code}\n\nError:\n${errorMsg.slice(-300)}`
+      );
+    } else {
+      logBackendStart('success', { exitCode: code, signal });
+    }
+
     backendProcess = null;
   });
 
   backendProcess.on('error', (err: Error) => {
     console.error('[Electron] Backend process error', err);
+    logBackendError('Backend process error', err);
     dialog.showErrorBox('Backend Error', `Failed to start backend: ${err.message}`);
   });
+
+  logBackendStart('started', { backendPath });
 };
 
 const stopBackend = () => {
@@ -191,6 +244,7 @@ function createSplashWindow() {
 
 async function createMainWindow() {
   console.log('[Electron] Creating main window...');
+  logWindowCreation('started');
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -253,10 +307,12 @@ async function createMainWindow() {
     clearTimeout(showTimeout);
     mainWindow?.show();
     splashWindow?.close();
+    logWindowCreation('success');
   });
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
     console.error('[Electron] Renderer failed to load:', errorCode, errorDescription);
+    logWindowCreation('failed', { errorCode, errorDescription });
     dialog.showErrorBox('Failed to Load', `The app failed to load: ${errorDescription}`);
   });
 
@@ -267,11 +323,14 @@ async function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+  logStartup();
+
   startBackend();
   createSplashWindow();
 
   createMainWindow().catch((err) => {
     console.error('[Electron] Failed to create main window:', err);
+    logError('window_creation', 'Failed to create main window', err);
     app.quit();
   });
 

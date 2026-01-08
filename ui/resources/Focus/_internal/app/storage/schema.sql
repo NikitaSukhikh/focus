@@ -1,0 +1,59 @@
+-- SQLite schema reference for core tables
+
+CREATE TABLE IF NOT EXISTS spaces (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    icon TEXT,
+    color TEXT,
+    position INTEGER NOT NULL DEFAULT 0,
+    object_count INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS objects (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    default_title TEXT NOT NULL DEFAULT '',
+    default_description TEXT,
+    custom_title TEXT,
+    custom_description TEXT,
+    tags JSON NOT NULL DEFAULT '[]',
+    metadata JSON NOT NULL DEFAULT '{}',
+    position INTEGER,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_objects_space_type ON objects (space_id, type);
+
+CREATE TABLE IF NOT EXISTS google_tokens (
+    user_id TEXT PRIMARY KEY,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    token_uri TEXT,
+    client_id TEXT,
+    client_secret TEXT,
+    scopes JSON NOT NULL DEFAULT '[]',
+    expires_at DATETIME,
+    user_email TEXT,
+    requires_reauth INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Undo / Redo event log (monotonic per-space sequence)
+CREATE TABLE IF NOT EXISTS undo_events (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    sequence INTEGER NOT NULL DEFAULT 0,
+    event_type TEXT NOT NULL,
+    event_data JSON NOT NULL,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_undone INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_undo_events_space_sequence ON undo_events (space_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_undo_events_space_undone ON undo_events (space_id, is_undone, sequence);

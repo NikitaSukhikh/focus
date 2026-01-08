@@ -82,9 +82,13 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         try {
           const defaultSpace = await spacesApi.create({ name: 'My Space' });
           console.log('[SPACE_STORE] Default space created:', defaultSpace);
+
+          // Increment fetch version to invalidate any in-flight requests
+          const newVersion = get()._fetchVersion + 1;
           set({
             spaces: [defaultSpace],
-            selectedSpaceId: defaultSpace.id
+            selectedSpaceId: defaultSpace.id,
+            _fetchVersion: newVersion
           });
           persistSelectedSpace(defaultSpace.id);
           return;
@@ -154,10 +158,21 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         const created = await spacesApi.create({ name });
         const spaces = get().spaces.filter((i) => i.id !== id);
         const updatedSpaces = [created, ...spaces];
-        set({ spaces: updatedSpaces, selectedSpaceId: created.id });
+
+        // Increment fetch version to prevent any in-flight loadSpaces from overwriting this
+        const newVersion = get()._fetchVersion + 1;
+        set({
+          spaces: updatedSpaces,
+          selectedSpaceId: created.id,
+          _fetchVersion: newVersion
+        });
         persistSelectedSpace(created.id);
+
         // Background refresh to stay in sync with backend ordering/counts.
-        void get().loadSpaces(created.id);
+        // Use setTimeout to defer this slightly so the UI updates first
+        setTimeout(() => {
+          void get().loadSpaces(created.id);
+        }, 100);
         return created;
       } catch (error) {
         console.error('Failed to commit space creation:', error);

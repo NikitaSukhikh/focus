@@ -35,7 +35,8 @@ const platformAssets =
       ? [path.join(__dirname, 'src', 'assets', 'focus.icns')]
       : [];
 
-const backendBinaryPath = path.join(__dirname, 'resources', backendExecutableName);
+// Backend is now a directory (onedir mode), not a single file
+const backendDirPath = path.join(__dirname, 'resources', 'Focus');
 
 const ensureResourceExists = (resourcePath: string) => {
   if (!fs.existsSync(resourcePath)) {
@@ -91,7 +92,7 @@ const config: ForgeConfig = {
     executableName: 'focus',
     // electron-packager expects icon without extension; it will pick .ico on Windows and .icns on macOS
     icon: path.join(__dirname, 'src', 'assets', 'focus'),
-    extraResource: [...commonAssets, ...platformAssets, ensureResourceExists(backendBinaryPath)],
+    extraResource: [...commonAssets, ...platformAssets, ensureResourceExists(backendDirPath)],
   },
   rebuildConfig: {},
   makers: platformMakers,
