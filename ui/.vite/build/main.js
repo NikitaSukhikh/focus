@@ -45,17 +45,17 @@ class D {
       console.warn("[Logger] Not initialized, skipping log");
       return;
     }
-    const w = {
+    const d = {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       level: e,
       event: o,
       message: n,
       data: r,
       error: s ? { message: s.message, stack: s.stack } : void 0
-    }, d = this.formatLogEntry(w) + `
+    }, w = this.formatLogEntry(d) + `
 `;
     try {
-      p.appendFileSync(this.logFilePath, d, "utf-8"), (e === "ERROR" || e === "CRITICAL" ? console.error : e === "WARNING" ? console.warn : console.log)(`[Logger] ${d.trim()}`);
+      p.appendFileSync(this.logFilePath, w, "utf-8"), (e === "ERROR" || e === "CRITICAL" ? console.error : e === "WARNING" ? console.warn : console.log)(`[Logger] ${w.trim()}`);
     } catch (g) {
       console.error("[Logger] Failed to write log:", g);
     }
@@ -74,14 +74,14 @@ class D {
     this.log("INFO", "installation", `Installation ${e}`, o);
   }
   logBackendStart(e, o) {
-    const n = e === "success" ? "INFO" : "ERROR";
+    const n = e === "failed" ? "ERROR" : "INFO";
     this.log(n, "backend_start", `Backend start ${e}`, o);
   }
   logBackendError(e, o, n) {
     this.log("ERROR", "backend_error", e, n, o);
   }
   logWindowCreation(e, o) {
-    const n = e === "success" ? "INFO" : "ERROR";
+    const n = e === "failed" ? "ERROR" : "INFO";
     this.log(n, "window_creation", `Window creation ${e}`, o);
   }
   logDatabaseOperation(e, o, n) {
@@ -119,22 +119,22 @@ function m() {
 function z(t) {
   m().logStartup(t);
 }
-function E(t, e) {
+function $(t, e) {
   m().logBackendStart(t, e);
 }
 function W(t, e, o) {
   m().logBackendError(t, e, o);
 }
-function $(t, e) {
+function P(t, e) {
   m().logWindowCreation(t, e);
 }
 function R(t, e, o, n) {
   m().logError(t, e, o, n);
 }
-function P(t, e, o) {
+function E(t, e, o) {
   m().logInfo(t, e, o);
 }
-const M = j(import.meta.url), h = A(M), T = process.platform === "darwin", q = {
+const M = j(import.meta.url), f = A(M), T = process.platform === "darwin", q = {
   win32: "Focus.exe",
   darwin: "Focus",
   linux: "Focus",
@@ -144,11 +144,11 @@ const M = j(import.meta.url), h = A(M), T = process.platform === "darwin", q = {
   android: "Focus",
   sunos: "Focus"
 };
-let i = null, f = null, u = null, v = !1;
+let i = null, h = null, u = null, v = !1;
 const H = () => {
   const t = [
-    a.join(h, "../src/assets/focus.ico"),
-    a.join(h, "../src/assets/focus.png"),
+    a.join(f, "../src/assets/focus.ico"),
+    a.join(f, "../src/assets/focus.png"),
     a.resolve(process.cwd(), "src", "assets", "focus.ico"),
     a.resolve(process.cwd(), "src", "assets", "focus.png"),
     a.resolve(process.cwd(), "ui", "src", "assets", "focus.ico"),
@@ -166,19 +166,19 @@ const H = () => {
   !i || i.isDestroyed() || i.webContents.send("fullwindow-preview:close-request");
 }, V = () => q[process.platform] ?? "Focus", U = () => {
   const t = V();
-  return c.isPackaged ? a.join(process.resourcesPath, "Focus", t) : a.resolve(h, "../resources", t);
+  return c.isPackaged ? a.join(process.resourcesPath, "Focus", t) : a.resolve(f, "../resources", t);
 }, K = () => {
   if (c.isPackaged)
     return a.join(process.resourcesPath, "Focus");
-  const t = a.resolve(h, "../../backend");
-  return x.existsSync(t) ? t : a.resolve(h, "../resources");
+  const t = a.resolve(f, "../../backend");
+  return x.existsSync(t) ? t : a.resolve(f, "../resources");
 }, J = () => {
   if (!c.isPackaged) {
-    console.log("[Electron] Dev mode detected - skipping backend launch (start backend manually)"), P("backend", "Dev mode detected - backend should be started manually");
+    console.log("[Electron] Dev mode detected - skipping backend launch (start backend manually)"), E("backend", "Dev mode detected - backend should be started manually");
     return;
   }
   const t = U(), e = K();
-  if (console.log("[Electron] Backend path:", t), console.log("[Electron] Backend CWD:", e), console.log("[Electron] App isPackaged:", c.isPackaged), console.log("[Electron] process.resourcesPath:", process.resourcesPath), P("backend", "Starting backend", {
+  if (console.log("[Electron] Backend path:", t), console.log("[Electron] Backend CWD:", e), console.log("[Electron] App isPackaged:", c.isPackaged), console.log("[Electron] process.resourcesPath:", process.resourcesPath), E("backend", "Starting backend", {
     backendPath: t,
     backendCwd: e,
     isPackaged: c.isPackaged
@@ -193,33 +193,33 @@ const H = () => {
   let o = "", n = "";
   u.stdout?.on("data", (r) => {
     const s = r.toString();
-    o += s, console.log("[Backend stdout]", s.trim()), P("backend_stdout", s.trim());
+    o += s, console.log("[Backend stdout]", s.trim()), E("backend_stdout", s.trim());
   }), u.stderr?.on("data", (r) => {
     const s = r.toString();
-    n += s, console.error("[Backend stderr]", s.trim()), R("backend_stderr", s.trim());
+    n += s, /error|exception|traceback|failed/i.test(s) ? (console.error("[Backend stderr]", s.trim()), R("backend_stderr", s.trim())) : (console.log("[Backend stderr]", s.trim()), E("backend_stderr", s.trim()));
   }), u.on("exit", (r, s) => {
     if (console.log("[Electron] Backend exited", { code: r, signal: s }), r !== 0) {
-      console.error("[Electron] Backend failed. Full stdout:", o), console.error("[Electron] Backend failed. Full stderr:", n), E("failed", {
+      console.error("[Electron] Backend failed. Full stdout:", o), console.error("[Electron] Backend failed. Full stderr:", n), $("failed", {
         exitCode: r,
         signal: s,
         stdout: o.slice(-500),
         // Last 500 chars
         stderr: n.slice(-500)
       });
-      const w = n || o || "Unknown error";
+      const d = n || o || "Unknown error";
       k.showErrorBox(
         "Backend Startup Failed",
         `Backend exited with code ${r}
 
 Error:
-${w.slice(-300)}`
+${d.slice(-300)}`
       );
     } else
-      E("success", { exitCode: r, signal: s });
+      $("success", { exitCode: r, signal: s });
     u = null;
   }), u.on("error", (r) => {
     console.error("[Electron] Backend process error", r), W("Backend process error", r), k.showErrorBox("Backend Error", `Failed to start backend: ${r.message}`);
-  }), E("started", { backendPath: t });
+  }), $("started", { backendPath: t });
 }, N = () => {
   u && !u.killed && (console.log("[Electron] Stopping backend..."), u.kill()), u = null;
 }, X = async () => {
@@ -236,9 +236,9 @@ ${w.slice(-300)}`
   } catch (t) {
     console.warn("[Electron] Failed to inspect webview storage", t);
   }
-}, Q = a.join(h, "preload.cjs");
+}, Q = a.join(f, "preload.cjs");
 function Y() {
-  console.log("[Electron] Creating splash window..."), f = new y({
+  console.log("[Electron] Creating splash window..."), h = new y({
     width: 420,
     height: 260,
     frame: !1,
@@ -247,13 +247,13 @@ function Y() {
     resizable: !1,
     show: !0
   });
-  const t = a.join(h, "splash.html");
-  f.loadFile(t), f.on("closed", () => {
-    f = null;
+  const t = a.join(f, "splash.html");
+  h.loadFile(t), h.on("closed", () => {
+    h = null;
   });
 }
 async function B() {
-  console.log("[Electron] Creating main window..."), $("started"), i = new y({
+  console.log("[Electron] Creating main window..."), P("started"), i = new y({
     width: 1280,
     height: 800,
     minWidth: 800,
@@ -280,7 +280,7 @@ async function B() {
     }
   }), console.log("[Electron] Window created, loading renderer...");
   {
-    const e = a.join(h, "../renderer/main_window/index.html");
+    const e = a.join(f, "../renderer/main_window/index.html");
     console.log("[Electron] Loading production build:", e), await i.loadFile(e);
   }
   console.log("[Electron] Renderer loaded successfully"), i.setMenuBarVisibility(!1), i.webContents.on("before-input-event", (e, o) => {
@@ -288,12 +288,12 @@ async function B() {
     (o.type === "keyDown" || o.type === "rawKeyDown") && r && v && (e.preventDefault(), G());
   });
   const t = setTimeout(() => {
-    console.log("[Electron] Timeout reached, forcing window show..."), i?.show(), f?.close();
+    console.log("[Electron] Timeout reached, forcing window show..."), i?.show(), h?.close();
   }, 1e4);
   i.webContents.once("did-finish-load", () => {
-    console.log("[Electron] Main window ready, closing splash..."), clearTimeout(t), i?.show(), f?.close(), $("success");
+    console.log("[Electron] Main window ready, closing splash..."), clearTimeout(t), i?.show(), h?.close(), P("success");
   }), i.webContents.on("did-fail-load", (e, o, n) => {
-    console.error("[Electron] Renderer failed to load:", o, n), $("failed", { errorCode: o, errorDescription: n }), k.showErrorBox("Failed to Load", `The app failed to load: ${n}`);
+    console.error("[Electron] Renderer failed to load:", o, n), P("failed", { errorCode: o, errorDescription: n }), k.showErrorBox("Failed to Load", `The app failed to load: ${n}`);
   }), i.on("closed", () => {
     i = null, v = !1;
   });
@@ -338,7 +338,7 @@ l.handle("desktop:show-item-in-folder", async (t, e) => {
 });
 l.handle("desktop:arrange-windows-side-by-side", async (t) => {
   try {
-    const { screen: e, BrowserWindow: o } = await import("electron"), { exec: n } = await import("child_process"), { promisify: r } = await import("util"), s = r(n), w = e.getPrimaryDisplay(), { width: d, height: g } = w.workAreaSize, b = Math.floor(d / 2);
+    const { screen: e, BrowserWindow: o } = await import("electron"), { exec: n } = await import("child_process"), { promisify: r } = await import("util"), s = r(n), d = e.getPrimaryDisplay(), { width: w, height: g } = d.workAreaSize, b = Math.floor(w / 2);
     if (process.platform === "win32") {
       const C = `
         Add-Type @"
@@ -385,21 +385,21 @@ l.handle("desktop:write-file-to-clipboard", async (t, e) => {
     const { clipboard: o, nativeImage: n } = await import("electron"), r = await import("fs"), s = await import("path");
     if (!r.existsSync(e))
       return console.error("[Electron] File not found:", e), !1;
-    const w = s.extname(e).toLowerCase();
-    if ([".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(w)) {
-      const d = n.createFromPath(e);
-      return o.writeImage(d), console.log("[Electron] Image copied to clipboard:", e), !0;
+    const d = s.extname(e).toLowerCase();
+    if ([".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(d)) {
+      const w = n.createFromPath(e);
+      return o.writeImage(w), console.log("[Electron] Image copied to clipboard:", e), !0;
     }
     try {
-      const d = e.replace(/\//g, "\\");
+      const w = e.replace(/\//g, "\\");
       o.write({
-        text: d,
+        text: w,
         bookmark: e
       });
-      const g = d + "\0\0", b = Buffer.from(g, "ucs2");
+      const g = w + "\0\0", b = Buffer.from(g, "ucs2");
       return o.writeBuffer("FileNameW", b), console.log("[Electron] File copied to clipboard (multi-format):", e), !0;
-    } catch (d) {
-      console.warn("[Electron] Multi-format clipboard failed, trying FileNameW only:", d);
+    } catch (w) {
+      console.warn("[Electron] Multi-format clipboard failed, trying FileNameW only:", w);
       const g = e + "\0\0", b = Buffer.from(g, "ucs2");
       return o.writeBuffer("FileNameW", b), !0;
     }
@@ -418,7 +418,7 @@ l.handle("desktop:clear-clipboard", async () => {
 l.handle("desktop:open-auth-window", async (t, e) => {
   const o = e?.url;
   if (!o) return;
-  const n = e.width ?? 500, r = e.height ?? 600, s = e.title ?? "Authenticate", w = new y({
+  const n = e.width ?? 500, r = e.height ?? 600, s = e.title ?? "Authenticate", d = new y({
     width: n,
     height: r,
     title: s,
@@ -432,7 +432,7 @@ l.handle("desktop:open-auth-window", async (t, e) => {
       nodeIntegration: !1
     }
   });
-  w.setMenuBarVisibility(!1), await w.loadURL(o);
+  d.setMenuBarVisibility(!1), await d.loadURL(o);
 });
 l.handle("desktop:close-file-explorer", async () => {
   try {

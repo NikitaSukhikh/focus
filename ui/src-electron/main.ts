@@ -148,8 +148,18 @@ const startBackend = () => {
   backendProcess.stderr?.on('data', (data: Buffer) => {
     const output = data.toString();
     stderrBuffer += output;
-    console.error('[Backend stderr]', output.trim());
-    logError('backend_stderr', output.trim());
+
+    // Python prints some info to stderr even when not errors (like DB init messages)
+    // Only log as error if it contains actual error keywords
+    const isActualError = /error|exception|traceback|failed/i.test(output);
+
+    if (isActualError) {
+      console.error('[Backend stderr]', output.trim());
+      logError('backend_stderr', output.trim());
+    } else {
+      console.log('[Backend stderr]', output.trim());
+      logInfo('backend_stderr', output.trim());
+    }
   });
 
   backendProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {

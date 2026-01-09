@@ -13,6 +13,7 @@ export interface Space {
 }
 
 export interface SpaceCreate {
+  id?: string; // Optional client-provided UUID
   name: string;
   description?: string;
   icon?: string;

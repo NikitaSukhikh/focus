@@ -70,7 +70,11 @@ class SpaceCreate(SpaceBase):
     Used in POST /api/spaces endpoint.
     """
 
-    # All fields inherited from SpaceBase
+    # Optional client-provided ID (UUID v4 format)
+    # If not provided, backend will generate one
+    id: Optional[UUID] = None
+
+    # All other fields inherited from SpaceBase
     # position is handled server-side (append to end)
 
     model_config = ConfigDict(

@@ -48,7 +48,7 @@ router = APIRouter()
     tags=["Objects"]
 )
 async def list_objects_on_space(
-    space_id: UUID,
+    space_id: str,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
@@ -112,7 +112,7 @@ async def list_objects_on_space(
     tags=["Objects"]
 )
 async def create_object(
-    space_id: UUID,
+    space_id: str,
     object_data: ObjectCreate,
     session: AsyncSession = Depends(get_session)
 ) -> ObjectResponse:

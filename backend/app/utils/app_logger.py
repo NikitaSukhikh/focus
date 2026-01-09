@@ -61,7 +61,7 @@ class AppLogger:
             **kwargs
         }
 
-        level = "INFO" if status == "success" else "ERROR"
+        level = "ERROR" if status == "failed" else "INFO"
         log_with_context(self.logger, level, f"Database initialization {status}", **db_info)
 
     def log_space_operation(

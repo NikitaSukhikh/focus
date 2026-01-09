@@ -80,7 +80,12 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
       if (data.spaces.length === 0) {
         console.log('[SPACE_STORE] No spaces found, creating default space');
         try {
-          const defaultSpace = await spacesApi.create({ name: 'My Space' });
+          // Generate UUID on frontend for consistency
+          const defaultSpaceId = crypto.randomUUID();
+          const defaultSpace = await spacesApi.create({
+            id: defaultSpaceId,
+            name: 'My Space'
+          });
           console.log('[SPACE_STORE] Default space created:', defaultSpace);
 
           // Increment fetch version to invalidate any in-flight requests
@@ -130,10 +135,11 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
 
   addLocalSpace: (name: string) => {
     const { spaces } = get();
-    const tempId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    // Generate a proper UUID on the frontend - same format that backend would create
+    const spaceId = crypto.randomUUID();
     const now = new Date().toISOString();
     const draft: Space = {
-      id: tempId,
+      id: spaceId,
       name,
       description: '',
       icon: undefined,
@@ -145,45 +151,35 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
     };
     set({
       spaces: [draft, ...spaces],
-      selectedSpaceId: tempId,
+      selectedSpaceId: spaceId,
     });
-    persistSelectedSpace(tempId);
-    return tempId;
+    persistSelectedSpace(spaceId);
+    return spaceId;
   },
 
   commitSpace: async (id: string, name: string) => {
-    // If this is a temporary space, create it on the backend and replace the temp entry.
-    if (id.startsWith('temp-')) {
-      try {
-        const created = await spacesApi.create({ name });
-        const spaces = get().spaces.filter((i) => i.id !== id);
-        const updatedSpaces = [created, ...spaces];
+    try {
+      // Create space on backend with the client-provided UUID
+      const created = await spacesApi.create({ id, name });
 
-        // Increment fetch version to prevent any in-flight loadSpaces from overwriting this
-        const newVersion = get()._fetchVersion + 1;
-        set({
-          spaces: updatedSpaces,
-          selectedSpaceId: created.id,
-          _fetchVersion: newVersion
-        });
-        persistSelectedSpace(created.id);
+      // Increment fetch version to prevent any in-flight loadSpaces from overwriting this
+      const newVersion = get()._fetchVersion + 1;
+      set({
+        spaces: get().spaces.map((s) => (s.id === id ? created : s)),
+        selectedSpaceId: created.id,
+        _fetchVersion: newVersion
+      });
+      persistSelectedSpace(created.id);
 
-        // Background refresh to stay in sync with backend ordering/counts.
-        // Use setTimeout to defer this slightly so the UI updates first
-        setTimeout(() => {
-          void get().loadSpaces(created.id);
-        }, 100);
-        return created;
-      } catch (error) {
-        console.error('Failed to commit space creation:', error);
-        return null;
-      }
+      // Background refresh to stay in sync with backend ordering/counts.
+      setTimeout(() => {
+        void get().loadSpaces(created.id);
+      }, 100);
+      return created;
+    } catch (error) {
+      console.error('Failed to commit space creation:', error);
+      return null;
     }
-
-    // Otherwise, update existing.
-    await get().updateSpace(id, name);
-    persistSelectedSpace(id);
-    return get().spaces.find((i) => i.id === id) || null;
   },
 
   createSpace: async (name: string) => {
@@ -240,11 +236,6 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
 
     set({ spaces: newSpaces, selectedSpaceId: nextSelected });
     persistSelectedSpace(nextSelected);
-
-    // Skip backend call for local-only temp spaces
-    if (id.startsWith('temp-')) {
-      return;
-    }
 
     try {
       await spacesApi.delete(id);

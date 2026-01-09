@@ -1,1 +1,0 @@
-# Route package initializer for FastAPI endpoints.

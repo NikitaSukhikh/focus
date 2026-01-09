@@ -2,7 +2,7 @@
 
 
 import os
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
 
 # Collect app data files but exclude venv and other unnecessary directories
 def collect_app_files():
@@ -21,16 +21,48 @@ def collect_app_files():
 
     return datas
 
+# Collect aiosqlite and its dependencies
+aiosqlite_datas, aiosqlite_binaries, aiosqlite_hiddenimports = collect_all('aiosqlite')
+
+# Collect file processing libraries
+pil_datas, pil_binaries, pil_hiddenimports = collect_all('PIL')
+openpyxl_datas, openpyxl_binaries, openpyxl_hiddenimports = collect_all('openpyxl')
+ebooklib_datas, ebooklib_binaries, ebooklib_hiddenimports = collect_all('ebooklib')
+lxml_datas, lxml_binaries, lxml_hiddenimports = collect_all('lxml')
+pandas_datas, pandas_binaries, pandas_hiddenimports = collect_all('pandas')
+
 a = Analysis(
     ['app\\main.py'],
     pathex=[],
-    binaries=[],
-    datas=collect_app_files(),
+    binaries=aiosqlite_binaries + pil_binaries + openpyxl_binaries + ebooklib_binaries + lxml_binaries + pandas_binaries,
+    datas=collect_app_files() + aiosqlite_datas + pil_datas + openpyxl_datas + ebooklib_datas + lxml_datas + pandas_datas,
     hiddenimports=[
+        # Database
         'aiosqlite',
+        'aiosqlite.core',
+        'aiosqlite.cursor',
+        'aiosqlite.context',
         'sqlalchemy.dialects.sqlite.aiosqlite',
         'greenlet',
-    ],
+        # Image processing
+        'PIL',
+        'PIL.Image',
+        'PIL.ImageDraw',
+        'PIL.ImageFont',
+        'pillow_heif',
+        # Document processing
+        'openpyxl',
+        'openpyxl.cell',
+        'openpyxl.styles',
+        'ebooklib',
+        'ebooklib.epub',
+        'lxml',
+        'lxml.etree',
+        'lxml.html',
+        # Data processing
+        'pandas',
+        'numpy',
+    ] + aiosqlite_hiddenimports + pil_hiddenimports + openpyxl_hiddenimports + ebooklib_hiddenimports + lxml_hiddenimports + pandas_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

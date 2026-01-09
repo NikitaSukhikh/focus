@@ -69,9 +69,12 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
 
   const handleAddSpace = async () => {
     const defaultName = 'My First Space';
-    const tempId = addLocalSpace(defaultName);
-    setEditingId(tempId);
-    selectSpace(tempId);
+    const spaceId = addLocalSpace(defaultName);
+    setEditingId(spaceId);
+    selectSpace(spaceId);
+
+    // Immediately commit to backend with the UUID
+    await commitSpace(spaceId, defaultName);
   };
 
   const handleRenameSpace = async (id: string, newName: string) => {

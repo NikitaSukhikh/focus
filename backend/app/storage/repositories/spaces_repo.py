@@ -65,7 +65,7 @@ class SpacesRepository:
         try:
             position = await session_to_use.scalar(select(func.count(Space.id)))
             space = Space(
-                id=str(uuid4()),
+                id=str(space_data.id) if space_data.id else str(uuid4()),
                 name=space_data.name,
                 description=space_data.description,
                 icon=space_data.icon,

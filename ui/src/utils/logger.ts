@@ -162,7 +162,7 @@ class AppLogger {
   }
 
   logBackendStart(status: string, data?: Record<string, any>): void {
-    const level = status === 'success' ? LogLevel.INFO : LogLevel.ERROR;
+    const level = status === 'failed' ? LogLevel.ERROR : LogLevel.INFO;
     this.log(level, 'backend_start', `Backend start ${status}`, data);
   }
 
@@ -171,7 +171,7 @@ class AppLogger {
   }
 
   logWindowCreation(status: string, data?: Record<string, any>): void {
-    const level = status === 'success' ? LogLevel.INFO : LogLevel.ERROR;
+    const level = status === 'failed' ? LogLevel.ERROR : LogLevel.INFO;
     this.log(level, 'window_creation', `Window creation ${status}`, data);
   }
 

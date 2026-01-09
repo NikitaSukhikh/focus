@@ -1,9 +1,0 @@
-# Development dependencies for tooling and tests.
-
--r requirements.txt
-
-# Testing
-pytest>=7.4.0
-pytest-asyncio>=0.23.0
-pytest-cov>=4.1.0
-# Development dependencies for local testing, linting, and tooling.
