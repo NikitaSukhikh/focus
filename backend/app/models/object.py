@@ -258,6 +258,10 @@ class FileObjectCreate(ObjectBase):
         description="Path to the file"
     )
     mime_type: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Additional metadata (e.g., audio duration, image dimensions)"
+    )
 
     @field_validator("type")
     @classmethod

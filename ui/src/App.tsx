@@ -56,8 +56,14 @@ export function App() {
   const textFilePreviewCache = useRef<Record<string, string>>({});
 
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
+  const initialize = useSpaceStore((state) => state.initialize);
 
   usePersistedSpace();
+
+  // Initialize space store on mount to load persisted selected space
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
 
   // Calculate if any dialog is open
   const isAnyDialogOpen = isQuickAddOpen || isDeleteDialogOpen || isAddLinkDialogOpen;

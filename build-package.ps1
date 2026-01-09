@@ -198,6 +198,39 @@ if (-not $SkipCleanup) {
         }
     }
 
+    # Build Inno Setup installer
+    Write-Host "Building Inno Setup installer..." -ForegroundColor Yellow
+    $innoSetupScript = "installer\focus-installer.iss"
+
+    if (Test-Path $innoSetupScript) {
+        # Check if Inno Setup compiler is available
+        $iscc = Get-Command "iscc.exe" -ErrorAction SilentlyContinue
+
+        if ($iscc) {
+            Write-Host "  - Running Inno Setup compiler..." -ForegroundColor Gray
+            & iscc.exe $innoSetupScript
+
+            if ($LASTEXITCODE -eq 0) {
+                $innoInstaller = Get-ChildItem -Path $releaseDir -Filter "Focus-*-Setup.exe" |
+                    Where-Object { $_.Name -notlike "*Squirrel*" } |
+                    Select-Object -First 1
+
+                if ($innoInstaller) {
+                    Write-Host "  Created: $($innoInstaller.FullName)" -ForegroundColor Green
+                    $innoSize = $innoInstaller.Length / 1MB
+                    Write-Host "    Size: $([math]::Round($innoSize, 2)) MB" -ForegroundColor Gray
+                }
+            } else {
+                Write-Host "  Warning: Inno Setup compilation failed (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  Skipping: Inno Setup compiler (iscc.exe) not found in PATH" -ForegroundColor Gray
+            Write-Host "  Install from: https://jrsoftware.org/isdl.php" -ForegroundColor Gray
+        }
+    } else {
+        Write-Host "  Skipping: Installer script not found at $innoSetupScript" -ForegroundColor Gray
+    }
+
     Write-Host ""
 }
 

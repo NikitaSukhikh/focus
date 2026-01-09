@@ -1,0 +1,18 @@
+Focus - Desktop Organization Application
+
+This installer will guide you through the installation of Focus on your computer.
+
+Focus is a desktop application that helps you organize and manage your digital workspace with an intuitive tile-based interface.
+
+Before installation, please:
+- Close any running instances of Focus
+- Ensure you have at least 500 MB of free disk space
+- Have administrator privileges if installing to Program Files
+
+The installer will:
+1. Allow you to choose the installation directory (default: C:\Program Files\Focus)
+2. Copy all application files to the selected directory
+3. Create shortcuts on your desktop and Start Menu (optional)
+4. Register the application for easy uninstallation
+
+Click Next to continue with the installation.

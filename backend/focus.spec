@@ -30,12 +30,13 @@ openpyxl_datas, openpyxl_binaries, openpyxl_hiddenimports = collect_all('openpyx
 ebooklib_datas, ebooklib_binaries, ebooklib_hiddenimports = collect_all('ebooklib')
 lxml_datas, lxml_binaries, lxml_hiddenimports = collect_all('lxml')
 pandas_datas, pandas_binaries, pandas_hiddenimports = collect_all('pandas')
+mutagen_datas, mutagen_binaries, mutagen_hiddenimports = collect_all('mutagen')
 
 a = Analysis(
     ['app\\main.py'],
     pathex=[],
-    binaries=aiosqlite_binaries + pil_binaries + openpyxl_binaries + ebooklib_binaries + lxml_binaries + pandas_binaries,
-    datas=collect_app_files() + aiosqlite_datas + pil_datas + openpyxl_datas + ebooklib_datas + lxml_datas + pandas_datas,
+    binaries=aiosqlite_binaries + pil_binaries + openpyxl_binaries + ebooklib_binaries + lxml_binaries + pandas_binaries + mutagen_binaries,
+    datas=collect_app_files() + aiosqlite_datas + pil_datas + openpyxl_datas + ebooklib_datas + lxml_datas + pandas_datas + mutagen_datas,
     hiddenimports=[
         # Database
         'aiosqlite',
@@ -62,7 +63,13 @@ a = Analysis(
         # Data processing
         'pandas',
         'numpy',
-    ] + aiosqlite_hiddenimports + pil_hiddenimports + openpyxl_hiddenimports + ebooklib_hiddenimports + lxml_hiddenimports + pandas_hiddenimports,
+        # Audio processing
+        'mutagen',
+        'mutagen.mp3',
+        'mutagen.mp4',
+        'mutagen.flac',
+        'mutagen.wave',
+    ] + aiosqlite_hiddenimports + pil_hiddenimports + openpyxl_hiddenimports + ebooklib_hiddenimports + lxml_hiddenimports + pandas_hiddenimports + mutagen_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

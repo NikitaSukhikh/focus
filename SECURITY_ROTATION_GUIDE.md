@@ -10,7 +10,7 @@ The following credentials were exposed in Git history and **MUST BE REVOKED IMME
 
 **Exposed in commits:**
 - `205c2c0f` (committed Dec 23, 2025)
-- Multiple log files in `backend/app/assistant/backend/logs/`
+- Multiple log files in `backend/app/assistant/assist-backend/logs/`
 
 **Exposed Values:**
 - Client ID: `29879173672-dlbfg0ea9cvmr69afembebpi1reqbg55.apps.googleusercontent.com`
@@ -46,7 +46,7 @@ The following credentials were exposed in Git history and **MUST BE REVOKED IMME
    ```
 
 5. **Re-authenticate:**
-   - Delete existing tokens: `rm -rf backend/app/assistant/backend/data/gdrive_tokens/`
+   - Delete existing tokens: `rm -rf backend/app/assistant/assist-backend/data/gdrive_tokens/`
    - Restart the application
    - Complete OAuth flow to generate new tokens
 
@@ -70,7 +70,7 @@ All OAuth refresh tokens and access tokens in the logs should automatically beco
 
 ### Files Removed from History:
 
-- `backend/app/assistant/backend/logs/` (84 log files)
+- `backend/app/assistant/assist-backend/logs/` (84 log files)
 - `backend/logs/` (2 log files)
 - `logs/` (1 log file)
 
@@ -124,7 +124,7 @@ git clone git@github.com:davincilab-soft/focus.git
 
 Update your logging configuration to exclude sensitive headers:
 
-**File:** `backend/app/assistant/backend/logs/` (or wherever logging is configured)
+**File:** `backend/app/assistant/assist-backend/logs/` (or wherever logging is configured)
 
 Ensure OAuth requests don't log:
 - `Authorization` headers

@@ -63,11 +63,11 @@ storage/local_files/data/
 storage/local_files/cache/
 
 # Test data and downloads
-backend/app/assistant/backend/data/gdrive_downloads/
-backend/app/assistant/backend/data/uploads/
-backend/app/assistant/backend/generated_invoices/
-backend/app/assistant/backend/invoices/
-backend/app/assistant/backend/data/gdrive_tokens/
+backend/app/assistant/assist-backend/data/gdrive_downloads/
+backend/app/assistant/assist-backend/data/uploads/
+backend/app/assistant/assist-backend/generated_invoices/
+backend/app/assistant/assist-backend/invoices/
+backend/app/assistant/assist-backend/data/gdrive_tokens/
 *.pdf
 
 # Claude Code files
