@@ -119,6 +119,7 @@ class UndoEvent(Base):
     """Undo events table for undo/redo functionality."""
 
     __tablename__ = "undo_events"
+    __mapper_args__ = {"confirm_deleted_rows": False}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     space_id = Column(String, ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True)

@@ -28,6 +28,15 @@ export async function openExternalUrl(url: string): Promise<void> {
 }
 
 /**
+ * Opens a file with the OS default handler (or OS picker when no default exists).
+ */
+export async function openFilePath(filePath: string): Promise<void> {
+  if (!filePath) return;
+  const api = (window as any).desktopAPI as DesktopAPI;
+  return api.openFilePath(filePath);
+}
+
+/**
  * Open an auth window for OAuth flows.
  */
 export async function openAuthWindow(

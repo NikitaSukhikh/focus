@@ -1,4 +1,5 @@
 import React from 'react';
+import { TEXT_FONT_SIZE, TEXT_LINE_HEIGHT } from './dimensionHelpers';
 
 interface TextContentProps {
   content: string;
@@ -23,13 +24,13 @@ export function TextContent({ content, isSelected, hoverScaleClass }: TextConten
       <div
         className={`leading-relaxed ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}
         style={{
-          fontSize: '16px',
-          lineHeight: '1.6',
+          fontSize: `${TEXT_FONT_SIZE}px`,
+          lineHeight: TEXT_LINE_HEIGHT,
         }}
       >
         <div className="font-semibold">{firstTextLine}</div>
         {remainingText && (
-          <div className="whitespace-pre-wrap" style={{ lineHeight: '1.6' }}>
+          <div className="whitespace-pre-wrap" style={{ lineHeight: TEXT_LINE_HEIGHT }}>
             {remainingText}
           </div>
         )}

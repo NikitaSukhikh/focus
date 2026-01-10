@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Z_INDEX } from '../../../constants/zIndex';
+import { TEXT_WIDTH, TEXT_FONT_SIZE, TEXT_FONT_WEIGHT, TEXT_LINE_HEIGHT } from './tile/dimensionHelpers';
 
 interface InlineTextEditorProps {
   x: number;
@@ -21,20 +22,32 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isSavingRef = useRef(false);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Reset saving flag when component mounts
+    isSavingRef.current = false;
+
     if (textareaRef.current) {
       textareaRef.current.focus();
-      // Place cursor at the end
+      // Place cursor at the end (only on mount)
       textareaRef.current.setSelectionRange(content.length, content.length);
       // Initial auto-resize
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-      textareaRef.current.style.width = 'auto';
-      const contentWidth = textareaRef.current.scrollWidth;
-      textareaRef.current.style.width = Math.max(360, contentWidth + 20) + 'px';
+      // Set initial width
+      textareaRef.current.style.width = `${TEXT_WIDTH}px`;
     }
-  }, [content.length, x, y]);
+
+    // Cleanup on unmount
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
+    // Only run on mount (x, y change = new editor instance)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [x, y]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Escape to cancel
@@ -62,8 +75,13 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
     // Prevent double-save if already saving
     if (isSavingRef.current) return;
 
+    // Clear any existing timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+
     // Use setTimeout to ensure blur happens after any click events
-    setTimeout(() => {
+    blurTimeoutRef.current = setTimeout(() => {
       if (isSavingRef.current) return;
 
       isSavingRef.current = true;
@@ -96,29 +114,27 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         padding: '6px 8px',
         margin: '0',
         fontFamily: 'inherit',
-        fontSize: '16px',
-        fontWeight: 500,
-        lineHeight: '1.6',
+        fontSize: `${TEXT_FONT_SIZE}px`,
+        fontWeight: TEXT_FONT_WEIGHT,
+        lineHeight: TEXT_LINE_HEIGHT,
         background: 'white',
         borderRadius: '8px',
         boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
         border: '1px solid var(--color-border-strong)',
         color: 'var(--color-text-primary)',
-        width: 'auto',
-        minWidth: '360px',
+        width: `${TEXT_WIDTH}px`,
         height: 'auto',
         overflow: 'hidden',
+        whiteSpace: 'pre-wrap',
+        wordWrap: 'break-word',
         zIndex: Z_INDEX.CONTENT_DRAGGING,
       }}
       rows={1}
       onInput={(e) => {
-        // Auto-resize textarea based on content
+        // Auto-resize height only (width is fixed)
         const target = e.target as HTMLTextAreaElement;
         target.style.height = 'auto';
         target.style.height = target.scrollHeight + 'px';
-        target.style.width = 'auto';
-        const contentWidth = target.scrollWidth;
-        target.style.width = Math.max(360, contentWidth + 20) + 'px';
       }}
     />
   );

@@ -59,7 +59,9 @@ function Run-Command {
                 } else {
                     $_.ToString()
                 }
-                Write-ToLog $line
+                # Remove ANSI escape codes and non-ASCII characters
+                $cleanLine = $line -replace '\x1b\[[0-9;]*m', '' -replace '[^\x00-\x7F]', ''
+                Write-ToLog $cleanLine
                 Write-Host $line
             }
         } else {
@@ -69,7 +71,9 @@ function Run-Command {
                 } else {
                     $_.ToString()
                 }
-                Write-ToLog $line
+                # Remove ANSI escape codes and non-ASCII characters
+                $cleanLine = $line -replace '\x1b\[[0-9;]*m', '' -replace '[^\x00-\x7F]', ''
+                Write-ToLog $cleanLine
                 Write-Host $line
             }
         }

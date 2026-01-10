@@ -1,6 +1,6 @@
-import { app as c, session as I, BrowserWindow as y, ipcMain as l, dialog as k, shell as O } from "electron";
+import { app as c, session as I, BrowserWindow as y, ipcMain as d, dialog as k, shell as O } from "electron";
 import { spawn as L } from "child_process";
-import * as p from "fs";
+import * as w from "fs";
 import v from "fs";
 import * as S from "path";
 import a, { dirname as A } from "path";
@@ -13,14 +13,14 @@ class D {
   }
   resolveLogFilePath() {
     const e = c.getPath("userData"), o = S.join(e, "logs");
-    return p.existsSync(o) || p.mkdirSync(o, { recursive: !0 }), S.join(o, "focus-app.log");
+    return w.existsSync(o) || w.mkdirSync(o, { recursive: !0 }), S.join(o, "focus-app.log");
   }
   initialize() {
     try {
-      const e = p.existsSync(this.logFilePath);
-      e || p.writeFileSync(this.logFilePath, "", "utf-8");
-      const o = p.statSync(this.logFilePath);
-      o.size > 10 * 1024 * 1024 && this.rotateLogFile(), e && o.size > 0 && p.appendFileSync(this.logFilePath, `
+      const e = w.existsSync(this.logFilePath);
+      e || w.writeFileSync(this.logFilePath, "", "utf-8");
+      const o = w.statSync(this.logFilePath);
+      o.size > 10 * 1024 * 1024 && this.rotateLogFile(), e && o.size > 0 && w.appendFileSync(this.logFilePath, `
 `, "utf-8"), this.isInitialized = !0, this.log("INFO", "logger_init", "Logger initialized", {
         logFilePath: this.logFilePath
       });
@@ -31,7 +31,7 @@ class D {
   rotateLogFile() {
     try {
       const e = `${this.logFilePath}.old`;
-      p.existsSync(e) && p.unlinkSync(e), p.renameSync(this.logFilePath, e), p.writeFileSync(this.logFilePath, "", "utf-8");
+      w.existsSync(e) && w.unlinkSync(e), w.renameSync(this.logFilePath, e), w.writeFileSync(this.logFilePath, "", "utf-8");
     } catch (e) {
       console.error("[Logger] Failed to rotate log file:", e);
     }
@@ -49,17 +49,17 @@ class D {
       console.warn("[Logger] Not initialized, skipping log");
       return;
     }
-    const d = {
+    const p = {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       level: e,
       event: o,
       message: n,
       data: r,
       error: s ? { message: s.message, stack: s.stack } : void 0
-    }, w = this.formatLogEntry(d) + `
+    }, l = this.formatLogEntry(p) + `
 `;
     try {
-      p.appendFileSync(this.logFilePath, w, "utf-8"), (e === "ERROR" || e === "CRITICAL" ? console.error : e === "WARNING" ? console.warn : console.log)(`[Logger] ${w.trim()}`);
+      w.appendFileSync(this.logFilePath, l, "utf-8"), (e === "ERROR" || e === "CRITICAL" ? console.error : e === "WARNING" ? console.warn : console.log)(`[Logger] ${l.trim()}`);
     } catch (g) {
       console.error("[Logger] Failed to write log:", g);
     }
@@ -116,9 +116,9 @@ class D {
     return this.logFilePath;
   }
 }
-let E = null;
+let F = null;
 function m() {
-  return E || (E = new D()), E;
+  return F || (F = new D()), F;
 }
 function z(t) {
   m().logStartup(t);
@@ -135,7 +135,7 @@ function P(t, e) {
 function R(t, e, o, n) {
   m().logError(t, e, o, n);
 }
-function F(t, e, o) {
+function E(t, e, o) {
   m().logInfo(t, e, o);
 }
 const M = j(import.meta.url), f = A(M), T = process.platform === "darwin", q = {
@@ -178,11 +178,11 @@ const H = () => {
   return v.existsSync(t) ? t : a.resolve(f, "../resources");
 }, J = () => {
   if (!c.isPackaged) {
-    console.log("[Electron] Dev mode detected - skipping backend launch (start backend manually)"), F("backend", "Dev mode detected - backend should be started manually");
+    console.log("[Electron] Dev mode detected - skipping backend launch (start backend manually)"), E("backend", "Dev mode detected - backend should be started manually");
     return;
   }
   const t = U(), e = K();
-  if (console.log("[Electron] Backend path:", t), console.log("[Electron] Backend CWD:", e), console.log("[Electron] App isPackaged:", c.isPackaged), console.log("[Electron] process.resourcesPath:", process.resourcesPath), F("backend", "Starting backend", {
+  if (console.log("[Electron] Backend path:", t), console.log("[Electron] Backend CWD:", e), console.log("[Electron] App isPackaged:", c.isPackaged), console.log("[Electron] process.resourcesPath:", process.resourcesPath), E("backend", "Starting backend", {
     backendPath: t,
     backendCwd: e,
     isPackaged: c.isPackaged
@@ -197,12 +197,12 @@ const H = () => {
   let o = "", n = "";
   u.stdout?.on("data", (r) => {
     const s = r.toString();
-    o += s, console.log("[Backend stdout]", s.trim()), F("backend_stdout", s.trim());
+    o += s, console.log("[Backend stdout]", s.trim()), E("backend_stdout", s.trim());
   }), u.stderr?.on("data", (r) => {
     const s = r.toString();
-    n += s, /error|exception|traceback|failed/i.test(s) ? (console.error("[Backend stderr]", s.trim()), R("backend_stderr", s.trim())) : (console.log("[Backend stderr]", s.trim()), F("backend_stderr", s.trim()));
+    n += s, /error|exception|traceback|failed/i.test(s) ? (console.error("[Backend stderr]", s.trim()), R("backend_stderr", s.trim())) : (console.log("[Backend stderr]", s.trim()), E("backend_stderr", s.trim()));
   }), u.on("exit", (r, s) => {
-    if (console.log("[Electron] Backend exited", { code: r, signal: s }), r !== 0) {
+    if (console.log("[Electron] Backend exited", { code: r, signal: s }), !(s === "SIGTERM" || r === 0) && r !== 0) {
       console.error("[Electron] Backend failed. Full stdout:", o), console.error("[Electron] Backend failed. Full stderr:", n), $("failed", {
         exitCode: r,
         signal: s,
@@ -210,13 +210,13 @@ const H = () => {
         // Last 500 chars
         stderr: n.slice(-500)
       });
-      const d = n || o || "Unknown error";
+      const l = n || o || "Unknown error";
       k.showErrorBox(
         "Backend Startup Failed",
         `Backend exited with code ${r}
 
 Error:
-${d.slice(-300)}`
+${l.slice(-300)}`
       );
     } else
       $("success", { exitCode: r, signal: s });
@@ -322,10 +322,10 @@ c.on("window-all-closed", () => {
 c.on("before-quit", () => {
   N();
 });
-l.on("fullwindow-preview:state", (t, e) => {
+d.on("fullwindow-preview:state", (t, e) => {
   x = !!e;
 });
-l.handle("desktop:open-dialog", async (t, e) => {
+d.handle("desktop:open-dialog", async (t, e) => {
   const o = y.getFocusedWindow() || i;
   if (!o)
     throw new Error("No browser window available");
@@ -334,15 +334,15 @@ l.handle("desktop:open-dialog", async (t, e) => {
     ...e
   });
 });
-l.handle("desktop:open-external", async (t, e) => {
+d.handle("desktop:open-external", async (t, e) => {
   typeof e != "string" || !e.trim() || await O.openExternal(e);
 });
-l.handle("desktop:show-item-in-folder", async (t, e) => {
+d.handle("desktop:show-item-in-folder", async (t, e) => {
   typeof e != "string" || !e.trim() || O.showItemInFolder(e);
 });
-l.handle("desktop:arrange-windows-side-by-side", async (t) => {
+d.handle("desktop:arrange-windows-side-by-side", async (t) => {
   try {
-    const { screen: e, BrowserWindow: o } = await import("electron"), { exec: n } = await import("child_process"), { promisify: r } = await import("util"), s = r(n), d = e.getPrimaryDisplay(), { width: w, height: g } = d.workAreaSize, b = Math.floor(w / 2);
+    const { screen: e, BrowserWindow: o } = await import("electron"), { exec: n } = await import("child_process"), { promisify: r } = await import("util"), s = r(n), p = e.getPrimaryDisplay(), { width: l, height: g } = p.workAreaSize, b = Math.floor(l / 2);
     if (process.platform === "win32") {
       const C = `
         Add-Type @"
@@ -382,28 +382,28 @@ l.handle("desktop:arrange-windows-side-by-side", async (t) => {
     return console.error("[Electron] Failed to arrange windows:", e), !1;
   }
 });
-l.handle("desktop:write-file-to-clipboard", async (t, e) => {
+d.handle("desktop:write-file-to-clipboard", async (t, e) => {
   if (typeof e != "string" || !e.trim())
     return !1;
   try {
     const { clipboard: o, nativeImage: n } = await import("electron"), r = await import("fs"), s = await import("path");
     if (!r.existsSync(e))
       return console.error("[Electron] File not found:", e), !1;
-    const d = s.extname(e).toLowerCase();
-    if ([".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(d)) {
-      const w = n.createFromPath(e);
-      return o.writeImage(w), console.log("[Electron] Image copied to clipboard:", e), !0;
+    const p = s.extname(e).toLowerCase();
+    if ([".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(p)) {
+      const l = n.createFromPath(e);
+      return o.writeImage(l), console.log("[Electron] Image copied to clipboard:", e), !0;
     }
     try {
-      const w = e.replace(/\//g, "\\");
+      const l = e.replace(/\//g, "\\");
       o.write({
-        text: w,
+        text: l,
         bookmark: e
       });
-      const g = w + "\0\0", b = Buffer.from(g, "ucs2");
+      const g = l + "\0\0", b = Buffer.from(g, "ucs2");
       return o.writeBuffer("FileNameW", b), console.log("[Electron] File copied to clipboard (multi-format):", e), !0;
-    } catch (w) {
-      console.warn("[Electron] Multi-format clipboard failed, trying FileNameW only:", w);
+    } catch (l) {
+      console.warn("[Electron] Multi-format clipboard failed, trying FileNameW only:", l);
       const g = e + "\0\0", b = Buffer.from(g, "ucs2");
       return o.writeBuffer("FileNameW", b), !0;
     }
@@ -411,7 +411,7 @@ l.handle("desktop:write-file-to-clipboard", async (t, e) => {
     return console.error("[Electron] Failed to copy file to clipboard:", o), !1;
   }
 });
-l.handle("desktop:clear-clipboard", async () => {
+d.handle("desktop:clear-clipboard", async () => {
   try {
     const { clipboard: t } = await import("electron");
     return t.clear(), console.log("[Electron] Clipboard cleared"), !0;
@@ -419,10 +419,10 @@ l.handle("desktop:clear-clipboard", async () => {
     return console.error("[Electron] Failed to clear clipboard:", t), !1;
   }
 });
-l.handle("desktop:open-auth-window", async (t, e) => {
+d.handle("desktop:open-auth-window", async (t, e) => {
   const o = e?.url;
   if (!o) return;
-  const n = e.width ?? 500, r = e.height ?? 600, s = e.title ?? "Authenticate", d = new y({
+  const n = e.width ?? 500, r = e.height ?? 600, s = e.title ?? "Authenticate", p = new y({
     width: n,
     height: r,
     title: s,
@@ -436,9 +436,9 @@ l.handle("desktop:open-auth-window", async (t, e) => {
       nodeIntegration: !1
     }
   });
-  d.setMenuBarVisibility(!1), await d.loadURL(o);
+  p.setMenuBarVisibility(!1), await p.loadURL(o);
 });
-l.handle("desktop:close-file-explorer", async () => {
+d.handle("desktop:close-file-explorer", async () => {
   try {
     if (process.platform === "win32") {
       const { exec: t } = await import("child_process"), { promisify: e } = await import("util"), r = await e(t)(`powershell -ExecutionPolicy Bypass -Command "${`
@@ -493,13 +493,13 @@ l.handle("desktop:close-file-explorer", async () => {
     return console.error("[Electron] Failed to close external windows:", t), !1;
   }
 });
-l.handle("window:minimize", () => {
+d.handle("window:minimize", () => {
   i?.minimize();
 });
-l.handle("window:maximize", () => {
+d.handle("window:maximize", () => {
   i?.isMaximized() ? i?.unmaximize() : i?.maximize();
 });
-l.handle("window:close", () => {
+d.handle("window:close", () => {
   i?.close();
 });
-l.handle("window:is-maximized", () => i?.isMaximized() ?? !1);
+d.handle("window:is-maximized", () => i?.isMaximized() ?? !1);

@@ -14,6 +14,7 @@ import { undoApi } from '../../../../api/undo';
 import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
+import { TEXT_CHAR_LIMIT } from '../tile/dimensionHelpers';
 
 interface TextCreationParams {
   selectedSpace: any;
@@ -40,7 +41,7 @@ export const useCenterPaneTextCreation = ({
       return;
     }
 
-    const formattedContent = autoWrapText(content, 22);
+    const formattedContent = autoWrapText(content, TEXT_CHAR_LIMIT);
     const { x, y } = pendingTextPosition;
     const clamped = clampToBoundaries(x, y);
 

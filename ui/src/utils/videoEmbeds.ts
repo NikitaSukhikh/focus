@@ -5,6 +5,13 @@ export interface VideoEmbed {
   embedUrl: string;
 }
 
+export interface VideoEmbedRenderOptions {
+  src: string;
+  useWebview: boolean;
+  webviewPartition?: string;
+  webviewReferrer?: string;
+}
+
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
 const VIMEO_HOSTS = ['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'];
 
@@ -91,4 +98,78 @@ export const getVideoEmbed = (rawUrl?: string): VideoEmbed | null => {
   }
 
   return null;
+};
+
+export const getYoutubeWatchUrl = (embedUrl: string): string => {
+  try {
+    const parsed = new URL(embedUrl);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    let videoId: string | null = null;
+
+    const embedIndex = segments.indexOf('embed');
+    if (embedIndex >= 0 && segments[embedIndex + 1]) {
+      videoId = segments[embedIndex + 1];
+    } else if (segments[0]) {
+      videoId = segments[0];
+    }
+
+    if (!videoId) return embedUrl;
+
+    const params = new URLSearchParams();
+    params.set('v', videoId);
+    const start = parsed.searchParams.get('start');
+    if (start) {
+      params.set('t', start);
+    }
+
+    return `https://www.youtube.com/watch?${params.toString()}`;
+  } catch {
+    return embedUrl;
+  }
+};
+
+export const getYoutubeEmbedFrameUrl = (embedUrl: string): string => {
+  try {
+    const parsed = new URL(embedUrl);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    let videoId: string | null = null;
+
+    const embedIndex = segments.indexOf('embed');
+    if (embedIndex >= 0 && segments[embedIndex + 1]) {
+      videoId = segments[embedIndex + 1];
+    } else if (segments[0]) {
+      videoId = segments[0];
+    }
+
+    if (!videoId) return embedUrl;
+
+    const params = new URLSearchParams(parsed.searchParams);
+    params.set('autoplay', '0');
+    params.set('playsinline', '1');
+    params.set('modestbranding', '1');
+    params.set('rel', '0');
+
+    return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+  } catch {
+    return embedUrl;
+  }
+};
+
+export const getVideoEmbedRenderOptions = (videoEmbed: VideoEmbed): VideoEmbedRenderOptions => {
+  const isElectron = typeof window !== 'undefined' && !!(window as any).desktopAPI;
+  const isYoutube = videoEmbed.provider === 'youtube';
+
+  if (isElectron && isYoutube) {
+    return {
+      src: getYoutubeEmbedFrameUrl(videoEmbed.embedUrl),
+      useWebview: true,
+      webviewPartition: 'persist:focus-webview',
+      webviewReferrer: 'https://www.youtube.com',
+    };
+  }
+
+  return {
+    src: videoEmbed.embedUrl,
+    useWebview: false,
+  };
 };

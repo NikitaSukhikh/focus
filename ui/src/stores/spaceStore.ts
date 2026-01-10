@@ -21,6 +21,24 @@ interface SpaceStore {
 }
 
 const STORAGE_KEY = 'focus:selectedSpaceId';
+const LOAD_RETRY_BASE_MS = 1000;
+const LOAD_RETRY_MAX_MS = 8000;
+const LOAD_RETRY_MAX_ATTEMPTS = 6;
+
+let loadRetryAttempt = 0;
+let loadRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+const clearLoadRetryTimer = () => {
+  if (loadRetryTimer) {
+    clearTimeout(loadRetryTimer);
+    loadRetryTimer = null;
+  }
+};
+
+const resetLoadRetry = () => {
+  clearLoadRetryTimer();
+  loadRetryAttempt = 0;
+};
 
 const persistSelectedSpace = (id: string | null) => {
   try {
@@ -53,6 +71,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
   },
 
   loadSpaces: async (preferredSelectedId?: string | null) => {
+    clearLoadRetryTimer();
     const currentVersion = get()._fetchVersion + 1;
     set({ _fetchVersion: currentVersion });
 
@@ -96,6 +115,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
             _fetchVersion: newVersion
           });
           persistSelectedSpace(defaultSpace.id);
+          resetLoadRetry();
           return;
         } catch (error) {
           console.error('[SPACE_STORE] Failed to create default space:', error);
@@ -117,9 +137,22 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         selectedSpaceId: nextSelected
       });
       persistSelectedSpace(nextSelected);
+      resetLoadRetry();
     } catch (error) {
       console.error('[SPACE_STORE] Failed to load spaces:', error);
-      set({ spaces: [] });
+      if (get().spaces.length === 0) {
+        set({ spaces: [] });
+      }
+
+      if (loadRetryAttempt < LOAD_RETRY_MAX_ATTEMPTS) {
+        const delay = Math.min(LOAD_RETRY_BASE_MS * Math.pow(2, loadRetryAttempt), LOAD_RETRY_MAX_MS);
+        loadRetryAttempt += 1;
+        console.warn('[SPACE_STORE] Retrying space load', { attempt: loadRetryAttempt, delay });
+        loadRetryTimer = setTimeout(() => {
+          loadRetryTimer = null;
+          void get().loadSpaces(preferredSelectedId ?? get().selectedSpaceId);
+        }, delay);
+      }
     }
   },
 

@@ -165,8 +165,11 @@ const startBackend = () => {
   backendProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
     console.log('[Electron] Backend exited', { code, signal });
 
-    // Log captured output if backend failed
-    if (code !== 0) {
+    // SIGTERM is a normal shutdown signal, not an error
+    const isNormalShutdown = signal === 'SIGTERM' || code === 0;
+
+    // Log captured output if backend failed (excluding normal shutdowns)
+    if (!isNormalShutdown && code !== 0) {
       console.error('[Electron] Backend failed. Full stdout:', stdoutBuffer);
       console.error('[Electron] Backend failed. Full stderr:', stderrBuffer);
       logBackendStart('failed', {
@@ -407,6 +410,36 @@ ipcMain.handle('desktop:open-external', async (_event, targetUrl: string) => {
     return;
   }
   await shell.openExternal(targetUrl);
+});
+
+ipcMain.handle('desktop:open-file-path', async (_event, filePath: string) => {
+  if (typeof filePath !== 'string' || !filePath.trim()) {
+    return;
+  }
+
+  const normalizedPath = filePath.trim();
+  const openResult = await shell.openPath(normalizedPath);
+  if (!openResult) {
+    return;
+  }
+
+  console.warn('[Electron] Failed to open file path:', normalizedPath, openResult);
+
+  if (process.platform === 'win32') {
+    try {
+      const child = spawn('rundll32.exe', ['shell32.dll,OpenAs_RunDLL', normalizedPath], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      child.on('error', (err) => {
+        console.error('[Electron] Failed to open Open With dialog:', err);
+      });
+      child.unref();
+    } catch (err) {
+      console.error('[Electron] Failed to open Open With dialog:', err);
+    }
+  }
 });
 
 ipcMain.handle('desktop:show-item-in-folder', async (_event, filePath: string) => {

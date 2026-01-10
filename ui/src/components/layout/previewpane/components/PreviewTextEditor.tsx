@@ -98,7 +98,7 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
 
   return (
     <div className="flex-1 overflow-auto bg-white">
-      <div className={isFullWindow ? "p-12 max-w-4xl mx-auto" : "p-8 max-w-4xl mx-auto"}>
+      <div className={isFullWindow ? "p-12" : "p-8"} style={{ overflowX: 'auto' }}>
         <textarea
           ref={textareaRef}
           value={content}
@@ -107,7 +107,7 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
           onBlur={handleBlur}
           placeholder="Start typing..."
           maxLength={10000}
-          className="w-full resize-none outline-none border-none"
+          className="resize-none outline-none border-none"
           style={{
             ...FONT_ROLES.paneBody,
             fontSize: isFullWindow ? '20px' : '18px',
@@ -115,6 +115,10 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
             color: '#1f2937',
             minHeight: isFullWindow ? '500px' : '400px',
             background: 'transparent',
+            width: '100%',
+            whiteSpace: 'pre',
+            overflowX: 'auto',
+            wordWrap: 'normal',
           }}
         />
         <div

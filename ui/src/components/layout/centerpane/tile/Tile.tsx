@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TileProps } from '../types';
 import { authenticatedLinksService } from '../../../../services/authenticatedLinks';
 import { getVideoEmbed } from '../../../../utils/videoEmbeds';
@@ -20,6 +20,7 @@ import { TextContent } from './TextContent';
 import { DefaultContent } from './DefaultContent';
 import { TileContextMenu } from './TileContextMenu';
 import { TileDialogs } from './TileDialogs';
+import { openFilePath } from '../../../../platform';
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, rename, context menu, and preview wiring.
 export function Tile({
@@ -44,6 +45,7 @@ export function Tile({
 }: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isInteractionLocked, setIsInteractionLocked] = useState(false);
+  const [embedFailed, setEmbedFailed] = useState(false);
 
   const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
@@ -88,11 +90,21 @@ export function Tile({
     );
   };
 
+  const openFileExternally = async () => {
+    if (type !== 'file' || !filePath) return;
+    await openFilePath(filePath);
+  };
+
   const handleDoubleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (type === 'text' && content !== undefined && onEdit) {
       onEdit(x, y, content, id);
+      return;
+    }
+
+    if (type === 'file') {
+      await openFileExternally();
       return;
     }
 
@@ -149,16 +161,21 @@ export function Tile({
 
   const hoverScaleClass = isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.02]';
   const videoEmbed = type === 'link' ? getVideoEmbed(url) : null;
+  const effectiveVideoEmbed = embedFailed ? null : videoEmbed;
   const fileCategory = type === 'file' && filePath ? detectFileType(filePath).category : null;
   const isAudioFile = fileCategory === 'audio';
   const isVideoFile = fileCategory === 'video';
   const tileWidth = type === 'link'
-    ? (videoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE)
+    ? (effectiveVideoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE)
     : (isAudioFile ? AUDIO_EMBED_WIDTH : isVideoFile ? VIDEO_EMBED_WIDTH : undefined);
   const tileHeight = type === 'link'
-    ? (videoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE)
+    ? (effectiveVideoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE)
     : (isAudioFile ? AUDIO_EMBED_HEIGHT : isVideoFile ? VIDEO_EMBED_HEIGHT : undefined);
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
+
+  useEffect(() => {
+    setEmbedFailed(false);
+  }, [url]);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (isInteractionLocked) {
@@ -169,10 +186,10 @@ export function Tile({
   };
 
   const renderContent = () => {
-    if (type === 'link' && videoEmbed) {
+    if (type === 'link' && effectiveVideoEmbed) {
       return (
         <VideoEmbedContent
-          videoEmbed={videoEmbed}
+          videoEmbed={effectiveVideoEmbed}
           title={title}
           isRenaming={isRenaming}
           renamingValue={renamingValue}
@@ -182,6 +199,8 @@ export function Tile({
           renameInputRef={renameInputRef}
           isSelected={isSelected}
           hoverScaleClass={hoverScaleClass}
+          onInteractionChange={setIsInteractionLocked}
+          onEmbedError={() => setEmbedFailed(true)}
         />
       );
     }

@@ -1,3 +1,5 @@
+import { TEXT_CHAR_LIMIT } from './tile/dimensionHelpers';
+
 export const isGmailUrl = (url: string): boolean => {
   try {
     const urlObj = new URL(url);
@@ -62,7 +64,7 @@ const wrapLine = (line: string, limit: number): string[] => {
   return parts;
 };
 
-export const autoWrapText = (text: string, maxLineLength = 22): string => {
+export const autoWrapText = (text: string, maxLineLength = TEXT_CHAR_LIMIT): string => {
   if (!text) return text;
   const limit = Math.max(1, maxLineLength);
 

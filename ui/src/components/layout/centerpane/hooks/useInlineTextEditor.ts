@@ -16,6 +16,7 @@ import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
 import { API_BASE } from '../../../../config/api';
+import { TEXT_CHAR_LIMIT } from '../tile/dimensionHelpers';
 
 interface InlineEditorParams {
   selectedSpace: any;
@@ -75,7 +76,7 @@ export const useInlineTextEditor = ({
 
     const { x, y, content, editingId } = editorState;
     const clamped = clampToBoundaries(x, y);
-    const formattedContent = autoWrapText(content, 22);
+    const formattedContent = autoWrapText(content, TEXT_CHAR_LIMIT);
     const title = generateTitleFromContent(formattedContent);
 
     try {

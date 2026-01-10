@@ -7,7 +7,15 @@ export const NON_EMBED_LINK_SIZE = 192;
 export const AUDIO_EMBED_WIDTH = 360;
 export const AUDIO_EMBED_HEIGHT = 210;
 export const VIDEO_EMBED_WIDTH = 360;
-export const VIDEO_EMBED_HEIGHT = 260;
+export const VIDEO_EMBED_HEIGHT = 260; // 16:9 video (202.5px) + title area (40px) + gap (12px)
+
+// Text/Note dimensions
+export const TEXT_WIDTH = 360; // Match video embed width
+export const TEXT_FONT_SIZE = 16; // Font size in pixels
+export const TEXT_FONT_WEIGHT = 500; // Medium weight
+export const TEXT_LINE_HEIGHT = 1.6; // Line height multiplier
+// Calculate character limit based on width (assuming ~9px per character)
+export const TEXT_CHAR_LIMIT = Math.floor(TEXT_WIDTH / 9);
 
 export function getThumbnailDimensions(
   type: string,

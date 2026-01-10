@@ -131,7 +131,7 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
 
   return (
     <div ref={containerRef} className="flex-1 overflow-auto bg-white">
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-8" style={{ overflowX: 'auto' }}>
         <h1
           ref={titleRef}
           className="text-3xl font-bold mb-6 cursor-text"
@@ -142,8 +142,14 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
         </h1>
         <div
           ref={contentRef}
-          className="whitespace-pre-wrap text-gray-800 leading-loose cursor-text"
-          style={{ ...FONT_ROLES.paneBody, fontSize: '18px', lineHeight: '1.8' }}
+          className="text-gray-800 leading-loose cursor-text"
+          style={{
+            ...FONT_ROLES.paneBody,
+            fontSize: '18px',
+            lineHeight: '1.8',
+            whiteSpace: 'pre',
+            overflowX: 'auto',
+          }}
           onDoubleClick={handleDoubleClick}
         >
           {content}

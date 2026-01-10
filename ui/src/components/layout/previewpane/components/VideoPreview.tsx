@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
 import { Z_INDEX } from '../../../../constants/zIndex';
-import { VideoEmbed } from '../../../../utils/videoEmbeds';
+import { VideoEmbed, getVideoEmbedRenderOptions } from '../../../../utils/videoEmbeds';
 
 interface VideoPreviewProps {
   videoEmbed: VideoEmbed;
@@ -9,8 +9,7 @@ interface VideoPreviewProps {
 
 // VideoPreview renders an embedded player for recognized video links (e.g., YouTube/Vimeo) inside the preview pane.
 export function VideoPreview({ videoEmbed, title }: VideoPreviewProps) {
-  const isElectron = typeof window !== 'undefined' && !!window.desktopAPI;
-  const shouldUseWebview = isElectron && videoEmbed.provider === 'youtube';
+  const renderOptions = getVideoEmbedRenderOptions(videoEmbed);
 
   return (
     <div
@@ -23,11 +22,13 @@ export function VideoPreview({ videoEmbed, title }: VideoPreviewProps) {
       }}
     >
       <div style={{ position: 'relative', width: '100%', maxWidth: '100%', paddingTop: '56.25%' }}>
-        {shouldUseWebview ? (
+        {renderOptions.useWebview ? (
           <webview
-            src={videoEmbed.embedUrl}
-            partition="persist:focus-webview"
+            src={renderOptions.src}
+            partition={renderOptions.webviewPartition}
+            httpreferrer={renderOptions.webviewReferrer}
             allowpopups="true"
+            webpreferences="autoplayPolicy=document-user-activation-required"
             style={{
               position: 'absolute',
               top: 0,
@@ -42,9 +43,9 @@ export function VideoPreview({ videoEmbed, title }: VideoPreviewProps) {
           />
         ) : (
           <iframe
-            src={videoEmbed.embedUrl}
+            src={renderOptions.src}
             title={title || 'Video preview'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             style={{
               position: 'absolute',

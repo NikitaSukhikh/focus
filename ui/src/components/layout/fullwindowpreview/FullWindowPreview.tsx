@@ -4,7 +4,7 @@ import { Z_INDEX } from '../../../constants/zIndex';
 import { openExternalUrl } from '../../../platform';
 import { usePreviewPaneLogic } from '../previewpane/usePreviewPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
-import { getVideoEmbed } from '../../../utils/videoEmbeds';
+import { getVideoEmbed, getVideoEmbedRenderOptions } from '../../../utils/videoEmbeds';
 import { AudioPlayer } from '../../media/AudioPlayer';
 import { useTileNavigation } from '../previewpane/hooks/useTileNavigation';
 import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigation';
@@ -71,8 +71,7 @@ export function FullWindowPreview({
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
 
   const videoEmbed = getVideoEmbed(url);
-  const isElectron = typeof window !== 'undefined' && !!window.desktopAPI;
-  const shouldUseWebview = !!videoEmbed && isElectron && videoEmbed.provider === 'youtube';
+  const renderOptions = videoEmbed ? getVideoEmbedRenderOptions(videoEmbed) : null;
 
   // Only use webview logic when not showing an image, audio, video, or document
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
@@ -693,11 +692,13 @@ export function FullWindowPreview({
           {videoEmbed && (
             <div className="flex items-center justify-center h-full p-8">
               <div style={{ position: 'relative', width: '100%', maxWidth: '1400px', paddingTop: '56.25%' }}>
-                {shouldUseWebview ? (
+                {renderOptions?.useWebview ? (
                   <webview
-                    src={videoEmbed.embedUrl}
-                    partition="persist:focus-webview"
+                    src={renderOptions.src}
+                    partition={renderOptions.webviewPartition}
+                    httpreferrer={renderOptions.webviewReferrer}
                     allowpopups="true"
+                    webpreferences="autoplayPolicy=document-user-activation-required"
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -712,9 +713,9 @@ export function FullWindowPreview({
                   />
                 ) : (
                   <iframe
-                    src={videoEmbed.embedUrl}
+                    src={renderOptions?.src || videoEmbed.embedUrl}
                     title={title || 'Video preview'}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                     allowFullScreen
                     style={{
                       position: 'absolute',

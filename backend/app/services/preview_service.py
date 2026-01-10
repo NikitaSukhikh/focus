@@ -29,6 +29,7 @@ Both can display text content, but handling is completely different!
 from typing import Optional, Union, Dict, Any
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 import mimetypes
@@ -66,6 +67,12 @@ class PreviewService:
     MAX_CONTENT_LENGTH = 1024 * 1024 * 5  # 5MB max for URL fetching
     MAX_BODY_BYTES = 1024 * 1024 * 2  # 2MB hard cap for HTML body fetch
     CACHE_TTL_SECONDS = 60 * 10  # 10 minutes
+    YOUTUBE_HOSTS = {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+    }
 
     def __init__(self):
         """Initialize the preview service."""
@@ -195,6 +202,15 @@ class PreviewService:
             return cached[0]
 
         try:
+            parsed = urlparse(url)
+            host = (parsed.hostname or "").lower()
+
+            if host in self.YOUTUBE_HOSTS:
+                youtube_metadata = await self._fetch_youtube_oembed(url)
+                if youtube_metadata:
+                    self._metadata_cache[url] = (youtube_metadata, now)
+                    return youtube_metadata
+
             async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
                 # First do a HEAD to get lightweight etag/size.
                 head = await client.head(
@@ -326,6 +342,42 @@ class PreviewService:
             logger.warning(f"Failed to fetch URL metadata for {url}: {e}")
 
         return metadata
+
+    async def _fetch_youtube_oembed(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch metadata for YouTube URLs via the public oEmbed endpoint.
+
+        This avoids consent/interstitial HTML and provides reliable title/thumbnail data.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
+                response = await client.get(
+                    "https://www.youtube.com/oembed",
+                    params={"url": url, "format": "json"},
+                    headers={"User-Agent": "Focus/1.0 (Preview Generator)"},
+                )
+
+                if response.status_code != 200:
+                    return None
+
+                data = response.json()
+                title = data.get("title")
+                thumbnail_url = data.get("thumbnail_url")
+                author_name = data.get("author_name")
+
+                return {
+                    "title": title,
+                    "description": author_name,
+                    "og_title": title,
+                    "og_description": author_name,
+                    "og_image": thumbnail_url,
+                    "site_name": "YouTube",
+                    "favicon_url": "https://www.youtube.com/favicon.ico",
+                    "resolved_url": url,
+                }
+        except Exception as e:
+            logger.debug(f"Failed to fetch YouTube oEmbed metadata for {url}: {e}")
+            return None
 
     # ========================================================================
     # File Preview
