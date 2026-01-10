@@ -13,6 +13,7 @@ node_modules
 /build
 ui/out/
 ui/resources/
+ui/.vite/
 backend/pandoc-*.msi
 *.exe
 *.nupkg

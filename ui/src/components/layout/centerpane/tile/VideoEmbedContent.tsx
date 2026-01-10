@@ -84,7 +84,7 @@ export function VideoEmbedContent({
             ref={webviewRef}
             src={renderOptions.src}
             partition={renderOptions.webviewPartition}
-            httpreferrer={renderOptions.webviewReferrer}
+            httpReferrer={renderOptions.webviewReferrer}
             allowpopups="true"
             webpreferences="autoplayPolicy=document-user-activation-required"
             onPointerDown={(e) => {

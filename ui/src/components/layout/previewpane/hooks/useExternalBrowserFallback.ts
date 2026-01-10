@@ -13,10 +13,8 @@ const PROBLEMATIC_PATTERNS = [
   /gitlab\.com/i,
   /bitbucket\.org/i,
 ];
-const IMMEDIATE_FALLBACK_PATTERNS = [
-  /youtube\.com/i,
-  /youtu\.be/i,
-];
+// Note: YouTube/Vimeo are now handled by VideoPreview component with iframe/webview embedding
+const IMMEDIATE_FALLBACK_PATTERNS: RegExp[] = [];
 
 // useExternalBrowserFallback tracks repeated webview failures and decides when to launch a URL in the external browser instead.
 export function useExternalBrowserFallback() {

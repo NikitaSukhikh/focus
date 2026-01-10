@@ -248,6 +248,19 @@ function createSplashWindow() {
   });
 
   const splashPath = path.join(__dirname, 'splash.html');
+  console.log('[Electron] Splash path:', splashPath);
+  console.log('[Electron] Splash exists:', fs.existsSync(splashPath));
+  console.log('[Electron] __dirname:', __dirname);
+
+  if (!fs.existsSync(splashPath)) {
+    console.error('[Electron] Splash screen not found at:', splashPath);
+    console.log('[Electron] Files in __dirname:', fs.readdirSync(__dirname));
+    // Don't create splash window if file doesn't exist
+    splashWindow.close();
+    splashWindow = null;
+    return;
+  }
+
   splashWindow.loadFile(splashPath);
 
   splashWindow.on('closed', () => {
