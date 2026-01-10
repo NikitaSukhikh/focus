@@ -280,13 +280,32 @@ async function createMainWindow() {
     },
   });
 
+  const shouldOpenDevTools = !app.isPackaged && process.env.FOCUS_DEVTOOLS === '1';
+  let hasShownWindow = false;
+  let showTimeout: NodeJS.Timeout | null = null;
+  const showMainWindow = (reason: string) => {
+    if (!mainWindow || mainWindow.isDestroyed() || hasShownWindow) {
+      return;
+    }
+    hasShownWindow = true;
+    if (showTimeout) {
+      clearTimeout(showTimeout);
+      showTimeout = null;
+    }
+    console.log(`[Electron] Showing main window (${reason})...`);
+    mainWindow.show();
+    splashWindow?.close();
+  };
+
   console.log('[Electron] Window created, loading renderer...');
 
   // Load renderer - Vite plugin provides the dev server URL or the built file path
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     console.log('[Electron] Loading dev server:', MAIN_WINDOW_VITE_DEV_SERVER_URL);
     await mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    if (shouldOpenDevTools) {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
   } else {
     const rendererPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
     console.log('[Electron] Loading production build:', rendererPath);
@@ -309,17 +328,18 @@ async function createMainWindow() {
   });
 
   // Timeout fallback in case did-finish-load never fires
-  const showTimeout = setTimeout(() => {
+  showTimeout = setTimeout(() => {
     console.log('[Electron] Timeout reached, forcing window show...');
-    mainWindow?.show();
-    splashWindow?.close();
+    showMainWindow('timeout');
   }, 10000); // 10 second timeout
+
+  mainWindow.once('ready-to-show', () => {
+    showMainWindow('ready-to-show');
+  });
 
   mainWindow.webContents.once('did-finish-load', () => {
     console.log('[Electron] Main window ready, closing splash...');
-    clearTimeout(showTimeout);
-    mainWindow?.show();
-    splashWindow?.close();
+    showMainWindow('did-finish-load');
     logWindowCreation('success');
   });
 

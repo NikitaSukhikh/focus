@@ -15,6 +15,22 @@ export interface VideoEmbedRenderOptions {
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
 const VIMEO_HOSTS = ['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'];
 
+const isElectronRuntime = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const anyWindow = window as any;
+  if (anyWindow.desktopAPI) return true;
+  if (anyWindow.process?.versions?.electron) return true;
+  if (typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent)) return true;
+  return false;
+};
+
+const getSafeWindowOrigin = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const origin = window.location?.origin;
+  if (!origin || origin === 'null') return null;
+  return origin;
+};
+
 const parseStartSeconds = (value: string | null): number | null => {
   if (!value) return null;
   const numeric = parseInt(value, 10);
@@ -155,8 +171,22 @@ export const getYoutubeEmbedFrameUrl = (embedUrl: string): string => {
   }
 };
 
+const getYoutubeIframeUrl = (embedUrl: string): string => {
+  const baseUrl = getYoutubeEmbedFrameUrl(embedUrl);
+  try {
+    const parsed = new URL(baseUrl);
+    const params = new URLSearchParams(parsed.searchParams);
+    const origin = getSafeWindowOrigin();
+    if (origin) params.set('origin', origin);
+    parsed.search = params.toString();
+    return parsed.toString();
+  } catch {
+    return baseUrl;
+  }
+};
+
 export const getVideoEmbedRenderOptions = (videoEmbed: VideoEmbed): VideoEmbedRenderOptions => {
-  const isElectron = typeof window !== 'undefined' && !!(window as any).desktopAPI;
+  const isElectron = isElectronRuntime();
   const isYoutube = videoEmbed.provider === 'youtube';
 
   if (isElectron && isYoutube) {
@@ -165,6 +195,13 @@ export const getVideoEmbedRenderOptions = (videoEmbed: VideoEmbed): VideoEmbedRe
       useWebview: true,
       webviewPartition: 'persist:focus-webview',
       webviewReferrer: 'https://www.youtube.com',
+    };
+  }
+
+  if (isYoutube) {
+    return {
+      src: getYoutubeIframeUrl(videoEmbed.embedUrl),
+      useWebview: false,
     };
   }
 

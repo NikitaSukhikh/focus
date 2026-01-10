@@ -15,7 +15,6 @@ import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
-import { isGmailUrl } from '../utils';
 import { API_BASE } from '../../../../config/api';
 
 interface LinkCreationParams {
@@ -91,7 +90,6 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
         editingLink.url === url
           ? editingLink.faviconUrl || buildFaviconUrl(url)
           : buildFaviconUrl(url);
-      const isGmail = isGmailUrl(url);
       try {
         const updated = await objectsApi.updateLink(
           editingLink.id,
@@ -126,7 +124,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
                     defaultDescription: updated.default_description ?? defaultDescription ?? '',
                     customTitle: updated.custom_title ?? customTitle ?? null,
                     customDescription: updated.custom_description ?? customDescription ?? null,
-                    faviconUrl: isGmail ? undefined : nextFavicon,
+                    faviconUrl: nextFavicon,
                   }
                 : icon
             ),
@@ -135,8 +133,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
         window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: editingLink.id } }));
 
         // Auto-refresh metadata after save to keep favicon/default fields current
-        if (!isGmail) {
-          setTimeout(async () => {
+        setTimeout(async () => {
             try {
               const params = new URLSearchParams({ url });
               const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
@@ -177,7 +174,6 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
               console.error('[AUTO-REFRESH][EDIT] Failed to refresh metadata:', err);
             }
           }, 10);
-        }
       } catch (err) {
         console.error('Failed to update link:', err);
         alert('Failed to update link. Please try again.');
@@ -190,7 +186,8 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
     }
 
     const favicon_url = buildFaviconUrl(url);
-    const isGmail = isGmailUrl(url);
+    // Note: Gmail URLs typed manually are treated as regular links
+    // Gmail objects are only created via drag-drop with thread/message data
 
     if (!pendingLinkPosition) {
       alert('Please pick a drop position first');
@@ -201,7 +198,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
 
     try {
       const created = await objectsApi.create(selectedSpace.id, {
-        type: isGmail ? 'gmail' : 'link',
+        type: 'link',
         title: defaultTitle,
         url,
         description: defaultDescription,
@@ -217,7 +214,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
       const displayTitle = created.custom_title || created.title || defaultTitle;
       const newIcon: DroppedIcon = {
         id: created.id,
-        type: isGmail ? 'gmail' : 'link',
+        type: 'link',
         title: displayTitle,
         x,
         y,
@@ -228,7 +225,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
         defaultDescription: created.default_description ?? defaultDescription ?? '',
         customTitle: created.custom_title ?? customTitle ?? null,
         customDescription: created.custom_description ?? customDescription ?? null,
-        faviconUrl: isGmail ? undefined : favicon_url,
+        faviconUrl: favicon_url,
       };
 
       setIconsBySpace((prev) => {
@@ -243,7 +240,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
               event_data: {
                 tile: {
                   id: created.id,
-                  type: isGmail ? 'gmail' : 'link',
+                  type: 'link',
                   title: displayTitle,
                   tag: normalizeTag(created.tag),
                   defaultTitle: created.default_title,
@@ -254,7 +251,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
               y,
               url,
               description: displayDescription,
-              faviconUrl: isGmail ? undefined : favicon_url,
+              faviconUrl: favicon_url,
             },
           },
         })

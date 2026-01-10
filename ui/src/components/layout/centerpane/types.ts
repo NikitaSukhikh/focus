@@ -79,6 +79,7 @@ export interface TileProps {
   tag?: TagColor | '';
   isSelected?: boolean;
   onClick?: (event: React.MouseEvent) => void;
+  onDoubleClick?: () => void;
   onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
   onRename?: (_newTitle: string) => void;

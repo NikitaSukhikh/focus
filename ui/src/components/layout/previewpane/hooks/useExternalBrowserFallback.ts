@@ -13,6 +13,10 @@ const PROBLEMATIC_PATTERNS = [
   /gitlab\.com/i,
   /bitbucket\.org/i,
 ];
+const IMMEDIATE_FALLBACK_PATTERNS = [
+  /youtube\.com/i,
+  /youtu\.be/i,
+];
 
 // useExternalBrowserFallback tracks repeated webview failures and decides when to launch a URL in the external browser instead.
 export function useExternalBrowserFallback() {
@@ -20,6 +24,10 @@ export function useExternalBrowserFallback() {
 
   const isProblematicUrl = useCallback((url: string): boolean => {
     return PROBLEMATIC_PATTERNS.some(pattern => pattern.test(url));
+  }, []);
+
+  const shouldOpenImmediately = useCallback((url: string): boolean => {
+    return IMMEDIATE_FALLBACK_PATTERNS.some(pattern => pattern.test(url));
   }, []);
 
   const shouldFallbackToExternal = useCallback((url: string, errorCode?: number): boolean => {
@@ -75,6 +83,7 @@ export function useExternalBrowserFallback() {
 
   return {
     isProblematicUrl,
+    shouldOpenImmediately,
     shouldFallbackToExternal,
     recordFailedLoad,
     resetFailedLoad,

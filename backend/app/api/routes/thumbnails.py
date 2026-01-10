@@ -21,6 +21,68 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
+def _fix_ebook_image_refs(html_content: str, cache_key: str, images_dir: Path) -> str:
+    """
+    Fix relative image references in ebook HTML to use proper API URLs.
+
+    This handles cases where ebook HTML has relative image paths like
+    'cover.jpg' or '<id>_cover.jpg' that need API URLs.
+
+    Args:
+        html_content: The HTML content to process
+        cache_key: The cache key for this ebook
+        images_dir: Directory containing ebook images
+
+    Returns:
+        str: HTML content with fixed image references
+    """
+    try:
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        # Fix img tags with src attributes
+        for img in soup.find_all('img', src=True):
+            src = img['src']
+            # Skip if already an absolute URL or API path
+            if src.startswith(('http://', 'https://', '/api/')):
+                continue
+
+            # Try to construct the path with cache_key prefix
+            img_name = src.split('/')[-1]
+            potential_path = f"/api/thumbnails/ebook-image/{cache_key}_{img_name}"
+            img_file = images_dir / f"{cache_key}_{img_name}"
+            if img_file.exists():
+                img['src'] = potential_path
+
+        # Fix SVG image tags with xlink:href attributes
+        for image in soup.find_all('image'):
+            href = image.get('xlink:href') or image.get('{http://www.w3.org/1999/xlink}href')
+            if not href:
+                continue
+
+            # Skip if already an absolute URL or API path
+            if href.startswith(('http://', 'https://', '/api/')):
+                continue
+
+            # Try to construct the path with cache_key prefix
+            img_name = href.split('/')[-1]
+            potential_path = f"/api/thumbnails/ebook-image/{cache_key}_{img_name}"
+            img_file = images_dir / f"{cache_key}_{img_name}"
+            if img_file.exists():
+                # Update both possible attribute names
+                if 'xlink:href' in image.attrs:
+                    image['xlink:href'] = potential_path
+                if '{http://www.w3.org/1999/xlink}href' in image.attrs:
+                    image['{http://www.w3.org/1999/xlink}href'] = potential_path
+
+        return str(soup)
+    except Exception as e:
+        logger.warning(f"Failed to fix ebook image references: {e}")
+        # Return original content if post-processing fails
+        return html_content
+
+
 @router.get(
     "/image",
     response_class=FileResponse,
@@ -703,6 +765,11 @@ async def get_document_preview(
         from pathlib import Path as PathLib
 
         html_content = PathLib(html_path).read_text(encoding='utf-8')
+
+        # For ebook previews, fix any relative image references
+        if ebook_preview_service.is_ebook(file_path):
+            cache_key = ebook_preview_service._generate_cache_key(file_path)
+            html_content = _fix_ebook_image_refs(html_content, cache_key, ebook_preview_service.images_dir)
 
         return Response(
             content=html_content,

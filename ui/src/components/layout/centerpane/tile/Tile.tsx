@@ -36,6 +36,7 @@ export function Tile({
   content,
   isSelected,
   onClick,
+  onDoubleClick,
   onPositionChange: _onPositionChange,
   onDelete,
   onRename,
@@ -97,6 +98,7 @@ export function Tile({
 
   const handleDoubleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    onDoubleClick?.();
 
     if (type === 'text' && content !== undefined && onEdit) {
       onEdit(x, y, content, id);

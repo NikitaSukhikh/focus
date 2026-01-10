@@ -29,7 +29,7 @@ Both can display text content, but handling is completely different!
 from typing import Optional, Union, Dict, Any
 from pathlib import Path
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import httpx
 from bs4 import BeautifulSoup
 import mimetypes
@@ -320,13 +320,11 @@ class PreviewService:
                     favicon_url = favicon.get('href')
                     # Make absolute URL if relative
                     if not favicon_url.startswith(('http://', 'https://')):
-                        from urllib.parse import urljoin
                         favicon_url = urljoin(url, favicon_url)
                     metadata['favicon_url'] = favicon_url
                 else:
                     # Fallback: try /favicon.ico on the domain
-                    from urllib.parse import urlparse, urljoin
-                    parsed = urlparse(response.url)  # Use final URL after redirects
+                    parsed = urlparse(str(response.url))  # Use final URL after redirects
                     base_url = f"{parsed.scheme}://{parsed.netloc}"
                     metadata['favicon_url'] = urljoin(base_url, '/favicon.ico')
 

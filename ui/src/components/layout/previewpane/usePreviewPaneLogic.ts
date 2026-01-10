@@ -13,7 +13,7 @@
  * but orchestrates other specialized hooks following the separation of concerns pattern.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useWebviewState } from './hooks/useWebviewState';
 import { useWebviewNavigation } from './hooks/useWebviewNavigation';
 import { useWebviewEventHandlers } from './hooks/useWebviewEventHandlers';
@@ -30,6 +30,11 @@ export const usePreviewPaneLogic = (
 
   // External browser fallback for problematic URLs
   const externalFallback = useExternalBrowserFallback();
+  const lastExternalUrlRef = useRef<string | undefined>(undefined);
+  const shouldOpenExternal = useMemo(
+    () => !!(url && externalFallback.shouldOpenImmediately(url)),
+    [url, externalFallback]
+  );
 
   // Preloader for frequently visited pages
   // Memoize to prevent array reference changes on every render
@@ -40,7 +45,7 @@ export const usePreviewPaneLogic = (
   });
 
   // Navigation logic (scheduleRetry is defined inside, not returned)
-  const { safeLoadURL, scheduleRetry } = useWebviewNavigation(webviewRef, url, state);
+  const { safeLoadURL, scheduleRetry } = useWebviewNavigation(webviewRef, url, state, shouldOpenExternal);
 
   // Event handlers
   useWebviewEventHandlers(webviewRef, {
@@ -49,6 +54,22 @@ export const usePreviewPaneLogic = (
     safeLoadURL,
     externalFallback,
   });
+
+  useEffect(() => {
+    if (!isOpen) {
+      lastExternalUrlRef.current = undefined;
+      return;
+    }
+
+    if (!url || !shouldOpenExternal) return;
+    if (lastExternalUrlRef.current === url) return;
+
+    lastExternalUrlRef.current = url;
+    state.clearRetryTimeout();
+    state.setIsLoading(false);
+    state.setLoadError('Opening in external browser...');
+    externalFallback.openInExternal(url);
+  }, [isOpen, url, shouldOpenExternal, state, externalFallback]);
 
   // Reset state when pane closes
   useEffect(() => {
@@ -59,6 +80,10 @@ export const usePreviewPaneLogic = (
 
   // Retry handler for manual retries
   const handleRetry = () => {
+    if (shouldOpenExternal && url) {
+      externalFallback.openInExternal(url);
+      return;
+    }
     state.setLoadError(null);
     const view = webviewRef.current as any;
     if (view && state.isReadyRef.current && typeof view.reload === 'function') {

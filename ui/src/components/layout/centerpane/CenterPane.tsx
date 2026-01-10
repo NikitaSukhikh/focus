@@ -19,8 +19,9 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const zoom = zoomProp ?? 1;
   const paneRef = useRef<HTMLDivElement | null>(null);
-  // Throttle opening text previews so inline edits don't immediately pop the preview pane
-  const textPreviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const FILE_PREVIEW_DELAY_MS = 300;
+  const TEXT_PREVIEW_DELAY_MS = 180;
 
   const logic = useCenterPaneLogic(paneRef, zoom);
   const isDuplicating = useSpaceStore((state) => state.isDuplicating);
@@ -234,10 +235,10 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     logic.openInlineEditor(x, y);
   };
 
-  const clearTextPreviewTimeout = () => {
-    if (textPreviewTimeoutRef.current) {
-      clearTimeout(textPreviewTimeoutRef.current);
-      textPreviewTimeoutRef.current = null;
+  const clearPreviewTimeout = () => {
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+      previewTimeoutRef.current = null;
     }
   };
 
@@ -252,17 +253,31 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     });
   };
 
-  const schedulePreviewForText = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }) => {
-    clearTextPreviewTimeout();
-    textPreviewTimeoutRef.current = setTimeout(() => {
+  const schedulePreviewForIcon = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }, delayMs: number) => {
+    clearPreviewTimeout();
+    previewTimeoutRef.current = setTimeout(() => {
       // Skip opening preview if inline editor already active for this note
-      if (logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id) return;
+      if (icon.type === 'text' && logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id) return;
       openPreviewForIcon(icon);
-    }, 180);
+    }, delayMs);
+  };
+
+  const queuePreviewForIcon = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }) => {
+    if (icon.type === 'text') {
+      schedulePreviewForIcon(icon, TEXT_PREVIEW_DELAY_MS);
+      return;
+    }
+
+    if (icon.type === 'file') {
+      schedulePreviewForIcon(icon, FILE_PREVIEW_DELAY_MS);
+      return;
+    }
+
+    openPreviewForIcon(icon);
   };
 
   useEffect(() => {
-    return () => clearTextPreviewTimeout();
+    return () => clearPreviewTimeout();
   }, []);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -482,7 +497,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   content={icon.content}
                   isSelected={logic.selectedIconIds.includes(icon.id)}
                   onClick={(event) => {
-                    clearTextPreviewTimeout();
+                    clearPreviewTimeout();
                     const isToggle = event.metaKey || event.ctrlKey;
                     if (isToggle) {
                       const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
@@ -491,28 +506,23 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                         : [...logic.selectedIconIds, icon.id];
                       logic.setSelectedIconIds(next);
                       if (next.length === 1) {
-                        const single = icon;
-                        if (single.type === 'text') {
-                          schedulePreviewForText(single);
-                        } else {
-                          openPreviewForIcon(single);
-                        }
+                        queuePreviewForIcon(icon);
                       }
                     } else {
                       logic.setSelectedIconId(icon.id);
-                      if (icon.type === 'text') {
-                        schedulePreviewForText(icon);
-                      } else {
-                        openPreviewForIcon(icon);
-                      }
+                      queuePreviewForIcon(icon);
                     }
+                  }}
+                  onDoubleClick={() => {
+                    clearPreviewTimeout();
+                    window.dispatchEvent(new CustomEvent('preview:suppress', { detail: { tileId: icon.id } }));
                   }}
                   onRename={icon.type === 'link' ? undefined : (newTitle) => logic.handleIconRename(icon.id, newTitle)}
                   onOpenLinkEdit={icon.type === 'link' ? () => logic.openLinkEditDialog(icon) : undefined}
                   onDelete={() => logic.handleIconDelete(icon.id)}
                   onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
                   onEdit={(x, y, content, id) => {
-                    clearTextPreviewTimeout();
+                    clearPreviewTimeout();
                     logic.openInlineEditor(x, y, content, id);
                   }}
                 />

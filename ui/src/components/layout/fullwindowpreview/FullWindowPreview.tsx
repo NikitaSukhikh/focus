@@ -715,8 +715,9 @@ export function FullWindowPreview({
                   <iframe
                     src={renderOptions?.src || videoEmbed.embedUrl}
                     title={title || 'Video preview'}
-                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                     allowFullScreen
+                    referrerPolicy="origin"
                     style={{
                       position: 'absolute',
                       top: 0,

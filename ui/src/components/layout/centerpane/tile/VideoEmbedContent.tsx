@@ -48,6 +48,11 @@ export function VideoEmbedContent({
     const webview = webviewRef.current;
     const handleFailLoad = (event: any) => {
       if (event.errorCode === -3) return;
+      console.warn('[VideoEmbedContent] Webview failed to load', {
+        errorCode: event.errorCode,
+        errorDescription: event.errorDescription,
+        validatedURL: event.validatedURL,
+      });
       onEmbedError?.();
     };
 
@@ -103,8 +108,9 @@ export function VideoEmbedContent({
           <iframe
             src={renderOptions.src}
             title={title || 'Video'}
-            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
+            referrerPolicy="origin"
             onPointerDown={(e) => {
               e.stopPropagation();
               markInteraction(true);

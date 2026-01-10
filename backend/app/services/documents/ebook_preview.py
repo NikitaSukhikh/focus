@@ -277,7 +277,12 @@ class EbookPreviewService:
             '</html>'
         ])
 
-        return '\n'.join(html_parts)
+        html_content = '\n'.join(html_parts)
+
+        # Post-process to fix any remaining relative image references
+        html_content = self._fix_image_references(html_content, cache_key, image_mapping)
+
+        return html_content
 
     def _fb2_to_html(self, path: Path) -> str:
         """
@@ -747,6 +752,83 @@ body {
         except Exception as e:
             logger.warning(f"Failed to extract FB2 metadata: {e}")
             return {'title': path.stem, 'author': None}
+
+    def _fix_image_references(self, html_content: str, cache_key: str, image_mapping: dict) -> str:
+        """
+        Fix relative image references in HTML content to use proper API URLs.
+
+        This handles cases where ebook converters generate HTML with relative image paths
+        like 'cover.jpg' or '<id>_cover.jpg' that need to be converted to proper API URLs.
+
+        Args:
+            html_content: The HTML content to process
+            cache_key: The cache key for this ebook
+            image_mapping: Dictionary mapping image names to API URLs
+
+        Returns:
+            str: HTML content with fixed image references
+        """
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+
+            # Fix img tags with src attributes
+            for img in soup.find_all('img', src=True):
+                src = img['src']
+                # Skip if already an absolute URL or API path
+                if src.startswith(('http://', 'https://', '/api/')):
+                    continue
+
+                # Try to map using just the filename
+                img_name = src.split('/')[-1]
+                if img_name in image_mapping:
+                    img['src'] = image_mapping[img_name]
+                elif src in image_mapping:
+                    img['src'] = image_mapping[src]
+                else:
+                    # Try to construct the path with cache_key prefix
+                    potential_path = f"/api/thumbnails/ebook-image/{cache_key}_{img_name}"
+                    # Check if the file exists in the images directory
+                    img_file = self.images_dir / f"{cache_key}_{img_name}"
+                    if img_file.exists():
+                        img['src'] = potential_path
+
+            # Fix SVG image tags with xlink:href attributes
+            for image in soup.find_all('image'):
+                href = image.get('xlink:href') or image.get('{http://www.w3.org/1999/xlink}href')
+                if not href:
+                    continue
+
+                # Skip if already an absolute URL or API path
+                if href.startswith(('http://', 'https://', '/api/')):
+                    continue
+
+                # Try to map using just the filename
+                img_name = href.split('/')[-1]
+                if img_name in image_mapping:
+                    new_href = image_mapping[img_name]
+                elif href in image_mapping:
+                    new_href = image_mapping[href]
+                else:
+                    # Try to construct the path with cache_key prefix
+                    potential_path = f"/api/thumbnails/ebook-image/{cache_key}_{img_name}"
+                    # Check if the file exists in the images directory
+                    img_file = self.images_dir / f"{cache_key}_{img_name}"
+                    if img_file.exists():
+                        new_href = potential_path
+                    else:
+                        continue
+
+                # Update both possible attribute names
+                if 'xlink:href' in image.attrs:
+                    image['xlink:href'] = new_href
+                if '{http://www.w3.org/1999/xlink}href' in image.attrs:
+                    image['{http://www.w3.org/1999/xlink}href'] = new_href
+
+            return str(soup)
+        except Exception as e:
+            logger.warning(f"Failed to fix image references in HTML: {e}")
+            # Return original content if post-processing fails
+            return html_content
 
     def _generate_cache_key(self, file_path: str) -> str:
         """

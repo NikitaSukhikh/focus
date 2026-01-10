@@ -36,11 +36,12 @@ interface NavigationState {
 export const useWebviewNavigation = (
   webviewRef: React.RefObject<HTMLWebViewElement | null>,
   url: string | undefined,
-  state: NavigationState
+  state: NavigationState,
+  skipNavigation = false
 ) => {
   const safeLoadURL = async (targetUrl: string) => {
     const view = webviewRef.current as any;
-    if (!view || !targetUrl) return;
+    if (!view || !targetUrl || skipNavigation) return;
     try {
       // Setting src avoids promise rejections from loadURL on redirects/abort.
       if ('src' in view) {
@@ -75,7 +76,7 @@ export const useWebviewNavigation = (
   // Navigate to URL when it changes
   useEffect(() => {
     const view = webviewRef.current as any;
-    if (!view || !url) return;
+    if (!view || !url || skipNavigation) return;
 
     // Safely get the current URL, handling cases where webview isn't ready
     let viewUrl: string | undefined;
@@ -114,7 +115,7 @@ export const useWebviewNavigation = (
         state.pendingUrlRef.current = url;
       }
     }
-  }, [url, webviewRef, state]);
+  }, [url, webviewRef, state, skipNavigation]);
 
   return {
     safeLoadURL,

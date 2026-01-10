@@ -149,6 +149,24 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const handlePreviewSuppress = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tileId?: string }>;
+      const tileId = customEvent.detail?.tileId;
+      if (!tileId) return;
+
+      setPreviewData((currentPreviewData) => {
+        if (currentPreviewData.tileId === tileId) {
+          setIsPreviewOpen(false);
+        }
+        return currentPreviewData;
+      });
+    };
+
+    window.addEventListener('preview:suppress', handlePreviewSuppress);
+    return () => window.removeEventListener('preview:suppress', handlePreviewSuppress);
+  }, []);
+
+  useEffect(() => {
     const handleContentChanged = (e: Event) => {
       const customEvent = e as CustomEvent<{ tileId: string; title: string; content: string }>;
       const { tileId: updatedTileId, title: newTitle, content: newContent } = customEvent.detail;
