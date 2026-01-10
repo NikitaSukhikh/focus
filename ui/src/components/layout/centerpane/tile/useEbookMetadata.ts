@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../../../../config/api';
 import { detectFileType } from '../../../../utils/fileTypes';
 
 interface EbookMetadata {
@@ -15,7 +16,7 @@ export function useEbookMetadata(type: string, filePath?: string): { ebookMetada
 
       if (fileType.category === 'ebook') {
         const params = new URLSearchParams({ file_path: filePath });
-        fetch(`/api/thumbnails/ebook-metadata?${params.toString()}`)
+        fetch(`${API_BASE}/thumbnails/ebook-metadata?${params.toString()}`)
           .then(res => res.json())
           .then(data => {
             setEbookMetadata(data);

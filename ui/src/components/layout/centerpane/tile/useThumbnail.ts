@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../../../../config/api';
 import { canShowImageThumbnail } from '../../../../utils/fileTypes';
 
 export function useThumbnail(type: string, filePath?: string, title?: string) {
@@ -14,7 +15,7 @@ export function useThumbnail(type: string, filePath?: string, title?: string) {
         max_height: '256',
         quality: '85',
       });
-      const url = `/api/thumbnails/image?${params.toString()}`;
+      const url = `${API_BASE}/thumbnails/image?${params.toString()}`;
       console.log('[ICON TILE] Setting thumbnail URL:', url);
       setThumbnailUrl(url);
     } else {

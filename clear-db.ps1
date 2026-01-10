@@ -39,7 +39,7 @@ foreach ($path in $targets) {
             Remove-Item -LiteralPath $path -Force
             Write-Host "Removed $path" -ForegroundColor Green
         } catch {
-            Write-Host "Failed to remove $path: $_" -ForegroundColor Red
+            Write-Host "Failed to remove ${path}: $_" -ForegroundColor Red
             exit 1
         }
     } else {

@@ -15,6 +15,7 @@ import { undoApi } from '../../../../api/undo';
 import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { autoWrapText } from '../utils';
+import { API_BASE } from '../../../../config/api';
 
 interface InlineEditorParams {
   selectedSpace: any;
@@ -80,7 +81,7 @@ export const useInlineTextEditor = ({
     try {
       if (editingId) {
         // Update existing note - update both title and content in metadata
-        const response = await fetch(`/api/objects/${editingId}`, {
+        const response = await fetch(`${API_BASE}/objects/${editingId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

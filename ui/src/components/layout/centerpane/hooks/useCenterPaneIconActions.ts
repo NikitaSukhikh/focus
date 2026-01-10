@@ -14,6 +14,7 @@ import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
+import { API_BASE } from '../../../../config/api';
 
 interface IconActionsParams {
   selectedSpace: any;
@@ -124,7 +125,7 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
 
     try {
       const params = new URLSearchParams({ url });
-      const response = await fetch(`/api/metadata/url?${params.toString()}`);
+      const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
       if (response.ok) {
         const metadata = await response.json();
         console.log('[CENTER PANE] Fetched metadata for refresh:', metadata);

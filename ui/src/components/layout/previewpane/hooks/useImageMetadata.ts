@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../../../../config/api';
 
 export interface ImageMetadata {
   width: number;
@@ -15,7 +16,7 @@ export function useImageMetadata(isImageFile: boolean, filePath?: string): Image
   useEffect(() => {
     if (isImageFile && filePath) {
       const params = new URLSearchParams({ file_path: filePath });
-      fetch(`/api/thumbnails/metadata?${params.toString()}`)
+      fetch(`${API_BASE}/thumbnails/metadata?${params.toString()}`)
         .then(res => res.json())
         .then(data => {
           setImageMetadata(data);

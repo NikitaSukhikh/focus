@@ -14,6 +14,7 @@ from app.services.documents.excel_preview import excel_preview_service
 from app.services.documents.ebook_preview import ebook_preview_service
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file, format_duration
 from app.core.logging import get_logger
+import mimetypes
 
 
 logger = get_logger(__name__)
@@ -415,6 +416,85 @@ async def get_audio_metadata_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get audio metadata",
+        )
+
+
+# Video file extensions
+VIDEO_EXTENSIONS = {
+    '.mp4', '.webm', '.ogg', '.ogv', '.avi', '.mov', '.wmv', '.flv',
+    '.mkv', '.m4v', '.mpg', '.mpeg', '.mpe', '.3gp', '.3g2', '.mts',
+    '.m2ts', '.ts', '.vob', '.divx', '.xvid', '.f4v', '.asf', '.rm', '.rmvb'
+}
+
+
+def is_video_file(file_path: str) -> bool:
+    """Check if a file is a supported video format."""
+    return Path(file_path).suffix.lower() in VIDEO_EXTENSIONS
+
+
+@router.get(
+    "/video-file",
+    response_class=FileResponse,
+    summary="Get video file for playback",
+    description="Serve video file for playback in the video player.",
+)
+async def get_video_file(
+    file_path: str = Query(..., description="Absolute path to the video file"),
+):
+    """
+    Serve a video file for playback.
+
+    Args:
+        file_path: Absolute path to the video file
+
+    Returns:
+        FileResponse: The video file
+
+    Raises:
+        HTTPException: If file not found or not a supported video format
+    """
+    try:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {file_path}",
+            )
+
+        if not path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {file_path}",
+            )
+
+        # Check if file is a video file
+        if not is_video_file(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File is not a supported video format",
+            )
+
+        # Determine media type from file extension
+        media_type, _ = mimetypes.guess_type(file_path)
+        if not media_type or not media_type.startswith('video/'):
+            media_type = 'video/mp4'
+
+        logger.debug(f"Serving video file: {file_path}")
+
+        return FileResponse(
+            path=str(path),
+            media_type=media_type,
+            filename=path.name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve video file: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to serve video file",
         )
 
 

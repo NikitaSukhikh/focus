@@ -1,7 +1,7 @@
 import { app as c, session as I, BrowserWindow as y, ipcMain as l, dialog as k, shell as O } from "electron";
 import { spawn as L } from "child_process";
 import * as p from "fs";
-import x from "fs";
+import v from "fs";
 import * as S from "path";
 import a, { dirname as A } from "path";
 import { fileURLToPath as j } from "url";
@@ -17,7 +17,11 @@ class D {
   }
   initialize() {
     try {
-      p.existsSync(this.logFilePath) || p.writeFileSync(this.logFilePath, "", "utf-8"), p.statSync(this.logFilePath).size > 10 * 1024 * 1024 && this.rotateLogFile(), this.isInitialized = !0, this.log("INFO", "logger_init", "Logger initialized", {
+      const e = p.existsSync(this.logFilePath);
+      e || p.writeFileSync(this.logFilePath, "", "utf-8");
+      const o = p.statSync(this.logFilePath);
+      o.size > 10 * 1024 * 1024 && this.rotateLogFile(), e && o.size > 0 && p.appendFileSync(this.logFilePath, `
+`, "utf-8"), this.isInitialized = !0, this.log("INFO", "logger_init", "Logger initialized", {
         logFilePath: this.logFilePath
       });
     } catch (e) {
@@ -112,9 +116,9 @@ class D {
     return this.logFilePath;
   }
 }
-let F = null;
+let E = null;
 function m() {
-  return F || (F = new D()), F;
+  return E || (E = new D()), E;
 }
 function z(t) {
   m().logStartup(t);
@@ -131,7 +135,7 @@ function P(t, e) {
 function R(t, e, o, n) {
   m().logError(t, e, o, n);
 }
-function E(t, e, o) {
+function F(t, e, o) {
   m().logInfo(t, e, o);
 }
 const M = j(import.meta.url), f = A(M), T = process.platform === "darwin", q = {
@@ -144,7 +148,7 @@ const M = j(import.meta.url), f = A(M), T = process.platform === "darwin", q = {
   android: "Focus",
   sunos: "Focus"
 };
-let i = null, h = null, u = null, v = !1;
+let i = null, h = null, u = null, x = !1;
 const H = () => {
   const t = [
     a.join(f, "../src/assets/focus.ico"),
@@ -159,7 +163,7 @@ const H = () => {
     a.join(process.resourcesPath, "focus.png")
   ], o = c.isPackaged ? e : t;
   for (const n of o)
-    if (x.existsSync(n))
+    if (v.existsSync(n))
       return console.log("[Electron] Using icon:", n), n;
   console.warn("[Electron] No icon found, using default Electron icon");
 }, G = () => {
@@ -171,18 +175,18 @@ const H = () => {
   if (c.isPackaged)
     return a.join(process.resourcesPath, "Focus");
   const t = a.resolve(f, "../../backend");
-  return x.existsSync(t) ? t : a.resolve(f, "../resources");
+  return v.existsSync(t) ? t : a.resolve(f, "../resources");
 }, J = () => {
   if (!c.isPackaged) {
-    console.log("[Electron] Dev mode detected - skipping backend launch (start backend manually)"), E("backend", "Dev mode detected - backend should be started manually");
+    console.log("[Electron] Dev mode detected - skipping backend launch (start backend manually)"), F("backend", "Dev mode detected - backend should be started manually");
     return;
   }
   const t = U(), e = K();
-  if (console.log("[Electron] Backend path:", t), console.log("[Electron] Backend CWD:", e), console.log("[Electron] App isPackaged:", c.isPackaged), console.log("[Electron] process.resourcesPath:", process.resourcesPath), E("backend", "Starting backend", {
+  if (console.log("[Electron] Backend path:", t), console.log("[Electron] Backend CWD:", e), console.log("[Electron] App isPackaged:", c.isPackaged), console.log("[Electron] process.resourcesPath:", process.resourcesPath), F("backend", "Starting backend", {
     backendPath: t,
     backendCwd: e,
     isPackaged: c.isPackaged
-  }), !x.existsSync(t)) {
+  }), !v.existsSync(t)) {
     console.error("[Electron] Backend binary not found at", t), W("Backend binary not found", void 0, { backendPath: t }), k.showErrorBox("Backend Error", `Backend executable not found at: ${t}`);
     return;
   }
@@ -193,10 +197,10 @@ const H = () => {
   let o = "", n = "";
   u.stdout?.on("data", (r) => {
     const s = r.toString();
-    o += s, console.log("[Backend stdout]", s.trim()), E("backend_stdout", s.trim());
+    o += s, console.log("[Backend stdout]", s.trim()), F("backend_stdout", s.trim());
   }), u.stderr?.on("data", (r) => {
     const s = r.toString();
-    n += s, /error|exception|traceback|failed/i.test(s) ? (console.error("[Backend stderr]", s.trim()), R("backend_stderr", s.trim())) : (console.log("[Backend stderr]", s.trim()), E("backend_stderr", s.trim()));
+    n += s, /error|exception|traceback|failed/i.test(s) ? (console.error("[Backend stderr]", s.trim()), R("backend_stderr", s.trim())) : (console.log("[Backend stderr]", s.trim()), F("backend_stderr", s.trim()));
   }), u.on("exit", (r, s) => {
     if (console.log("[Electron] Backend exited", { code: r, signal: s }), r !== 0) {
       console.error("[Electron] Backend failed. Full stdout:", o), console.error("[Electron] Backend failed. Full stderr:", n), $("failed", {
@@ -285,7 +289,7 @@ async function B() {
   }
   console.log("[Electron] Renderer loaded successfully"), i.setMenuBarVisibility(!1), i.webContents.on("before-input-event", (e, o) => {
     const r = o.key?.toLowerCase() === "f4" && o.alt;
-    (o.type === "keyDown" || o.type === "rawKeyDown") && r && v && (e.preventDefault(), G());
+    (o.type === "keyDown" || o.type === "rawKeyDown") && r && x && (e.preventDefault(), G());
   });
   const t = setTimeout(() => {
     console.log("[Electron] Timeout reached, forcing window show..."), i?.show(), h?.close();
@@ -295,7 +299,7 @@ async function B() {
   }), i.webContents.on("did-fail-load", (e, o, n) => {
     console.error("[Electron] Renderer failed to load:", o, n), P("failed", { errorCode: o, errorDescription: n }), k.showErrorBox("Failed to Load", `The app failed to load: ${n}`);
   }), i.on("closed", () => {
-    i = null, v = !1;
+    i = null, x = !1;
   });
 }
 c.whenReady().then(() => {
@@ -319,7 +323,7 @@ c.on("before-quit", () => {
   N();
 });
 l.on("fullwindow-preview:state", (t, e) => {
-  v = !!e;
+  x = !!e;
 });
 l.handle("desktop:open-dialog", async (t, e) => {
   const o = y.getFocusedWindow() || i;

@@ -55,8 +55,11 @@ class AppLogger {
 
   private initialize(): void {
     try {
+      // Check if file exists before creating it
+      const fileExists = fs.existsSync(this.logFilePath);
+
       // Create log file if it doesn't exist
-      if (!fs.existsSync(this.logFilePath)) {
+      if (!fileExists) {
         fs.writeFileSync(this.logFilePath, '', 'utf-8');
       }
 
@@ -64,6 +67,11 @@ class AppLogger {
       const stats = fs.statSync(this.logFilePath);
       if (stats.size > 10 * 1024 * 1024) {
         this.rotateLogFile();
+      }
+
+      // Add empty line between sessions (only if file already existed)
+      if (fileExists && stats.size > 0) {
+        fs.appendFileSync(this.logFilePath, '\n', 'utf-8');
       }
 
       this.isInitialized = true;

@@ -1,5 +1,7 @@
 import type { ForgeConfig, MakerBaseConfig } from '@electron-forge/shared-types';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerZIP } from '@electron-forge/maker-zip';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -47,43 +49,16 @@ const ensureResourceExists = (resourcePath: string) => {
 
 const platformMakers: MakerBaseConfig[] = [];
 
+// Configure makers based on platform
 if (platform === 'win32') {
-  platformMakers.push({
-    name: '@electron-forge/maker-squirrel',
-    platforms: ['win32'],
-    config: {
+  platformMakers.push(
+    new MakerSquirrel({
       name: 'Focus',
       authors: 'Nikita Sukhikh',
-      // Code signing (if certificate available)
-      ...(windowsPfxPath && { certificateFile: windowsPfxPath }),
-      ...(windowsPfxPassword && { certificatePassword: windowsPfxPassword }),
-      ...(windowsSignParams && { signWithParams: windowsSignParams }),
-    },
-  });
-  platformMakers.push({
-    name: '@electron-forge/maker-zip',
-    platforms: ['win32'],
-  });
-} else if (platform === 'darwin') {
-  platformMakers.push({
-    name: '@electron-forge/maker-dmg',
-    platforms: ['darwin'],
-  });
-  platformMakers.push({
-    name: '@electron-forge/maker-zip',
-    platforms: ['darwin'],
-  });
-} else {
-  platformMakers.push({
-    name: '@electron-forge/maker-deb',
-    platforms: ['linux'],
-    config: {},
-  });
-  platformMakers.push({
-    name: '@electron-forge/maker-rpm',
-    platforms: ['linux'],
-    config: {},
-  });
+      description: 'Focus desktop application',
+    }),
+    new MakerZIP({}, ['win32'])
+  );
 }
 
 const config: ForgeConfig = {

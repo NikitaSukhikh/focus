@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { API_BASE } from '../../../../config/api';
 
 interface PreviewTextEditorParams {
   tileId?: string;
@@ -79,7 +80,7 @@ export const usePreviewTextEditor = ({
     const title = generateTitleFromContent(trimmedContent);
 
     try {
-      const response = await fetch(`/api/objects/${tileId}`, {
+      const response = await fetch(`${API_BASE}/objects/${tileId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

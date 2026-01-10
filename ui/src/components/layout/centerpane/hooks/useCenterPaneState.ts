@@ -22,6 +22,7 @@ import { DroppedIcon, IconKind, ArrowSegment } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { isGmailUrl } from '../utils';
 import { calculateContentHeight } from '../boundaries';
+import { API_BASE } from '../../../../config/api';
 
 const looksLikeFavicon = (src?: string) => {
   const s = (src || '').toLowerCase();
@@ -189,7 +190,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
         try {
           const params = new URLSearchParams({ url: icon.url || '' });
-          const response = await fetch(`/api/metadata/url?${params.toString()}`);
+          const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
           if (!response.ok) return;
 
           const metadata = await response.json();

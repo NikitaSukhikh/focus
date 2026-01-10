@@ -5,6 +5,8 @@
  * Supports Google services (Gmail, Drive, Docs, Sheets, Slides) and other OAuth providers.
  */
 
+import { API_BASE } from '../config/api';
+
 interface AccountInfo {
   email: string;
   scopes?: string[];
@@ -26,7 +28,7 @@ interface PrepareLinkoptions {
 }
 
 class AuthenticatedLinksService {
-  private apiBaseUrl = '/api/google';
+  private apiBaseUrl = `${API_BASE}/google`;
 
   /**
    * Prepare a link for authenticated opening

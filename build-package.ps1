@@ -9,45 +9,114 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  Focus Windows Package Builder" -ForegroundColor Cyan
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host ""
+# Setup logging
+$RootDir = Get-Location
+$LogFile = Join-Path $RootDir "building.log"
+if (Test-Path $LogFile) {
+    Remove-Item $LogFile -Force
+}
+
+# Create a mutex for thread-safe file writing
+$global:LogMutex = New-Object System.Threading.Mutex($false, "BuildLogMutex")
+
+function Write-ToLog {
+    param([string]$Message)
+    try {
+        $global:LogMutex.WaitOne() | Out-Null
+        [System.IO.File]::AppendAllText($LogFile, "$Message`r`n", [System.Text.Encoding]::UTF8)
+    } finally {
+        $global:LogMutex.ReleaseMutex()
+    }
+}
+
+function Write-Log {
+    param([string]$Message, [string]$Color = "White")
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logMessage = "[$timestamp] $Message"
+    Write-ToLog $logMessage
+    Write-Host $Message -Color $Color
+}
+
+function Run-Command {
+    param(
+        [string]$Command,
+        [string[]]$Arguments = @()
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $fullCommand = if ($Arguments.Count -gt 0) { "$Command $($Arguments -join ' ')" } else { $Command }
+    Write-ToLog "[$timestamp] Running: $fullCommand"
+
+    # Temporarily allow errors to be captured without stopping
+    $prevErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+
+    try {
+        if ($Arguments.Count -gt 0) {
+            # Use array splatting to properly pass arguments
+            & $Command @Arguments 2>&1 | ForEach-Object {
+                $line = if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                    $_.Exception.Message
+                } else {
+                    $_.ToString()
+                }
+                Write-ToLog $line
+                Write-Host $line
+            }
+        } else {
+            & $Command 2>&1 | ForEach-Object {
+                $line = if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                    $_.Exception.Message
+                } else {
+                    $_.ToString()
+                }
+                Write-ToLog $line
+                Write-Host $line
+            }
+        }
+    } finally {
+        $ErrorActionPreference = $prevErrorActionPreference
+    }
+}
+
+Write-Log "============================================" -Color Cyan
+Write-Log "  Focus Windows Package Builder" -Color Cyan
+Write-Log "============================================" -Color Cyan
+Write-Log ""
 
 # Check we're in the right directory
 if (-not (Test-Path "ui\package.json")) {
-    Write-Error "Must run from repository root (d:\ocean)"
+    Write-Error "Must run from repository root (d:\focus)"
     exit 1
 }
 
 # Step 1: Build Backend with PyInstaller
 if (-not $SkipBackend) {
-    Write-Host "[1/4] Building Python backend with PyInstaller..." -ForegroundColor Yellow
-    Write-Host "  - Installing dependencies..." -ForegroundColor Gray
+    Write-Log "[1/4] Building Python backend with PyInstaller..." -Color Yellow
+    Write-Log "  - Installing dependencies..." -Color Gray
 
     Push-Location backend
 
     # Check if virtual environment exists
     if (-not (Test-Path "venv")) {
-        Write-Host "  - Creating virtual environment..." -ForegroundColor Gray
-        python -m venv venv
+        Write-Log "  - Creating virtual environment..." -Color Gray
+        Run-Command "python" @("-m", "venv", "venv")
     }
 
     # Activate venv and install dependencies
-    Write-Host "  - Activating virtual environment..." -ForegroundColor Gray
-    .\venv\Scripts\Activate.ps1
+    Write-Log "  - Activating virtual environment..." -Color Gray
+    & .\venv\Scripts\Activate.ps1
 
-    Write-Host "  - Installing requirements..." -ForegroundColor Gray
-    pip install --upgrade pip
-    pip install -r requirements.txt
+    Write-Log "  - Installing requirements..." -Color Gray
+    Run-Command "pip" @("install", "--upgrade", "pip")
+    Run-Command "pip" @("install", "-r", "requirements.txt")
 
     # Install PyInstaller if not present
-    Write-Host "  - Installing PyInstaller..." -ForegroundColor Gray
-    pip install pyinstaller
+    Write-Log "  - Installing PyInstaller..." -Color Gray
+    Run-Command "pip" @("install", "pyinstaller")
 
     # Clean previous build
     if (Test-Path "dist") {
-        Write-Host "  - Cleaning previous build..." -ForegroundColor Gray
+        Write-Log "  - Cleaning previous build..." -Color Gray
         Remove-Item -Recurse -Force dist
     }
     if (Test-Path "build") {
@@ -55,8 +124,8 @@ if (-not $SkipBackend) {
     }
 
     # Build backend executable
-    Write-Host "  - Running PyInstaller..." -ForegroundColor Gray
-    pyinstaller focus.spec --clean
+    Write-Log "  - Running PyInstaller..." -Color Gray
+    Run-Command "pyinstaller" @("focus.spec", "--clean")
 
     if (-not (Test-Path "dist\Focus\Focus.exe")) {
         Write-Error "Backend build failed - dist\Focus\Focus.exe not found"
@@ -65,7 +134,7 @@ if (-not $SkipBackend) {
     }
 
     # Copy backend directory to UI resources
-    Write-Host "  - Copying backend to UI resources..." -ForegroundColor Gray
+    Write-Log "  - Copying backend to UI resources..." -Color Gray
     $backendDir = "dist\Focus"
     $targetDir = "..\ui\resources\Focus"
 
@@ -78,21 +147,21 @@ if (-not $SkipBackend) {
     Copy-Item -Path $backendDir -Destination "..\ui\resources" -Recurse -Force
 
     Pop-Location
-    Write-Host "  Backend built successfully!" -ForegroundColor Green
-    Write-Host ""
+    Write-Log "  Backend built successfully!" -Color Green
+    Write-Log ""
 } else {
-    Write-Host "[1/4] Skipping backend build" -ForegroundColor Gray
-    Write-Host ""
+    Write-Log "[1/4] Skipping backend build" -Color Gray
+    Write-Log ""
 }
 
 # Step 2: Install Frontend Dependencies
 if (-not $SkipFrontend) {
-    Write-Host "[2/4] Installing frontend dependencies..." -ForegroundColor Yellow
+    Write-Log "[2/4] Installing frontend dependencies..." -Color Yellow
 
     Push-Location ui
 
-    Write-Host "  - Running npm install..." -ForegroundColor Gray
-    npm install
+    Write-Log "  - Running npm install..." -Color Gray
+    Run-Command "npm" @("install")
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "npm install failed"
@@ -101,16 +170,16 @@ if (-not $SkipFrontend) {
     }
 
     Pop-Location
-    Write-Host "  Dependencies installed!" -ForegroundColor Green
-    Write-Host ""
+    Write-Log "  Dependencies installed!" -Color Green
+    Write-Log ""
 } else {
-    Write-Host "[2/4] Skipping frontend dependency installation" -ForegroundColor Gray
-    Write-Host ""
+    Write-Log "[2/4] Skipping frontend dependency installation" -Color Gray
+    Write-Log ""
 }
 
 # Step 3: Build Frontend with Electron Forge
 if (-not $SkipFrontend) {
-    Write-Host "[3/4] Building Electron application..." -ForegroundColor Yellow
+    Write-Log "[3/4] Building Electron application..." -Color Yellow
 
     Push-Location ui
 
@@ -121,8 +190,8 @@ if (-not $SkipFrontend) {
         exit 1
     }
 
-    Write-Host "  - Running electron-forge make..." -ForegroundColor Gray
-    npm run build
+    Write-Log "  - Running electron-forge make..." -Color Gray
+    Run-Command "npm" @("run", "build")
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Frontend build failed"
@@ -131,15 +200,15 @@ if (-not $SkipFrontend) {
     }
 
     Pop-Location
-    Write-Host "  Frontend built successfully!" -ForegroundColor Green
-    Write-Host ""
+    Write-Log "  Frontend built successfully!" -Color Green
+    Write-Log ""
 } else {
-    Write-Host "[3/4] Skipping frontend build" -ForegroundColor Gray
-    Write-Host ""
+    Write-Log "[3/4] Skipping frontend build" -Color Gray
+    Write-Log ""
 }
 
 # Step 4: Create distributable package
-Write-Host "[4/4] Finalizing package..." -ForegroundColor Yellow
+Write-Log "[4/4] Finalizing package..." -Color Yellow
 
 # Check outputs
 $packageDir = "ui\out\Focus-win32-x64"
@@ -147,91 +216,33 @@ $installerDir = "ui\out\make\squirrel.windows\x64"
 
 if (Test-Path $packageDir) {
     $packageSize = (Get-ChildItem -Path $packageDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-    Write-Host "  Portable package: $packageDir" -ForegroundColor Gray
-    Write-Host "    Size: $([math]::Round($packageSize, 2)) MB" -ForegroundColor Gray
+    Write-Log "  Portable package: $packageDir" -Color Gray
+    Write-Log "    Size: $([math]::Round($packageSize, 2)) MB" -Color Gray
 }
 
 if (Test-Path $installerDir) {
     $installerPath = Get-ChildItem -Path $installerDir -Filter "Focus-*Setup.exe" | Select-Object -First 1
     if ($installerPath) {
         $installerSize = $installerPath.Length / 1MB
-        Write-Host "  Installer: $($installerPath.FullName)" -ForegroundColor Gray
-        Write-Host "    Size: $([math]::Round($installerSize, 2)) MB" -ForegroundColor Gray
+        Write-Log "  Installer: $($installerPath.FullName)" -Color Gray
+        Write-Log "    Size: $([math]::Round($installerSize, 2)) MB" -Color Gray
     }
 }
 
-Write-Host ""
-Write-Host "============================================" -ForegroundColor Green
-Write-Host "  Build Complete!" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Outputs:" -ForegroundColor Cyan
-Write-Host "  Portable: ui\out\Focus-win32-x64\" -ForegroundColor White
-Write-Host "  Installer: ui\out\make\squirrel.windows\x64\Focus-*-Setup.exe" -ForegroundColor White
-Write-Host ""
+Write-Log ""
+Write-Log "============================================" -Color Green
+Write-Log "  Build Complete!" -Color Green
+Write-Log "============================================" -Color Green
+Write-Log ""
+Write-Log "Output:" -Color Cyan
+Write-Log "  Portable: ui\out\Focus-win32-x64\" -Color White
+Write-Log ""
 
-# Optional: Create release directory
-if (-not $SkipCleanup) {
-    $releaseDir = "release"
-    if (-not (Test-Path $releaseDir)) {
-        New-Item -ItemType Directory -Path $releaseDir | Out-Null
-    }
+# Packaging complete - portable version available in ui\out\Focus-win32-x64
 
-    Write-Host "Copying to release directory..." -ForegroundColor Yellow
+Write-Log "Done!" -Color Green
 
-    # Copy portable version
-    if (Test-Path $packageDir) {
-        $portableZip = "$releaseDir\Focus-win32-x64-portable.zip"
-        if (Test-Path $portableZip) {
-            Remove-Item $portableZip -Force
-        }
-        Compress-Archive -Path "$packageDir\*" -DestinationPath $portableZip
-        Write-Host "  Created: $portableZip" -ForegroundColor Green
-    }
-
-    # Copy installer
-    if (Test-Path $installerDir) {
-        $installer = Get-ChildItem -Path $installerDir -Filter "Focus-*Setup.exe" | Select-Object -First 1
-        if ($installer) {
-            Copy-Item $installer.FullName -Destination "$releaseDir\" -Force
-            Write-Host "  Copied: release\$($installer.Name)" -ForegroundColor Green
-        }
-    }
-
-    # Build Inno Setup installer
-    Write-Host "Building Inno Setup installer..." -ForegroundColor Yellow
-    $innoSetupScript = "installer\focus-installer.iss"
-
-    if (Test-Path $innoSetupScript) {
-        # Check if Inno Setup compiler is available
-        $iscc = Get-Command "iscc.exe" -ErrorAction SilentlyContinue
-
-        if ($iscc) {
-            Write-Host "  - Running Inno Setup compiler..." -ForegroundColor Gray
-            & iscc.exe $innoSetupScript
-
-            if ($LASTEXITCODE -eq 0) {
-                $innoInstaller = Get-ChildItem -Path $releaseDir -Filter "Focus-*-Setup.exe" |
-                    Where-Object { $_.Name -notlike "*Squirrel*" } |
-                    Select-Object -First 1
-
-                if ($innoInstaller) {
-                    Write-Host "  Created: $($innoInstaller.FullName)" -ForegroundColor Green
-                    $innoSize = $innoInstaller.Length / 1MB
-                    Write-Host "    Size: $([math]::Round($innoSize, 2)) MB" -ForegroundColor Gray
-                }
-            } else {
-                Write-Host "  Warning: Inno Setup compilation failed (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "  Skipping: Inno Setup compiler (iscc.exe) not found in PATH" -ForegroundColor Gray
-            Write-Host "  Install from: https://jrsoftware.org/isdl.php" -ForegroundColor Gray
-        }
-    } else {
-        Write-Host "  Skipping: Installer script not found at $innoSetupScript" -ForegroundColor Gray
-    }
-
-    Write-Host ""
+# Cleanup
+if ($global:LogMutex) {
+    $global:LogMutex.Dispose()
 }
-
-Write-Host "Done!" -ForegroundColor Green

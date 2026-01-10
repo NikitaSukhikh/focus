@@ -4,6 +4,7 @@ import { X, Link2, ExternalLink, Loader2 } from 'lucide-react';
 import { Z_INDEX } from '../../constants/zIndex';
 import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/url';
 import { truncateLinkTitle } from '../../utils/text';
+import { API_BASE } from '../../config/api';
 
 interface AddLinkDialogProps {
   isOpen: boolean;
@@ -147,7 +148,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd, submitLabel = 'Add Link'
     setIsFetchingMetadata(true);
     try {
       const params = new URLSearchParams({ url: urlToFetch });
-      const response = await fetch(`/api/metadata/url?${params.toString()}`);
+      const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
       if (response.ok) {
         const metadata = await response.json();
         console.log('[ADD LINK] Fetched metadata:', metadata);

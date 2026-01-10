@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../../../../config/api';
 
 interface EbookMetadata {
   title: string;
@@ -11,7 +12,7 @@ export function useEbookMetadata(isEbookFile: boolean, filePath?: string): Ebook
   useEffect(() => {
     if (isEbookFile && filePath) {
       const params = new URLSearchParams({ file_path: filePath });
-      fetch(`/api/thumbnails/ebook-metadata?${params.toString()}`)
+      fetch(`${API_BASE}/thumbnails/ebook-metadata?${params.toString()}`)
         .then(res => res.json())
         .then(data => {
           setMetadata(data);

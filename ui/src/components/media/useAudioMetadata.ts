@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../../config/api';
 
 export interface AudioMetadata {
   duration: number;
@@ -26,7 +27,7 @@ export function useAudioMetadata(filePath?: string) {
 
     const params = new URLSearchParams({ file_path: filePath });
 
-    fetch(`/api/thumbnails/audio-metadata?${params.toString()}`)
+    fetch(`${API_BASE}/thumbnails/audio-metadata?${params.toString()}`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load metadata');
         return res.json();

@@ -32,7 +32,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
       textareaRef.current.style.width = 'auto';
       const contentWidth = textareaRef.current.scrollWidth;
-      textareaRef.current.style.width = Math.max(200, contentWidth + 20) + 'px';
+      textareaRef.current.style.width = Math.max(360, contentWidth + 20) + 'px';
     }
   }, [content.length, x, y]);
 
@@ -105,7 +105,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         border: '1px solid var(--color-border-strong)',
         color: 'var(--color-text-primary)',
         width: 'auto',
-        minWidth: '200px',
+        minWidth: '360px',
         height: 'auto',
         overflow: 'hidden',
         zIndex: Z_INDEX.CONTENT_DRAGGING,
@@ -118,7 +118,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         target.style.height = target.scrollHeight + 'px';
         target.style.width = 'auto';
         const contentWidth = target.scrollWidth;
-        target.style.width = Math.max(200, contentWidth + 20) + 'px';
+        target.style.width = Math.max(360, contentWidth + 20) + 'px';
       }}
     />
   );

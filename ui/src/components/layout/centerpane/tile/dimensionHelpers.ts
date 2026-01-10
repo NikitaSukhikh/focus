@@ -6,6 +6,8 @@ export const EMBED_LINK_HEIGHT = 260;
 export const NON_EMBED_LINK_SIZE = 192;
 export const AUDIO_EMBED_WIDTH = 360;
 export const AUDIO_EMBED_HEIGHT = 210;
+export const VIDEO_EMBED_WIDTH = 360;
+export const VIDEO_EMBED_HEIGHT = 260;
 
 export function getThumbnailDimensions(
   type: string,

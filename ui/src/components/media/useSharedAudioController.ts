@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../../config/api';
 
 interface AudioControllerState {
   filePath?: string;
@@ -40,7 +41,7 @@ const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 const buildUrl = (filePath: string) => {
   const params = new URLSearchParams({ file_path: filePath });
-  return `/api/thumbnails/audio-file?${params.toString()}`;
+  return `${API_BASE}/thumbnails/audio-file?${params.toString()}`;
 };
 
 // Wire native audio events once

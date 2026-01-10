@@ -16,6 +16,7 @@ import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { isGmailUrl } from '../utils';
+import { API_BASE } from '../../../../config/api';
 
 interface LinkCreationParams {
   selectedSpace: any;
@@ -138,7 +139,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
           setTimeout(async () => {
             try {
               const params = new URLSearchParams({ url });
-              const response = await fetch(`/api/metadata/url?${params.toString()}`);
+              const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
               if (!response.ok) return;
               const metadata = await response.json();
               const resolvedUrl = metadata.resolved_url || url;
@@ -266,7 +267,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
       setTimeout(async () => {
         try {
           const params = new URLSearchParams({ url });
-          const response = await fetch(`/api/metadata/url?${params.toString()}`);
+          const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
           if (response.ok) {
             const metadata = await response.json();
             console.log('[AUTO-REFRESH] Received metadata:', metadata);

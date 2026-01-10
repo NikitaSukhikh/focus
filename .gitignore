@@ -12,6 +12,7 @@ node_modules
 /dist
 /build
 ui/out/
+ui/resources/
 backend/pandoc-*.msi
 *.exe
 *.nupkg

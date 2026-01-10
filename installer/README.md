@@ -11,15 +11,30 @@ The Focus installer provides:
 - **Desktop Shortcut**: Optional desktop icon
 - **Start Menu Integration**: Application shortcuts in Start Menu
 - **Proper Uninstallation**: Clean removal through Windows "Programs and Features"
-- **Disk Space Check**: Verifies sufficient space before installation
+- **System Requirements Check**: Validates Windows 10+ and 64-bit architecture
+- **Disk Space Validation**: Verifies 500MB+ available before installation
+- **VC++ Redistributable Detection**: Warns if required runtime is missing
 - **License Display**: Shows Apache 2.0 license during installation
+- **Registry Integration**: Registers app for command-line usage and file associations
 
 ## Prerequisites
 
-To build the installer, you need:
+### For Building the Installer
 
 1. **Inno Setup**: Download and install from https://jrsoftware.org/isdl.php
 2. Add Inno Setup to your PATH, or the build script will skip installer creation
+
+### System Requirements for End Users
+
+The installer automatically checks these requirements:
+
+- **Operating System**: Windows 10 or later (64-bit)
+- **Architecture**: x64 (64-bit) only
+- **Disk Space**: Minimum 500 MB free space
+- **Visual C++ Redistributable**: Microsoft Visual C++ 2015-2022 Redistributable (x64)
+  - Download: https://aka.ms/vs/17/release/vc_redist.x64.exe
+  - Most Windows systems already have this installed
+  - Installer will warn (not block) if missing
 
 ## Building the Installer
 
@@ -61,20 +76,39 @@ The installer will be created in the `release\` directory as `Focus-1.0.0-Setup.
 
 The installer copies the entire contents of `ui\out\Focus-win32-x64\` which includes:
 
-- `Focus.exe` - Main Electron application
-- `resources\` - Backend executable and application resources
-- All dependencies and DLLs
-- Application assets and configuration
+- `focus.exe` - Main Electron application (frontend)
+- `resources\Focus\Focus.exe` - Python backend (PyInstaller bundle)
+- `resources\Focus\_internal\` - All Python dependencies and libraries:
+  - SQLite database libraries (aiosqlite)
+  - Image processing (PIL, pillow-heif)
+  - Document processing (openpyxl, ebooklib, lxml, pandas)
+  - Audio processing (mutagen)
+  - All required DLLs and Python modules
+- Electron runtime and Chromium dependencies
+- Application assets (icons, resources)
+- All required system DLLs (ffmpeg, d3dcompiler, etc.)
+
+### Registry Entries
+
+The installer creates these registry entries:
+
+- **App Paths**: Allows running `focus` from command line
+- **File Associations**: Registers `.focus` file type (if needed)
+- **Uninstall Info**: Standard Windows uninstall registry entries
+
+All registry entries are removed on uninstallation.
 
 ### Installation Steps
 
-1. Welcome screen
-2. License agreement (Apache 2.0)
-3. Information about the application
-4. **Directory selection** (THIS IS WHERE USER CHOOSES LOCATION)
-5. Optional tasks (desktop icon, quick launch)
-6. Installation progress
-7. Completion with option to launch
+1. **System Requirements Check**: Validates Windows 10+, 64-bit, VC++ Redistributable
+2. **Welcome Screen**: Introduction to Focus
+3. **License Agreement**: Apache 2.0 license
+4. **Information Page**: Important pre-installation notes
+5. **Directory Selection**: User chooses installation location (default: `C:\Program Files\Focus`)
+6. **Optional Tasks**: Desktop shortcut, Start Menu shortcuts
+7. **Ready to Install**: Confirmation page showing selected options
+8. **Installation Progress**: Files are copied and configured
+9. **Completion**: Option to launch Focus immediately
 
 ## Customization
 
@@ -134,9 +168,35 @@ Ensure you've run the full build first:
 
 This creates the required `ui\out\Focus-win32-x64\` directory.
 
-### Installer size is too large
+### Installer size is large
 
-The installer includes all Electron and backend dependencies (~200MB). This is normal for Electron applications.
+The installer is approximately 200MB because it includes:
+
+- Complete Electron runtime with Chromium
+- Full Python backend with all dependencies
+- All required DLLs and libraries
+- This is normal for Electron+Python desktop applications
+
+### Installation fails on Windows 7/8
+
+Focus requires Windows 10 or later due to Electron compatibility requirements. The installer will block installation on older Windows versions.
+
+### VC++ Redistributable warning
+
+If you see a warning about Visual C++ Redistributable:
+
+1. Most modern Windows systems already have it
+2. Try installing Focus anyway - it may work
+3. If Focus fails to launch, download from: https://aka.ms/vs/17/release/vc_redist.x64.exe
+4. Install the redistributable and try again
+
+### Application won't start after installation
+
+1. Check Windows Event Viewer for error details
+2. Ensure VC++ Redistributable is installed
+3. Verify you have Windows 10 or later (64-bit)
+4. Try running as administrator
+5. Check antivirus isn't blocking the application
 
 ## File Structure
 

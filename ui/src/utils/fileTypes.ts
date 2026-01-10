@@ -2,7 +2,7 @@
  * File type detection and utilities
  */
 
-export type FileCategory = 'image' | 'audio' | 'pdf' | 'document' | 'text' | 'ebook' | 'unknown';
+export type FileCategory = 'image' | 'audio' | 'video' | 'pdf' | 'document' | 'text' | 'ebook' | 'unknown';
 
 export interface FileTypeInfo {
   category: FileCategory;
@@ -44,6 +44,35 @@ const AUDIO_EXTENSIONS = new Set([
   'ape',
   'wv',
   'mka',
+]);
+
+// Video file extensions
+const VIDEO_EXTENSIONS = new Set([
+  'mp4',
+  'webm',
+  'ogg',
+  'ogv',
+  'avi',
+  'mov',
+  'wmv',
+  'flv',
+  'mkv',
+  'm4v',
+  'mpg',
+  'mpeg',
+  'mpe',
+  '3gp',
+  '3g2',
+  'mts',
+  'm2ts',
+  'ts',
+  'vob',
+  'divx',
+  'xvid',
+  'f4v',
+  'asf',
+  'rm',
+  'rmvb',
 ]);
 
 // PDF file extensions
@@ -154,6 +183,14 @@ export function detectFileType(filePath: string): FileTypeInfo {
     };
   }
 
+  if (VIDEO_EXTENSIONS.has(extension)) {
+    return {
+      category: 'video',
+      extension,
+      mimeType: getVideoMimeType(extension),
+    };
+  }
+
   if (PDF_EXTENSIONS.has(extension)) {
     return {
       category: 'pdf',
@@ -216,6 +253,41 @@ function getAudioMimeType(extension: string): string {
   };
 
   return mimeTypes[extension] || 'audio/mpeg';
+}
+
+/**
+ * Get MIME type for video extensions
+ */
+function getVideoMimeType(extension: string): string {
+  const mimeTypes: Record<string, string> = {
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    ogg: 'video/ogg',
+    ogv: 'video/ogg',
+    avi: 'video/x-msvideo',
+    mov: 'video/quicktime',
+    wmv: 'video/x-ms-wmv',
+    flv: 'video/x-flv',
+    mkv: 'video/x-matroska',
+    m4v: 'video/x-m4v',
+    mpg: 'video/mpeg',
+    mpeg: 'video/mpeg',
+    mpe: 'video/mpeg',
+    '3gp': 'video/3gpp',
+    '3g2': 'video/3gpp2',
+    mts: 'video/mp2t',
+    m2ts: 'video/mp2t',
+    ts: 'video/mp2t',
+    vob: 'video/dvd',
+    divx: 'video/divx',
+    xvid: 'video/x-xvid',
+    f4v: 'video/x-f4v',
+    asf: 'video/x-ms-asf',
+    rm: 'application/vnd.rn-realmedia',
+    rmvb: 'application/vnd.rn-realmedia-vbr',
+  };
+
+  return mimeTypes[extension] || 'video/mp4';
 }
 
 /**

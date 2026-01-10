@@ -16,6 +16,7 @@ import { DroppedIcon, ArrowSegment } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
 import type { UndoEventResponse } from '../../../../api/undo';
+import { API_BASE } from '../../../../config/api';
 
 interface UseUndoProps {
   selectedSpaceId?: string;
@@ -489,14 +490,14 @@ export const useUndo = ({
 
     const clearServerHistory = async () => {
       try {
-        await fetch(`/api/spaces/${selectedSpaceId}/undo-events`, {
+        await fetch(`${API_BASE}/spaces/${selectedSpaceId}/undo-events`, {
           method: 'DELETE',
           keepalive: true,
         });
       } catch (err) {
         try {
           if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-            const url = `/api/spaces/${selectedSpaceId}/undo-events`;
+            const url = `${API_BASE}/spaces/${selectedSpaceId}/undo-events`;
             const blob = new Blob([], { type: 'application/json' });
             navigator.sendBeacon(url, blob);
           }

@@ -20,6 +20,7 @@ import { WebviewPreview } from './components/WebviewPreview';
 import { HTMLPreview } from './components/HTMLPreview';
 import { MarkdownPreview } from './components/MarkdownPreview';
 import { DroppedIcon } from '../centerpane/types';
+import { API_BASE } from '../../../config/api';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -65,7 +66,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     onClose();
   };
 
-  const { isImageFile, isAudioFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
   const imageMetadata = useImageMetadata(isImageFile, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile || isEbookFile, documentPreviewUrl || ebookPreviewUrl);
@@ -73,10 +74,10 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
 
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
-  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
+  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
 
   // Tile navigation
   const navigation = useTileNavigation({
@@ -144,7 +145,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
       if (hasUnsavedChanges && tileId && localContent) {
         // Fire async save without waiting
         const title = localTitle || 'Untitled Note';
-        fetch(`/api/objects/${tileId}`, {
+        fetch(`${API_BASE}/objects/${tileId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -235,6 +236,27 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
 
         {isAudioFile && filePath && (
           <AudioPlayer filePath={filePath} title={title} />
+        )}
+
+        {isVideoFile && videoPreviewUrl && (
+          <div className="w-full flex justify-center p-6">
+            <div style={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
+              <video
+                src={videoPreviewUrl}
+                controls
+                controlsList="nodownload"
+                preload="metadata"
+                style={{
+                  width: '100%',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                  background: '#000'
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
         )}
 
         {imagePreviewUrl && (

@@ -14,6 +14,7 @@ import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection'
 import { useEbookMetadata } from '../previewpane/hooks/useEbookMetadata';
 import { MarkdownPreview } from '../previewpane/components/MarkdownPreview';
 import { DroppedIcon } from '../centerpane/types';
+import { API_BASE } from '../../../config/api';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -66,13 +67,15 @@ export function FullWindowPreview({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textContentRef = useRef<HTMLDivElement>(null);
 
-  const { isImageFile, isAudioFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, imagePreviewUrl, documentPreviewUrl, ebookPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl } = useFileTypeDetection(type, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
 
   const videoEmbed = getVideoEmbed(url);
+  const isElectron = typeof window !== 'undefined' && !!window.desktopAPI;
+  const shouldUseWebview = !!videoEmbed && isElectron && videoEmbed.provider === 'youtube';
 
-  // Only use webview logic when not showing an image, audio, or document
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
+  // Only use webview logic when not showing an image, audio, video, or document
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
   const currentTitle = localTitle ?? title;
@@ -109,7 +112,7 @@ export function FullWindowPreview({
   useEffect(() => {
     if (isImageFile && filePath) {
       const params = new URLSearchParams({ file_path: filePath });
-      fetch(`/api/thumbnails/metadata?${params.toString()}`)
+      fetch(`${API_BASE}/thumbnails/metadata?${params.toString()}`)
         .then(res => res.json())
         .then(data => {
           setImageMetadata(data);
@@ -254,7 +257,7 @@ export function FullWindowPreview({
       if (hasUnsavedChanges && tileId && localContent) {
         // Fire async save without waiting
         const title = localTitle || 'Untitled Note';
-        fetch(`/api/objects/${tileId}`, {
+        fetch(`${API_BASE}/objects/${tileId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -481,7 +484,7 @@ export function FullWindowPreview({
             &gt;
           </button>
 
-          {!url && !imagePreviewUrl && !isAudioFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && (
+          {!url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>
                 No preview available.
@@ -556,6 +559,28 @@ export function FullWindowPreview({
             <div className="flex items-center justify-center h-full p-8">
               <div className="w-full max-w-4xl">
                 <AudioPlayer filePath={filePath} title={title} />
+              </div>
+            </div>
+          )}
+
+          {/* Video preview */}
+          {isVideoFile && videoPreviewUrl && (
+            <div className="flex items-center justify-center h-full p-8">
+              <div className="w-full max-w-5xl">
+                <video
+                  src={videoPreviewUrl}
+                  controls
+                  controlsList="nodownload"
+                  preload="metadata"
+                  style={{
+                    width: '100%',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                    background: '#000'
+                  }}
+                >
+                  Your browser does not support the video tag.
+                </video>
               </div>
             </div>
           )}
@@ -668,23 +693,42 @@ export function FullWindowPreview({
           {videoEmbed && (
             <div className="flex items-center justify-center h-full p-8">
               <div style={{ position: 'relative', width: '100%', maxWidth: '1400px', paddingTop: '56.25%' }}>
-                <iframe
-                  src={videoEmbed.embedUrl}
-                  title={title || 'Video preview'}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                  allowFullScreen
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    border: '0',
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-                    background: '#000'
-                  }}
-                />
+                {shouldUseWebview ? (
+                  <webview
+                    src={videoEmbed.embedUrl}
+                    partition="persist:focus-webview"
+                    allowpopups="true"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      border: '0',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                      background: '#000'
+                    }}
+                  />
+                ) : (
+                  <iframe
+                    src={videoEmbed.embedUrl}
+                    title={title || 'Video preview'}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                    allowFullScreen
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      border: '0',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                      background: '#000'
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
