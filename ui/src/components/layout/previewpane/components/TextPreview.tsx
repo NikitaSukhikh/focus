@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 import { usePreviewTextEditor } from '../hooks/usePreviewTextEditor';
 import { PreviewTextEditor } from './PreviewTextEditor';
+import { formatTextWithLinks } from '../../../../utils/linkFormatter';
 
 interface TextPreviewProps {
   title?: string;
@@ -138,7 +139,7 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
           style={{ ...FONT_ROLES.paneTitle, fontSize: '28px' }}
           onDoubleClick={handleDoubleClick}
         >
-          {displayTitle}
+          {formatTextWithLinks(displayTitle)}
         </h1>
         <div
           ref={contentRef}
@@ -152,7 +153,7 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
           }}
           onDoubleClick={handleDoubleClick}
         >
-          {content}
+          {formatTextWithLinks(content)}
         </div>
       </div>
     </div>

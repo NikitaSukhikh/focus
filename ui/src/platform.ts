@@ -41,7 +41,7 @@ export async function openFilePath(filePath: string): Promise<void> {
  */
 export async function openAuthWindow(
   url: string,
-  opts: { title?: string; width?: number; height?: number } = {}
+  opts: { title?: string; width?: number; height?: number; partition?: string } = {}
 ): Promise<null> {
   if (!url) return null;
   const api = (window as any).desktopAPI as DesktopAPI;
@@ -50,6 +50,7 @@ export async function openAuthWindow(
     title: opts.title,
     width: opts.width,
     height: opts.height,
+    partition: opts.partition,
   });
   return null;
 }

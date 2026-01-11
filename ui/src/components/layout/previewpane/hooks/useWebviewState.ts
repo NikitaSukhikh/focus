@@ -28,6 +28,8 @@ export const useWebviewState = (webviewRef: React.RefObject<HTMLWebViewElement |
   const skipSpinnerRef = useRef(false);
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<number | null>(null);
+  const authAttemptedRef = useRef(false);
+  const authUrlRef = useRef<string | undefined>(undefined);
 
   const cache = useWebviewCache(webviewRef);
 
@@ -57,6 +59,8 @@ export const useWebviewState = (webviewRef: React.RefObject<HTMLWebViewElement |
     skipSpinnerRef.current = false;
     retryCountRef.current = 0;
     isReadyRef.current = false;
+    authAttemptedRef.current = false;
+    authUrlRef.current = undefined;
   };
 
   return {
@@ -74,6 +78,8 @@ export const useWebviewState = (webviewRef: React.RefObject<HTMLWebViewElement |
     skipSpinnerRef,
     retryCountRef,
     retryTimeoutRef,
+    authAttemptedRef,
+    authUrlRef,
 
     // Constants
     MAX_RETRIES,

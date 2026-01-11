@@ -1,36 +1,11 @@
 import React from 'react';
 import { TEXT_FONT_SIZE, TEXT_LINE_HEIGHT } from './dimensionHelpers';
+import { formatTextWithLinks } from '../../../../utils/linkFormatter';
 
 interface TextContentProps {
   content: string;
   isSelected: boolean;
   hoverScaleClass: string;
-}
-
-const URL_REGEX = /(https?:\/\/[^\s]+)/g;
-
-function formatTextWithLinks(text: string) {
-  const parts = text.split(URL_REGEX);
-
-  return parts.map((part, index) => {
-    if (part.match(URL_REGEX)) {
-      return (
-        <a
-          key={index}
-          href={part}
-          className="underline cursor-pointer"
-          style={{ pointerEvents: 'auto' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open(part, '_blank');
-          }}
-        >
-          {part}
-        </a>
-      );
-    }
-    return <React.Fragment key={index}>{part}</React.Fragment>;
-  });
 }
 
 // TextContent shows text note tiles, splitting the first line into a heading with the remaining body beneath it.

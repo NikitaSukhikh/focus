@@ -16,7 +16,6 @@ import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { API_BASE } from '../../../../config/api';
-import { isGmailUrl } from '../utils';
 
 interface LinkCreationParams {
   selectedSpace: any;
@@ -262,55 +261,52 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
       window.dispatchEvent(new CustomEvent('link:created', { detail: { linkId: created.id } }));
 
       // Auto-refresh metadata shortly after creation to update title/description/favicon
-      // Skip for Gmail URLs to avoid redirect loops during login
-      if (!isGmailUrl(url)) {
-        setTimeout(async () => {
-          try {
-            const params = new URLSearchParams({ url });
-            const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
-            if (response.ok) {
-              const metadata = await response.json();
-              console.log('[AUTO-REFRESH] Received metadata:', metadata);
-              const resolvedUrl = metadata.resolved_url || url;
-              const updatedTitle = truncateLinkTitle(metadata.title || metadata.og_title || created.title);
-              const updatedDescription = metadata.description || metadata.og_description || created.description;
-              const updatedFavicon = pickFavicon(metadata, resolvedUrl, url) || favicon_url;
-              console.log('[AUTO-REFRESH] Using favicon:', updatedFavicon);
+      setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({ url });
+          const response = await fetch(`${API_BASE}/metadata/url?${params.toString()}`);
+          if (response.ok) {
+            const metadata = await response.json();
+            console.log('[AUTO-REFRESH] Received metadata:', metadata);
+            const resolvedUrl = metadata.resolved_url || url;
+            const updatedTitle = truncateLinkTitle(metadata.title || metadata.og_title || created.title);
+            const updatedDescription = metadata.description || metadata.og_description || created.description;
+            const updatedFavicon = pickFavicon(metadata, resolvedUrl, url) || favicon_url;
+            console.log('[AUTO-REFRESH] Using favicon:', updatedFavicon);
 
-              // Update the icon in state
-              setIconsBySpace((prev) => {
-                const current = prev[selectedSpace.id] || [];
-                const updated = current.map((icon) =>
-                  icon.id === created.id
-                    ? {
-                        ...icon,
-                        defaultTitle: updatedTitle,
-                        defaultDescription: updatedDescription,
-                        title: icon.customTitle ? icon.title : updatedTitle,
-                        description: icon.customDescription ?? updatedDescription,
-                        faviconUrl: updatedFavicon,
-                        url: resolvedUrl,
-                      }
-                    : icon
-                );
-                return { ...prev, [selectedSpace.id]: updated };
-              });
-
-              // Persist to backend
-              await objectsApi.updateLink(
-                created.id,
-                resolvedUrl,
-                updatedTitle,
-                updatedDescription,
-                updatedFavicon
+            // Update the icon in state
+            setIconsBySpace((prev) => {
+              const current = prev[selectedSpace.id] || [];
+              const updated = current.map((icon) =>
+                icon.id === created.id
+                  ? {
+                      ...icon,
+                      defaultTitle: updatedTitle,
+                      defaultDescription: updatedDescription,
+                      title: icon.customTitle ? icon.title : updatedTitle,
+                      description: icon.customDescription ?? updatedDescription,
+                      faviconUrl: updatedFavicon,
+                      url: resolvedUrl,
+                    }
+                  : icon
               );
-              window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: created.id } }));
-            }
-          } catch (err) {
-            console.error('[AUTO-REFRESH] Failed to refresh metadata:', err);
+              return { ...prev, [selectedSpace.id]: updated };
+            });
+
+            // Persist to backend
+            await objectsApi.updateLink(
+              created.id,
+              resolvedUrl,
+              updatedTitle,
+              updatedDescription,
+              updatedFavicon
+            );
+            window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: created.id } }));
           }
-        }, 10);
-      }
+        } catch (err) {
+          console.error('[AUTO-REFRESH] Failed to refresh metadata:', err);
+        }
+      }, 10);
 
       setIsAddLinkDialogOpen(false);
       setPendingLinkPosition(null);

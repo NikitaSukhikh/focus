@@ -669,7 +669,7 @@ ipcMain.handle('desktop:clear-clipboard', async () => {
   }
 });
 
-ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: string; title?: string; width?: number; height?: number }) => {
+ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: string; title?: string; width?: number; height?: number; partition?: string }) => {
   const targetUrl = payload?.url;
   if (!targetUrl) return;
 
@@ -689,6 +689,7 @@ ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: strin
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      partition: payload.partition,
     },
   });
 
