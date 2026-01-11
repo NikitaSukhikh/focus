@@ -14,19 +14,24 @@ interface PreviewHeaderProps {
   onClose: () => void;
   onOpenFullWindow: () => void;
   ebookMetadata?: EbookMetadata | null;
+  showEditHint?: boolean;
 }
 
 // PreviewHeader renders the preview title bar and the controls for opening externally, expanding to full window, or closing the pane.
-export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebookMetadata }: PreviewHeaderProps) {
+export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebookMetadata, showEditHint }: PreviewHeaderProps) {
   const displayTitle = ebookMetadata?.title || title;
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
 
   return (
     <div className="flex flex-col" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
       <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex items-baseline gap-2 min-w-0 flex-1">
           <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Preview</h2>
-          {showEbookInfo ? (
+          {showEditHint ? (
+            <span style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-muted)', opacity: 0.7, fontSize: '14px' }}>
+              (Double-click to edit or add text)
+            </span>
+          ) : showEbookInfo ? (
             <div className="flex flex-col min-w-0 flex-1">
               <span className="truncate" style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-primary)', fontWeight: 500 }}>
                 {ebookMetadata.title}

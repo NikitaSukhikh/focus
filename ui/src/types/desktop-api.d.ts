@@ -7,7 +7,7 @@ declare global {
     openDialog: (_options: import('electron').OpenDialogOptions) => Promise<import('electron').OpenDialogReturnValue>;
     openExternal: (_url: string) => Promise<void>;
     openFilePath: (_filePath: string) => Promise<void>;
-    openAuthWindow: (_payload: { url: string; title?: string; width?: number; height?: number }) => Promise<void>;
+    openAuthWindow: (_payload: { url: string; title?: string; width?: number; height?: number; partition?: string }) => Promise<void>;
     showItemInFolder: (_filePath: string) => Promise<void>;
     arrangeWindowsSideBySide: () => Promise<boolean>;
     writeFileToClipboard: (_filePath: string) => Promise<boolean>;

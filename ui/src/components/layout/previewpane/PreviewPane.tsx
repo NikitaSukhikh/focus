@@ -19,8 +19,10 @@ import { VideoPreview } from './components/VideoPreview';
 import { WebviewPreview } from './components/WebviewPreview';
 import { HTMLPreview } from './components/HTMLPreview';
 import { MarkdownPreview } from './components/MarkdownPreview';
+import { GmailExternalPreview } from './components/gmail_external';
 import { DroppedIcon } from '../centerpane/types';
 import { API_BASE } from '../../../config/api';
+import { isGmailUrl } from '../centerpane/utils';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -77,7 +79,10 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
 
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
+  // Check if this is a Gmail URL (either by type or by URL pattern)
+  const isGmail = type === 'gmail' || (url && isGmailUrl(url));
+
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile || isGmail;
 
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
@@ -202,6 +207,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         onClose={onClose}
         onOpenFullWindow={handleOpenFullWindow}
         ebookMetadata={ebookMetadata}
+        showEditHint={type === 'text' && !isEditingText}
       />
 
       <div
@@ -321,6 +327,14 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
           <HTMLPreview
             htmlPreviewUrl={htmlPreviewUrl}
             title={title}
+          />
+        )}
+
+        {isGmail && (
+          <GmailExternalPreview
+            url={url}
+            title={title}
+            gmailEmail={gmailEmail}
           />
         )}
 

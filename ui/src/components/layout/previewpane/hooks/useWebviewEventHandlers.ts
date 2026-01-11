@@ -12,6 +12,8 @@
  */
 
 import { useEffect } from 'react';
+import { isGmailUrl } from '../../centerpane/utils';
+import { openAuthWindow } from '../../../../platform';
 
 interface EventHandlersState {
   setIsLoading: (loading: boolean) => void;
@@ -27,6 +29,8 @@ interface EventHandlersState {
   clearRetryTimeout: () => void;
   scheduleRetry: () => void;
   safeLoadURL: (url: string) => Promise<void>;
+  authAttemptedRef: React.MutableRefObject<boolean>;
+  authUrlRef: React.MutableRefObject<string | undefined>;
   cache: {
     recordLoadComplete: (url: string) => void;
     updateAccessTime: (url: string) => void;
@@ -62,6 +66,35 @@ export const useWebviewEventHandlers = (
   useEffect(() => {
     const view = webviewRef.current as any;
     if (!view) return;
+    const isGmailLoginUrl = (targetUrl: string) => {
+      try {
+        const url = new URL(targetUrl);
+        return url.hostname === 'accounts.google.com';
+      } catch {
+        return false;
+      }
+    };
+
+    const maybeOpenGmailAuth = (targetUrl: string) => {
+      const currentUrl = state.currentUrlRef.current;
+      if (!currentUrl || !isGmailUrl(currentUrl)) return;
+      if (!isGmailLoginUrl(targetUrl)) return;
+
+      if (state.authAttemptedRef.current) {
+        return;
+      }
+
+      state.authAttemptedRef.current = true;
+      state.authUrlRef.current = targetUrl;
+      state.setIsLoading(false);
+      state.setLoadError('Gmail login required. Complete sign-in in the login window, then click Retry.');
+      void openAuthWindow(targetUrl, {
+        title: 'Gmail Login',
+        width: 520,
+        height: 700,
+        partition: 'persist:focus-webview',
+      });
+    };
 
     const handleLoadStart = () => {
       state.setIsLoading(true);
@@ -82,6 +115,7 @@ export const useWebviewEventHandlers = (
 
     const handleFail = (_event: any, errorCode: number, errorDescription: string) => {
       const currentUrl = state.currentUrlRef.current;
+      const isGmailTarget = currentUrl ? isGmailUrl(currentUrl) : false;
 
       // Ignore certain non-critical errors (like -3 ERR_ABORTED from redirects)
       if (errorCode === -3 && !currentUrl) {
@@ -92,7 +126,7 @@ export const useWebviewEventHandlers = (
       if (currentUrl) {
         state.externalFallback.recordFailedLoad(currentUrl);
 
-        if (state.externalFallback.shouldFallbackToExternal(currentUrl, errorCode)) {
+        if (!isGmailTarget && state.externalFallback.shouldFallbackToExternal(currentUrl, errorCode)) {
           state.setIsLoading(false);
           state.setLoadError('Opening in external browser...');
           setTimeout(() => {
@@ -141,12 +175,22 @@ export const useWebviewEventHandlers = (
       }
     };
 
+    const handleWillNavigate = (_event: any, targetUrl: string) => {
+      maybeOpenGmailAuth(targetUrl);
+    };
+
+    const handleRedirect = (_event: any, targetUrl: string) => {
+      maybeOpenGmailAuth(targetUrl);
+    };
+
     view.addEventListener('did-start-loading', handleLoadStart);
     view.addEventListener('did-stop-loading', handleLoadStop);
     view.addEventListener('did-finish-load', handleLoadStop);
     view.addEventListener('did-fail-load', handleFail);
     view.addEventListener('dom-ready', handleDomReady);
     view.addEventListener('new-window', handleNewWindow);
+    view.addEventListener('will-navigate', handleWillNavigate);
+    view.addEventListener('did-redirect-navigation', handleRedirect);
 
     return () => {
       view.removeEventListener('did-start-loading', handleLoadStart);
@@ -155,6 +199,8 @@ export const useWebviewEventHandlers = (
       view.removeEventListener('did-fail-load', handleFail);
       view.removeEventListener('dom-ready', handleDomReady);
       view.removeEventListener('new-window', handleNewWindow);
+      view.removeEventListener('will-navigate', handleWillNavigate);
+      view.removeEventListener('did-redirect-navigation', handleRedirect);
       state.clearRetryTimeout();
     };
   }, [webviewRef, state]);

@@ -23,6 +23,8 @@ interface NavigationState {
   skipSpinnerRef: React.MutableRefObject<boolean>;
   retryCountRef: React.MutableRefObject<number>;
   retryTimeoutRef: React.MutableRefObject<number | null>;
+  authAttemptedRef: React.MutableRefObject<boolean>;
+  authUrlRef: React.MutableRefObject<string | undefined>;
   RETRY_DELAY_MS: number;
   clearRetryTimeout: () => void;
   markLoadComplete: () => void;
@@ -96,6 +98,8 @@ export const useWebviewNavigation = (
     if (url !== state.currentUrlRef.current) {
       state.clearRetryTimeout();
       state.retryCountRef.current = 0;
+      state.authAttemptedRef.current = false;
+      state.authUrlRef.current = undefined;
 
       const isCached = state.cache.isCached(url);
 
