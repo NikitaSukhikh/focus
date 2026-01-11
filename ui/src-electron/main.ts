@@ -380,8 +380,42 @@ app.whenReady().then(() => {
     app.quit();
   });
 
+  // Configure default session for iframes in production to prevent ERR_CACHE_MISS
+  const defaultSession = session.defaultSession;
+
+  // Set proper request headers for YouTube embeds
+  defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const headers = { ...details.requestHeaders };
+
+    // Ensure proper headers for YouTube requests to prevent ERR_CACHE_MISS
+    if (details.url.includes('youtube.com') || details.url.includes('youtube-nocookie.com')) {
+      headers['Referer'] = 'https://www.youtube-nocookie.com/';
+      headers['Origin'] = 'https://www.youtube-nocookie.com';
+    }
+
+    callback({ requestHeaders: headers });
+  });
+
   // Configure webview session to handle sites that block embedding
   const webviewSession = session.fromPartition('persist:focus-webview');
+
+  // Clear navigation cache to prevent auto-restore of previous sessions
+  webviewSession.clearCache().catch((err) => {
+    console.error('[Electron] Failed to clear webview cache:', err);
+  });
+
+  webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const headers = { ...details.requestHeaders };
+
+    // Ensure proper headers for YouTube requests
+    if (details.url.includes('youtube.com') || details.url.includes('youtube-nocookie.com')) {
+      headers['Referer'] = 'https://www.youtube-nocookie.com/';
+      headers['Origin'] = 'https://www.youtube-nocookie.com';
+    }
+
+    callback({ requestHeaders: headers });
+  });
+
   webviewSession.webRequest.onHeadersReceived((details, callback) => {
     const headers = { ...details.responseHeaders };
 
@@ -400,7 +434,9 @@ app.whenReady().then(() => {
   });
 
   // Log where the webview's persistent storage lives so we can verify cookies survive restarts.
-  void logWebviewStorageInfo();
+  logWebviewStorageInfo().catch((err) => {
+    console.error('[Electron] Failed to log webview storage info:', err);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -442,7 +478,26 @@ ipcMain.handle('desktop:open-external', async (_event, targetUrl: string) => {
   if (typeof targetUrl !== 'string' || !targetUrl.trim()) {
     return;
   }
-  await shell.openExternal(targetUrl);
+  try {
+    await shell.openExternal(targetUrl);
+  } catch (error) {
+    console.error('[Electron] Failed to open external URL:', error);
+    // Fallback: try to open in a new BrowserWindow if shell.openExternal fails
+    try {
+      const externalWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+      externalWindow.loadURL(targetUrl);
+    } catch (fallbackError) {
+      console.error('[Electron] Fallback also failed:', fallbackError);
+      throw error; // Re-throw original error
+    }
+  }
 });
 
 ipcMain.handle('desktop:open-file-path', async (_event, filePath: string) => {
@@ -450,28 +505,32 @@ ipcMain.handle('desktop:open-file-path', async (_event, filePath: string) => {
     return;
   }
 
-  const normalizedPath = filePath.trim();
-  const openResult = await shell.openPath(normalizedPath);
-  if (!openResult) {
-    return;
-  }
-
-  console.warn('[Electron] Failed to open file path:', normalizedPath, openResult);
-
-  if (process.platform === 'win32') {
-    try {
-      const child = spawn('rundll32.exe', ['shell32.dll,OpenAs_RunDLL', normalizedPath], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true,
-      });
-      child.on('error', (err) => {
-        console.error('[Electron] Failed to open Open With dialog:', err);
-      });
-      child.unref();
-    } catch (err) {
-      console.error('[Electron] Failed to open Open With dialog:', err);
+  try {
+    const normalizedPath = filePath.trim();
+    const openResult = await shell.openPath(normalizedPath);
+    if (!openResult) {
+      return;
     }
+
+    console.warn('[Electron] Failed to open file path:', normalizedPath, openResult);
+
+    if (process.platform === 'win32') {
+      try {
+        const child = spawn('rundll32.exe', ['shell32.dll,OpenAs_RunDLL', normalizedPath], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true,
+        });
+        child.on('error', (err) => {
+          console.error('[Electron] Failed to open Open With dialog:', err);
+        });
+        child.unref();
+      } catch (err) {
+        console.error('[Electron] Failed to open Open With dialog:', err);
+      }
+    }
+  } catch (err) {
+    console.error('[Electron] Failed to open file path:', err);
   }
 });
 

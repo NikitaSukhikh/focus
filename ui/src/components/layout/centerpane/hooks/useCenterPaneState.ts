@@ -91,17 +91,19 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const customDescription = ((obj as any).custom_description as string | null | undefined) ?? null;
             const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
             const description = obj.type !== 'google_drive' ? (customDescription ?? obj.description ?? defaultDescription) : undefined;
-            const url = obj.type === 'link' ? (meta.url as string) : undefined;
+            const url = (obj.type === 'link' || obj.type === 'gmail') ? (meta.url as string) : undefined;
             const service = meta.service as string | undefined;
             const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
             const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
 
+            // Gmail - extract email subject from metadata if present (for display on tile)
+            const gmailEmail = meta.gmail_email as string | undefined;
+
             const tag = normalizeTag((obj as any).tag ?? meta.tag);
+            const displayTitle = customTitle || obj.title || defaultTitle || '';
+
+            // Check if this is a Gmail URL (for showing Gmail icon on pasted Gmail links)
             const isGmail = url && isGmailUrl(url);
-            const displayTitleBase = customTitle || obj.title || defaultTitle || '';
-            const displayTitle = isGmail && description?.includes('Gmail - ')
-              ? description.replace('Gmail - ', '')
-              : displayTitleBase;
 
             let kind: IconKind =
               obj.type === 'link'
@@ -143,6 +145,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               faviconUrl,
               filePath,
               content: obj.type === 'text' ? (meta.content as string) : undefined,
+              gmailEmail,
             };
           });
         objects.forEach((obj) => {

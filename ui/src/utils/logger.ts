@@ -10,6 +10,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES module compatibility - define __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export enum LogLevel {
   DEBUG = 'DEBUG',
@@ -41,16 +47,26 @@ class AppLogger {
   }
 
   private resolveLogFilePath(): string {
-    // Use user data directory for logs in production
-    const userDataPath = app.getPath('userData');
-    const logsDir = path.join(userDataPath, 'logs');
+    // Determine root directory - use project root in dev, user data in production
+    let rootDir: string;
+    if (app.isPackaged) {
+      // Production: use user data directory
+      rootDir = app.getPath('userData');
+    } else {
+      // Development: use project root (3 levels up from dist-electron)
+      rootDir = path.join(__dirname, '..', '..', '..');
+    }
+
+    const logsDir = path.join(rootDir, 'logs');
 
     // Ensure logs directory exists
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
     }
 
-    return path.join(logsDir, 'focus-app.log');
+    // Create timestamped filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').split('Z')[0];
+    return path.join(logsDir, `frontend-${timestamp}.log`);
   }
 
   private initialize(): void {

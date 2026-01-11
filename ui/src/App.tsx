@@ -41,6 +41,7 @@ export function App() {
     filePath?: string;
     type?: string;
     content?: string;
+    gmailEmail?: string;
   }>({});
   const [isFullWindowOpen, setIsFullWindowOpen] = useState(false);
   const [fullWindowData, setFullWindowData] = useState<{
@@ -434,6 +435,7 @@ export function App() {
                 content={previewData.content}
                 tiles={centerPaneRef.current?.getTilesForSpace(selectedSpaceId || '') || []}
                 onNavigateToTile={handleNavigateToTile}
+                gmailEmail={previewData.gmailEmail}
               />
             </div>
           )}

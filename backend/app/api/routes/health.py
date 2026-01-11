@@ -124,7 +124,7 @@ async def database_health_check(
     response_model=DetailedHealthResponse,
     status_code=status.HTTP_200_OK,
     summary="Detailed health check",
-    description="Returns detailed health status including all subsystems (database, Google OAuth, storage).",
+    description="Returns detailed health status including all subsystems (database, storage).",
     tags=["Health"]
 )
 async def detailed_health_check(
@@ -135,7 +135,6 @@ async def detailed_health_check(
 
     Checks:
     - Database connectivity
-    - Google OAuth configuration
     - Storage directories
     - Feature flags
 
@@ -157,13 +156,6 @@ async def detailed_health_check(
         "path": settings.database.path
     }
 
-    # Google OAuth status
-    subsystems["google_oauth"] = {
-        "status": "configured" if settings.google.is_configured else "not_configured",
-        "client_id_set": bool(settings.google.client_id),
-        "client_secret_set": bool(settings.google.client_secret)
-    }
-
     # Storage status
     subsystems["storage"] = {
         "status": "healthy",
@@ -173,7 +165,6 @@ async def detailed_health_check(
 
     # Feature flags
     subsystems["features"] = {
-        "google_integration": settings.features.google_integration,
         "ai_assistant": settings.features.ai_assistant,
         "thumbnails": settings.features.thumbnails,
         "previews": settings.features.previews,

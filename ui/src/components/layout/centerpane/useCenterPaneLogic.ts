@@ -22,6 +22,7 @@ import { useCenterPaneLinkCreation } from './hooks/useCenterPaneLinkCreation';
 import { useCenterPaneTextCreation } from './hooks/useCenterPaneTextCreation';
 import { useInlineTextEditor } from './hooks/useInlineTextEditor';
 import { useUndo } from './hooks/useUndo';
+import { useCenterPanePaste } from './hooks/useCenterPanePaste';
 
 export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>, zoom: number = 1) => {
   // State management
@@ -104,6 +105,15 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     selectedSpaceId: selectedSpace?.id,
     setIconsBySpace,
     setArrowsBySpace,
+  });
+
+  // Paste handling
+  useCenterPanePaste({
+    selectedSpace,
+    paneRef,
+    setIconsBySpace,
+    clampToBoundaries,
+    zoom,
   });
 
   // Canvas click with proper parameters

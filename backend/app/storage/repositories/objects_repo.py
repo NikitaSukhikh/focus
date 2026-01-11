@@ -187,6 +187,8 @@ class ObjectsRepository:
                 "web_view_link": str(object_data.web_view_link) if object_data.web_view_link else None,
             }
         elif isinstance(object_data, GmailObjectCreate):
+            # Construct Gmail URL from thread_id for webview navigation
+            gmail_url = f"https://mail.google.com/mail/u/0/#inbox/{object_data.thread_id}"
             metadata = {
                 "thread_id": object_data.thread_id,
                 "message_id": object_data.message_id,
@@ -194,6 +196,7 @@ class ObjectsRepository:
                 "sender": object_data.sender,
                 "snippet": object_data.snippet,
                 "received_date": object_data.received_date.isoformat() if object_data.received_date else None,
+                "url": gmail_url,
             }
         elif isinstance(object_data, TextObjectCreate):
             metadata = {

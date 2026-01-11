@@ -1,5 +1,5 @@
 import type React from 'react';
-import { TagColor } from '../../types/tags';
+import { TagColor } from '../../../types/tags';
 
 export type IconKind =
   | 'link'
@@ -38,6 +38,7 @@ export interface DroppedIcon {
   service?: string;
   filePath?: string; // For file objects - path to original file
   content?: string; // For text type objects - stores note content
+  gmailEmail?: string; // For Gmail links - email subject to show on tile when logged in
 }
 
 export interface PreviewTarget {
@@ -47,6 +48,7 @@ export interface PreviewTarget {
   filePath?: string;
   type?: IconKind;
   content?: string; // Text content (notes) or cached preview payloads
+  gmailEmail?: string; // For Gmail links when logged in
 }
 
 export interface CenterPaneProps {

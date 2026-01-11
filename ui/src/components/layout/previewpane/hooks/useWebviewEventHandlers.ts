@@ -48,6 +48,8 @@ export const useWebviewEventHandlers = (
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason: any = event.reason;
       const code = reason?.code ?? reason?.errno;
+      const url = reason?.url;
+      // Suppress ERR_ABORTED (-3) for cancelled navigations
       if (code === -3) {
         event.preventDefault();
       }

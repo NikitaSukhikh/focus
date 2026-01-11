@@ -406,8 +406,8 @@ class LoggingSettings(BaseSettings):
         description="Log output destination"
     )
     file_path: str = Field(
-        default="./logs/focus.log",
-        description="Log file path"
+        default="./logs/backend-{timestamp}.log",
+        description="Log file path (supports {timestamp} placeholder)"
     )
     file_rotation: bool = Field(
         default=True,
@@ -437,11 +437,19 @@ class LoggingSettings(BaseSettings):
         """
         Resolve log path using the same logic as database/storage paths.
         In production, use user data directory; in dev, use backend directory.
+        Supports {timestamp} placeholder for timestamped log files.
         """
         import sys
         import os
+        from datetime import datetime
 
-        raw = Path(self.file_path)
+        # Replace {timestamp} placeholder with current timestamp
+        file_path_str = self.file_path
+        if '{timestamp}' in file_path_str:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            file_path_str = file_path_str.replace('{timestamp}', timestamp)
+
+        raw = Path(file_path_str)
         if raw.is_absolute():
             return raw
 
@@ -458,8 +466,8 @@ class LoggingSettings(BaseSettings):
                 user_data = Path.home() / '.local' / 'share' / 'Focus'
             return (user_data / raw).resolve()
         else:
-            # Development: use backend directory
-            backend_root = Path(__file__).resolve().parents[2]
+            # Development: use backend directory root (project root)
+            backend_root = Path(__file__).resolve().parents[3]
             return (backend_root / raw).resolve()
 
     def ensure_log_directory(self) -> None:

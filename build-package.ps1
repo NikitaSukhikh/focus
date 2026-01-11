@@ -11,10 +11,12 @@ $ErrorActionPreference = "Stop"
 
 # Setup logging
 $RootDir = Get-Location
-$LogFile = Join-Path $RootDir "building.log"
-if (Test-Path $LogFile) {
-    Remove-Item $LogFile -Force
+$LogsDir = Join-Path $RootDir "logs"
+if (-not (Test-Path $LogsDir)) {
+    New-Item -ItemType Directory -Path $LogsDir -Force | Out-Null
 }
+$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$LogFile = Join-Path $LogsDir "building-$Timestamp.log"
 
 # Create a mutex for thread-safe file writing
 $global:LogMutex = New-Object System.Threading.Mutex($false, "BuildLogMutex")

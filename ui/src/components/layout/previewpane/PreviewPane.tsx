@@ -35,10 +35,13 @@ interface PreviewPaneProps {
   content?: string;
   tiles?: DroppedIcon[];
   onNavigateToTile?: (tileId: string) => void;
+  gmailEmail?: string;
 }
 
 // PreviewPane renders the right-hand preview area for the selected tile, choosing between media/file previews and the embedded webview while supporting a full-window handoff.
-export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content, tileId, tiles = [], onNavigateToTile }: PreviewPaneProps) {
+export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content, tileId, tiles = [], onNavigateToTile, gmailEmail }: PreviewPaneProps) {
+  console.log('[PreviewPane] Rendered:', { isOpen, type, url, gmailEmail });
+
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
   // Used to detect outside clicks while editing text inside the pane
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
@@ -75,7 +78,25 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const videoEmbed = getVideoEmbed(url);
 
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
+
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
+
+  // Force webview to about:blank when showing non-webview preview to stop any ongoing navigation
+  useEffect(() => {
+    const view = webviewRef.current as any;
+    console.log('[PreviewPane] Webview cleanup effect:', { hasNonWebviewPreview, hasView: !!view, viewSrc: view?.src });
+    if (hasNonWebviewPreview && view) {
+      try {
+        console.log('[PreviewPane] Stopping webview navigation and resetting to about:blank');
+        if (view.stop) view.stop();
+        if (view.src && view.src !== 'about:blank') {
+          view.src = 'about:blank';
+        }
+      } catch (e) {
+        console.error('[PreviewPane] Error stopping webview:', e);
+      }
+    }
+  }, [hasNonWebviewPreview]);
 
   const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
 
@@ -305,7 +326,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
 
         <WebviewPreview
           webviewRef={webviewRef}
-          url={url}
+          url={hasNonWebviewPreview ? undefined : url}
           hasNonWebviewPreview={!!hasNonWebviewPreview}
           loadError={logic.loadError}
           onRetry={logic.handleRetry}

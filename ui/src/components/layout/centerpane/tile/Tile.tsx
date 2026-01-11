@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { TileProps } from '../types';
-import { authenticatedLinksService } from '../../../../services/authenticatedLinks';
 import { getVideoEmbed } from '../../../../utils/videoEmbeds';
 import { detectFileType } from '../../../../utils/fileTypes';
 import { Z_INDEX } from '../../../../constants/zIndex';
@@ -10,7 +9,6 @@ import { useImageMetadata } from './useImageMetadata';
 import { useEbookMetadata } from './useEbookMetadata';
 import { useRenaming } from './useRenaming';
 import { useContextMenu } from './useContextMenu';
-import { useAccountSelection } from './useAccountSelection';
 import { HOVER_SAFE_PADDING, EMBED_LINK_WIDTH, EMBED_LINK_HEIGHT, NON_EMBED_LINK_SIZE, AUDIO_EMBED_HEIGHT, AUDIO_EMBED_WIDTH, VIDEO_EMBED_WIDTH, VIDEO_EMBED_HEIGHT, getThumbnailDimensions } from './dimensionHelpers';
 import { VideoEmbedContent } from './VideoEmbedContent';
 import { VideoFileEmbedContent } from './VideoFileEmbedContent';
@@ -68,27 +66,11 @@ export function Tile({
     handleCloseContextMenu,
     setShowContextMenu,
   } = useContextMenu();
-  const {
-    showAccountDialog,
-    accountSelectionData,
-    handleAccountSelect,
-    handleAccountDialogClose,
-    handleAddNewAccount,
-    onAccountSelection,
-  } = useAccountSelection();
-
   const openLinkExternally = async () => {
     if (type !== 'link' || !url) return;
-
-    await authenticatedLinksService.openLink(
-      url,
-      id,
-      async (service) => {
-        console.log(`[Tile] OAuth needed for ${service}`);
-        await authenticatedLinksService.triggerOAuth(service);
-      },
-      onAccountSelection
-    );
+    // Simply open URL in external browser - no OAuth needed
+    const { openExternalUrl } = await import('../../../../platform');
+    openExternalUrl(url);
   };
 
   const openFileExternally = async () => {
@@ -372,15 +354,10 @@ export function Tile({
       />
 
       <TileDialogs
-        showAccountDialog={showAccountDialog}
-        accountSelectionData={accountSelectionData}
         showShareDialog={showShareDialog}
         url={url}
         title={title}
         filePath={filePath}
-        onAccountSelect={handleAccountSelect}
-        onAccountDialogClose={handleAccountDialogClose}
-        onAddNewAccount={handleAddNewAccount}
         onShareDialogClose={() => setShowShareDialog(false)}
       />
     </>

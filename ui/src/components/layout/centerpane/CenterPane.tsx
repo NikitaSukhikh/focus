@@ -1,6 +1,6 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect } from 'react';
 import { Tile } from './tile/Tile';
-import { CenterPaneProps, CenterPaneHandle } from './types';
+import { CenterPaneProps, CenterPaneHandle, DroppedIcon } from './types';
 import { useCenterPaneLogic } from './useCenterPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
@@ -242,7 +242,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     }
   };
 
-  const openPreviewForIcon = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }) => {
+  const openPreviewForIcon = (icon: DroppedIcon) => {
     onObjectClick?.({
       url: icon.url,
       title: icon.title,
@@ -250,10 +250,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       filePath: icon.filePath,
       type: icon.type,
       content: icon.content,
+      gmailEmail: icon.gmailEmail,
     });
   };
 
-  const schedulePreviewForIcon = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }, delayMs: number) => {
+  const schedulePreviewForIcon = (icon: DroppedIcon, delayMs: number) => {
     clearPreviewTimeout();
     previewTimeoutRef.current = setTimeout(() => {
       // Skip opening preview if inline editor already active for this note
@@ -262,7 +263,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     }, delayMs);
   };
 
-  const queuePreviewForIcon = (icon: { url?: string; title?: string; id: string; filePath?: string; type?: string; content?: string; }) => {
+  const queuePreviewForIcon = (icon: DroppedIcon) => {
     if (icon.type === 'text') {
       schedulePreviewForIcon(icon, TEXT_PREVIEW_DELAY_MS);
       return;
