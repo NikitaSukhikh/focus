@@ -32,6 +32,8 @@ class UrlMetadataResponse(BaseModel):
     description: str | None = None
     favicon_url: str | None = None
     site_name: str | None = None
+    channel_name: str | None = None
+    channel_icon_url: str | None = None
     og_title: str | None = None
     og_description: str | None = None
     og_image: str | None = None
@@ -84,6 +86,8 @@ async def fetch_url_metadata(
             description=metadata.get("description") or metadata.get("og_description"),
             favicon_url=metadata.get("favicon_url"),
             site_name=metadata.get("site_name"),
+            channel_name=metadata.get("channel_name"),
+            channel_icon_url=metadata.get("channel_icon_url"),
             og_title=metadata.get("og_title"),
             og_description=metadata.get("og_description"),
             og_image=metadata.get("og_image"),

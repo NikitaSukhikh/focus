@@ -10,6 +10,7 @@ import { useTextPreview } from './hooks/useTextPreview';
 import { useTileNavigation } from './hooks/useTileNavigation';
 import { useArrowKeyNavigation } from './hooks/useArrowKeyNavigation';
 import { usePdfPageNavigation } from './hooks/usePdfPageNavigation';
+import { useVideoEmbedMetadata } from './hooks/useVideoEmbedMetadata';
 import { PreviewHeader } from './components/PreviewHeader';
 import { NavigationControls } from './components/NavigationControls';
 import { EmptyPreview } from './components/EmptyPreview';
@@ -77,6 +78,11 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const textPreviewBody = useTextPreview(type, content, title);
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
+  const videoMetadata = useVideoEmbedMetadata(videoEmbed, url);
+  const videoTitle = videoMetadata?.title || title;
+  const videoDescription = videoMetadata?.description;
+  const videoChannelName = videoMetadata?.channelName;
+  const videoChannelIconUrl = videoMetadata?.channelIconUrl;
 
   const isGmail = type === 'gmail' || (url && isGmailUrl(url));
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile || isGmail;
@@ -337,7 +343,15 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         )}
 
         {videoEmbed && (
-          <VideoPreview key={videoEmbed.embedUrl} videoEmbed={videoEmbed} title={title} />
+          <VideoPreview
+            key={videoEmbed.embedUrl}
+            videoEmbed={videoEmbed}
+            title={videoTitle}
+            description={videoDescription}
+            channelName={videoChannelName}
+            channelIconUrl={videoChannelIconUrl}
+            isPreviewOpen={isOpen}
+          />
         )}
 
         {htmlPreviewUrl && (

@@ -29,7 +29,8 @@ Both can display text content, but handling is completely different!
 from typing import Optional, Union, Dict, Any
 from pathlib import Path
 from datetime import datetime
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, parse_qs
+import json
 import httpx
 from bs4 import BeautifulSoup
 import mimetypes
@@ -206,7 +207,7 @@ class PreviewService:
             host = (parsed.hostname or "").lower()
 
             if host in self.YOUTUBE_HOSTS:
-                youtube_metadata = await self._fetch_youtube_oembed(url)
+                youtube_metadata = await self._fetch_youtube_metadata(url)
                 if youtube_metadata:
                     self._metadata_cache[url] = (youtube_metadata, now)
                     return youtube_metadata
@@ -362,20 +363,272 @@ class PreviewService:
                 title = data.get("title")
                 thumbnail_url = data.get("thumbnail_url")
                 author_name = data.get("author_name")
+                author_url = data.get("author_url")
 
                 return {
                     "title": title,
-                    "description": author_name,
                     "og_title": title,
-                    "og_description": author_name,
                     "og_image": thumbnail_url,
                     "site_name": "YouTube",
                     "favicon_url": "https://www.youtube.com/favicon.ico",
                     "resolved_url": url,
+                    "channel_name": author_name,
+                    "channel_url": author_url,
                 }
         except Exception as e:
             logger.debug(f"Failed to fetch YouTube oEmbed metadata for {url}: {e}")
             return None
+
+    async def _fetch_youtube_metadata(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch YouTube metadata, using oEmbed for title/thumbnail and HTML parsing for description.
+        """
+        base_metadata = await self._fetch_youtube_oembed(url)
+        watch_info = await self._fetch_youtube_watch_info(url)
+        description = watch_info.get("description")
+        channel_id = watch_info.get("channel_id")
+        channel_icon_url = watch_info.get("channel_icon_url")
+        channel_url = base_metadata.get("channel_url") if base_metadata else None
+        if not channel_icon_url:
+            channel_icon_url = await self._fetch_youtube_channel_icon(channel_id, channel_url)
+
+        if not base_metadata and not description:
+            return None
+
+        metadata = dict(base_metadata or {})
+        if description:
+            metadata["description"] = description
+            metadata["og_description"] = description
+        else:
+            metadata.pop("description", None)
+            metadata.pop("og_description", None)
+
+        if channel_icon_url:
+            metadata["channel_icon_url"] = channel_icon_url
+
+        metadata.pop("channel_url", None)
+
+        return metadata
+
+    def _get_youtube_video_id(self, url: str) -> Optional[str]:
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return None
+
+        host = (parsed.hostname or "").lower()
+        path = parsed.path or ""
+
+        if host == "youtu.be":
+            return path.strip("/").split("/")[0] or None
+
+        if host in self.YOUTUBE_HOSTS:
+            if path.startswith("/watch"):
+                return parse_qs(parsed.query or "").get("v", [None])[0]
+            if path.startswith("/shorts/"):
+                parts = path.split("/")
+                return parts[2] if len(parts) > 2 else None
+            if path.startswith("/embed/"):
+                parts = path.split("/")
+                return parts[2] if len(parts) > 2 else None
+            if path.startswith("/v/"):
+                parts = path.split("/")
+                return parts[2] if len(parts) > 2 else None
+
+        return None
+
+    def _get_youtube_watch_url(self, url: str) -> Optional[str]:
+        video_id = self._get_youtube_video_id(url)
+        if not video_id:
+            return None
+        return f"https://www.youtube.com/watch?v={video_id}"
+
+    def _extract_youtube_player_response(self, html: str) -> Optional[Dict[str, Any]]:
+        return self._extract_json_from_marker(html, "ytInitialPlayerResponse")
+
+    def _extract_youtube_initial_data(self, html: str) -> Optional[Dict[str, Any]]:
+        return self._extract_json_from_marker(html, "ytInitialData")
+
+    def _extract_json_from_marker(self, html: str, marker: str) -> Optional[Dict[str, Any]]:
+        marker_index = html.find(marker)
+        if marker_index == -1:
+            return None
+
+        json_start = html.find("{", marker_index)
+        if json_start == -1:
+            return None
+
+        depth = 0
+        in_string = False
+        is_escaped = False
+
+        for idx in range(json_start, len(html)):
+            char = html[idx]
+            if in_string:
+                if is_escaped:
+                    is_escaped = False
+                elif char == "\\":
+                    is_escaped = True
+                elif char == '"':
+                    in_string = False
+            else:
+                if char == '"':
+                    in_string = True
+                elif char == "{":
+                    depth += 1
+                elif char == "}":
+                    depth -= 1
+                    if depth == 0:
+                        raw_json = html[json_start:idx + 1]
+                        try:
+                            return json.loads(raw_json)
+                        except Exception:
+                            return None
+
+        return None
+
+    def _find_first_key(self, obj: Any, key: str) -> Optional[Any]:
+        if isinstance(obj, dict):
+            if key in obj and obj[key] is not None:
+                return obj[key]
+            for value in obj.values():
+                found = self._find_first_key(value, key)
+                if found is not None:
+                    return found
+        elif isinstance(obj, list):
+            for item in obj:
+                found = self._find_first_key(item, key)
+                if found is not None:
+                    return found
+        return None
+
+    def _pick_thumbnail_url(self, thumbnails: Any) -> Optional[str]:
+        if not isinstance(thumbnails, list):
+            return None
+        candidates = [
+            thumb for thumb in thumbnails
+            if isinstance(thumb, dict) and thumb.get("url")
+        ]
+        if not candidates:
+            return None
+        best = max(candidates, key=lambda t: (t.get("width") or 0, t.get("height") or 0))
+        return best.get("url")
+
+    def _extract_channel_icon_from_initial_data(self, initial_data: Dict[str, Any]) -> Optional[str]:
+        owner_renderer = self._find_first_key(initial_data, "videoOwnerRenderer")
+        if isinstance(owner_renderer, dict):
+            thumbnails = None
+            if isinstance(owner_renderer.get("thumbnail"), dict):
+                thumbnails = owner_renderer["thumbnail"].get("thumbnails")
+            if not thumbnails:
+                owner = owner_renderer.get("owner")
+                if isinstance(owner, dict):
+                    thumbnails = owner.get("thumbnail", {}).get("thumbnails")
+            if thumbnails:
+                icon_url = self._pick_thumbnail_url(thumbnails)
+                if icon_url:
+                    return icon_url
+
+        header_renderer = self._find_first_key(initial_data, "c4TabbedHeaderRenderer")
+        if isinstance(header_renderer, dict):
+            thumbnails = header_renderer.get("avatar", {}).get("thumbnails") or header_renderer.get("thumbnail", {}).get("thumbnails")
+            icon_url = self._pick_thumbnail_url(thumbnails)
+            if icon_url:
+                return icon_url
+
+        metadata_renderer = self._find_first_key(initial_data, "channelMetadataRenderer")
+        if isinstance(metadata_renderer, dict):
+            thumbnails = metadata_renderer.get("avatar", {}).get("thumbnails")
+            icon_url = self._pick_thumbnail_url(thumbnails)
+            if icon_url:
+                return icon_url
+
+        return None
+
+    async def _fetch_youtube_watch_info(self, url: str) -> Dict[str, Any]:
+        watch_url = self._get_youtube_watch_url(url) or url
+        info: Dict[str, Any] = {}
+
+        try:
+            async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
+                response = await client.get(
+                    watch_url,
+                    follow_redirects=True,
+                    headers={"User-Agent": "Focus/1.0 (Preview Generator)"},
+                )
+
+                if response.status_code != 200:
+                    return info
+
+                if len(response.content) > self.MAX_BODY_BYTES:
+                    return info
+
+                html = response.text
+                player_response = self._extract_youtube_player_response(html)
+                if player_response:
+                    details = player_response.get("videoDetails", {})
+                    description = details.get("shortDescription")
+                    if description:
+                        info["description"] = description
+                    channel_id = details.get("channelId")
+                    if channel_id:
+                        info["channel_id"] = channel_id
+
+                initial_data = self._extract_youtube_initial_data(html)
+                if initial_data:
+                    channel_icon_url = self._extract_channel_icon_from_initial_data(initial_data)
+                    if channel_icon_url:
+                        info["channel_icon_url"] = channel_icon_url
+
+                if "description" not in info:
+                    soup = BeautifulSoup(html, 'html.parser')
+                    og_description = soup.find('meta', property='og:description')
+                    if og_description and og_description.get('content'):
+                        info["description"] = og_description.get('content')
+
+                if "description" not in info:
+                    desc_tag = soup.find('meta', attrs={'name': 'description'})
+                    if desc_tag and desc_tag.get('content'):
+                        info["description"] = desc_tag.get('content')
+
+        except Exception as e:
+            logger.debug(f"Failed to fetch YouTube watch info for {url}: {e}")
+
+        return info
+
+    async def _fetch_youtube_channel_icon(self, channel_id: Optional[str], channel_url: Optional[str]) -> Optional[str]:
+        if not channel_id and not channel_url:
+            return None
+
+        target_url = channel_url or f"https://www.youtube.com/channel/{channel_id}"
+
+        try:
+            async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
+                response = await client.get(
+                    target_url,
+                    follow_redirects=True,
+                    headers={"User-Agent": "Focus/1.0 (Preview Generator)"},
+                )
+
+                if response.status_code != 200:
+                    return None
+
+                if len(response.content) > self.MAX_BODY_BYTES:
+                    return None
+
+                soup = BeautifulSoup(response.text, 'html.parser')
+                og_image = soup.find('meta', property='og:image')
+                if og_image and og_image.get('content'):
+                    return og_image.get('content')
+
+                link_image = soup.find('link', rel=lambda x: x and 'image_src' in str(x).lower())
+                if link_image and link_image.get('href'):
+                    return link_image.get('href')
+
+        except Exception as e:
+            logger.debug(f"Failed to fetch YouTube channel icon for {target_url}: {e}")
+
+        return None
 
     # ========================================================================
     # File Preview
