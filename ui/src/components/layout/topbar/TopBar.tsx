@@ -19,7 +19,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onOpenQuickAdd, onTagsClick, isTagsOpen, onTagSelect } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
-  const { toggleTheme } = useThemeToggle();
+  const { isDark, toggleTheme } = useThemeToggle();
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({}), []);
@@ -227,8 +227,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           }}
           title="Toggle theme"
         >
-          <Sun size={14} />
-          <Moon size={14} />
+          {isDark ? <Moon size={14} /> : <Sun size={14} />}
         </button>
 
         <button

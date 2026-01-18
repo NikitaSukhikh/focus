@@ -1,8 +1,29 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useLayoutEffect, useCallback } from 'react';
 import { AppStyleType, DEFAULT_STYLE, DARK_STYLE } from '../constants/styleTypes';
 import { switchAppStyle } from '../helpers/switchAppStyle';
 
 const THEME_STORAGE_KEY = 'focus-theme';
+const THEME_TRANSITION_CLASS = 'theme-transitioning';
+
+const disableTransitionsTemporarily = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const root = document.documentElement;
+  root.classList.add(THEME_TRANSITION_CLASS);
+
+  if (typeof window === 'undefined' || !window.requestAnimationFrame) {
+    root.classList.remove(THEME_TRANSITION_CLASS);
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      root.classList.remove(THEME_TRANSITION_CLASS);
+    });
+  });
+};
 
 interface ThemeContextValue {
   theme: AppStyleType;
@@ -18,12 +39,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return stored === DARK_STYLE ? DARK_STYLE : DEFAULT_STYLE;
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     switchAppStyle(theme);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
+    disableTransitionsTemporarily();
     setTheme((prev) => (prev === DEFAULT_STYLE ? DARK_STYLE : DEFAULT_STYLE));
   }, []);
 
