@@ -27,6 +27,10 @@ export function App() {
     PANEL_DIMENSIONS.SIDEBAR.STORAGE_KEY,
     PANEL_DIMENSIONS.SIDEBAR.DEFAULT_WIDTH
   );
+  const [previewWidth, setPreviewWidth] = usePersistedNumber(
+    PANEL_DIMENSIONS.PREVIEW.STORAGE_KEY,
+    PANEL_DIMENSIONS.PREVIEW.DEFAULT_WIDTH
+  );
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -298,6 +302,27 @@ export function App() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  const startResizingPreview: ResizeHandler = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = previewWidth;
+    const minWidth = PANEL_DIMENSIONS.PREVIEW.MIN_WIDTH;
+    const maxWidth = PANEL_DIMENSIONS.PREVIEW.MAX_WIDTH;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startX - moveEvent.clientX;
+      const nextWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
+      setPreviewWidth(nextWidth);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   const handleCanvasEmptyClick = () => {
     if (isSidebarOpen) {
@@ -348,6 +373,10 @@ export function App() {
 
   const handleQuickAddLink = () => {
     centerPaneRef.current?.openAddLinkDialog();
+  };
+
+  const handleQuickAddPaste = () => {
+    void centerPaneRef.current?.pasteFromClipboard?.();
   };
 
   const handleQuickAddTelegram = () => {
@@ -426,13 +455,19 @@ export function App() {
             <div
               className="absolute right-0 top-0"
               style={{
-                height: 'calc(100% - 12px)', // Full height minus scrollbar height (typical browser scrollbar is ~17px)
-                width: '33.333%',
-                maxWidth: '800px',
-                minWidth: '360px',
+                height: 'calc(100% - 12px)',
+                width: `${previewWidth}px`,
                 zIndex: Z_INDEX.CONTENT_PREVIEW,
               }}
             >
+              <div
+                className="absolute left-0 top-0 w-1 cursor-col-resize hover:bg-white/20 transition-colors"
+                style={{
+                  height: '100%',
+                  zIndex: Z_INDEX.RESIZE_HANDLE,
+                }}
+                onMouseDown={startResizingPreview}
+              />
               <PreviewPane
                 isOpen={isPreviewOpen && !isFullWindowOpen}
                 onClose={() => setIsPreviewOpen(false)}
@@ -479,6 +514,7 @@ export function App() {
         onClose={closeQuickAdd}
         onAddFiles={handleQuickAddFiles}
         onAddLink={handleQuickAddLink}
+        onPaste={handleQuickAddPaste}
         position={quickAddPosition}
       />
 

@@ -108,7 +108,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   });
 
   // Paste handling
-  useCenterPanePaste({
+  const pasteHandlers = useCenterPanePaste({
     selectedSpace,
     paneRef,
     setIconsBySpace,
@@ -159,6 +159,9 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     handleAddLink: linkCreation.handleAddLink,
     closeAddLinkDialog: linkCreation.closeAddLinkDialog,
     editingLink: linkCreation.editingLink,
+
+    // Paste handling
+    pasteFromClipboard: pasteHandlers.pasteFromClipboard,
 
     // Text creation
     isAddTextDialogOpen: textCreation.isAddTextDialogOpen,

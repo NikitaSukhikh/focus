@@ -24,6 +24,7 @@ export const DIMENSIONS = {
     MIN_WIDTH: 360,
     DEFAULT_WIDTH: 480, // Default width when not flexible
     MAX_WIDTH: 800, // Maximum width to prevent taking too much space
+    STORAGE_KEY: 'focus-preview-width',
   },
 
   // Assistant Pane (Conversation)
@@ -71,6 +72,7 @@ export const DIMENSIONS = {
 // Legacy export for backward compatibility
 export const PANEL_DIMENSIONS = {
   SIDEBAR: DIMENSIONS.SIDEBAR,
+  PREVIEW: DIMENSIONS.PREVIEW,
   ASSISTANT: DIMENSIONS.ASSISTANT,
 } as const;
 

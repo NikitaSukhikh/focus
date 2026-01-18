@@ -65,6 +65,7 @@ export interface CenterPaneHandle {
   addFiles: () => Promise<void>;
   getTilesForSpace: (spaceId: string) => DroppedIcon[];
   openAddLinkDialog: () => void;
+  pasteFromClipboard: () => Promise<void>;
 }
 
 export interface TileProps {

@@ -25,6 +25,43 @@ interface PasteParams {
   zoom: number;
 }
 
+type ClipboardFileEntry = {
+  filePath: string;
+  filename: string;
+};
+
+const isValidUrl = (text: string): boolean => {
+  try {
+    const url = new URL(text);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const toFilePathFromUri = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!/^file:\/\//i.test(trimmed)) return null;
+  const withoutScheme = trimmed.replace(/^file:\/\//i, '');
+  const decoded = decodeURI(withoutScheme);
+  if (/^[a-zA-Z]:/.test(decoded)) return decoded;
+  if (/^\/[a-zA-Z]:/.test(decoded)) return decoded.slice(1);
+  if (decoded.startsWith('/')) return decoded;
+  return `//${decoded}`;
+};
+
+const isLikelyFilePath = (value: string): boolean => {
+  if (/^[a-zA-Z]:[\\/]/.test(value)) return true;
+  if (/^\\\\/.test(value)) return true;
+  return value.startsWith('/') && !value.startsWith('//');
+};
+
+const parseClipboardLines = (text: string): string[] =>
+  text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
+
 export const useCenterPanePaste = ({
   selectedSpace,
   paneRef,
@@ -67,23 +104,217 @@ export const useCenterPanePaste = ({
     return clampToBoundaries(centerCanvasX, centerCanvasY);
   }, [paneRef, zoom, clampToBoundaries]);
 
-  const isValidUrl = (text: string): boolean => {
+  const getFilePathForClipboardFile = useCallback((file: File): string => {
     try {
-      const url = new URL(text);
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
+      const desktopApi = (window as any).desktopAPI;
+      if (desktopApi?.getPathForFile) {
+        return desktopApi.getPathForFile(file);
+      }
+      return (file as any).path || file.name;
+    } catch (error) {
+      console.error('[PASTE] Failed to get file path:', error);
+      return file.name;
     }
-  };
+  }, []);
+
+  const createFileTiles = useCallback((files: ClipboardFileEntry[]) => {
+    if (!selectedSpace || !paneRef.current || files.length === 0) return;
+
+    const { x, y } = getCenterCanvasPosition();
+    console.log('[PASTE] Processing file entries:', files);
+
+    files.forEach((file, index) => {
+      const offsetX = (index % 3) * 80;
+      const offsetY = Math.floor(index / 3) * 80;
+      const fileX = x + offsetX;
+      const fileY = y + offsetY;
+      const { x: clampedX, y: clampedY } = clampToBoundaries(fileX, fileY);
+
+      const payload: ObjectCreatePayload = {
+        type: 'file',
+        title: file.filename,
+        file_path: file.filePath,
+        x: clampedX,
+        y: clampedY,
+      };
+
+      const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
+      const optimisticIcon: DroppedIcon = {
+        id: tempId,
+        type: 'file',
+        title: file.filename,
+        x: clampedX,
+        y: clampedY,
+        tag: '',
+        filePath: file.filePath,
+      };
+
+      setIconsBySpace((prev) => ({
+        ...prev,
+        [selectedSpace.id]: [...(prev[selectedSpace.id] || []), optimisticIcon],
+      }));
+
+      objectsApi
+        .create(selectedSpace.id, payload)
+        .then((created) => {
+          const meta = (created.metadata || {}) as Record<string, any>;
+          const createdFilePath = meta.file_path as string;
+          const createdX = typeof meta.x === 'number' ? meta.x : clampedX;
+          const createdY = typeof meta.y === 'number' ? meta.y : clampedY;
+          const tag = normalizeTag((created as any).tag ?? meta.tag);
+
+          setIconsBySpace((prev) => ({
+            ...prev,
+            [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
+              i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, x: createdX, y: createdY, tag } : i
+            ),
+          }));
+
+          logTileCreate({
+            id: created.id,
+            type: 'file',
+            title: file.filename,
+            x: createdX,
+            y: createdY,
+            tag,
+            filePath: createdFilePath,
+          });
+        })
+        .catch((err) => {
+          console.error('Failed to create file object:', err);
+          setIconsBySpace((prev) => ({
+            ...prev,
+            [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
+          }));
+        });
+    });
+  }, [selectedSpace, paneRef, clampToBoundaries, getCenterCanvasPosition, setIconsBySpace, logTileCreate]);
+
+  const createLinkTile = useCallback((url: string) => {
+    if (!selectedSpace || !paneRef.current) return;
+
+    const { x, y } = getCenterCanvasPosition();
+    const faviconUrl = buildFaviconUrl(url);
+
+    const payload: ObjectCreatePayload = {
+      type: 'link',
+      title: url,
+      url,
+      favicon_url: faviconUrl,
+      x,
+      y,
+    };
+
+    const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const optimisticIcon: DroppedIcon = {
+      id: tempId,
+      type: 'link',
+      title: url,
+      x,
+      y,
+      tag: '',
+      url,
+      faviconUrl,
+    };
+
+    setIconsBySpace((prev) => ({
+      ...prev,
+      [selectedSpace.id]: [...(prev[selectedSpace.id] || []), optimisticIcon],
+    }));
+
+    objectsApi
+      .create(selectedSpace.id, payload)
+      .then((created) => {
+        const meta = (created.metadata || {}) as Record<string, any>;
+        const finalX = typeof meta.x === 'number' ? meta.x : x;
+        const finalY = typeof meta.y === 'number' ? meta.y : y;
+        const finalUrl = meta.url as string;
+        const finalDescription = created.description;
+        const finalFavicon = (meta.favicon_url as string | undefined) || buildFaviconUrl(finalUrl);
+        const tag = normalizeTag((created as any).tag ?? meta.tag);
+
+        setIconsBySpace((prev) => ({
+          ...prev,
+          [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
+            i.id === tempId
+              ? {
+                  ...i,
+                  id: created.id,
+                  title: created.title,
+                  x: finalX,
+                  y: finalY,
+                  url: finalUrl,
+                  description: finalDescription,
+                  faviconUrl: finalFavicon,
+                  tag,
+                }
+              : i
+          ),
+        }));
+
+        logTileCreate({
+          id: created.id,
+          type: 'link',
+          title: created.title,
+          x: finalX,
+          y: finalY,
+          url: finalUrl,
+          description: finalDescription,
+          faviconUrl: finalFavicon,
+          tag,
+        });
+
+        window.dispatchEvent(new CustomEvent('link:created', { detail: { linkId: created.id } }));
+      })
+      .catch((err) => {
+        console.error('Failed to create link object:', err);
+        setIconsBySpace((prev) => ({
+          ...prev,
+          [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
+        }));
+      });
+  }, [selectedSpace, paneRef, getCenterCanvasPosition, setIconsBySpace, logTileCreate]);
+
+  const handleClipboardText = useCallback((text: string): boolean => {
+    const lines = parseClipboardLines(text);
+    if (lines.length === 0) return false;
+
+    const filePaths: string[] = [];
+    lines.forEach((line) => {
+      const fromUri = toFilePathFromUri(line);
+      if (fromUri) {
+        filePaths.push(fromUri);
+        return;
+      }
+      if (isLikelyFilePath(line)) {
+        filePaths.push(line);
+      }
+    });
+
+    if (filePaths.length > 0) {
+      const entries = filePaths.map((filePath) => ({
+        filePath,
+        filename: filePath.split(/[\\/]/).pop() || 'Unknown File',
+      }));
+      createFileTiles(entries);
+      return true;
+    }
+
+    const url = lines.find((line) => isValidUrl(line));
+    if (url) {
+      createLinkTile(url);
+      return true;
+    }
+
+    return false;
+  }, [createFileTiles, createLinkTile]);
 
   const handlePaste = useCallback((e: ClipboardEvent) => {
-    // Don't intercept paste events in input fields, textareas, or contenteditable elements
     const target = e.target as HTMLElement;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
       return;
     }
 
-    // Don't handle paste if no space is selected
     if (!selectedSpace || !paneRef.current) {
       return;
     }
@@ -91,198 +322,73 @@ export const useCenterPanePaste = ({
     const clipboardData = e.clipboardData;
     if (!clipboardData) return;
 
-    // Check for files first (highest priority)
     if (clipboardData.files.length > 0) {
       e.preventDefault();
       console.log('[PASTE] Handling file paste:', clipboardData.files);
-
-      const { x, y } = getCenterCanvasPosition();
-      const files = Array.from(clipboardData.files);
-
-      files.forEach((file, index) => {
-        // Get file path from file object using Electron's webUtils API
-        let filePath: string;
-        try {
-          if ((window as any).desktopAPI?.getPathForFile) {
-            filePath = (window as any).desktopAPI.getPathForFile(file);
-          } else {
-            // Fallback for older Electron or development environment
-            filePath = (file as any).path || file.name;
-          }
-        } catch (error) {
-          console.error('[PASTE] Failed to get file path:', error);
-          filePath = file.name;
-        }
-        const filename = file.name;
-
-        console.log('[PASTE] Processing file:', { filename, filePath });
-
-        // Stagger multiple files in a grid
-        const offsetX = (index % 3) * 80;
-        const offsetY = Math.floor(index / 3) * 80;
-        const fileX = x + offsetX;
-        const fileY = y + offsetY;
-        const { x: clampedX, y: clampedY } = clampToBoundaries(fileX, fileY);
-
-        const payload: ObjectCreatePayload = {
-          type: 'file',
-          title: filename,
-          file_path: filePath,
-          x: clampedX,
-          y: clampedY,
-        };
-
-        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
-        const optimisticIcon: DroppedIcon = {
-          id: tempId,
-          type: 'file',
-          title: filename,
-          x: clampedX,
-          y: clampedY,
-          tag: '',
-          filePath: filePath,
-        };
-
-        setIconsBySpace((prev) => ({
-          ...prev,
-          [selectedSpace.id]: [...(prev[selectedSpace.id] || []), optimisticIcon],
-        }));
-
-        objectsApi
-          .create(selectedSpace.id, payload)
-          .then((created) => {
-            const meta = (created.metadata || {}) as Record<string, any>;
-            const createdFilePath = meta.file_path as string;
-            const createdX = typeof meta.x === 'number' ? meta.x : clampedX;
-            const createdY = typeof meta.y === 'number' ? meta.y : clampedY;
-            const tag = normalizeTag((created as any).tag ?? meta.tag);
-
-            setIconsBySpace((prev) => ({
-              ...prev,
-              [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
-                i.id === tempId ? { ...i, id: created.id, filePath: createdFilePath, x: createdX, y: createdY, tag } : i
-              ),
-            }));
-
-            logTileCreate({
-              id: created.id,
-              type: 'file',
-              title: filename,
-              x: createdX,
-              y: createdY,
-              tag,
-              filePath: createdFilePath,
-            });
-          })
-          .catch((err) => {
-            console.error('Failed to create file object:', err);
-            setIconsBySpace((prev) => ({
-              ...prev,
-              [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
-            }));
-          });
-      });
+      const files = Array.from(clipboardData.files).map((file) => ({
+        filename: file.name,
+        filePath: getFilePathForClipboardFile(file),
+      }));
+      createFileTiles(files);
       return;
     }
 
-    // Check for text content (URL or plain text)
-    const text = clipboardData.getData('text/plain')?.trim();
-    if (text) {
-      // Check if it's a valid URL
-      if (isValidUrl(text)) {
-        e.preventDefault();
-        console.log('[PASTE] Handling URL paste:', text);
-
-        const { x, y } = getCenterCanvasPosition();
-        const favicon_url = buildFaviconUrl(text);
-
-        const payload: ObjectCreatePayload = {
-          type: 'link',
-          title: text,
-          url: text,
-          favicon_url,
-          x,
-          y,
-        };
-
-        const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        const optimisticIcon: DroppedIcon = {
-          id: tempId,
-          type: 'link',
-          title: text,
-          x,
-          y,
-          tag: '',
-          url: text,
-          faviconUrl: favicon_url,
-        };
-
-        setIconsBySpace((prev) => ({
-          ...prev,
-          [selectedSpace.id]: [...(prev[selectedSpace.id] || []), optimisticIcon],
-        }));
-
-        objectsApi
-          .create(selectedSpace.id, payload)
-          .then((created) => {
-            const meta = (created.metadata || {}) as Record<string, any>;
-            const finalX = typeof meta.x === 'number' ? meta.x : x;
-            const finalY = typeof meta.y === 'number' ? meta.y : y;
-            const finalUrl = meta.url as string;
-            const finalDescription = created.description;
-            const finalFavicon = (meta.favicon_url as string | undefined) || buildFaviconUrl(finalUrl);
-            const tag = normalizeTag((created as any).tag ?? meta.tag);
-
-            setIconsBySpace((prev) => ({
-              ...prev,
-              [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
-                i.id === tempId
-                  ? {
-                      ...i,
-                      id: created.id,
-                      title: created.title,
-                      x: finalX,
-                      y: finalY,
-                      url: finalUrl,
-                      description: finalDescription,
-                      faviconUrl: finalFavicon,
-                      tag,
-                    }
-                  : i
-              ),
-            }));
-
-            logTileCreate({
-              id: created.id,
-              type: 'link',
-              title: created.title,
-              x: finalX,
-              y: finalY,
-              url: finalUrl,
-              description: finalDescription,
-              faviconUrl: finalFavicon,
-              tag,
-            });
-
-            // Notify other components that a link was created
-            window.dispatchEvent(new CustomEvent('link:created', { detail: { linkId: created.id } }));
-          })
-          .catch((err) => {
-            console.error('Failed to create link object:', err);
-            setIconsBySpace((prev) => ({
-              ...prev,
-              [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
-            }));
-          });
-      }
-      // If it's plain text but not a URL, we don't handle it (let default behavior work)
+    const text = clipboardData.getData('text/plain');
+    if (text && handleClipboardText(text)) {
+      e.preventDefault();
     }
-  }, [selectedSpace, paneRef, setIconsBySpace, clampToBoundaries, getCenterCanvasPosition, logTileCreate]);
+  }, [selectedSpace, paneRef, createFileTiles, handleClipboardText, getFilePathForClipboardFile]);
+
+  const pasteFromClipboard = useCallback(async () => {
+    if (!selectedSpace || !paneRef.current) return;
+    const clipboard = navigator.clipboard;
+    if (!clipboard) return;
+
+    let handled = false;
+
+    if (clipboard.read) {
+      try {
+        const items = await clipboard.read();
+        for (const item of items) {
+          if (!item.types.includes('text/uri-list')) continue;
+          const blob = await item.getType('text/uri-list');
+          if (handleClipboardText(await blob.text())) {
+            handled = true;
+            break;
+          }
+        }
+
+        if (!handled) {
+          for (const item of items) {
+            if (!item.types.includes('text/plain')) continue;
+            const blob = await item.getType('text/plain');
+            if (handleClipboardText(await blob.text())) {
+              handled = true;
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[PASTE] Failed to read clipboard items:', err);
+      }
+    }
+
+    if (handled || !clipboard.readText) return;
+
+    try {
+      const text = await clipboard.readText();
+      if (text) {
+        handleClipboardText(text);
+      }
+    } catch (err) {
+      console.error('[PASTE] Failed to read clipboard text:', err);
+    }
+  }, [selectedSpace, paneRef, handleClipboardText]);
 
   useEffect(() => {
     window.addEventListener('paste', handlePaste, true);
     return () => window.removeEventListener('paste', handlePaste, true);
   }, [handlePaste]);
 
-  return {};
+  return { pasteFromClipboard };
 };

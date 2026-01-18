@@ -42,7 +42,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       const centerCanvasY = (rect.height / 2 + scrollTop) / Math.max(zoom, 0.01);
       logic.openAddLinkDialog(centerCanvasX, centerCanvasY);
     },
-  }), [logic.handleAddFiles, logic.iconsBySpace, logic.openAddLinkDialog, zoom]);
+    pasteFromClipboard: logic.pasteFromClipboard,
+  }), [logic.handleAddFiles, logic.iconsBySpace, logic.openAddLinkDialog, logic.pasteFromClipboard, zoom]);
 
   const selectedIcons = useMemo(() => {
     if (!logic.selectedSpace) return [];

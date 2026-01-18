@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
-import { FilePlus, Plus } from 'lucide-react';
+import { Clipboard, FilePlus, Plus } from 'lucide-react';
 import { Z_INDEX } from '../../constants/zIndex';
 
 interface QuickAddPopupProps {
@@ -7,10 +7,11 @@ interface QuickAddPopupProps {
   onClose: () => void;
   onAddFiles: () => void;
   onAddLink: () => void;
+  onPaste: () => void;
   position?: { x: number; y: number } | null;
 }
 
-type ActionType = 'files' | 'link';
+type ActionType = 'files' | 'link' | 'paste';
 
 interface Action {
   type: ActionType;
@@ -19,7 +20,7 @@ interface Action {
   handler: () => void;
 }
 
-export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, position }: QuickAddPopupProps) {
+export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onPaste, position }: QuickAddPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties | null>(null);
@@ -29,8 +30,9 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, position
     () => [
       { type: 'files', label: 'Add Local Files', icon: <FilePlus size={16} />, handler: onAddFiles },
       { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink },
+      { type: 'paste', label: 'Paste', icon: <Clipboard size={16} />, handler: onPaste },
     ],
-    [onAddFiles, onAddLink]
+    [onAddFiles, onAddLink, onPaste]
   );
 
   useEffect(() => {
