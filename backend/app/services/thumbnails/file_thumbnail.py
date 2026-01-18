@@ -38,6 +38,7 @@ class FileThumbnailService:
         '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif',
         '.webp', '.ico', '.heic', '.heif'
     }
+    HEIF_FORMATS = {'.heic', '.heif'}
 
     def __init__(self):
         """Initialize the thumbnail service."""
@@ -106,16 +107,7 @@ class FileThumbnailService:
         try:
             # Open image
             with Image.open(path) as img:
-                # Convert to RGB if necessary (for PNG with transparency, etc.)
-                if img.mode in ('RGBA', 'LA', 'P'):
-                    # Create white background
-                    background = Image.new('RGB', img.size, (255, 255, 255))
-                    if img.mode == 'P':
-                        img = img.convert('RGBA')
-                    background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-                    img = background
-                elif img.mode != 'RGB':
-                    img = img.convert('RGB')
+                img = self._prepare_image_for_display(img)
 
                 # Auto-orient based on EXIF data
                 img = ImageOps.exif_transpose(img)
@@ -171,10 +163,10 @@ class FileThumbnailService:
 
     def get_full_image_path(self, file_path: str) -> str:
         """
-        Get the path to display full image (for preview).
+        Get the path to display a full image (for preview).
 
-        For images, we can return the original path as it will be displayed
-        as a real image in the viewer with proper quality.
+        Converts HEIC/HEIF images to JPEG for browser compatibility while
+        keeping other formats untouched.
 
         Args:
             file_path: Path to the image file
@@ -187,7 +179,44 @@ class FileThumbnailService:
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
+        if path.suffix.lower() in self.HEIF_FORMATS:
+            return self._convert_heif_to_jpeg(path)
+
         return str(path.resolve())
+
+    def _convert_heif_to_jpeg(self, path: Path, quality: int = 95) -> str:
+        """
+        Convert HEIC/HEIF images to JPEG for preview rendering.
+
+        Returns:
+            str: Path to the converted JPEG file in cache.
+        """
+        quality = min(max(quality, 1), 100)
+        cache_key = self._generate_full_image_cache_key(str(path), quality)
+        output_path = self.cache_dir / f"{cache_key}_full.jpg"
+
+        if output_path.exists():
+            return str(output_path)
+
+        try:
+            with Image.open(path) as img:
+                img = self._prepare_image_for_display(img)
+                img = ImageOps.exif_transpose(img)
+                img.save(
+                    output_path,
+                    'JPEG',
+                    quality=quality,
+                    optimize=True,
+                    progressive=True
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to convert HEIF image for preview: {e}",
+                exc_info=True
+            )
+            raise ValueError(f"Failed to convert HEIF image: {e}")
+
+        return str(output_path)
 
     def get_image_dimensions(self, file_path: str) -> Tuple[int, int]:
         """
@@ -353,6 +382,25 @@ class FileThumbnailService:
                 return f"{size_bytes:.1f} {unit}"
             size_bytes /= 1024.0
         return f"{size_bytes:.1f} PB"
+
+    def _prepare_image_for_display(self, img: Image.Image) -> Image.Image:
+        """Normalize image mode for display-safe RGB output."""
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            return background
+        if img.mode != 'RGB':
+            return img.convert('RGB')
+        return img
+
+    def _generate_full_image_cache_key(self, file_path: str, quality: int) -> str:
+        """Generate a cache key for full-size preview conversions."""
+        path = Path(file_path)
+        mtime = path.stat().st_mtime if path.exists() else 0
+        key_string = f"{file_path}_full_{quality}_{mtime}"
+        return hashlib.md5(key_string.encode()).hexdigest()
 
 
 # Singleton instance

@@ -330,22 +330,30 @@ async def get_full_image(
                 detail=f"File is not a supported image format",
             )
 
+        display_path = file_thumbnail_service.get_full_image_path(file_path)
+
         # Determine media type from file extension
         import mimetypes
-        media_type, _ = mimetypes.guess_type(file_path)
+        media_type, _ = mimetypes.guess_type(display_path)
         if not media_type or not media_type.startswith('image/'):
             media_type = 'image/jpeg'
 
-        logger.debug(f"Serving full image: {file_path}")
+        logger.debug(f"Serving full image: {display_path}")
 
         return FileResponse(
-            path=str(path),
+            path=str(display_path),
             media_type=media_type,
             filename=path.name,
         )
 
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.error(f"Invalid image file for preview: {file_path}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         logger.error(f"Failed to serve full image: {e}", exc_info=True)
         raise HTTPException(

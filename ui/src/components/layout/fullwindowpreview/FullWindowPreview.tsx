@@ -594,31 +594,35 @@ export function FullWindowPreview({
 
           {/* Image preview */}
           {imagePreviewUrl && (
-            <div className="flex-1 overflow-auto h-full">
-              <div className="p-8 flex flex-col items-center min-h-full justify-center">
-                <img
-                  src={imagePreviewUrl}
-                  alt={title || 'Image preview'}
-                  className="max-w-full max-h-[calc(100vh-300px)] object-contain rounded-lg shadow-2xl"
-                />
+            <div className="flex-1 min-h-0 h-full overflow-auto">
+              <div className="flex flex-col h-full min-h-0">
+                <div className="flex-1 min-h-0 w-full p-4 flex items-center justify-center">
+                  <img
+                    src={imagePreviewUrl}
+                    alt={title || 'Image preview'}
+                    className="w-full h-full max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                  />
+                </div>
                 {imageMetadata && (
-                  <div className="mt-8 w-full max-w-2xl bg-white rounded-lg shadow-lg p-6 border border-slate-200">
-                    <div className="space-y-3 text-base">
-                      <div className="flex">
-                        <span className="font-semibold text-slate-700 w-32">Location:</span>
-                        <span className="text-slate-600 break-all flex-1">{filePath}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="font-semibold text-slate-700 w-32">Size:</span>
-                        <span className="text-slate-600">{imageMetadata.file_size_human}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="font-semibold text-slate-700 w-32">Resolution:</span>
-                        <span className="text-slate-600">{imageMetadata.height} × {imageMetadata.width} px</span>
-                      </div>
-                      <div className="flex">
-                        <span className="font-semibold text-slate-700 w-32">Ratio:</span>
-                        <span className="text-slate-600">{imageMetadata.aspect_ratio}</span>
+                  <div className="px-8 pb-8">
+                    <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6 border border-slate-200">
+                      <div className="space-y-3 text-base">
+                        <div className="flex">
+                          <span className="font-semibold text-slate-700 w-32">Location:</span>
+                          <span className="text-slate-600 break-all flex-1">{filePath}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="font-semibold text-slate-700 w-32">Size:</span>
+                          <span className="text-slate-600">{imageMetadata.file_size_human}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="font-semibold text-slate-700 w-32">Resolution:</span>
+                          <span className="text-slate-600">{imageMetadata.height} x {imageMetadata.width} px</span>
+                        </div>
+                        <div className="flex">
+                          <span className="font-semibold text-slate-700 w-32">Ratio:</span>
+                          <span className="text-slate-600">{imageMetadata.aspect_ratio}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
