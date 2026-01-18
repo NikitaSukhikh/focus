@@ -21,6 +21,7 @@ import { DroppedIcon, IconKind } from '../types';
 import { isGmailUrl } from '../utils';
 import { useDebouncedPositionUpdate } from '../../../../hooks/useDebouncedPositionUpdate';
 import { normalizeTag } from '../../../../types/tags';
+import { getVideoTilePadding } from '../tileBounds';
 
 interface DragDropParams {
   selectedSpace: any;
@@ -28,6 +29,7 @@ interface DragDropParams {
   setIsDragOver: (value: boolean) => void;
   setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
+  clampToBoundariesWithPadding: (x: number, y: number, paddingX?: number, paddingY?: number) => { x: number; y: number };
   getIconById: (id: string) => DroppedIcon | undefined;
   setDragGhost: (ghost: { id: string; x: number; y: number; type: IconKind } | null) => void;
   zoom: number;
@@ -39,6 +41,7 @@ export const useCenterPaneDragDrop = ({
   setIsDragOver,
   setIconsBySpace,
   clampToBoundaries,
+  clampToBoundariesWithPadding,
   getIconById,
   setDragGhost,
   zoom,
@@ -133,6 +136,22 @@ export const useCenterPaneDragDrop = ({
       .catch((err) => console.error('Failed to create undo event:', err));
   }, [selectedSpace]);
 
+  const clampToTileBounds = useCallback(
+    (x: number, y: number, type?: IconKind, url?: string, filePath?: string) => {
+      if (!type) {
+        return clampToBoundaries(x, y);
+      }
+
+      const padding = getVideoTilePadding(type, url, filePath);
+      if (padding) {
+        return clampToBoundariesWithPadding(x, y, padding.x, padding.y);
+      }
+
+      return clampToBoundaries(x, y);
+    },
+    [clampToBoundaries, clampToBoundariesWithPadding]
+  );
+
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -170,8 +189,14 @@ export const useCenterPaneDragDrop = ({
       const scrollDelta = paneRef.current.scrollTop - dragStart.startScrollTop;
       const targetX = dragStart.iconX + deltaX;
       const targetY = dragStart.iconY + deltaY + scrollDelta;
-      const { x, y } = clampToBoundaries(targetX, targetY);
       const draggedIcon = draggedId ? getIconById(draggedId) : undefined;
+      const { x, y } = clampToTileBounds(
+        targetX,
+        targetY,
+        draggedIcon?.type,
+        draggedIcon?.url,
+        draggedIcon?.filePath
+      );
       if (draggedIcon) {
         setDragGhost({ id: draggedId, x, y, type: draggedIcon.type });
       }
@@ -226,10 +251,16 @@ export const useCenterPaneDragDrop = ({
       const deltaX = (e.clientX - dragStart.startCursorX) / safeZoom;
       const deltaY = (e.clientY - dragStart.startCursorY) / safeZoom;
       const scrollDelta = paneRef.current.scrollTop - dragStart.startScrollTop;
+      const movedIcon = getIconById(iconId);
       const targetX = dragStart.iconX + deltaX;
       const targetY = dragStart.iconY + deltaY + scrollDelta;
-      const { x, y } = clampToBoundaries(targetX, targetY);
-      const movedIcon = getIconById(iconId);
+      const { x, y } = clampToTileBounds(
+        targetX,
+        targetY,
+        movedIcon?.type,
+        movedIcon?.url,
+        movedIcon?.filePath
+      );
       const hasMoved = movedIcon ? movedIcon.x !== x || movedIcon.y !== y : true;
       const fromX = dragStart.iconX;
       const fromY = dragStart.iconY;
@@ -287,9 +318,9 @@ export const useCenterPaneDragDrop = ({
       return;
     }
 
-    const targetX = (e.clientX - rect.left) / Math.max(zoom, 0.01);
-    const targetY = (e.clientY - rect.top + paneRef.current.scrollTop) / Math.max(zoom, 0.01);
-    const { x, y } = clampToBoundaries(targetX, targetY);
+    const rawX = (e.clientX - rect.left) / Math.max(zoom, 0.01);
+    const rawY = (e.clientY - rect.top + paneRef.current.scrollTop) / Math.max(zoom, 0.01);
+    const { x: baseX, y: baseY } = clampToBoundaries(rawX, rawY);
 
     // Handle file drops
     if (e.dataTransfer.files.length > 0) {
@@ -317,9 +348,9 @@ export const useCenterPaneDragDrop = ({
         // Stagger multiple files in a grid
         const offsetX = (index % 3) * 80;
         const offsetY = Math.floor(index / 3) * 80;
-        const fileX = x + offsetX;
-        const fileY = y + offsetY;
-        const { x: clampedX, y: clampedY } = clampToBoundaries(fileX, fileY);
+        const fileX = baseX + offsetX;
+        const fileY = baseY + offsetY;
+        const { x: clampedX, y: clampedY } = clampToTileBounds(fileX, fileY, 'file', undefined, filePath);
 
         const payload: ObjectCreatePayload = {
           type: 'file',
@@ -389,7 +420,7 @@ export const useCenterPaneDragDrop = ({
 
     const uriFallback = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
 
-    const buildPayload = (): ObjectCreatePayload => {
+    const buildPayload = (position: { x: number; y: number }): ObjectCreatePayload => {
       if (rawJson) {
         try {
           const payload = JSON.parse(rawJson);
@@ -404,8 +435,8 @@ export const useCenterPaneDragDrop = ({
               content: 'Telegram integration',
               description: payload?.description,
               service: 'telegram',
-              x,
-              y,
+              x: position.x,
+              y: position.y,
             };
           }
           if (provider === 'intstorage') {
@@ -415,8 +446,8 @@ export const useCenterPaneDragDrop = ({
               content: 'Internal storage integration',
               description: payload?.description,
               service: 'intstorage',
-              x,
-              y,
+              x: position.x,
+              y: position.y,
             };
           }
           if (provider.includes('gmail') || key.includes('gmail')) {
@@ -428,8 +459,8 @@ export const useCenterPaneDragDrop = ({
               subject: payload?.subject || label,
               sender: payload?.sender || 'unknown@example.com',
               snippet: payload?.snippet || '',
-              x,
-              y,
+              x: position.x,
+              y: position.y,
             };
           }
           if (provider.includes('drive') || key.includes('drive') ||
@@ -442,8 +473,8 @@ export const useCenterPaneDragDrop = ({
               drive_file_name: payload?.drive_file_name || payload?.name || label,
               mime_type: payload?.mime_type,
               web_view_link: payload?.url || payload?.web_view_link,
-              x,
-              y,
+              x: position.x,
+              y: position.y,
             };
             if (key) {
               drivePayload.description = key;
@@ -458,16 +489,16 @@ export const useCenterPaneDragDrop = ({
               url: payload.url,
               description: payload.description,
               favicon_url,
-              x,
-              y,
+              x: position.x,
+              y: position.y,
             };
           }
           return {
             type: 'text',
             title: label,
             content: label,
-            x,
-            y,
+            x: position.x,
+            y: position.y,
           };
         } catch {
           // ignore
@@ -478,15 +509,24 @@ export const useCenterPaneDragDrop = ({
         const url = uriFallback.trim();
         if (url.startsWith('http')) {
           const favicon_url = buildFaviconUrl(url);
-          return { type: 'link', title: url, url, x, y, favicon_url };
+          return { type: 'link', title: url, url, x: position.x, y: position.y, favicon_url };
         }
-        return { type: 'text', title: url, content: url, x, y };
+        return { type: 'text', title: url, content: url, x: position.x, y: position.y };
       }
 
-      return { type: 'text', title: 'Integration', content: 'Integration', x, y };
+      return { type: 'text', title: 'Integration', content: 'Integration', x: position.x, y: position.y };
     };
 
-    const payload = buildPayload();
+    const basePayload = buildPayload({ x: rawX, y: rawY });
+    const payloadKind: IconKind = basePayload.type === 'link'
+      ? 'link'
+      : basePayload.type === 'file'
+      ? 'file'
+      : 'unknown';
+    const payloadUrl = basePayload.type === 'link' ? (basePayload as any).url : undefined;
+    const payloadFilePath = basePayload.type === 'file' ? (basePayload as any).file_path : undefined;
+    const { x, y } = clampToTileBounds(rawX, rawY, payloadKind, payloadUrl, payloadFilePath);
+    const payload: ObjectCreatePayload = { ...basePayload, x, y };
 
     let serviceKey: string | undefined;
     let dragPayloadData: any;

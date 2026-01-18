@@ -8,7 +8,7 @@
  * - Adding newly created links to the canvas
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { objectsApi } from '../../../../api/objects';
 import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
@@ -16,13 +16,21 @@ import { truncateLinkTitle } from '../../../../utils/text';
 import { DroppedIcon } from '../types';
 import { normalizeTag } from '../../../../types/tags';
 import { API_BASE } from '../../../../config/api';
+import { getVideoTilePadding } from '../tileBounds';
 
 interface LinkCreationParams {
   selectedSpace: any;
   setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  clampToBoundaries: (x: number, y: number) => { x: number; y: number };
+  clampToBoundariesWithPadding: (x: number, y: number, paddingX?: number, paddingY?: number) => { x: number; y: number };
 }
 
-export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: LinkCreationParams) => {
+export const useCenterPaneLinkCreation = ({
+  selectedSpace,
+  setIconsBySpace,
+  clampToBoundaries,
+  clampToBoundariesWithPadding,
+}: LinkCreationParams) => {
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [pendingLinkPosition, setPendingLinkPosition] = useState<{ x: number; y: number } | null>(null);
   const [editingLink, setEditingLink] = useState<{
@@ -49,6 +57,17 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
 
     return metadata?.favicon_url || buildFaviconUrl(targetUrl);
   };
+
+  const clampToLinkBounds = useCallback(
+    (x: number, y: number, url: string) => {
+      const padding = getVideoTilePadding('link', url);
+      if (padding) {
+        return clampToBoundariesWithPadding(x, y, padding.x, padding.y);
+      }
+      return clampToBoundaries(x, y);
+    },
+    [clampToBoundaries, clampToBoundariesWithPadding]
+  );
 
   const openAddLinkDialog = (x: number, y: number) => {
     setPendingLinkPosition({ x, y });
@@ -194,7 +213,7 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
       return;
     }
 
-    const { x, y } = pendingLinkPosition;
+    const { x, y } = clampToLinkBounds(pendingLinkPosition.x, pendingLinkPosition.y, url);
 
     try {
       const created = await objectsApi.create(selectedSpace.id, {

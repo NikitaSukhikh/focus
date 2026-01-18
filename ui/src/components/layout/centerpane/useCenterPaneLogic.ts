@@ -13,7 +13,7 @@
  */
 
 import { useCallback } from 'react';
-import { clampToBoundaries as clampPosition } from './boundaries';
+import { clampToBoundaries as clampPosition, clampToBoundariesWithPadding as clampPositionWithPadding } from './boundaries';
 import { useCenterPaneState } from './hooks/useCenterPaneState';
 import { useCenterPaneDragDrop } from './hooks/useCenterPaneDragDrop';
 import { useCenterPaneIconActions } from './hooks/useCenterPaneIconActions';
@@ -23,6 +23,7 @@ import { useCenterPaneTextCreation } from './hooks/useCenterPaneTextCreation';
 import { useInlineTextEditor } from './hooks/useInlineTextEditor';
 import { useUndo } from './hooks/useUndo';
 import { useCenterPanePaste } from './hooks/useCenterPanePaste';
+import { useCenterPanePointerLocation } from './hooks/useCenterPanePointerLocation';
 
 export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>, zoom: number = 1) => {
   // State management
@@ -51,6 +52,16 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     return clampPosition(x, y, logicalWidth);
   }, [paneRef, zoom]);
 
+  const clampToBoundariesWithPadding = useCallback(
+    (x: number, y: number, paddingX: number = 0, paddingY: number = 0): { x: number; y: number } => {
+      if (!paneRef.current) return { x, y };
+      const rect = paneRef.current.getBoundingClientRect();
+      const logicalWidth = rect.width / Math.max(zoom, 0.01);
+      return clampPositionWithPadding(x, y, logicalWidth, paddingX, paddingY);
+    },
+    [paneRef, zoom]
+  );
+
   // Drag & drop handlers
   const dragDropHandlers = useCenterPaneDragDrop({
     selectedSpace,
@@ -58,6 +69,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     setIsDragOver,
     setIconsBySpace,
     clampToBoundaries,
+    clampToBoundariesWithPadding,
     getIconById: (id: string) => {
       if (!selectedSpace) return undefined;
       return (iconsBySpace[selectedSpace.id] || []).find((i) => i.id === id);
@@ -84,6 +96,8 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   const linkCreation = useCenterPaneLinkCreation({
     selectedSpace,
     setIconsBySpace,
+    clampToBoundaries,
+    clampToBoundariesWithPadding,
   });
 
   // Text creation
@@ -108,12 +122,17 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   });
 
   // Paste handling
+  const pointerLocation = useCenterPanePointerLocation({ paneRef, zoom });
+
   const pasteHandlers = useCenterPanePaste({
     selectedSpace,
     paneRef,
     setIconsBySpace,
+    iconsBySpace,
     clampToBoundaries,
+    clampToBoundariesWithPadding,
     zoom,
+    getCursorCanvasPosition: pointerLocation.getCursorCanvasPosition,
   });
 
   // Canvas click with proper parameters

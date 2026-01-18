@@ -7,7 +7,7 @@
  * - Detecting clipboard content type (local files vs URLs vs plain text)
  * - Creating file tiles for local file paths
  * - Creating link tiles for URLs
- * - Positioning pasted tiles at the center of the viewport
+ * - Positioning pasted tiles at the cursor (or a bottom-left fallback)
  */
 
 import { useEffect, useCallback } from 'react';
@@ -16,13 +16,17 @@ import { undoApi } from '../../../../api/undo';
 import { buildFaviconUrl } from '../../../../utils/favicon';
 import { DroppedIcon, IconKind } from '../types';
 import { normalizeTag } from '../../../../types/tags';
+import { getVideoTilePadding } from '../tileBounds';
 
 interface PasteParams {
   selectedSpace: any;
   paneRef: React.RefObject<HTMLDivElement | null>;
   setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  iconsBySpace: Record<string, DroppedIcon[]>;
   clampToBoundaries: (x: number, y: number) => { x: number; y: number };
+  clampToBoundariesWithPadding: (x: number, y: number, paddingX?: number, paddingY?: number) => { x: number; y: number };
   zoom: number;
+  getCursorCanvasPosition: () => { x: number; y: number } | null;
 }
 
 type ClipboardFileEntry = {
@@ -62,12 +66,17 @@ const parseClipboardLines = (text: string): string[] =>
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith('#'));
 
+const PASTE_CLEARANCE = 140;
+
 export const useCenterPanePaste = ({
   selectedSpace,
   paneRef,
   setIconsBySpace,
+  iconsBySpace,
   clampToBoundaries,
+  clampToBoundariesWithPadding,
   zoom,
+  getCursorCanvasPosition,
 }: PasteParams) => {
   const logTileCreate = useCallback((tile: {
     id: string;
@@ -90,19 +99,51 @@ export const useCenterPanePaste = ({
       .catch((err) => console.error('Failed to create undo event:', err));
   }, [selectedSpace]);
 
-  const getCenterCanvasPosition = useCallback(() => {
+  const getBottomLeftPosition = useCallback(() => {
     if (!paneRef.current) return { x: 200, y: 200 };
 
+    const { x: leftBoundary, y: minY } = clampToBoundaries(0, 0);
     const rect = paneRef.current.getBoundingClientRect();
-    const scrollLeft = paneRef.current.scrollLeft;
     const scrollTop = paneRef.current.scrollTop;
     const safeZoom = Math.max(zoom, 0.01);
+    const viewBottom = (scrollTop + rect.height) / safeZoom;
+    const startY = Math.max(minY, viewBottom - PASTE_CLEARANCE);
 
-    const centerCanvasX = (rect.width / 2 + scrollLeft) / safeZoom;
-    const centerCanvasY = (rect.height / 2 + scrollTop) / safeZoom;
+    const icons = selectedSpace ? iconsBySpace[selectedSpace.id] || [] : [];
+    const isOccupied = (x: number, y: number) =>
+      icons.some((icon) => Math.hypot(icon.x - x, icon.y - y) < PASTE_CLEARANCE);
 
-    return clampToBoundaries(centerCanvasX, centerCanvasY);
-  }, [paneRef, zoom, clampToBoundaries]);
+    let candidateY = startY;
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (!isOccupied(leftBoundary, candidateY)) {
+        return clampToBoundaries(leftBoundary, candidateY);
+      }
+      candidateY += PASTE_CLEARANCE;
+    }
+
+    return clampToBoundaries(leftBoundary, candidateY);
+  }, [paneRef, clampToBoundaries, zoom, selectedSpace, iconsBySpace]);
+
+  const getPasteAnchorPosition = useCallback(() => {
+    const cursorPosition = getCursorCanvasPosition();
+    if (cursorPosition) {
+      return clampToBoundaries(cursorPosition.x, cursorPosition.y);
+    }
+
+    return getBottomLeftPosition();
+  }, [getCursorCanvasPosition, clampToBoundaries, getBottomLeftPosition]);
+
+  const clampToTileBounds = useCallback(
+    (x: number, y: number, type: IconKind, url?: string, filePath?: string) => {
+      const padding = getVideoTilePadding(type, url, filePath);
+      if (padding) {
+        return clampToBoundariesWithPadding(x, y, padding.x, padding.y);
+      }
+      return clampToBoundaries(x, y);
+    },
+    [clampToBoundaries, clampToBoundariesWithPadding]
+  );
 
   const getFilePathForClipboardFile = useCallback((file: File): string => {
     try {
@@ -120,7 +161,7 @@ export const useCenterPanePaste = ({
   const createFileTiles = useCallback((files: ClipboardFileEntry[]) => {
     if (!selectedSpace || !paneRef.current || files.length === 0) return;
 
-    const { x, y } = getCenterCanvasPosition();
+    const { x, y } = getPasteAnchorPosition();
     console.log('[PASTE] Processing file entries:', files);
 
     files.forEach((file, index) => {
@@ -128,7 +169,7 @@ export const useCenterPanePaste = ({
       const offsetY = Math.floor(index / 3) * 80;
       const fileX = x + offsetX;
       const fileY = y + offsetY;
-      const { x: clampedX, y: clampedY } = clampToBoundaries(fileX, fileY);
+      const { x: clampedX, y: clampedY } = clampToTileBounds(fileX, fileY, 'file', undefined, file.filePath);
 
       const payload: ObjectCreatePayload = {
         type: 'file',
@@ -188,12 +229,13 @@ export const useCenterPanePaste = ({
           }));
         });
     });
-  }, [selectedSpace, paneRef, clampToBoundaries, getCenterCanvasPosition, setIconsBySpace, logTileCreate]);
+  }, [selectedSpace, paneRef, getPasteAnchorPosition, clampToTileBounds, setIconsBySpace, logTileCreate]);
 
   const createLinkTile = useCallback((url: string) => {
     if (!selectedSpace || !paneRef.current) return;
 
-    const { x, y } = getCenterCanvasPosition();
+    const anchor = getPasteAnchorPosition();
+    const { x, y } = clampToTileBounds(anchor.x, anchor.y, 'link', url);
     const faviconUrl = buildFaviconUrl(url);
 
     const payload: ObjectCreatePayload = {
@@ -273,7 +315,7 @@ export const useCenterPanePaste = ({
           [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
         }));
       });
-  }, [selectedSpace, paneRef, getCenterCanvasPosition, setIconsBySpace, logTileCreate]);
+  }, [selectedSpace, paneRef, getPasteAnchorPosition, clampToTileBounds, setIconsBySpace, logTileCreate]);
 
   const handleClipboardText = useCallback((text: string): boolean => {
     const lines = parseClipboardLines(text);

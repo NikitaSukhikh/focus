@@ -34,6 +34,35 @@ export function clampToBoundaries(
 }
 
 /**
+ * Clamps a position to stay within the pane boundaries with extra padding.
+ * @param x - Target x position
+ * @param y - Target y position
+ * @param paneWidth - Current pane width
+ * @param paddingX - Additional horizontal padding from edges
+ * @param paddingY - Additional vertical padding from top edge
+ * @returns Clamped position {x, y}
+ */
+export function clampToBoundariesWithPadding(
+  x: number,
+  y: number,
+  paneWidth: number,
+  paddingX: number = 0,
+  paddingY: number = 0
+): { x: number; y: number } {
+  const safePaddingX = Math.max(0, paddingX);
+  const safePaddingY = Math.max(0, paddingY);
+  const minX = BOUNDARY_CONSTRAINTS.minX + safePaddingX;
+  const maxX = paneWidth - BOUNDARY_CONSTRAINTS.maxXOffset - safePaddingX;
+  const minY = BOUNDARY_CONSTRAINTS.minY + safePaddingY;
+  const clampedMaxX = Math.max(minX, maxX);
+
+  return {
+    x: Math.max(minX, Math.min(clampedMaxX, x)),
+    y: Math.max(minY, y)  // Only enforce minimum Y, no maximum for infinite scroll
+  };
+}
+
+/**
  * Calculates the required content height based on the bottommost tile
  * @param tiles - Array of tiles with x, y positions
  * @param viewportHeight - Current viewport height
