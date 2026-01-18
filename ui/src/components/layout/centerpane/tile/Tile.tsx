@@ -8,6 +8,7 @@ import { useThumbnail } from './useThumbnail';
 import { useImageMetadata } from './useImageMetadata';
 import { useEbookMetadata } from './useEbookMetadata';
 import { useContextMenu } from './useContextMenu';
+import { useFileRename } from './useFileRename';
 import { HOVER_SAFE_PADDING, EMBED_LINK_WIDTH, EMBED_LINK_HEIGHT, NON_EMBED_LINK_SIZE, AUDIO_EMBED_HEIGHT, AUDIO_EMBED_WIDTH, VIDEO_EMBED_WIDTH, VIDEO_EMBED_HEIGHT, getThumbnailDimensions } from './dimensionHelpers';
 import { VideoEmbedContent } from './VideoEmbedContent';
 import { VideoFileEmbedContent } from './VideoFileEmbedContent';
@@ -17,6 +18,7 @@ import { TextContent } from './TextContent';
 import { DefaultContent } from './DefaultContent';
 import { TileContextMenu } from './TileContextMenu';
 import { TileDialogs } from './TileDialogs';
+import { RenameFileDialog } from '../../../dialogs/RenameFileDialog';
 import { openFilePath } from '../../../../platform';
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
@@ -54,6 +56,23 @@ export function Tile({
     handleCloseContextMenu,
     setShowContextMenu,
   } = useContextMenu();
+
+  const {
+    isRenaming,
+    showRenameDialog,
+    currentFileName,
+    openRenameDialog,
+    closeRenameDialog,
+    handleRename,
+  } = useFileRename({
+    objectId: id,
+    filePath: filePath || '',
+    onSuccess: () => {
+      // Trigger a refresh to get updated data
+      window.location.reload();
+    },
+  });
+
   const openLinkExternally = async () => {
     if (type !== 'link' || !url) return;
     // Simply open URL in external browser - no OAuth needed
@@ -297,6 +316,10 @@ export function Tile({
           void openLinkExternally();
         }}
         onRefreshMetadata={handleRefreshMetadataClick}
+        onRenameFile={type === 'file' && filePath ? () => {
+          setShowContextMenu(false);
+          openRenameDialog();
+        } : undefined}
         onDelete={handleDeleteClick}
       />
 
@@ -306,6 +329,14 @@ export function Tile({
         title={title}
         filePath={filePath}
         onShareDialogClose={() => setShowShareDialog(false)}
+      />
+
+      <RenameFileDialog
+        isOpen={showRenameDialog}
+        currentName={currentFileName}
+        isLoading={isRenaming}
+        onClose={closeRenameDialog}
+        onRename={handleRename}
       />
     </>
   );

@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomOut, Plus } from 'lucide-react';
+import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '../../../styles/typographics';
@@ -10,6 +10,7 @@ import { TopBarTags } from './TopBarTags';
 import { WindowControls } from './WindowControls';
 import focusLogo from '../../../assets/focus.png';
 import shareSpaceIcon from '../../../assets/sharespace_icon.jpg';
+import { useThemeToggle } from '../../../hooks/useThemeToggle';
 
 export type { TopBarHandle } from './types';
 
@@ -18,6 +19,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onOpenQuickAdd, onTagsClick, isTagsOpen, onTagSelect } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
+  const { toggleTheme } = useThemeToggle();
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({}), []);
@@ -81,8 +83,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               fontFamily: 'Segoe UI, sans-serif',
               fontSize: '13px',
               fontWeight: 400,
-              color: '#000',
-              opacity: 1,
+              color: 'var(--color-text-primary)',
             }}
           >
             Focus
@@ -206,6 +207,28 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             className="w-5 h-5 object-contain"
             style={{ opacity: 0.6 }}
           />
+        </button>
+
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg transition-colors flex items-center justify-center gap-0.5"
+          style={{
+            background: 'transparent',
+            color: 'var(--color-text-secondary)',
+            border: '1px solid transparent',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--glass-bg)';
+            e.currentTarget.style.color = 'var(--primary-color)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+          }}
+          title="Toggle theme"
+        >
+          <Sun size={14} />
+          <Moon size={14} />
         </button>
 
         <button

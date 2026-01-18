@@ -3,7 +3,7 @@ export const ARROW_SETTINGS = {
   strokeWidth: 3,
   clickAreaPadding: 6,
   opacity: {
-    normal: 1,
+    normal: 'var(--icon-opacity, 1)',
     draft: 0.5,
   },
   marker: {

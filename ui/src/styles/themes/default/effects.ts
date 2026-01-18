@@ -22,4 +22,7 @@ export const defaultEffects = {
   glassBg: 'rgba(255, 255, 255, 0.8)',
   glassBorder: 'rgba(0, 0, 0, 0.1)',
   glassBlur: 'blur(10px)',
+
+  /* Icons */
+  iconOpacity: '1',
 };

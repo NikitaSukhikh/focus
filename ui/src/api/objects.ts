@@ -239,4 +239,29 @@ export const objectsApi = {
 
     return requestTracker.track(promise);
   },
+
+  async renameFile(objectId: string, newName: string): Promise<FileRenameResponse> {
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_name: newName }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to rename file: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
+  },
 };
+
+export interface FileRenameResponse {
+  success: boolean;
+  object_id: string;
+  old_path: string;
+  new_path: string;
+  new_title: string;
+}

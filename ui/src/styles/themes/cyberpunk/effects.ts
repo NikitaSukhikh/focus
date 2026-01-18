@@ -22,4 +22,7 @@ export const cyberpunkEffects = {
   glassBg: 'rgba(10, 10, 32, 0.6)',
   glassBorder: 'rgba(76, 175, 80, 0.2)',
   glassBlur: 'blur(10px)',
+
+  /* Icons */
+  iconOpacity: '0.7',
 };

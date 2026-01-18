@@ -1,10 +1,12 @@
-import { AppStyleType, DEFAULT_STYLE, CYBERPUNK_STYLE } from '../constants/styleTypes';
+import { AppStyleType, DEFAULT_STYLE, DARK_STYLE, CYBERPUNK_STYLE } from '../constants/styleTypes';
 import { defaultTheme } from '../styles/themes/default';
+import { darkTheme } from '../styles/themes/dark';
 import { cyberpunkTheme } from '../styles/themes/cyberpunk';
 import { StyleTheme } from '../styles/themes/types';
 
 const styleMap: Record<AppStyleType, StyleTheme> = {
   [DEFAULT_STYLE]: defaultTheme,
+  [DARK_STYLE]: darkTheme,
   [CYBERPUNK_STYLE]: cyberpunkTheme,
 };
 
@@ -51,6 +53,7 @@ const cssVarMap: Record<keyof StyleTheme, string> = {
   glassBg: '--glass-bg',
   glassBorder: '--glass-border',
   glassBlur: '--glass-blur',
+  iconOpacity: '--icon-opacity',
 };
 
 export function switchAppStyle(styleType: AppStyleType): void {

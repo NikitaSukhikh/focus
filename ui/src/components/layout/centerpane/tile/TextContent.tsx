@@ -1,6 +1,7 @@
 import React from 'react';
 import { TEXT_FONT_SIZE, TEXT_LINE_HEIGHT } from './dimensionHelpers';
 import { formatTextWithLinks } from '../../../../utils/linkFormatter';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
 
 interface TextContentProps {
   content: string;
@@ -23,15 +24,20 @@ export function TextContent({ content, isSelected, hoverScaleClass }: TextConten
       }}
     >
       <div
-        className={`leading-relaxed ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}
+        className="leading-relaxed"
         style={{
+          fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
           fontSize: `${TEXT_FONT_SIZE}px`,
           lineHeight: TEXT_LINE_HEIGHT,
+          color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
         }}
       >
-        <div className="font-semibold">{formatTextWithLinks(firstTextLine)}</div>
+        <div style={{ fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE }}>{formatTextWithLinks(firstTextLine)}</div>
         {remainingText && (
-          <div className="whitespace-pre-wrap" style={{ lineHeight: TEXT_LINE_HEIGHT }}>
+          <div
+            className="whitespace-pre-wrap"
+            style={{ lineHeight: TEXT_LINE_HEIGHT, fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION, color: 'var(--color-text-secondary)' }}
+          >
             {formatTextWithLinks(remainingText)}
           </div>
         )}

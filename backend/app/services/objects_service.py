@@ -45,7 +45,9 @@ from app.models.object import (
     GoogleDriveObjectCreate,
     GmailObjectCreate,
     TextObjectCreate,
+    FileRenameResponse,
 )
+import shutil
 from app.storage.repositories.objects_repo import objects_repository
 from app.storage.repositories.spaces_repo import spaces_repository
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file
@@ -947,6 +949,86 @@ class ObjectsService:
         """
         # Placeholder for thumbnail deletion
         pass
+
+    async def rename_file(
+        self,
+        object_id: UUID,
+        new_name: str,
+        session: AsyncSession | None = None
+    ) -> FileRenameResponse:
+        """
+        Rename a file on disk and update the object's file_path metadata.
+
+        Args:
+            object_id: Object UUID
+            new_name: New filename (without directory path)
+
+        Returns:
+            FileRenameResponse: Rename confirmation with old/new paths
+
+        Raises:
+            ObjectNotFoundError: If object not found
+            InvalidObjectDataError: If object is not a file type or rename fails
+        """
+        session_to_use, external = self._get_session(session)
+        try:
+            async with session_to_use.begin():
+                obj = await self.objects_repo.get_object_by_id(object_id, session=session_to_use)
+                if obj is None:
+                    raise ObjectNotFoundError(f"Object not found: {object_id}")
+
+                if obj.type != ObjectType.FILE:
+                    raise InvalidObjectDataError("Only file objects can be renamed")
+
+                old_path = obj.metadata.get("file_path")
+                if not old_path:
+                    raise InvalidObjectDataError("File object has no file_path")
+
+                old_path_obj = Path(old_path)
+                if not old_path_obj.exists():
+                    raise InvalidObjectDataError(f"File does not exist: {old_path}")
+
+                # Preserve extension if not provided in new_name
+                old_ext = old_path_obj.suffix
+                new_name_path = Path(new_name)
+                if not new_name_path.suffix and old_ext:
+                    new_name = new_name + old_ext
+
+                new_path_obj = old_path_obj.parent / new_name
+                new_path = str(new_path_obj)
+
+                if new_path_obj.exists():
+                    raise InvalidObjectDataError(f"File already exists: {new_path}")
+
+                # Perform the actual file rename on disk
+                try:
+                    shutil.move(str(old_path_obj), str(new_path_obj))
+                except OSError as e:
+                    raise InvalidObjectDataError(f"Failed to rename file: {e}")
+
+                # Update the object metadata with new path and title
+                new_title = new_name_path.stem if new_name_path.suffix else new_name
+                update_data = ObjectUpdate(
+                    default_title=new_title,
+                    metadata={"file_path": new_path}
+                )
+                await self.objects_repo.update_object(object_id, update_data, session=session_to_use)
+
+            logger.info(
+                f"Renamed file: {old_path} -> {new_path}",
+                extra={"object_id": str(object_id), "old_path": old_path, "new_path": new_path}
+            )
+
+            return FileRenameResponse(
+                success=True,
+                object_id=object_id,
+                old_path=old_path,
+                new_path=new_path,
+                new_title=new_title
+            )
+        finally:
+            if not external:
+                await session_to_use.close()
 
 
 # ============================================================================

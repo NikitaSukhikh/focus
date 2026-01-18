@@ -2,6 +2,7 @@ import React from 'react';
 import { TileIcon } from './Icon';
 import { truncateDisplayPath } from '../../../../utils/text';
 import { ImageMetadata } from './useImageMetadata';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
 
 interface EbookMetadata {
   title: string;
@@ -58,11 +59,30 @@ export function DefaultContent({
       </div>
       {showEbookInfo ? (
         <>
-          <div className="text-sm text-slate-700 px-1 text-center mt-1 break-words font-medium" style={{ width: '100%' }}>
+          <div
+            className="px-1 text-center mt-1 break-words"
+            style={{
+              width: '100%',
+              fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
+              fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+              lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
+              fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+              color: 'var(--color-text-primary)',
+            }}
+          >
             {ebookMetadata.title}
           </div>
           {ebookMetadata.author && (
-            <div className="text-xs text-center break-words text-slate-500">
+            <div
+              className="text-center break-words"
+              style={{
+                fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
+                fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
+                lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
+                fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
+                color: 'var(--color-text-muted)',
+              }}
+            >
               by {ebookMetadata.author}
             </div>
           )}
@@ -70,13 +90,29 @@ export function DefaultContent({
       ) : (
         <>
           <div
-            className={`text-sm text-slate-700 px-1 text-center mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
-            style={imageMetadata ? { width: `${thumbnailWidth}px` } : { width: '100%' }}
+            className={`px-1 text-center mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
+            style={{
+              width: imageMetadata ? `${thumbnailWidth}px` : '100%',
+              fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
+              fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+              lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
+              fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+              color: 'var(--color-text-primary)',
+            }}
           >
             {title}
           </div>
           {filePath && !imageMetadata && (
-            <div className="text-xs text-center whitespace-pre-line break-words leading-snug line-clamp-2 text-slate-400">
+            <div
+              className="text-center whitespace-pre-line break-words line-clamp-2"
+              style={{
+                fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
+                fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
+                lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
+                fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
+                color: 'var(--color-text-muted)',
+              }}
+            >
               {truncateDisplayPath(filePath)}
             </div>
           )}

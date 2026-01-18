@@ -11,7 +11,7 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { useSpaceStore } from '../../../stores/spaceStore';
 import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from './hooks/useArrowDrawing';
-import { ARROW_SETTINGS } from './arrowSettings';
+import { ARROW_SETTINGS } from '../../../styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '../../../constants/shortcutHints';
 
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
@@ -414,8 +414,9 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                 {allArrowSegments.map((segment) => {
                   const isDraft = segment.id === 'arrow-draft';
                   const clickableWidth = ARROW_SETTINGS.strokeWidth + (ARROW_SETTINGS.clickAreaPadding * 2);
+                  const arrowOpacity = isDraft ? ARROW_SETTINGS.opacity.draft : ARROW_SETTINGS.opacity.normal;
                   return (
-                    <g key={segment.id}>
+                    <g key={segment.id} style={{ opacity: arrowOpacity }}>
                       {/* Invisible wider line for click area */}
                       <line
                         x1={segment.start.x}
@@ -443,7 +444,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                         x2={segment.end.x}
                         y2={segment.end.y}
                         stroke={ARROW_SETTINGS.color}
-                        strokeOpacity={isDraft ? ARROW_SETTINGS.opacity.draft : ARROW_SETTINGS.opacity.normal}
                         strokeWidth={ARROW_SETTINGS.strokeWidth}
                         strokeLinecap="round"
                         markerEnd={`url(#${ARROW_SETTINGS.marker.id})`}

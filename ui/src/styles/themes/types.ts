@@ -60,4 +60,7 @@ export interface StyleTheme {
   glassBg: string;
   glassBorder: string;
   glassBlur: string;
+
+  /* Icons */
+  iconOpacity: string;
 }

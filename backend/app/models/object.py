@@ -745,3 +745,39 @@ class ObjectDeleteResponse(BaseModel):
             }
         }
     )
+
+
+class FileRenameRequest(BaseModel):
+    """Schema for renaming a file on disk."""
+
+    new_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="New filename (without path, extension preserved if not provided)"
+    )
+
+    @field_validator("new_name")
+    @classmethod
+    def validate_new_name(cls, v: str) -> str:
+        """Validate filename for invalid characters."""
+        v = v.strip()
+        if not v:
+            raise ValueError("New filename cannot be empty")
+        invalid_chars = '<>:"/\\|?*'
+        for char in invalid_chars:
+            if char in v:
+                raise ValueError(f"Filename cannot contain '{char}'")
+        if v in ('.', '..'):
+            raise ValueError("Invalid filename")
+        return v
+
+
+class FileRenameResponse(BaseModel):
+    """Schema for file rename confirmation."""
+
+    success: bool = Field(..., description="Whether rename was successful")
+    object_id: UUID = Field(..., description="ID of the object")
+    old_path: str = Field(..., description="Previous file path")
+    new_path: str = Field(..., description="New file path")
+    new_title: str = Field(..., description="Updated title")

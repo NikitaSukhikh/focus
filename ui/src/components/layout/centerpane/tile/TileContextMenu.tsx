@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2 } from 'lucide-react';
+import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2, Pencil } from 'lucide-react';
 import { Z_INDEX } from '../../../../constants/zIndex';
 
 interface TileContextMenuProps {
@@ -15,6 +15,7 @@ interface TileContextMenuProps {
   onCopyPath: () => void;
   onOpenExternal: () => void;
   onRefreshMetadata: () => void;
+  onRenameFile?: () => void;
   onDelete: () => void;
 }
 
@@ -32,6 +33,7 @@ export function TileContextMenu({
   onCopyPath,
   onOpenExternal,
   onRefreshMetadata,
+  onRenameFile,
   onDelete,
 }: TileContextMenuProps) {
   if (!show) return null;
@@ -99,6 +101,15 @@ export function TileContextMenu({
           >
             <RefreshCw size={14} />
             Refresh
+          </button>
+        )}
+        {type === 'file' && onRenameFile && (
+          <button
+            onClick={onRenameFile}
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+          >
+            <Pencil size={14} />
+            Rename file
           </button>
         )}
         <button

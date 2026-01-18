@@ -18,6 +18,8 @@ from app.models.object import (
     ObjectReorder,
     ObjectDeleteResponse,
     ObjectType,
+    FileRenameRequest,
+    FileRenameResponse,
 )
 from app.services.objects_service import (
     objects_service,
@@ -616,6 +618,82 @@ async def get_objects_by_type(
             "Unable to retrieve objects of this type right now.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_code="object_type_fetch_failed",
+            details={"error": str(e)},
+            log_level="error",
+        ) from e
+
+
+@router.post(
+    "/objects/{object_id}/rename",
+    response_model=FileRenameResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Rename file on disk",
+    description="Rename the actual file on disk for a file object and update metadata.",
+    tags=["Objects"]
+)
+async def rename_file(
+    object_id: UUID,
+    rename_data: FileRenameRequest,
+    session: AsyncSession = Depends(get_session)
+) -> FileRenameResponse:
+    """
+    Rename a file on disk.
+
+    This renames the actual file in the filesystem and updates the object's
+    file_path metadata to reflect the new location.
+
+    Args:
+        object_id: Object UUID (must be a file type object)
+        rename_data: New filename
+
+    Returns:
+        FileRenameResponse: Confirmation with old and new paths
+
+    Raises:
+        400: Object is not a file type or rename failed
+        404: Object not found
+        500: Internal server error
+    """
+    try:
+        result = await objects_service.rename_file(
+            object_id,
+            rename_data.new_name,
+            session=session
+        )
+
+        logger.info(
+            f"Renamed file for object {object_id}",
+            extra={
+                "object_id": str(object_id),
+                "old_path": result.old_path,
+                "new_path": result.new_path
+            }
+        )
+
+        return result
+
+    except ObjectNotFoundError as e:
+        logger.warning(f"Object not found for rename: {object_id}")
+        raise NotFoundError(
+            "Object not found.",
+            error_code="object_not_found",
+            details={"object_id": str(object_id), "error": str(e)},
+        )
+
+    except InvalidObjectDataError as e:
+        logger.warning(f"Invalid rename request: {e}")
+        raise BadRequestError(
+            str(e),
+            error_code="invalid_rename_request",
+            details={"object_id": str(object_id), "error": str(e)},
+        )
+
+    except Exception as e:
+        logger.exception("Failed to rename file", extra={"object_id": str(object_id)})
+        raise AppError(
+            "Unable to rename file right now.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="file_rename_failed",
             details={"error": str(e)},
             log_level="error",
         ) from e

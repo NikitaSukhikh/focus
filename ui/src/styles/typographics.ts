@@ -21,6 +21,8 @@ export const TYPOGRAPHY_FONTS = {
   PANE_BODY: 'var(--font-sans)',
   PANE_BODY_MUTED: 'var(--font-sans)',
   CODE: 'var(--font-mono)',
+  TILE_TITLE: 'var(--font-system-ui)',
+  TILE_DESCRIPTION: 'var(--font-system-ui)',
 } as const;
 
 // Font weights mapped to the same semantic roles as sizes for consistent thickness across the UI.
@@ -37,6 +39,8 @@ export const TYPOGRAPHY_WEIGHTS = {
   PANE_BODY: 400,
   PANE_BODY_MUTED: 400,
   CODE: 400,
+  TILE_TITLE: 400,
+  TILE_DESCRIPTION: 400,
 } as const;
 
 // Font opacities mapped to the same roles so transparency stays consistent.
@@ -53,6 +57,8 @@ export const TYPOGRAPHY_OPACITY = {
   PANE_BODY: 1,
   PANE_BODY_MUTED: 1,
   CODE: 1,
+  TILE_TITLE: 1,
+  TILE_DESCRIPTION: 1,
 } as const;
 
 // Font sizes and line-heights mapped to semantic roles for a single source of truth.
@@ -108,6 +114,14 @@ export const TYPOGRAPHY_SIZES = {
     fontSize: '13px',
     lineHeight: '20px',
     letterSpacing: '-0.01em',
+  },
+  TILE_TITLE: {
+    fontSize: '14px',
+    lineHeight: '22px',
+  },
+  TILE_DESCRIPTION: {
+    fontSize: '12px',
+    lineHeight: '16px',
   },
 } as const satisfies Record<string, TypographySize>;
 

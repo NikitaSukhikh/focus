@@ -10,10 +10,12 @@ interface FileIconProps {
   className?: string;
 }
 
+const iconStyle = { opacity: 'var(--icon-opacity, 1)' };
+
 // PDF Icon
 export function PdfIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileText size={size} className="text-red-600" />
       <div
         className="absolute bottom-0 right-0 bg-red-600 text-white text-xs font-bold px-1 rounded"
@@ -28,7 +30,7 @@ export function PdfIcon({ size = 48, className = '' }: FileIconProps) {
 // Word Document Icon
 export function WordIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileText size={size} className="text-blue-600" />
       <div
         className="absolute bottom-0 right-0 bg-blue-600 text-white text-xs font-bold px-1 rounded"
@@ -43,7 +45,7 @@ export function WordIcon({ size = 48, className = '' }: FileIconProps) {
 // OpenDocument Text Icon
 export function OdtIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileText size={size} className="text-amber-600" />
       <div
         className="absolute bottom-0 right-0 bg-amber-600 text-white text-xs font-bold px-1 rounded"
@@ -58,7 +60,7 @@ export function OdtIcon({ size = 48, className = '' }: FileIconProps) {
 // Excel Icon
 export function ExcelIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileType size={size} className="text-green-600" />
       <div
         className="absolute bottom-0 right-0 bg-green-600 text-white text-xs font-bold px-1 rounded"
@@ -73,7 +75,7 @@ export function ExcelIcon({ size = 48, className = '' }: FileIconProps) {
 // PowerPoint Icon
 export function PowerPointIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileType size={size} className="text-orange-600" />
       <div
         className="absolute bottom-0 right-0 bg-orange-600 text-white text-xs font-bold px-1 rounded"
@@ -88,7 +90,7 @@ export function PowerPointIcon({ size = 48, className = '' }: FileIconProps) {
 // Text File Icon with dynamic extension display
 export function TextFileIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileText size={size} className="text-slate-600" />
       <div
         className="absolute bottom-0 right-0 bg-slate-600 text-white text-xs font-bold px-1 rounded"
@@ -104,7 +106,7 @@ export function TextFileIcon({ size = 48, className = '' }: FileIconProps) {
 export function CodeFileIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
   const ext = extension.toUpperCase().slice(0, 4); // Limit to 4 chars for display
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileText size={size} className="text-indigo-600" />
       <div
         className="absolute bottom-0 right-0 bg-indigo-600 text-white text-xs font-bold px-1 rounded"
@@ -120,7 +122,7 @@ export function CodeFileIcon({ size = 48, className = '', extension = '' }: File
 export function AudioFileIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
   const ext = extension ? extension.toUpperCase().slice(0, 4) : 'MP3'; // Limit to 4 chars for display
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <Music size={size} className="text-purple-600" />
       <div
         className="absolute bottom-0 right-0 bg-purple-600 text-white text-xs font-bold px-1 rounded"
@@ -136,7 +138,7 @@ export function AudioFileIcon({ size = 48, className = '', extension = '' }: Fil
 export function EbookIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
   const ext = extension ? extension.toUpperCase().slice(0, 4) : 'EPUB';
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <BookOpen size={size} className="text-teal-600" />
       <div
         className="absolute bottom-0 right-0 bg-teal-600 text-white text-xs font-bold px-1 rounded"
@@ -150,7 +152,7 @@ export function EbookIcon({ size = 48, className = '', extension = '' }: FileIco
 
 // Generic File Icon
 export function GenericFileIcon({ size = 48, className = '' }: FileIconProps) {
-  return <File size={size} className={`text-slate-500 ${className}`} />;
+  return <File size={size} className={`text-slate-500 ${className}`} style={iconStyle} />;
 }
 
 /**
