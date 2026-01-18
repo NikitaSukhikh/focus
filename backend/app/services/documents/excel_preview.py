@@ -8,6 +8,7 @@ Supports: .xlsx, .xls, .ods
 from pathlib import Path
 from typing import Optional
 import hashlib
+import json
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -37,6 +38,10 @@ class ExcelPreviewService:
     """
     Service for converting Excel files to HTML for preview.
     """
+
+    CACHE_VERSION = "3"
+    LAZY_LOAD_BATCH_SIZE = 200
+    LAZY_LOAD_SCROLL_THRESHOLD = 120
 
     # Supported Excel formats
     SUPPORTED_EXCEL_FORMATS = {
@@ -197,30 +202,33 @@ class ExcelPreviewService:
                 html_parts.append('<p class="empty-sheet">Empty sheet</p>')
                 continue
 
-            html_parts.append('<div class="table-wrapper">')
-            html_parts.append('<table>')
+            header_values = []
+            for col_idx in range(actual_cols):
+                try:
+                    cell = sheet.cell(0, col_idx)
+                    header_values.append(cell.value)
+                except Exception:
+                    header_values.append('')
 
-            # Render rows
-            for row_idx in range(actual_rows):
-                html_parts.append('<tr>')
+            data_rows = []
+            for row_idx in range(1, actual_rows):
+                row_values = []
                 for col_idx in range(actual_cols):
                     try:
                         cell = sheet.cell(row_idx, col_idx)
-                        cell_value = self._format_cell_value(cell.value)
-                        cell_class = 'header-cell' if row_idx == 0 else 'data-cell'
-                        html_parts.append(f'<td class="{cell_class}">{self._escape_html(str(cell_value))}</td>')
+                        row_values.append(cell.value)
                     except Exception:
-                        html_parts.append('<td class="data-cell"></td>')
-                html_parts.append('</tr>')
+                        row_values.append('')
+                data_rows.append(row_values)
+
+            html_parts.extend(self._build_lazy_table(sheet_idx, header_values, data_rows, actual_cols))
 
             # Show truncation notice
             if sheet.nrows > max_rows or sheet.ncols > max_cols:
-                html_parts.append('</table>')
-                html_parts.append(f'<p class="truncation-notice">Showing {actual_rows} of {sheet.nrows} rows, {actual_cols} of {sheet.ncols} columns</p>')
-            else:
-                html_parts.append('</table>')
-
-            html_parts.append('</div>')
+                html_parts.append(
+                    f'<p class="truncation-notice">Showing {actual_rows} of {sheet.nrows} rows, '
+                    f'{actual_cols} of {sheet.ncols} columns</p>'
+                )
 
         html_parts.extend(self._html_footer())
         return '\n'.join(html_parts)
@@ -270,27 +278,12 @@ class ExcelPreviewService:
                 else:
                     truncated_cols = False
 
-                html_parts.append('<div class="table-wrapper">')
-                html_parts.append('<table>')
+                header_values = list(df.columns)
+                data_rows = [list(row) for row in df.itertuples(index=False, name=None)]
 
-                # Header row
-                html_parts.append('<tr>')
-                for col in df.columns:
-                    col_name = self._format_cell_value(col) if col is not None else ''
-                    if not col_name:
-                        col_name = ''
-                    html_parts.append(f'<td class="header-cell">{self._escape_html(col_name)}</td>')
-                html_parts.append('</tr>')
-
-                # Data rows
-                for _, row in df.iterrows():
-                    html_parts.append('<tr>')
-                    for val in row:
-                        cell_value = self._format_cell_value(val)
-                        html_parts.append(f'<td class="data-cell">{self._escape_html(str(cell_value))}</td>')
-                    html_parts.append('</tr>')
-
-                html_parts.append('</table>')
+                html_parts.extend(
+                    self._build_lazy_table(sheet_idx, header_values, data_rows, len(df.columns))
+                )
 
                 # Truncation notice
                 if len(df) >= max_rows or truncated_cols:
@@ -300,8 +293,6 @@ class ExcelPreviewService:
                         f'<p class="truncation-notice">Showing {len(df)} rows, '
                         f'{total_cols} columns (may be truncated)</p>'
                     )
-
-                html_parts.append('</div>')
 
             except Exception as e:
                 logger.warning(f"Failed to read sheet {sheet_name}: {e}")
@@ -346,39 +337,61 @@ class ExcelPreviewService:
             actual_rows = min(sheet.max_row, max_rows)
             actual_cols = min(sheet.max_column, max_cols)
 
-            html_parts.append('<div class="table-wrapper">')
-            html_parts.append('<table>')
+            header_values = []
+            for col_idx in range(1, actual_cols + 1):
+                try:
+                    cell = sheet.cell(1, col_idx)
+                    header_values.append(cell.value)
+                except Exception:
+                    header_values.append('')
 
-            # Render rows
-            for row_idx in range(1, actual_rows + 1):
-                html_parts.append('<tr>')
+            data_rows = []
+            for row_idx in range(2, actual_rows + 1):
+                row_values = []
                 for col_idx in range(1, actual_cols + 1):
                     try:
                         cell = sheet.cell(row_idx, col_idx)
-                        cell_value = self._format_cell_value(cell.value)
-                        cell_class = 'header-cell' if row_idx == 1 else 'data-cell'
-                        html_parts.append(f'<td class="{cell_class}">{self._escape_html(str(cell_value))}</td>')
+                        row_values.append(cell.value)
                     except Exception:
-                        html_parts.append('<td class="data-cell"></td>')
-                html_parts.append('</tr>')
+                        row_values.append('')
+                data_rows.append(row_values)
+
+            html_parts.extend(self._build_lazy_table(sheet_idx, header_values, data_rows, actual_cols))
 
             # Show truncation notice
             if sheet.max_row > max_rows or sheet.max_column > max_cols:
-                html_parts.append('</table>')
                 html_parts.append(
                     f'<p class="truncation-notice">Showing {actual_rows} of {sheet.max_row} rows, '
                     f'{actual_cols} of {sheet.max_column} columns</p>'
                 )
-            else:
-                html_parts.append('</table>')
-
-            html_parts.append('</div>')
 
         html_parts.extend(self._html_footer())
         return '\n'.join(html_parts)
 
     def _html_header(self, filename: str) -> list:
         """Generate HTML header with styles."""
+        font_stack = ', '.join([
+            '"Segoe UI"',
+            '"Noto Sans"',
+            '"Noto Sans CJK SC"',
+            '"Noto Sans CJK TC"',
+            '"Noto Sans CJK JP"',
+            '"Noto Sans CJK KR"',
+            '"Microsoft YaHei UI"',
+            '"Microsoft JhengHei UI"',
+            '"Malgun Gothic"',
+            '"Yu Gothic UI"',
+            '"Meiryo"',
+            '"Nirmala UI"',
+            '"Leelawadee UI"',
+            '"Arial Unicode MS"',
+            '"Segoe UI Emoji"',
+            '"Segoe UI Symbol"',
+            '"Apple Color Emoji"',
+            '"Noto Color Emoji"',
+            'Arial',
+            'sans-serif',
+        ])
         return [
             '<!DOCTYPE html>',
             '<html>',
@@ -386,7 +399,7 @@ class ExcelPreviewService:
             '<meta charset="utf-8">',
             f'<title>{self._escape_html(filename)}</title>',
             '<style>',
-            'body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; padding: 8px 20px 40px 20px; background: #f9fafb; user-select: text; -webkit-user-select: text; overflow-x: hidden; }',
+            f'body {{ font-family: {font_stack}; margin: 0; padding: 8px 20px 40px 20px; background: #f9fafb; user-select: text; -webkit-user-select: text; overflow-x: hidden; }}',
             '.sheet-header { font-size: 1.2em; font-weight: 600; margin: 8px 0 8px 0; color: #1e40af; padding: 10px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }',
             '.sheet-separator { height: 20px; }',
             '.table-wrapper { overflow-x: auto; overflow-y: auto; max-height: 80vh; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 40px; border: 1px solid #e2e8f0; -webkit-overflow-scrolling: touch; }',
@@ -396,7 +409,7 @@ class ExcelPreviewService:
             '.table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }',
             '.table-wrapper::-webkit-scrollbar-corner { background: #f1f5f9; }',
             'table { border-collapse: collapse; width: auto; min-width: 100%; font-size: 0.9em; user-select: text; table-layout: auto; }',
-            'td { border: 1px solid #cbd5e1; padding: 8px 12px; white-space: nowrap; user-select: text; cursor: text; min-width: 80px; }',
+            'td { border: 1px solid #cbd5e1; padding: 8px 12px; white-space: nowrap; user-select: text; cursor: text; min-width: 80px; text-align: start; }',
             '.header-cell { background-color: #e0e7ff; font-weight: 600; color: #1e40af; }',
             '.data-cell { background-color: white; }',
             'tr:hover .data-cell { background-color: #f8fafc; }',
@@ -410,6 +423,101 @@ class ExcelPreviewService:
     def _html_footer(self) -> list:
         """Generate HTML footer."""
         return [
+            '<script>',
+            '(function() {',
+            f'const CHUNK_SIZE = {self.LAZY_LOAD_BATCH_SIZE};',
+            f'const SCROLL_THRESHOLD = {self.LAZY_LOAD_SCROLL_THRESHOLD};',
+            'function parseData(element) {',
+            '  if (!element) {',
+            '    return [];',
+            '  }',
+            '  try {',
+            '    return JSON.parse(element.textContent || "[]");',
+            '  } catch (e) {',
+            '    return [];',
+            '  }',
+            '}',
+            'function createCell(value) {',
+            '  const td = document.createElement("td");',
+            '  td.className = "data-cell";',
+            '  td.setAttribute("dir", "auto");',
+            '  td.textContent = value == null ? "" : String(value);',
+            '  return td;',
+            '}',
+            'function appendRows(state) {',
+            '  if (state.rendering || state.rendered >= state.total) {',
+            '    return;',
+            '  }',
+            '  state.rendering = true;',
+            '  requestAnimationFrame(function() {',
+            '    const frag = document.createDocumentFragment();',
+            '    const end = Math.min(state.rendered + CHUNK_SIZE, state.total);',
+            '    for (let i = state.rendered; i < end; i++) {',
+            '      const row = state.rows[i] || [];',
+            '      const tr = document.createElement("tr");',
+            '      for (let c = 0; c < state.colCount; c++) {',
+            '        tr.appendChild(createCell(row[c]));',
+            '      }',
+            '      frag.appendChild(tr);',
+            '    }',
+            '    state.tbody.appendChild(frag);',
+            '    state.rendered = end;',
+            '    state.rendering = false;',
+            '    if (state.rendered < state.total && state.wrapper.scrollHeight <= state.wrapper.clientHeight + SCROLL_THRESHOLD) {',
+            '      appendRows(state);',
+            '    }',
+            '  });',
+            '}',
+            'function onScroll(state) {',
+            '  if (state.rendered >= state.total) {',
+            '    return;',
+            '  }',
+            '  if (state.wrapper.scrollTop + state.wrapper.clientHeight >= state.wrapper.scrollHeight - SCROLL_THRESHOLD) {',
+            '    appendRows(state);',
+            '  }',
+            '}',
+            'function initSheet(sheetId) {',
+            '  const table = document.getElementById("sheet-table-" + sheetId);',
+            '  const tbody = document.getElementById("sheet-body-" + sheetId);',
+            '  const dataScript = document.getElementById("sheet-data-" + sheetId);',
+            '  if (!table || !tbody || !dataScript) {',
+            '    return;',
+            '  }',
+            '  const wrapper = table.closest(".table-wrapper");',
+            '  if (!wrapper) {',
+            '    return;',
+            '  }',
+            '  const colCount = parseInt(table.getAttribute("data-col-count") || "0", 10);',
+            '  const rows = parseData(dataScript);',
+            '  const state = {',
+            '    rows: rows,',
+            '    total: rows.length,',
+            '    rendered: 0,',
+            '    rendering: false,',
+            '    colCount: colCount,',
+            '    tbody: tbody,',
+            '    wrapper: wrapper',
+            '  };',
+            '  dataScript.remove();',
+            '  appendRows(state);',
+            '  wrapper.addEventListener("scroll", function() {',
+            '    onScroll(state);',
+            '  });',
+            '}',
+            'function initAll() {',
+            "  const scripts = document.querySelectorAll(\"script[type='application/json'][id^='sheet-data-']\");",
+            '  for (let i = 0; i < scripts.length; i++) {',
+            '    const id = scripts[i].id.replace("sheet-data-", "");',
+            '    initSheet(id);',
+            '  }',
+            '}',
+            'if (document.readyState === "loading") {',
+            '  document.addEventListener("DOMContentLoaded", initAll);',
+            '} else {',
+            '  initAll();',
+            '}',
+            '})();',
+            '</script>',
             '</body>',
             '</html>'
         ]
@@ -430,6 +538,59 @@ class ExcelPreviewService:
         if isinstance(value, bool):
             return str(value)
         return str(value)
+
+    def _render_cell(self, value, cell_class: str) -> str:
+        """Render a cell with safe HTML and automatic text direction."""
+        cell_value = self._format_cell_value(value)
+        return f'<td class="{cell_class}" dir="auto">{self._escape_html(str(cell_value))}</td>'
+
+    def _normalize_row(self, values, target_cols: int) -> list:
+        """Normalize row values to a consistent column count."""
+        row = [self._format_cell_value(val) for val in values]
+        if len(row) < target_cols:
+            row.extend([''] * (target_cols - len(row)))
+        elif len(row) > target_cols:
+            row = row[:target_cols]
+        return row
+
+    def _serialize_rows_for_js(self, rows: list) -> str:
+        """Serialize rows as JSON safe for embedding in HTML."""
+        serialized = json.dumps(rows)
+        return serialized.replace('</', '<\\/')
+
+    def _build_lazy_table(
+        self,
+        sheet_index: int,
+        header_values: list,
+        data_rows: list,
+        column_count: int
+    ) -> list:
+        """Build lazy-loaded table markup for a sheet."""
+        header_row = self._normalize_row(header_values, column_count)
+        normalized_rows = [self._normalize_row(row, column_count) for row in data_rows]
+        data_json = self._serialize_rows_for_js(normalized_rows)
+        table_id = f"sheet-table-{sheet_index}"
+
+        html_parts = [
+            '<div class="table-wrapper">',
+            f'<table id="{table_id}" data-sheet-index="{sheet_index}" data-col-count="{column_count}">',
+            '<thead>',
+            '<tr>',
+        ]
+
+        for cell in header_row:
+            html_parts.append(self._render_cell(cell, 'header-cell'))
+
+        html_parts.extend([
+            '</tr>',
+            '</thead>',
+            f'<tbody id="sheet-body-{sheet_index}"></tbody>',
+            '</table>',
+            '</div>',
+            f'<script type="application/json" id="sheet-data-{sheet_index}">{data_json}</script>',
+        ])
+
+        return html_parts
 
     def _escape_html(self, text: str) -> str:
         """Escape HTML special characters."""
@@ -514,7 +675,7 @@ class ExcelPreviewService:
         path = Path(file_path)
         mtime = path.stat().st_mtime if path.exists() else 0
 
-        key_string = f"{file_path}_{mtime}"
+        key_string = f"{file_path}_{mtime}_{self.CACHE_VERSION}"
         return hashlib.md5(key_string.encode()).hexdigest()
 
 

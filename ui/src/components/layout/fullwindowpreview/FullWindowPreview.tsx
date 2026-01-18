@@ -14,6 +14,7 @@ import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
 import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection';
 import { useEbookMetadata } from '../previewpane/hooks/useEbookMetadata';
 import { MarkdownPreview } from '../previewpane/components/MarkdownPreview';
+import { HTMLPreview } from '../previewpane/components/HTMLPreview';
 import { DroppedIcon } from '../centerpane/types';
 import { API_BASE } from '../../../config/api';
 
@@ -68,14 +69,14 @@ export function FullWindowPreview({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textContentRef = useRef<HTMLDivElement>(null);
 
-  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
 
   const videoEmbed = getVideoEmbed(url);
   const renderOptions = videoEmbed ? getVideoEmbedRenderOptions(videoEmbed) : null;
 
   // Only use webview logic when not showing an image, audio, video, or document
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
   const currentTitle = localTitle ?? title;
@@ -491,7 +492,7 @@ export function FullWindowPreview({
             &gt;
           </button>
 
-          {!url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && (
+          {!url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ ...FONT_ROLES.paneBodyMuted, color: 'var(--color-text-muted)' }}>
                 No preview available.
@@ -513,20 +514,25 @@ export function FullWindowPreview({
                   isClosingRef={isClosingRef}
                 />
               ) : (
-                <div className="flex-1 overflow-auto bg-white min-h-0">
+                <div className="flex-1 overflow-auto min-h-0" style={{ background: 'var(--background-dark)' }}>
                   <div className="p-12 max-w-4xl w-full mx-auto min-h-full">
                     <h1
                       ref={titleRef}
                       className="text-4xl font-bold mb-8 cursor-text"
-                      style={{ ...FONT_ROLES.paneTitle, fontSize: '36px' }}
+                      style={{ ...FONT_ROLES.paneTitle, fontSize: '36px', color: 'var(--color-text-primary)' }}
                       onDoubleClick={handleDoubleClick}
                     >
                       {displayTitle}
                     </h1>
                     <div
                       ref={textContentRef}
-                      className="whitespace-pre-wrap text-gray-800 leading-loose cursor-text"
-                      style={{ ...FONT_ROLES.paneBody, fontSize: '20px', lineHeight: '2' }}
+                      className="whitespace-pre-wrap leading-loose cursor-text"
+                      style={{
+                        ...FONT_ROLES.paneBody,
+                        fontSize: '20px',
+                        lineHeight: '2',
+                        color: 'var(--color-text-secondary)',
+                      }}
                       onDoubleClick={handleDoubleClick}
                     >
                       {processedTextContent}
@@ -545,16 +551,31 @@ export function FullWindowPreview({
             />
           )}
 
+          {isHtmlFile && htmlPreviewUrl && (
+            <HTMLPreview
+              htmlPreviewUrl={htmlPreviewUrl}
+              title={title}
+            />
+          )}
+
           {isTextFile && (
-            <div className="flex-1 overflow-auto bg-white h-full">
-              <div className="p-12 max-w-5xl mx-auto w-full">
-                <div className="text-sm text-slate-500 mb-4">
+            <div className="flex-1 overflow-auto h-full" style={{ background: 'var(--background-dark)' }}>
+              <div className="flex flex-col h-full w-full p-6">
+                <div className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
                   {content ? 'Text file preview' : 'Loading text preview...'}
                   {filePath && (
-                    <div className="text-xs text-slate-400 break-all mt-1">{filePath}</div>
+                    <div className="text-xs break-all mt-1" style={{ color: 'var(--color-text-muted)' }}>{filePath}</div>
                   )}
                 </div>
-                <pre className="whitespace-pre-wrap font-mono text-slate-800 text-base leading-7 bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm">
+                <pre
+                  className="flex-1 whitespace-pre-wrap font-mono text-base leading-7 m-0"
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--color-text-primary)',
+                    border: 'none',
+                    outline: 'none',
+                  }}
+                >
                   {content || ''}
                 </pre>
               </div>

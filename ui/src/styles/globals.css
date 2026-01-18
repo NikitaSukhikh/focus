@@ -132,3 +132,75 @@ body {
   border: 1px solid var(--primary-color);
   box-shadow: 0 0 10px var(--shadow), inset 0 0 10px var(--shadow);
 }
+
+/* Markdown preview theming */
+.markdown-preview {
+  color: var(--color-text-secondary);
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  color: var(--color-text-primary);
+}
+
+.markdown-preview p,
+.markdown-preview ul,
+.markdown-preview ol {
+  color: var(--color-text-secondary);
+}
+
+.markdown-preview a {
+  color: var(--primary-color);
+}
+
+.markdown-preview-dark a {
+  color: #93c5fd;
+}
+
+.markdown-preview code {
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+}
+
+.markdown-preview pre {
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.markdown-preview pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.markdown-preview blockquote {
+  border-left-color: var(--primary-color);
+  color: var(--color-text-muted);
+}
+
+.markdown-preview blockquote p {
+  color: var(--color-text-muted);
+}
+
+.markdown-preview li {
+  color: var(--color-text-secondary);
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border-color: var(--color-border-subtle);
+}
+
+.markdown-preview th {
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+
+.markdown-preview hr {
+  border-color: var(--color-border-subtle);
+}

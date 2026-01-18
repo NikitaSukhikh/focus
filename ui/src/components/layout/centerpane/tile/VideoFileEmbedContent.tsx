@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { API_BASE } from '../../../../config/api';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
 
 interface VideoFileEmbedContentProps {
   filePath: string;
@@ -105,10 +106,28 @@ export function VideoFileEmbedContent({
 
       {/* Title and file path */}
       <div className="w-full min-w-0 flex flex-col items-center gap-0.5 px-1">
-        <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+        <div
+          className="line-clamp-2 text-center"
+          style={{
+            fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
+            fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+            lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
+            fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+            color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
+          }}
+        >
           {title}
         </div>
-        <div className="text-[11px] text-slate-500 truncate w-full text-center">
+        <div
+          className="text-center whitespace-pre-line break-words line-clamp-2"
+          style={{
+            fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
+            fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
+            lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
+            fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
+            color: 'var(--color-text-muted)',
+          }}
+        >
           {filePath}
         </div>
       </div>

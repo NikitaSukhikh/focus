@@ -131,25 +131,30 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
   }
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-auto bg-white">
-      <div className="p-8" style={{ overflowX: 'auto' }}>
+    <div
+      ref={containerRef}
+      className="flex-1 overflow-auto"
+      style={{ background: 'var(--background-dark)' }}
+    >
+      <div className="p-8" style={{ overflowX: 'auto', color: 'var(--color-text-secondary)' }}>
         <h1
           ref={titleRef}
           className="text-3xl font-bold mb-6 cursor-text"
-          style={{ ...FONT_ROLES.paneTitle, fontSize: '28px' }}
+          style={{ ...FONT_ROLES.paneTitle, fontSize: '28px', color: 'var(--color-text-primary)' }}
           onDoubleClick={handleDoubleClick}
         >
           {formatTextWithLinks(displayTitle)}
         </h1>
         <div
           ref={contentRef}
-          className="text-gray-800 leading-loose cursor-text"
+          className="leading-loose cursor-text"
           style={{
             ...FONT_ROLES.paneBody,
             fontSize: '18px',
             lineHeight: '1.8',
             whiteSpace: 'pre',
             overflowX: 'auto',
+            color: 'var(--color-text-secondary)',
           }}
           onDoubleClick={handleDoubleClick}
         >

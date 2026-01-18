@@ -97,7 +97,7 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-white">
+    <div className="flex-1 overflow-auto" style={{ background: 'var(--background-dark)' }}>
       <div className={isFullWindow ? "p-12" : "p-8"} style={{ overflowX: 'auto' }}>
         <textarea
           ref={textareaRef}
@@ -112,7 +112,7 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
             ...FONT_ROLES.paneBody,
             fontSize: isFullWindow ? '20px' : '18px',
             lineHeight: isFullWindow ? '2' : '1.8',
-            color: '#1f2937',
+            color: 'var(--color-text-primary)',
             minHeight: isFullWindow ? '500px' : '400px',
             background: 'transparent',
             width: '100%',

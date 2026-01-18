@@ -272,15 +272,22 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         )}
 
         {isTextFile && (
-          <div className="flex-1 overflow-auto bg-white">
-            <div className="p-6 max-w-4xl mx-auto">
-              <div className="text-xs text-slate-500 mb-3">
-                {content ? 'Text file preview' : 'Loading text preview...'}
-              </div>
-              <pre className="whitespace-pre-wrap font-mono text-slate-800 text-sm leading-6 bg-slate-50 border border-slate-200 rounded-lg p-4">
-                {content || ''}
-              </pre>
-            </div>
+          <div
+            className="flex-1 overflow-auto"
+            style={{ background: 'var(--background-dark)', color: 'var(--color-text-primary)' }}
+          >
+            <pre
+              className="whitespace-pre-wrap font-mono text-sm leading-6 w-full h-full m-0 p-6"
+              style={{
+                background: 'transparent',
+                color: 'var(--color-text-primary)',
+                border: 'none',
+                borderRadius: 0,
+                outline: 'none',
+              }}
+            >
+              {content || ''}
+            </pre>
           </div>
         )}
 
