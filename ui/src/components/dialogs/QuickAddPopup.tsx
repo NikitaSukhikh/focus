@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { FilePlus, Plus } from 'lucide-react';
 import { Z_INDEX } from '../../constants/zIndex';
 
@@ -7,6 +7,7 @@ interface QuickAddPopupProps {
   onClose: () => void;
   onAddFiles: () => void;
   onAddLink: () => void;
+  position?: { x: number; y: number } | null;
 }
 
 type ActionType = 'files' | 'link';
@@ -18,9 +19,11 @@ interface Action {
   handler: () => void;
 }
 
-export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink }: QuickAddPopupProps) {
+export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, position }: QuickAddPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties | null>(null);
+  const hasPosition = Boolean(position && Number.isFinite(position.x) && Number.isFinite(position.y));
 
   const actions: Action[] = useMemo(
     () => [
@@ -33,7 +36,12 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink }: QuickA
   useEffect(() => {
     if (!isOpen) {
       setSelectedIndex(0);
+      setPopupStyle(null);
       return;
+    }
+
+    if (!hasPosition) {
+      setPopupStyle(null);
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -71,7 +79,28 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink }: QuickA
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [isOpen, selectedIndex, actions, onClose]);
+  }, [isOpen, selectedIndex, actions, onClose, hasPosition]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !hasPosition || !popupRef.current || !position) return;
+    const offset = 8;
+    const padding = 8;
+    const rect = popupRef.current.getBoundingClientRect();
+    const rawLeft = position.x + offset;
+    const rawTop = position.y + offset;
+    const maxLeft = window.innerWidth - rect.width - padding;
+    const maxTop = window.innerHeight - rect.height - padding;
+    const nextLeft = Math.min(Math.max(padding, rawLeft), Math.max(padding, maxLeft));
+    const nextTop = Math.min(Math.max(padding, rawTop), Math.max(padding, maxTop));
+    setPopupStyle((prev) => {
+      const prevLeft = typeof prev?.left === 'number' ? prev.left : null;
+      const prevTop = typeof prev?.top === 'number' ? prev.top : null;
+      if (prevLeft === nextLeft && prevTop === nextTop && prev?.transform === 'none') {
+        return prev;
+      }
+      return { left: nextLeft, top: nextTop, transform: 'none' };
+    });
+  }, [isOpen, hasPosition, position?.x, position?.y]);
 
   if (!isOpen) return null;
 
@@ -87,8 +116,14 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink }: QuickA
       {/* Popup */}
       <div
         ref={popupRef}
-        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden"
-        style={{ zIndex: Z_INDEX.OVERLAY_DIALOG, width: '280px' }}
+        className="fixed bg-white rounded-lg shadow-2xl border border-slate-200 overflow-hidden"
+        style={{
+          zIndex: Z_INDEX.OVERLAY_DIALOG,
+          width: '280px',
+          ...(popupStyle ?? (hasPosition && position
+            ? { left: position.x + 8, top: position.y + 8, transform: 'none' }
+            : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' })),
+        }}
       >
         <div className="p-2">
           {actions.map((action, index) => (

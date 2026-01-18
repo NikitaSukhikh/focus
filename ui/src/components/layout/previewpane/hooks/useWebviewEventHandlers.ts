@@ -113,13 +113,27 @@ export const useWebviewEventHandlers = (
       state.markLoadComplete();
     };
 
-    const handleFail = (_event: any, errorCode: number, errorDescription: string) => {
+    const handleFail = (_event: any, errorCode: number, errorDescription: string, validatedURL?: string) => {
       const currentUrl = state.currentUrlRef.current;
       const isGmailTarget = currentUrl ? isGmailUrl(currentUrl) : false;
 
-      // Ignore certain non-critical errors (like -3 ERR_ABORTED from redirects)
-      if (errorCode === -3 && !currentUrl) {
-        state.markLoadComplete();
+      // Ignore ERR_ABORTED (-3) errors - these are common during OAuth redirects and page navigation
+      // Google accounts, OAuth flows, and many sites trigger these during normal navigation
+      if (errorCode === -3) {
+        // Don't mark as error, just mark load as complete if no current URL
+        if (!currentUrl) {
+          state.markLoadComplete();
+        }
+        return;
+      }
+
+      // Ignore ERR_BLOCKED_BY_CSP (-30) for OAuth domains - they often have strict CSP
+      const isOAuthDomain = validatedURL && (
+        validatedURL.includes('accounts.google.com') ||
+        validatedURL.includes('login.microsoftonline.com') ||
+        validatedURL.includes('appleid.apple.com')
+      );
+      if (errorCode === -30 && isOAuthDomain) {
         return;
       }
 

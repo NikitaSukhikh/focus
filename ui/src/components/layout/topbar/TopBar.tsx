@@ -88,7 +88,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             Focus
           </span>
           <button
-            onClick={onOpenQuickAdd}
+            onClick={() => onOpenQuickAdd()}
             className="p-1.5 rounded-lg flex items-center justify-center transition-all"
             style={{
               background: 'var(--glass-bg)',

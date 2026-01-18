@@ -396,6 +396,29 @@ app.whenReady().then(() => {
     callback({ requestHeaders: headers });
   });
 
+  // Handle CSP headers for default session (iframes in main window)
+  defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = { ...details.responseHeaders };
+
+    // Remove headers that prevent embedding in iframes
+    delete headers['x-frame-options'];
+    delete headers['X-Frame-Options'];
+
+    // Modify CSP to allow framing from localhost
+    if (headers['content-security-policy']) {
+      headers['content-security-policy'] = headers['content-security-policy'].map(
+        (value) => value.replace(/frame-ancestors[^;]*(;|$)/g, '')
+      );
+    }
+    if (headers['Content-Security-Policy']) {
+      headers['Content-Security-Policy'] = headers['Content-Security-Policy'].map(
+        (value) => value.replace(/frame-ancestors[^;]*(;|$)/g, '')
+      );
+    }
+
+    callback({ responseHeaders: headers });
+  });
+
   // Configure webview session to handle sites that block embedding
   const webviewSession = session.fromPartition('persist:focus-webview');
 
@@ -423,10 +446,19 @@ app.whenReady().then(() => {
     delete headers['x-frame-options'];
     delete headers['X-Frame-Options'];
 
-    // Modify CSP to allow framing
+    // Modify CSP to allow framing and remove restrictive policies
     if (headers['content-security-policy']) {
       headers['content-security-policy'] = headers['content-security-policy'].map(
-        (value) => value.replace(/frame-ancestors[^;]*(;|$)/g, '')
+        (value) => value
+          .replace(/frame-ancestors[^;]*(;|$)/g, '')
+          .replace(/sandbox[^;]*(;|$)/g, '')
+      );
+    }
+    if (headers['Content-Security-Policy']) {
+      headers['Content-Security-Policy'] = headers['Content-Security-Policy'].map(
+        (value) => value
+          .replace(/frame-ancestors[^;]*(;|$)/g, '')
+          .replace(/sandbox[^;]*(;|$)/g, '')
       );
     }
 

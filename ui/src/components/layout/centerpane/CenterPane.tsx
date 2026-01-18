@@ -215,7 +215,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     e.stopPropagation();
     setContextMenu(null);
     setArrowContextMenu(null);
-    onOpenQuickAdd?.();
+    onOpenQuickAdd?.({ x: e.clientX, y: e.clientY });
   };
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {

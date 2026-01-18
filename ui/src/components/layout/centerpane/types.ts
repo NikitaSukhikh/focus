@@ -58,7 +58,7 @@ export interface CenterPaneProps {
   zoom?: number;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
-  onOpenQuickAdd?: () => void;
+  onOpenQuickAdd?: (position?: { x: number; y: number }) => void;
 }
 
 export interface CenterPaneHandle {

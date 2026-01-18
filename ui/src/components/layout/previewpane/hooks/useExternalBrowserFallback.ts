@@ -12,6 +12,8 @@ const PROBLEMATIC_PATTERNS = [
   /github\.com/i,
   /gitlab\.com/i,
   /bitbucket\.org/i,
+  /accounts\.google\.com/i,
+  /drive\.google\.com/i,
 ];
 // Note: YouTube/Vimeo are now handled by VideoPreview component with iframe/webview embedding
 const IMMEDIATE_FALLBACK_PATTERNS: RegExp[] = [];

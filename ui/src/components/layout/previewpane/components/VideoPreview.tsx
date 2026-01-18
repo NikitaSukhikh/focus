@@ -26,7 +26,7 @@ export function VideoPreview({ videoEmbed, title }: VideoPreviewProps) {
           <webview
             src={renderOptions.src}
             partition={renderOptions.webviewPartition}
-            httpReferrer={renderOptions.webviewReferrer}
+            httpreferrer={renderOptions.webviewReferrer}
             allowpopups="true"
             webpreferences="autoplayPolicy=document-user-activation-required"
             style={{

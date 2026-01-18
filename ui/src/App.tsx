@@ -30,6 +30,7 @@ export function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddPosition, setQuickAddPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [isGridMode, setIsGridMode] = useState(false);
@@ -70,13 +71,18 @@ export function App() {
   const isAnyDialogOpen = isQuickAddOpen || isDeleteDialogOpen || isAddLinkDialogOpen;
 
   // Setup all keyboard shortcuts
+  const toggleQuickAdd = () => {
+    setIsQuickAddOpen((prev) => !prev);
+    setQuickAddPosition(null);
+  };
+
   useAppShortcuts({
     isSidebarOpen,
     openSidebar: () => setIsSidebarOpen(true),
     closeSidebar: () => setIsSidebarOpen(false),
     toggleConversation: () => setIsConversationOpen((prev) => !prev),
     togglePreview: () => setIsPreviewOpen((prev) => !prev),
-    toggleQuickAdd: () => setIsQuickAddOpen((prev) => !prev),
+    toggleQuickAdd,
     isDialogOpen: isAnyDialogOpen,
   });
 
@@ -297,9 +303,6 @@ export function App() {
     if (isSidebarOpen) {
       setIsSidebarOpen(false);
     }
-    if (isPreviewOpen) {
-      setIsPreviewOpen(false);
-    }
   };
 
   const handleNavigateToTile = (tileId: string) => {
@@ -329,8 +332,14 @@ export function App() {
     void hydrateTextFilePreview(tileData, isFullWindowOpen);
   };
 
-  const openQuickAdd = () => {
+  const openQuickAdd = (position?: { x: number; y: number }) => {
+    setQuickAddPosition(position ?? null);
     setIsQuickAddOpen(true);
+  };
+
+  const closeQuickAdd = () => {
+    setIsQuickAddOpen(false);
+    setQuickAddPosition(null);
   };
 
   const handleQuickAddFiles = () => {
@@ -467,9 +476,10 @@ export function App() {
 
       <QuickAddPopup
         isOpen={isQuickAddOpen}
-        onClose={() => setIsQuickAddOpen(false)}
+        onClose={closeQuickAdd}
         onAddFiles={handleQuickAddFiles}
         onAddLink={handleQuickAddLink}
+        position={quickAddPosition}
       />
 
       <FullWindowPreview

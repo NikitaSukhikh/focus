@@ -32,15 +32,12 @@ class CORSSettings(BaseSettings):
     """CORS configuration settings."""
 
     origins: List[str] = Field(
-        default=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        ],
-        description="Allowed CORS origins"
+        default=["*"],
+        description="Allowed CORS origins (use * for Electron apps with file:// origin)"
     )
     allow_credentials: bool = Field(
-        default=True,
-        description="Allow credentials in CORS requests"
+        default=False,
+        description="Allow credentials in CORS requests (must be False when origins is *)"
     )
     allow_methods: List[str] = Field(
         default=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],

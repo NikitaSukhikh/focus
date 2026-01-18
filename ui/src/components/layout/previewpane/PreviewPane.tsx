@@ -21,8 +21,8 @@ import { HTMLPreview } from './components/HTMLPreview';
 import { MarkdownPreview } from './components/MarkdownPreview';
 import { GmailExternalPreview } from './components/gmail_external';
 import { DroppedIcon } from '../centerpane/types';
-import { API_BASE } from '../../../config/api';
 import { isGmailUrl } from '../centerpane/utils';
+import { API_BASE } from '../../../config/api';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -42,8 +42,6 @@ interface PreviewPaneProps {
 
 // PreviewPane renders the right-hand preview area for the selected tile, choosing between media/file previews and the embedded webview while supporting a full-window handoff.
 export function PreviewPane({ isOpen, onClose, url, title, filePath, type, content, tileId, tiles = [], onNavigateToTile, gmailEmail }: PreviewPaneProps) {
-  console.log('[PreviewPane] Rendered:', { isOpen, type, url, gmailEmail });
-
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
   // Used to detect outside clicks while editing text inside the pane
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
@@ -79,9 +77,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
 
-  // Check if this is a Gmail URL (either by type or by URL pattern)
   const isGmail = type === 'gmail' || (url && isGmailUrl(url));
-
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile || isGmail;
 
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
@@ -89,21 +85,29 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   // Force webview to about:blank when showing non-webview preview to stop any ongoing navigation
   useEffect(() => {
     const view = webviewRef.current as any;
-    console.log('[PreviewPane] Webview cleanup effect:', { hasNonWebviewPreview, hasView: !!view, viewSrc: view?.src });
     if (hasNonWebviewPreview && view) {
+      // Check if webview is ready before calling methods that require DOM attachment
+      const isReady = view.getWebContentsId && typeof view.getWebContentsId === 'function';
       try {
-        console.log('[PreviewPane] Stopping webview navigation and resetting to about:blank');
-        if (view.stop) view.stop();
+        // Only call stop/loadURL if the webview is attached and ready
+        if (isReady) {
+          view.getWebContentsId(); // This throws if not ready
+          if (view.stop) view.stop();
+        }
+        // Setting src directly is safe even if not ready
         if (view.src && view.src !== 'about:blank') {
           view.src = 'about:blank';
         }
-      } catch (e) {
-        console.error('[PreviewPane] Error stopping webview:', e);
+      } catch {
+        // Webview not ready yet, just set src directly
+        if (view.src && view.src !== 'about:blank') {
+          view.src = 'about:blank';
+        }
       }
     }
   }, [hasNonWebviewPreview]);
 
-  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile;
+  const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile && !videoEmbed && !isGmail;
 
   // Tile navigation
   const navigation = useTileNavigation({
@@ -320,7 +324,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         )}
 
         {videoEmbed && (
-          <VideoPreview videoEmbed={videoEmbed} title={title} />
+          <VideoPreview key={videoEmbed.embedUrl} videoEmbed={videoEmbed} title={title} />
         )}
 
         {htmlPreviewUrl && (
