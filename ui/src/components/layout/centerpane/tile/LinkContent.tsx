@@ -1,6 +1,5 @@
 import React from 'react';
 import { TileIcon } from './Icon';
-import { RenameInput } from './RenameInput';
 import { truncateDisplayUrl } from '../../../../utils/text';
 import { isGoogleService } from './iconHelpers';
 
@@ -14,17 +13,11 @@ interface LinkContentProps {
   description?: string;
   faviconUrl?: string;
   onThumbnailError: () => void;
-  isRenaming: boolean;
-  renamingValue: string;
-  setRenamingValue: (value: string) => void;
-  handleRenameKeyDown: (e: React.KeyboardEvent) => void;
-  handleRenameSubmit: () => void;
-  renameInputRef: React.RefObject<HTMLInputElement>;
   isSelected: boolean;
   hoverScaleClass: string;
 }
 
-// LinkContent renders the visual card for link tiles, handling favicon/thumbnail display and inline renaming.
+// LinkContent renders the visual card for link tiles, handling favicon/thumbnail display.
 export function LinkContent({
   url,
   filePath,
@@ -35,12 +28,6 @@ export function LinkContent({
   description,
   faviconUrl,
   onThumbnailError,
-  isRenaming,
-  renamingValue,
-  setRenamingValue,
-  handleRenameKeyDown,
-  handleRenameSubmit,
-  renameInputRef,
   isSelected,
   hoverScaleClass,
 }: LinkContentProps) {
@@ -63,31 +50,21 @@ export function LinkContent({
         />
       </div>
       <div className="w-full min-w-0 flex flex-col items-center gap-1">
-        {isRenaming ? (
-          <RenameInput
-            value={renamingValue}
-            onChange={setRenamingValue}
-            onKeyDown={handleRenameKeyDown}
-            onBlur={handleRenameSubmit}
-            inputRef={renameInputRef}
-          />
-        ) : (
-          <>
-            <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
-              {title}
+        <>
+          <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+            {title}
+          </div>
+          {description && (
+            <div className="text-xs text-slate-500 line-clamp-3 mt-0.5 leading-snug text-center whitespace-pre-line">
+              {description}
             </div>
-            {description && (
-              <div className="text-xs text-slate-500 line-clamp-3 mt-0.5 leading-snug text-center whitespace-pre-line">
-                {description}
-              </div>
-            )}
-            {url && !isGoogleService(url) && (
-              <div className={`text-xs mt-1 text-center whitespace-pre-line break-words leading-snug line-clamp-2 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}>
-                {truncateDisplayUrl(url)}
-              </div>
-            )}
-          </>
-        )}
+          )}
+          {url && !isGoogleService(url) && (
+            <div className={`text-xs mt-1 text-center whitespace-pre-line break-words leading-snug line-clamp-2 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}>
+              {truncateDisplayUrl(url)}
+            </div>
+          )}
+        </>
       </div>
     </div>
   );

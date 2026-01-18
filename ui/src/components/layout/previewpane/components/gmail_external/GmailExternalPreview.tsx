@@ -18,10 +18,11 @@ import { GmailIcon } from '../../../../icons/GoogleServiceIcons';
 
 interface GmailExternalPreviewProps {
   url?: string;
+  title?: string;
   gmailEmail?: string; // Email subject/snippet when available
 }
 
-export function GmailExternalPreview({ url, gmailEmail }: GmailExternalPreviewProps) {
+export function GmailExternalPreview({ url, title, gmailEmail }: GmailExternalPreviewProps) {
   const handleOpenInBrowser = () => {
     if (url) {
       openExternalUrl(url);

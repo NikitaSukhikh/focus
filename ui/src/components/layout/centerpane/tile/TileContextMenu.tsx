@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2 } from 'lucide-react';
+import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2 } from 'lucide-react';
 import { Z_INDEX } from '../../../../constants/zIndex';
 
 interface TileContextMenuProps {
@@ -15,11 +15,10 @@ interface TileContextMenuProps {
   onCopyPath: () => void;
   onOpenExternal: () => void;
   onRefreshMetadata: () => void;
-  onRename: () => void;
   onDelete: () => void;
 }
 
-// TileContextMenu renders the right-click menu for a tile, exposing preview, share, open, rename, and delete actions.
+// TileContextMenu renders the right-click menu for a tile, exposing preview, share, open, and delete actions.
 export function TileContextMenu({
   show,
   position,
@@ -33,7 +32,6 @@ export function TileContextMenu({
   onCopyPath,
   onOpenExternal,
   onRefreshMetadata,
-  onRename,
   onDelete,
 }: TileContextMenuProps) {
   if (!show) return null;
@@ -103,13 +101,6 @@ export function TileContextMenu({
             Refresh
           </button>
         )}
-        <button
-          onClick={onRename}
-          className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
-        >
-          <Edit2 size={14} />
-          Rename
-        </button>
         <button
           onClick={onDelete}
           className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"

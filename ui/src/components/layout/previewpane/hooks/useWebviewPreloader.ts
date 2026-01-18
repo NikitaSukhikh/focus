@@ -20,7 +20,7 @@ export function useWebviewPreloader(
 
     const view = webviewRef.current;
 
-    if (view.src === url) {
+    if ((view as any).src === url) {
       preloadedRef.current.add(url);
       return;
     }

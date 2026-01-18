@@ -1,19 +1,11 @@
 import React, { useEffect } from 'react';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import { RenameInput } from './RenameInput';
 import { useAudioMetadata } from '../../../media/useAudioMetadata';
 import { useSharedAudioController } from '../../../media/useSharedAudioController';
 
 interface AudioEmbedContentProps {
   filePath: string;
   title: string;
-  isRenaming: boolean;
-  renamingValue: string;
-  setRenamingValue: (value: string) => void;
-  handleRenameKeyDown: (e: React.KeyboardEvent) => void;
-  handleRenameSubmit: () => void;
-  renameInputRef: React.RefObject<HTMLInputElement>;
-  isSelected: boolean;
   hoverScaleClass: string;
   onInteractionChange?: (locked: boolean) => void;
 }
@@ -22,13 +14,6 @@ interface AudioEmbedContentProps {
 export function AudioEmbedContent({
   filePath,
   title,
-  isRenaming,
-  renamingValue,
-  setRenamingValue,
-  handleRenameKeyDown,
-  handleRenameSubmit,
-  renameInputRef,
-  isSelected,
   hoverScaleClass,
   onInteractionChange,
 }: AudioEmbedContentProps) {
@@ -95,26 +80,14 @@ export function AudioEmbedContent({
       <div className="w-full h-full rounded-xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.14)] text-slate-900 flex flex-col overflow-hidden">
         <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            {isRenaming ? (
-              <RenameInput
-                value={renamingValue}
-                onChange={setRenamingValue}
-                onKeyDown={handleRenameKeyDown}
-                onBlur={handleRenameSubmit}
-                inputRef={renameInputRef}
-              />
-            ) : (
-              <>
-                <div className="text-sm font-semibold leading-tight truncate text-slate-900">{displayTitle}</div>
-                {displayArtist && (
-                  <div className="text-xs text-slate-600 truncate">{displayArtist}</div>
-                )}
-                {displayAlbum && (
-                  <div className="text-xs text-slate-500 truncate">{displayAlbum}</div>
-                )}
-                <div className="text-[11px] text-slate-500 truncate mt-0.5">{filePath}</div>
-              </>
+            <div className="text-sm font-semibold leading-tight truncate text-slate-900">{displayTitle}</div>
+            {displayArtist && (
+              <div className="text-xs text-slate-600 truncate">{displayArtist}</div>
             )}
+            {displayAlbum && (
+              <div className="text-xs text-slate-500 truncate">{displayAlbum}</div>
+            )}
+            <div className="text-[11px] text-slate-500 truncate mt-0.5">{filePath}</div>
           </div>
         </div>
 

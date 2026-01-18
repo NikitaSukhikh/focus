@@ -519,6 +519,7 @@ ipcMain.handle('desktop:open-external', async (_event, targetUrl: string) => {
       const externalWindow = new BrowserWindow({
         width: 1200,
         height: 800,
+        icon: getIconPath(),
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
@@ -717,6 +718,7 @@ ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: strin
     parent: mainWindow ?? undefined,
     modal: false,
     show: true,
+    icon: getIconPath(),
     webPreferences: {
       contextIsolation: true,
       sandbox: true,

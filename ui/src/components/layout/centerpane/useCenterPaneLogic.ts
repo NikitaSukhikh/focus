@@ -146,7 +146,6 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     handleCanvasClick,
 
     // Icon actions
-    handleIconRename: iconActions.handleIconRename,
     handleIconDelete: iconActions.handleIconDelete,
     handleIconRefreshMetadata: iconActions.handleIconRefreshMetadata,
 

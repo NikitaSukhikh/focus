@@ -1,17 +1,10 @@
 /* eslint-disable react/no-unknown-property */
 import React, { useEffect } from 'react';
 import { VideoEmbed, getVideoEmbedRenderOptions } from '../../../../utils/videoEmbeds';
-import { RenameInput } from './RenameInput';
 
 interface VideoEmbedContentProps {
   videoEmbed: VideoEmbed;
   title: string;
-  isRenaming: boolean;
-  renamingValue: string;
-  setRenamingValue: (value: string) => void;
-  handleRenameKeyDown: (e: React.KeyboardEvent) => void;
-  handleRenameSubmit: () => void;
-  renameInputRef: React.RefObject<HTMLInputElement>;
   isSelected: boolean;
   hoverScaleClass: string;
   onInteractionChange?: (locked: boolean) => void;
@@ -22,12 +15,6 @@ interface VideoEmbedContentProps {
 export function VideoEmbedContent({
   videoEmbed,
   title,
-  isRenaming,
-  renamingValue,
-  setRenamingValue,
-  handleRenameKeyDown,
-  handleRenameSubmit,
-  renameInputRef,
   isSelected,
   hoverScaleClass,
   onInteractionChange,
@@ -85,7 +72,7 @@ export function VideoEmbedContent({
             src={renderOptions.src}
             partition={renderOptions.webviewPartition}
             httpreferrer={renderOptions.webviewReferrer}
-            allowpopups="true"
+            allowpopups={'true' as any}
             webpreferences="autoplayPolicy=document-user-activation-required"
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -133,19 +120,9 @@ export function VideoEmbedContent({
         )}
       </div>
       <div className="w-full min-w-0 flex flex-col items-center gap-1 px-1">
-        {isRenaming ? (
-          <RenameInput
-            value={renamingValue}
-            onChange={setRenamingValue}
-            onKeyDown={handleRenameKeyDown}
-            onBlur={handleRenameSubmit}
-            inputRef={renameInputRef}
-          />
-        ) : (
-          <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
-            {title}
-          </div>
-        )}
+        <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+          {title}
+        </div>
       </div>
     </div>
   );

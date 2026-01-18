@@ -18,7 +18,7 @@ export function HTMLPreview({ htmlPreviewUrl, title }: HTMLPreviewProps) {
         <webview
           src={htmlPreviewUrl}
           partition="persist:html-preview"
-          allowpopups="false"
+          allowpopups={'false' as any}
           style={{
             position: 'absolute',
             top: 0,

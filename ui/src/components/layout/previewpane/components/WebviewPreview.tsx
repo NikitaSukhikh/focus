@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unknown-property */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Z_INDEX } from '../../../../constants/zIndex';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 
@@ -15,10 +16,10 @@ export function WebviewPreview({ webviewRef, url, hasNonWebviewPreview, loadErro
   return (
     <>
       <webview
-        ref={webviewRef}
+        ref={webviewRef as any}
         src="about:blank"
         partition="persist:focus-webview"
-        allowpopups="true"
+        allowpopups={'true' as any}
         style={{
           flex: 1,
           width: '100%',

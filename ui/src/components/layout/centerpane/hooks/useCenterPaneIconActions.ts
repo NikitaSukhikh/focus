@@ -3,7 +3,6 @@
  *
  * Purpose: Manages user actions on individual icons in the canvas
  * Responsibilities:
- * - Renaming icons (optimistic update + backend sync)
  * - Deleting icons from the canvas
  * - Refreshing metadata for link icons (re-fetching favicon and title)
  * - Handling canvas empty space clicks to deselect icons
@@ -35,22 +34,6 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
       return candidateImage;
     }
     return metadata?.favicon_url || buildFaviconUrl(targetUrl);
-  };
-
-  const handleIconRename = (iconId: string, newTitle: string) => {
-    if (!selectedSpace) return;
-    const trimmedTitle = newTitle.trim();
-    if (trimmedTitle.length < 2) return;
-    const displayTitle = truncateLinkTitle(trimmedTitle);
-    setIconsBySpace((prev) => ({
-      ...prev,
-      [selectedSpace.id]: (prev[selectedSpace.id] || []).map((i) =>
-        i.id === iconId ? { ...i, title: displayTitle, customTitle: displayTitle } : i
-      ),
-    }));
-    objectsApi.updateTitle(iconId, displayTitle).catch((err) => {
-      console.error('Failed to update title:', err);
-    });
   };
 
   const handleIconDelete = (iconId: string) => {
@@ -176,7 +159,6 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
   };
 
   return {
-    handleIconRename,
     handleIconDelete,
     handleIconRefreshMetadata,
     handleCanvasClick,

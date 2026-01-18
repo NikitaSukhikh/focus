@@ -9,6 +9,7 @@ import { useDocumentPreview } from './hooks/useDocumentPreview';
 import { useTextPreview } from './hooks/useTextPreview';
 import { useTileNavigation } from './hooks/useTileNavigation';
 import { useArrowKeyNavigation } from './hooks/useArrowKeyNavigation';
+import { usePdfPageNavigation } from './hooks/usePdfPageNavigation';
 import { PreviewHeader } from './components/PreviewHeader';
 import { NavigationControls } from './components/NavigationControls';
 import { EmptyPreview } from './components/EmptyPreview';
@@ -69,7 +70,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     onClose();
   };
 
-  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
   const imageMetadata = useImageMetadata(isImageFile, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile || isEbookFile, documentPreviewUrl || ebookPreviewUrl);
@@ -86,6 +87,9 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   useEffect(() => {
     const view = webviewRef.current as any;
     if (hasNonWebviewPreview && view) {
+      // Reset currentUrlRef so next webview preview triggers fresh load
+      logic.currentUrlRef.current = undefined;
+
       // Check if webview is ready before calling methods that require DOM attachment
       const isReady = view.getWebContentsId && typeof view.getWebContentsId === 'function';
       try {
@@ -93,6 +97,8 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         if (isReady) {
           view.getWebContentsId(); // This throws if not ready
           if (view.stop) view.stop();
+          // Webview is ready, keep isReadyRef true
+          logic.isReadyRef.current = true;
         }
         // Setting src directly is safe even if not ready
         if (view.src && view.src !== 'about:blank') {
@@ -105,7 +111,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         }
       }
     }
-  }, [hasNonWebviewPreview]);
+  }, [hasNonWebviewPreview, logic.currentUrlRef, logic.isReadyRef]);
 
   const hasNoContent = !url && !imagePreviewUrl && !isAudioFile && !isVideoFile && !documentPreviewUrl && !ebookPreviewUrl && !content && !isTextFile && !isMarkdownFile && !isHtmlFile && !videoEmbed && !isGmail;
 
@@ -131,6 +137,13 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     canNavigateNext: navigation.canNavigateNext,
     canNavigatePrevious: navigation.canNavigatePrevious,
     isEnabled: isOpen && !isEditingText,
+  });
+
+  // PDF page navigation with Up/Down arrows (Left/Right reserved for tile navigation)
+  usePdfPageNavigation({
+    webviewRef,
+    isPdfPreview: isPdfFile,
+    isEnabled: isOpen,
   });
 
   const handleContentUpdated = (newTitle: string, newContent: string) => {

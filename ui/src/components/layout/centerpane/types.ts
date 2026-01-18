@@ -84,8 +84,6 @@ export interface TileProps {
   onDoubleClick?: () => void;
   onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
-  onRename?: (_newTitle: string) => void;
-  onOpenLinkEdit?: () => void;
   onRefreshMetadata?: () => void;
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
 }

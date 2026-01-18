@@ -99,5 +99,7 @@ export const usePreviewPaneLogic = (
     isLoading: state.isLoading,
     loadError: state.loadError,
     handleRetry,
+    isReadyRef: state.isReadyRef,
+    currentUrlRef: state.currentUrlRef,
   };
 };

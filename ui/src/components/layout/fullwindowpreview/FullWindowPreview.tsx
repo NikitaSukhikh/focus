@@ -8,6 +8,7 @@ import { getVideoEmbed, getVideoEmbedRenderOptions } from '../../../utils/videoE
 import { AudioPlayer } from '../../media/AudioPlayer';
 import { useTileNavigation } from '../previewpane/hooks/useTileNavigation';
 import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigation';
+import { usePdfPageNavigation } from '../previewpane/hooks/usePdfPageNavigation';
 import { usePreviewTextEditor } from '../previewpane/hooks/usePreviewTextEditor';
 import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
 import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection';
@@ -67,7 +68,7 @@ export function FullWindowPreview({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textContentRef = useRef<HTMLDivElement>(null);
 
-  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isTextFile, isMarkdownFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl } = useFileTypeDetection(type, filePath);
+  const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl } = useFileTypeDetection(type, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
 
   const videoEmbed = getVideoEmbed(url);
@@ -176,6 +177,13 @@ export function FullWindowPreview({
     canNavigateNext: navigation.canNavigateNext,
     canNavigatePrevious: navigation.canNavigatePrevious,
     isEnabled: isOpen && !isEditingText,
+  });
+
+  // PDF page navigation with Up/Down arrows (Left/Right reserved for tile navigation)
+  usePdfPageNavigation({
+    webviewRef,
+    isPdfPreview: isPdfFile,
+    isEnabled: isOpen,
   });
 
   const editorInitialContent = currentContent
@@ -697,7 +705,7 @@ export function FullWindowPreview({
                     src={renderOptions.src}
                     partition={renderOptions.webviewPartition}
                     httpreferrer={renderOptions.webviewReferrer}
-                    allowpopups="true"
+                    allowpopups={'true' as any}
                     webpreferences="autoplayPolicy=document-user-activation-required"
                     style={{
                       position: 'absolute',
@@ -748,7 +756,7 @@ export function FullWindowPreview({
               ref={webviewRef}
               src="about:blank"
               partition="persist:focus-webview"
-              allowpopups="true"
+              allowpopups={'true' as any}
               style={{
                 flex: 1,
                 width: '100%',

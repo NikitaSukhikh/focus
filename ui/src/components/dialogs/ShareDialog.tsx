@@ -82,6 +82,7 @@ interface ShareDialogProps {
 export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDialogProps) {
   const [copied, setCopied] = React.useState(false);
   const [fileCopiedToClipboard, setFileCopiedToClipboard] = React.useState(false);
+  const openedBrowserWindowRef = React.useRef<Window | null>(null);
   const isFile = !!filePath;
 
   const handleCopyLink = async () => {

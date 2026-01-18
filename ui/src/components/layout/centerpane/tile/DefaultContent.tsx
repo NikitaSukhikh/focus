@@ -1,6 +1,5 @@
 import React from 'react';
 import { TileIcon } from './Icon';
-import { RenameInput } from './RenameInput';
 import { truncateDisplayPath } from '../../../../utils/text';
 import { ImageMetadata } from './useImageMetadata';
 
@@ -19,19 +18,13 @@ interface DefaultContentProps {
   title: string;
   faviconUrl?: string;
   onThumbnailError: () => void;
-  isRenaming: boolean;
-  renamingValue: string;
-  setRenamingValue: (value: string) => void;
-  handleRenameKeyDown: (e: React.KeyboardEvent) => void;
-  handleRenameSubmit: () => void;
-  renameInputRef: React.RefObject<HTMLInputElement>;
   isSelected: boolean;
   hoverScaleClass: string;
   imageMetadata: ImageMetadata | null;
   ebookMetadata?: EbookMetadata | null;
 }
 
-// DefaultContent shows the generic tile body for files and miscellaneous integrations, including thumbnails and optional inline rename.
+// DefaultContent shows the generic tile body for files and miscellaneous integrations, including thumbnails and metadata.
 export function DefaultContent({
   type,
   url,
@@ -42,12 +35,6 @@ export function DefaultContent({
   title,
   faviconUrl,
   onThumbnailError,
-  isRenaming,
-  renamingValue,
-  setRenamingValue,
-  handleRenameKeyDown,
-  handleRenameSubmit,
-  renameInputRef,
   isSelected,
   hoverScaleClass,
   imageMetadata,
@@ -69,19 +56,7 @@ export function DefaultContent({
           onThumbnailError={onThumbnailError}
         />
       </div>
-      {isRenaming ? (
-        <input
-          ref={renameInputRef}
-          type="text"
-          value={renamingValue}
-          onChange={(e) => setRenamingValue(e.target.value)}
-          onKeyDown={handleRenameKeyDown}
-          onBlur={handleRenameSubmit}
-          className="text-sm text-slate-700 w-full text-center bg-white border border-blue-400 rounded px-2 py-1 outline-none mt-1"
-          style={{ pointerEvents: 'auto' } as any}
-          onClick={(e) => e.stopPropagation()}
-        />
-      ) : showEbookInfo ? (
+      {showEbookInfo ? (
         <>
           <div className="text-sm text-slate-700 px-1 text-center mt-1 break-words font-medium" style={{ width: '100%' }}>
             {ebookMetadata.title}

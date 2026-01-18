@@ -88,8 +88,8 @@ export const useCenterPaneLinkCreation = ({ selectedSpace, setIconsBySpace }: Li
     if (editingLink) {
       const favicon_url =
         editingLink.url === url
-          ? editingLink.faviconUrl || buildFaviconUrl(url)
-          : buildFaviconUrl(url);
+          ? editingLink.faviconUrl || buildFaviconUrl(url) || ''
+          : buildFaviconUrl(url) || '';
       try {
         const updated = await objectsApi.updateLink(
           editingLink.id,

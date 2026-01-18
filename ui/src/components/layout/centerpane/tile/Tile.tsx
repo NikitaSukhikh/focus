@@ -7,7 +7,6 @@ import { useDragHandling } from './useDragHandling';
 import { useThumbnail } from './useThumbnail';
 import { useImageMetadata } from './useImageMetadata';
 import { useEbookMetadata } from './useEbookMetadata';
-import { useRenaming } from './useRenaming';
 import { useContextMenu } from './useContextMenu';
 import { HOVER_SAFE_PADDING, EMBED_LINK_WIDTH, EMBED_LINK_HEIGHT, NON_EMBED_LINK_SIZE, AUDIO_EMBED_HEIGHT, AUDIO_EMBED_WIDTH, VIDEO_EMBED_WIDTH, VIDEO_EMBED_HEIGHT, getThumbnailDimensions } from './dimensionHelpers';
 import { VideoEmbedContent } from './VideoEmbedContent';
@@ -20,7 +19,7 @@ import { TileContextMenu } from './TileContextMenu';
 import { TileDialogs } from './TileDialogs';
 import { openFilePath } from '../../../../platform';
 
-// Tile renders an individual canvas item (link/file/text) with drag/drop, rename, context menu, and preview wiring.
+// Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
 export function Tile({
   id,
   type,
@@ -37,8 +36,6 @@ export function Tile({
   onDoubleClick,
   onPositionChange: _onPositionChange,
   onDelete,
-  onRename,
-  onOpenLinkEdit,
   onRefreshMetadata,
   onEdit
 }: TileProps) {
@@ -50,15 +47,6 @@ export function Tile({
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
   const { imageMetadata } = useImageMetadata(type, filePath);
   const { ebookMetadata } = useEbookMetadata(type, filePath);
-  const {
-    isRenaming,
-    renamingValue,
-    renameInputRef,
-    setRenamingValue,
-    handleRenameClick,
-    handleRenameSubmit,
-    handleRenameKeyDown,
-  } = useRenaming(title, onRename);
   const {
     showContextMenu,
     contextMenuPosition,
@@ -175,13 +163,7 @@ export function Tile({
         <VideoEmbedContent
           videoEmbed={effectiveVideoEmbed}
           title={title}
-          isRenaming={isRenaming}
-          renamingValue={renamingValue}
-          setRenamingValue={setRenamingValue}
-          handleRenameKeyDown={handleRenameKeyDown}
-          handleRenameSubmit={handleRenameSubmit}
-          renameInputRef={renameInputRef}
-          isSelected={isSelected}
+          isSelected={!!isSelected}
           hoverScaleClass={hoverScaleClass}
           onInteractionChange={setIsInteractionLocked}
           onEmbedError={() => setEmbedFailed(true)}
@@ -194,13 +176,7 @@ export function Tile({
         <VideoFileEmbedContent
           filePath={filePath}
           title={title}
-          isRenaming={isRenaming}
-          renamingValue={renamingValue}
-          setRenamingValue={setRenamingValue}
-          handleRenameKeyDown={handleRenameKeyDown}
-          handleRenameSubmit={handleRenameSubmit}
-          renameInputRef={renameInputRef}
-          isSelected={isSelected}
+          isSelected={!!isSelected}
           hoverScaleClass={hoverScaleClass}
           onInteractionChange={setIsInteractionLocked}
         />
@@ -212,13 +188,6 @@ export function Tile({
         <AudioEmbedContent
           filePath={filePath}
           title={title}
-          isRenaming={isRenaming}
-          renamingValue={renamingValue}
-          setRenamingValue={setRenamingValue}
-          handleRenameKeyDown={handleRenameKeyDown}
-          handleRenameSubmit={handleRenameSubmit}
-          renameInputRef={renameInputRef}
-          isSelected={isSelected}
           hoverScaleClass={hoverScaleClass}
           onInteractionChange={setIsInteractionLocked}
         />
@@ -237,13 +206,7 @@ export function Tile({
           description={description}
           faviconUrl={faviconUrl}
           onThumbnailError={() => setThumbnailUrl(null)}
-          isRenaming={isRenaming}
-          renamingValue={renamingValue}
-          setRenamingValue={setRenamingValue}
-          handleRenameKeyDown={handleRenameKeyDown}
-          handleRenameSubmit={handleRenameSubmit}
-          renameInputRef={renameInputRef}
-          isSelected={isSelected}
+          isSelected={!!isSelected}
           hoverScaleClass={hoverScaleClass}
         />
       );
@@ -253,7 +216,7 @@ export function Tile({
       return (
         <TextContent
           content={content}
-          isSelected={isSelected}
+          isSelected={!!isSelected}
           hoverScaleClass={hoverScaleClass}
         />
       );
@@ -270,27 +233,12 @@ export function Tile({
         title={title}
         faviconUrl={faviconUrl}
         onThumbnailError={() => setThumbnailUrl(null)}
-        isRenaming={isRenaming}
-        renamingValue={renamingValue}
-        setRenamingValue={setRenamingValue}
-        handleRenameKeyDown={handleRenameKeyDown}
-        handleRenameSubmit={handleRenameSubmit}
-        renameInputRef={renameInputRef}
-        isSelected={isSelected}
+        isSelected={!!isSelected}
         hoverScaleClass={hoverScaleClass}
         imageMetadata={imageMetadata}
         ebookMetadata={ebookMetadata}
       />
     );
-  };
-
-  const handleLinkRename = () => {
-    setShowContextMenu(false);
-    if (type === 'link' && onOpenLinkEdit) {
-      onOpenLinkEdit();
-      return;
-    }
-    handleRenameClick();
   };
 
   return (
@@ -349,7 +297,6 @@ export function Tile({
           void openLinkExternally();
         }}
         onRefreshMetadata={handleRefreshMetadataClick}
-        onRename={handleLinkRename}
         onDelete={handleDeleteClick}
       />
 

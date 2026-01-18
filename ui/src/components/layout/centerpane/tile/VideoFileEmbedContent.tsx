@@ -1,16 +1,9 @@
 import React, { useEffect } from 'react';
-import { RenameInput } from './RenameInput';
 import { API_BASE } from '../../../../config/api';
 
 interface VideoFileEmbedContentProps {
   filePath: string;
   title: string;
-  isRenaming: boolean;
-  renamingValue: string;
-  setRenamingValue: (value: string) => void;
-  handleRenameKeyDown: (e: React.KeyboardEvent) => void;
-  handleRenameSubmit: () => void;
-  renameInputRef: React.RefObject<HTMLInputElement>;
   isSelected: boolean;
   hoverScaleClass: string;
   onInteractionChange?: (locked: boolean) => void;
@@ -20,12 +13,6 @@ interface VideoFileEmbedContentProps {
 export function VideoFileEmbedContent({
   filePath,
   title,
-  isRenaming,
-  renamingValue,
-  setRenamingValue,
-  handleRenameKeyDown,
-  handleRenameSubmit,
-  renameInputRef,
   isSelected,
   hoverScaleClass,
   onInteractionChange,
@@ -118,24 +105,12 @@ export function VideoFileEmbedContent({
 
       {/* Title and file path */}
       <div className="w-full min-w-0 flex flex-col items-center gap-0.5 px-1">
-        {isRenaming ? (
-          <RenameInput
-            value={renamingValue}
-            onChange={setRenamingValue}
-            onKeyDown={handleRenameKeyDown}
-            onBlur={handleRenameSubmit}
-            inputRef={renameInputRef}
-          />
-        ) : (
-          <>
-            <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
-              {title}
-            </div>
-            <div className="text-[11px] text-slate-500 truncate w-full text-center">
-              {filePath}
-            </div>
-          </>
-        )}
+        <div className={`text-sm font-semibold line-clamp-2 leading-tight text-center ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>
+          {title}
+        </div>
+        <div className="text-[11px] text-slate-500 truncate w-full text-center">
+          {filePath}
+        </div>
       </div>
     </div>
   );

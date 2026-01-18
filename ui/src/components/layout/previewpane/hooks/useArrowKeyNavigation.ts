@@ -13,9 +13,11 @@ export interface UseArrowKeyNavigationParams {
  * Hook for handling arrow key navigation between tiles.
  *
  * Listens for ArrowLeft and ArrowRight keyboard events and triggers
- * navigation callbacks. Includes guards to prevent conflicts with:
+ * navigation callbacks. These keys are ALWAYS captured for tile navigation,
+ * even when webview/iframe has focus (PDF viewers use Up/Down instead).
+ *
+ * Guards against:
  * - Text input fields (INPUT, TEXTAREA, contentEditable)
- * - Webview and iframe content
  * - Modifier key combinations (Ctrl, Cmd, Alt, Shift)
  *
  * @param params - Navigation callbacks and state
@@ -32,14 +34,11 @@ export function useArrowKeyNavigation(params: UseArrowKeyNavigationParams): void
       const target = e.target as HTMLElement;
       if (isTextFieldTarget(target)) return;
 
-      // Guard: Don't interfere with webview or iframe content
-      if (target.tagName === 'WEBVIEW' || target.tagName === 'IFRAME') return;
-      if (target.closest('webview') || target.closest('iframe')) return;
-
       // Guard: Don't interfere with modifier key combinations
       if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
 
-      // Handle arrow keys
+      // Handle arrow keys - always capture Left/Right for tile navigation
+      // (webviews/iframes like PDF viewers should use Up/Down for page navigation)
       if (e.key === 'ArrowRight' && canNavigateNext) {
         e.preventDefault();
         e.stopPropagation();

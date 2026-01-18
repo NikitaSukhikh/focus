@@ -163,7 +163,7 @@ export const useUndoHistoryStore = create<UndoHistoryStore>((set, get) => ({
   events: [],
   redoEvents: [],
 
-  addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => {
+  addEvent: (event: Omit<TileCreateEvent, 'timestamp'> | Omit<TileMoveEvent, 'timestamp'> | Omit<TileDeleteEvent, 'timestamp'> | Omit<TextMoveEvent, 'timestamp'> | Omit<ArrowMoveEvent, 'timestamp'> | Omit<ArrowCreateEvent, 'timestamp'> | Omit<ArrowDeleteEvent, 'timestamp'> | Omit<TextCreateEvent, 'timestamp'> | Omit<TextDeleteEvent, 'timestamp'>) => {
     set((state) => {
       const newEvent: UndoEvent = {
         ...event,

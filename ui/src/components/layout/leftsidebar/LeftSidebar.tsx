@@ -18,7 +18,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
   const [isDeleting, setIsDeleting] = useState(false);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
-  const [topBarHeight, setTopBarHeight] = useState(DIMENSIONS.TOPBAR.HEIGHT);
+  const [topBarHeight, setTopBarHeight] = useState<number>(DIMENSIONS.TOPBAR.HEIGHT);
   const sidebarTop = `${topBarHeight}px`;
   const sidebarHeight = `calc(100% - ${topBarHeight}px)`;
 

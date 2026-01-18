@@ -518,8 +518,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                     clearPreviewTimeout();
                     window.dispatchEvent(new CustomEvent('preview:suppress', { detail: { tileId: icon.id } }));
                   }}
-                  onRename={icon.type === 'link' ? undefined : (newTitle) => logic.handleIconRename(icon.id, newTitle)}
-                  onOpenLinkEdit={icon.type === 'link' ? () => logic.openLinkEditDialog(icon) : undefined}
                   onDelete={() => logic.handleIconDelete(icon.id)}
                   onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
                   onEdit={(x, y, content, id) => {

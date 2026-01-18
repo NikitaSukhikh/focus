@@ -221,9 +221,9 @@ export function AddLinkDialog({ isOpen, onClose, onAdd, submitLabel = 'Add Link'
       trimmedCustomDescription && trimmedCustomDescription !== safeDefaultDescription
         ? trimmedCustomDescription
         : undefined;
-    const customTitlePayload = trimmedCustomTitle.length === 0 ? null : safeCustomTitle;
+    const customTitlePayload = trimmedCustomTitle.length === 0 ? undefined : safeCustomTitle;
     const customDescriptionPayload =
-      trimmedCustomDescription.length === 0 ? null : (safeCustomDescription ?? null);
+      trimmedCustomDescription.length === 0 ? undefined : safeCustomDescription;
 
     onAdd(
       normalizedUrl,

@@ -381,6 +381,90 @@ class PreviewService:
     # File Preview
     # ========================================================================
 
+    # Extensions that should be treated as text for preview (beyond text/* mime types)
+    TEXT_PREVIEWABLE_EXTENSIONS = {
+        # Data formats with application/* mime types
+        'json', 'jsonc', 'json5', 'jsonl', 'ndjson',
+        'xml', 'xsl', 'xslt', 'xsd', 'dtd',
+        'yaml', 'yml', 'toml',
+        'csv', 'tsv',
+        # Programming languages that may have application/* or no mime type
+        'js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'tsx', 'jsx',
+        'py', 'pyw', 'pyi',
+        'rb', 'rake', 'gemspec',
+        'php', 'phtml',
+        'java', 'kt', 'kts', 'scala', 'groovy', 'gradle',
+        'c', 'h', 'cpp', 'cxx', 'cc', 'hpp', 'hxx',
+        'cs', 'fs', 'vb',
+        'go', 'rs', 'swift', 'm', 'mm',
+        'sql',
+        'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
+        'dockerfile', 'containerfile',
+        'makefile', 'cmake', 'mk',
+        # Config files
+        'ini', 'cfg', 'conf', 'config', 'env',
+        'editorconfig', 'gitignore', 'gitattributes', 'gitconfig',
+        'npmrc', 'nvmrc', 'yarnrc',
+        'eslintrc', 'prettierrc', 'babelrc',
+        # Documentation
+        'md', 'markdown', 'mdx', 'rst', 'adoc', 'tex',
+        # Other
+        'graphql', 'gql', 'proto', 'tf', 'tfvars', 'hcl',
+        'vue', 'svelte', 'astro',
+    }
+
+    # Mime types that should be treated as text for preview
+    TEXT_PREVIEWABLE_MIMES = {
+        'application/json',
+        'application/xml',
+        'application/javascript',
+        'application/typescript',
+        'application/x-yaml',
+        'application/toml',
+        'application/sql',
+        'application/x-sh',
+        'application/x-python',
+        'application/x-ruby',
+        'application/x-php',
+    }
+
+    def _is_text_previewable(self, file_path: str, mime_type: Optional[str]) -> bool:
+        """
+        Check if a file should be treated as text for preview purposes.
+
+        Args:
+            file_path: Path to the file
+            mime_type: MIME type of the file (may be None)
+
+        Returns:
+            bool: True if file should have text preview
+        """
+        # Check mime type first
+        if mime_type:
+            if mime_type.startswith('text/'):
+                return True
+            if mime_type in self.TEXT_PREVIEWABLE_MIMES:
+                return True
+
+        # Check extension
+        path = Path(file_path)
+        ext = path.suffix.lower().lstrip('.')
+        if ext in self.TEXT_PREVIEWABLE_EXTENSIONS:
+            return True
+
+        # Check for files without extension that are commonly text
+        name = path.name.lower()
+        textish_names = {
+            'makefile', 'dockerfile', 'containerfile', 'vagrantfile',
+            'gemfile', 'rakefile', 'procfile', 'brewfile',
+            'readme', 'license', 'authors', 'changelog', 'history',
+            'todo', 'contributing', 'copying',
+        }
+        if name in textish_names:
+            return True
+
+        return False
+
     async def _generate_file_preview(self, obj: ObjectResponse) -> FilePreview:
         """
         Generate preview for a FILE object (reference to file on disk).
@@ -441,7 +525,7 @@ class PreviewService:
                     logger.warning(f"Failed to generate thumbnail: {e}")
 
             # Generate text preview for text files
-            elif mime_type and mime_type.startswith('text/'):
+            elif self._is_text_previewable(file_path, mime_type):
                 try:
                     # Load full file content (no line limit) for preview pane
                     # The frontend will handle scrolling and display
