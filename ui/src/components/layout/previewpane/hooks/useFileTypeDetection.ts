@@ -28,7 +28,7 @@ export function useFileTypeDetection(
     const isImageFile = !!(type === 'file' && filePath && /\.(png|jpg|jpeg|gif|bmp|webp|svg|tiff|tif|ico|heic|heif)$/i.test(filePath));
     const isAudioFile = !!(type === 'file' && filePath && /\.(mp3|wav|flac|ogg|oga|m4a|aac|wma|opus|aiff|aif|aifc|alac|ape|wv|mka)$/i.test(filePath));
     const isVideoFile = !!(type === 'file' && filePath && /\.(mp4|webm|ogg|ogv|avi|mov|wmv|flv|mkv|m4v|mpg|mpeg|mpe|3gp|3g2|mts|m2ts|ts|vob|divx|xvid|f4v|asf|rm|rmvb)$/i.test(filePath));
-    const isDocumentFile = !!(type === 'file' && filePath && /\.(docx|doc|odt|xlsx|xls|xlsm|ods)$/i.test(filePath));
+    const isDocumentFile = !!(type === 'file' && filePath && /\.(docx|doc|odt|xlsx|xls|xlsm|ods|ppt|pptx|odp)$/i.test(filePath));
     const isEbookFile = !!(type === 'file' && filePath && /\.(epub|mobi|azw|azw3|fb2|cbz|cbr|pdb|djvu)$/i.test(filePath));
     const isPdfFile = !!(type === 'file' && filePath && /\.pdf$/i.test(filePath));
     const isMarkdownFile = !!(type === 'file' && filePath && /\.(md|markdown)$/i.test(filePath));

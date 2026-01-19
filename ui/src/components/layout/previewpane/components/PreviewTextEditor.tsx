@@ -25,6 +25,12 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
   const isSavingRef = useRef(false);
   const hasInitializedSelection = useRef(false); // Avoid resetting selection after first focus
 
+  const resizeTextarea = () => {
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+  };
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -42,6 +48,8 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
         textareaRef.current.setSelectionRange(content.length, content.length);
         hasInitializedSelection.current = true;
       }
+
+      resizeTextarea();
     }
   }, [content.length]);
 
@@ -97,12 +105,13 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto" style={{ background: 'var(--background-dark)' }}>
+    <div className="flex-1 min-h-0 overflow-auto custom-scroll" style={{ background: 'var(--background-dark)' }}>
       <div className={isFullWindow ? "p-12" : "p-8"} style={{ overflowX: 'auto' }}>
         <textarea
           ref={textareaRef}
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
+          onInput={resizeTextarea}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder="Start typing..."
@@ -113,11 +122,13 @@ export const PreviewTextEditor: React.FC<PreviewTextEditorProps> = ({
             fontSize: isFullWindow ? '20px' : '18px',
             lineHeight: isFullWindow ? '2' : '1.8',
             color: 'var(--color-text-primary)',
-            minHeight: isFullWindow ? '500px' : '400px',
-            background: 'transparent',
+            height: 'auto',
+            minHeight: '100%',
+            background: 'var(--background-dark)',
             width: '100%',
             whiteSpace: 'pre',
             overflowX: 'auto',
+            overflowY: 'hidden',
             wordWrap: 'normal',
           }}
         />

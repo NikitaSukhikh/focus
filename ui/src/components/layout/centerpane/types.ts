@@ -30,6 +30,7 @@ export interface DroppedIcon {
   serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
   url?: string; // For link objects
   description?: string; // For all objects
+  channelName?: string;
   defaultTitle?: string;
   defaultDescription?: string;
   customTitle?: string | null;
@@ -76,6 +77,7 @@ export interface TileProps {
   y: number;
   url?: string;
   description?: string;
+  channelName?: string;
   faviconUrl?: string;
   filePath?: string;
   content?: string;

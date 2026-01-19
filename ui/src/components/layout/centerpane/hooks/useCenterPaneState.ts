@@ -95,6 +95,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const service = meta.service as string | undefined;
             const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
             const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
+            const channelName = meta.channel_name as string | undefined;
 
             // Gmail - extract email subject from metadata if present (for display on tile)
             const gmailEmail = meta.gmail_email as string | undefined;
@@ -138,6 +139,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               url,
               service,
               description,
+              channelName,
               defaultTitle,
               defaultDescription,
               customTitle,
@@ -204,6 +206,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           const updatedDescription =
             metadata.description || metadata.og_description || icon.defaultDescription || icon.description || '';
           const updatedFavicon = pickFavicon(metadata, resolvedUrl, icon.url || '');
+          const updatedChannelName = metadata.channel_name || icon.channelName;
 
           setIconsBySpace((prev) => {
             const current = prev[spaceId] || [];
@@ -217,6 +220,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
                       defaultDescription: updatedDescription,
                       title: i.customTitle ? i.title : updatedTitle,
                       description: i.customDescription ?? updatedDescription,
+                      channelName: updatedChannelName,
                       faviconUrl: updatedFavicon,
                       url: resolvedUrl,
                     }
@@ -226,7 +230,12 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           });
 
           await objectsApi.updateLink(icon.id, resolvedUrl, updatedTitle, updatedDescription, updatedFavicon);
-          window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: icon.id } }));
+          window.dispatchEvent(new CustomEvent('link:updated', {
+            detail: {
+              linkId: icon.id,
+              channelName: updatedChannelName,
+            },
+          }));
         } catch (err) {
           console.error('[METADATA_REFRESH] Failed to refresh link metadata:', err);
         } finally {
@@ -283,6 +292,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         customTitle?: string | null;
         customDescription?: string | null;
         faviconUrl?: string;
+        channelName?: string;
       }>;
       const {
         linkId,
@@ -294,6 +304,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
         customTitle,
         customDescription,
         faviconUrl,
+        channelName,
       } = customEvent.detail;
 
       if (!selectedSpace) return;
@@ -314,6 +325,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
                   customTitle: customTitle ?? icon.customTitle ?? null,
                   customDescription: customDescription ?? icon.customDescription ?? null,
                   faviconUrl: faviconUrl ?? icon.faviconUrl,
+                  channelName: channelName ?? icon.channelName,
                 }
               : icon
           ),

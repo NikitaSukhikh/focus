@@ -9,24 +9,25 @@ import { AudioPlayer } from '../../media/AudioPlayer';
 import { useTileNavigation } from '../previewpane/hooks/useTileNavigation';
 import { useArrowKeyNavigation } from '../previewpane/hooks/useArrowKeyNavigation';
 import { usePdfPageNavigation } from '../previewpane/hooks/usePdfPageNavigation';
-import { usePreviewTextEditor } from '../previewpane/hooks/usePreviewTextEditor';
-import { PreviewTextEditor } from '../previewpane/components/PreviewTextEditor';
+import { TextPreview, TextPreviewHandle } from '../previewpane/components/TextPreview';
 import { useFileTypeDetection } from '../previewpane/hooks/useFileTypeDetection';
 import { useEbookMetadata } from '../previewpane/hooks/useEbookMetadata';
+import { useImageMetadata } from '../previewpane/hooks/useImageMetadata';
+import { useDocumentPreview } from '../previewpane/hooks/useDocumentPreview';
 import { MarkdownPreview } from '../previewpane/components/MarkdownPreview';
 import { HTMLPreview } from '../previewpane/components/HTMLPreview';
+import { ImagePreview } from '../previewpane/components/ImagePreview';
+import { DocumentPreview } from '../previewpane/components/DocumentPreview';
+import { TextFilePreview } from '../previewpane/components/TextFilePreview';
+import { VideoFilePreview } from '../previewpane/components/VideoFilePreview';
+import { VideoPreview } from '../previewpane/components/VideoPreview';
+import { WebviewPreview } from '../previewpane/components/WebviewPreview';
+import { GmailExternalPreview } from '../previewpane/components/gmail_external';
+import { useGmailDetection } from '../previewpane/hooks/useGmailDetection';
 import { DroppedIcon } from '../centerpane/types';
 import { API_BASE } from '../../../config/api';
 
 /* eslint-disable react/no-unknown-property */
-
-interface ImageMetadata {
-  width: number;
-  height: number;
-  aspect_ratio: string;
-  file_size: number;
-  file_size_human: string;
-}
 
 interface FullWindowPreviewProps {
   isOpen: boolean;
@@ -55,9 +56,6 @@ export function FullWindowPreview({
   onNavigateToTile
 }: FullWindowPreviewProps) {
   const webviewRef = useRef<HTMLWebViewElement | null>(null);
-  const [documentError, setDocumentError] = useState<string | null>(null);
-  const [documentLoading, setDocumentLoading] = useState(false);
-  const [imageMetadata, setImageMetadata] = useState<ImageMetadata | null>(null);
   const [isEditingText, setIsEditingText] = useState(false);
   const [localTitle, setLocalTitle] = useState(title);
   const [localContent, setLocalContent] = useState(content);
@@ -66,17 +64,19 @@ export function FullWindowPreview({
   // Guard saves/close so outside clicks and shortcuts share a single path
   const containerRef = useRef<HTMLDivElement>(null);
   const isClosingRef = useRef(false);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const textContentRef = useRef<HTMLDivElement>(null);
+  const textPreviewRef = useRef<TextPreviewHandle | null>(null);
 
   const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
+  const imageMetadata = useImageMetadata(isImageFile, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
 
+  const documentPreviewUrlResolved = documentPreviewUrl || ebookPreviewUrl || null;
   const videoEmbed = getVideoEmbed(url);
   const renderOptions = videoEmbed ? getVideoEmbedRenderOptions(videoEmbed) : null;
+  const { isGmail } = useGmailDetection({ type, url });
 
   // Only use webview logic when not showing an image, audio, video, or document
-  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile;
+  const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrlResolved || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile || isGmail;
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
 
   const currentTitle = localTitle ?? title;
@@ -107,63 +107,15 @@ export function FullWindowPreview({
     return rawContent;
   };
 
-  const textPreviewBody = getBodyWithoutTitle(currentContent, currentTitle);
+  const imageMetadataSummary = imageMetadata
+    ? `Size: ${imageMetadata.file_size_human} | Resolution: ${imageMetadata.height} x ${imageMetadata.width} px | Ratio: ${imageMetadata.aspect_ratio}`
+    : null;
 
-  // Load image metadata
-  useEffect(() => {
-    if (isImageFile && filePath) {
-      const params = new URLSearchParams({ file_path: filePath });
-      fetch(`${API_BASE}/thumbnails/metadata?${params.toString()}`)
-        .then(res => res.json())
-        .then(data => {
-          setImageMetadata(data);
-        })
-        .catch(err => {
-          console.error('[FullWindowPreview] Failed to fetch image metadata:', err);
-          setImageMetadata(null);
-        });
-    } else {
-      setImageMetadata(null);
-    }
-  }, [isImageFile, filePath]);
-
-  // Reset document error state when preview changes
-  useEffect(() => {
-    setDocumentError(null);
-    setDocumentLoading(!!(isDocumentFile || isEbookFile));
-
-    if (isDocumentFile || isEbookFile) {
-      const timer = setTimeout(() => {
-        setDocumentLoading(false);
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [documentPreviewUrl, ebookPreviewUrl, isDocumentFile, isEbookFile]);
-
-  // Handle document preview load
-  const handleDocumentLoad = () => {
-    setDocumentLoading(false);
-    setDocumentError(null);
-  };
-
-  // Handle document preview error
-  const handleDocumentError = async () => {
-    setDocumentLoading(false);
-    if (documentPreviewUrl) {
-      try {
-        const response = await fetch(documentPreviewUrl);
-        if (!response.ok) {
-          const errorText = await response.text();
-          setDocumentError(errorText || 'Failed to load document preview');
-        } else {
-          setDocumentError('Failed to render document preview');
-        }
-      } catch (err) {
-        setDocumentError('Failed to load document preview');
-      }
-    }
-  };
+  const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(
+    isDocumentFile || isEbookFile,
+    documentPreviewUrlResolved,
+    2000
+  );
 
   // Tile navigation
   const navigation = useTileNavigation({
@@ -187,32 +139,23 @@ export function FullWindowPreview({
     isEnabled: isOpen,
   });
 
-  const editorInitialContent = currentContent
-    || ((currentTitle || textPreviewBody) ? [currentTitle, textPreviewBody].filter(Boolean).join(currentTitle && textPreviewBody ? '\n' : '') : '');
+  const handleTextContentUpdated = (newTitle: string, newContent: string) => {
+    setLocalTitle(newTitle);
+    setLocalContent(newContent);
+    setContentWasUpdated(true);
+    setHasUnsavedChanges(false);
 
-  const textEditor = usePreviewTextEditor({
-    tileId,
-    initialContent: editorInitialContent,
-    initialTitle: currentTitle,
-    onContentUpdated: (newTitle, newContent) => {
-      setLocalTitle(newTitle);
-      setLocalContent(newContent);
-      setContentWasUpdated(true);
-      setIsEditingText(false);
-      setHasUnsavedChanges(false);
-
-      // Emit event to update tile on canvas immediately
-      if (tileId) {
-        window.dispatchEvent(new CustomEvent('tile:updated', {
-          detail: {
-            tileId,
-            title: newTitle,
-            content: newContent,
-          },
-        }));
-      }
-    },
-  });
+    // Emit event to update tile on canvas immediately
+    if (tileId) {
+      window.dispatchEvent(new CustomEvent('tile:updated', {
+        detail: {
+          tileId,
+          title: newTitle,
+          content: newContent,
+        },
+      }));
+    }
+  };
 
   // Use processed content that removes duplicate title
   const processedTextContent = getBodyWithoutTitle(
@@ -220,26 +163,24 @@ export function FullWindowPreview({
     currentTitle
   );
 
-  const handleSaveTextEdit = async () => {
-    await textEditor.saveEdit();
-  };
-
   const handleSaveAndClose = useCallback(async () => {
+    if (!isEditingText) {
+      onClose();
+      return;
+    }
+
     if (isClosingRef.current) return;
     isClosingRef.current = true;
     try {
-      await textEditor.saveEdit();
-      setIsEditingText(false);
-      onClose();
+      if (textPreviewRef.current) {
+        await textPreviewRef.current.saveAndClose();
+      } else {
+        onClose();
+      }
     } finally {
       isClosingRef.current = false;
     }
-  }, [textEditor, onClose]);
-
-  const handleCancelTextEdit = () => {
-    textEditor.cancelEdit();
-    setIsEditingText(false);
-  };
+  }, [isEditingText, onClose]);
 
   // Listen for content changes from other preview modes
   useEffect(() => {
@@ -276,57 +217,6 @@ export function FullWindowPreview({
       }
     };
   }, [hasUnsavedChanges, tileId, localContent, localTitle]);
-
-  const getCaretPositionFromClick = (e: React.MouseEvent<HTMLDivElement | HTMLHeadingElement>): number => {
-    const titleText = currentTitle || '';
-    const bodyText = processedTextContent || '';
-    const newlineLength = titleText && bodyText ? 1 : 0;
-    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-
-    if (titleRef.current && titleRef.current.contains(e.target as Node)) {
-      if (!range) return 0;
-      const preCaretRange = range.cloneRange();
-      preCaretRange.selectNodeContents(titleRef.current);
-      preCaretRange.setEnd(range.endContainer, range.endOffset);
-      return preCaretRange.toString().length;
-    }
-
-    if (textContentRef.current && range) {
-      const preCaretRange = range.cloneRange();
-      preCaretRange.selectNodeContents(textContentRef.current);
-      preCaretRange.setEnd(range.endContainer, range.endOffset);
-      const bodyOffset = preCaretRange.toString().length;
-      return titleText.length + newlineLength + bodyOffset;
-    }
-
-    // Fallback: place caret at start of clicked area instead of forcing end
-    if (textContentRef.current?.contains(e.target as Node)) {
-      return titleText.length + newlineLength;
-    }
-
-    return 0;
-  };
-
-  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement | HTMLHeadingElement>) => {
-    const caretPosition = getCaretPositionFromClick(e);
-    isClosingRef.current = false;
-    textEditor.startEditing();
-    setIsEditingText(true);
-    setHasUnsavedChanges(true);
-    (window as any).__previewCaretPosition = caretPosition;
-  };
-
-  useEffect(() => {
-    if (!isOpen || !isEditingText) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-      if (containerRef.current.contains(e.target as Node)) return;
-      void handleSaveAndClose();
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, isEditingText, handleSaveAndClose]);
 
   useEffect(() => {
     const unsubscribe = window.desktopAPI?.onCloseFullWindowPreviewRequest?.(() => {
@@ -412,6 +302,16 @@ export function FullWindowPreview({
               <p className="truncate text-sm" style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>
                 by {ebookMetadata.author}
               </p>
+            )}
+            {imageMetadata && (
+              <div className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                {filePath && (
+                  <div className="break-all">Location: {filePath}</div>
+                )}
+                {imageMetadataSummary && (
+                  <div>{imageMetadataSummary}</div>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -502,45 +402,22 @@ export function FullWindowPreview({
 
           {/* Text note preview */}
           {type === 'text' && content && (
-            <>
-              {isEditingText ? (
-                <PreviewTextEditor
-                  content={textEditor.editorState.editedContent}
-                  onContentChange={textEditor.updateContent}
-                  onSave={handleSaveTextEdit}
-                  onSaveAndClose={handleSaveAndClose}
-                  onCancel={handleCancelTextEdit}
-                  isFullWindow={true}
-                  isClosingRef={isClosingRef}
-                />
-              ) : (
-                <div className="flex-1 overflow-auto min-h-0" style={{ background: 'var(--background-dark)' }}>
-                  <div className="p-12 max-w-4xl w-full mx-auto min-h-full">
-                    <h1
-                      ref={titleRef}
-                      className="text-4xl font-bold mb-8 cursor-text"
-                      style={{ ...FONT_ROLES.paneTitle, fontSize: '36px', color: 'var(--color-text-primary)' }}
-                      onDoubleClick={handleDoubleClick}
-                    >
-                      {displayTitle}
-                    </h1>
-                    <div
-                      ref={textContentRef}
-                      className="whitespace-pre-wrap leading-loose cursor-text"
-                      style={{
-                        ...FONT_ROLES.paneBody,
-                        fontSize: '20px',
-                        lineHeight: '2',
-                        color: 'var(--color-text-secondary)',
-                      }}
-                      onDoubleClick={handleDoubleClick}
-                    >
-                      {processedTextContent}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+            <TextPreview
+              ref={textPreviewRef}
+              title={currentTitle}
+              content={processedTextContent || ''}
+              tileId={tileId}
+              onContentUpdated={handleTextContentUpdated}
+              isEditing={isEditingText}
+              onStartEdit={() => {
+                setIsEditingText(true);
+                setHasUnsavedChanges(true);
+              }}
+              onStopEdit={() => setIsEditingText(false)}
+              onClosePreview={onClose}
+              paneContainerRef={containerRef}
+              isFullWindow={true}
+            />
           )}
 
           {isMarkdownFile && (
@@ -617,37 +494,13 @@ export function FullWindowPreview({
           {imagePreviewUrl && (
             <div className="flex-1 min-h-0 h-full overflow-auto">
               <div className="flex flex-col h-full min-h-0">
-                <div className="flex-1 min-h-0 w-full p-4 flex items-center justify-center">
+                <div className="flex-1 min-h-0 w-full">
                   <img
                     src={imagePreviewUrl}
                     alt={title || 'Image preview'}
-                    className="w-full h-full max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                    className="w-full h-full object-contain"
                   />
                 </div>
-                {imageMetadata && (
-                  <div className="px-8 pb-8">
-                    <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6 border border-slate-200">
-                      <div className="space-y-3 text-base">
-                        <div className="flex">
-                          <span className="font-semibold text-slate-700 w-32">Location:</span>
-                          <span className="text-slate-600 break-all flex-1">{filePath}</span>
-                        </div>
-                        <div className="flex">
-                          <span className="font-semibold text-slate-700 w-32">Size:</span>
-                          <span className="text-slate-600">{imageMetadata.file_size_human}</span>
-                        </div>
-                        <div className="flex">
-                          <span className="font-semibold text-slate-700 w-32">Resolution:</span>
-                          <span className="text-slate-600">{imageMetadata.height} x {imageMetadata.width} px</span>
-                        </div>
-                        <div className="flex">
-                          <span className="font-semibold text-slate-700 w-32">Ratio:</span>
-                          <span className="text-slate-600">{imageMetadata.aspect_ratio}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -719,6 +572,14 @@ export function FullWindowPreview({
                 />
               )}
             </div>
+          )}
+
+          {/* Gmail preview */}
+          {isGmail && (
+            <GmailExternalPreview
+              url={url}
+              title={title}
+            />
           )}
 
           {/* Video embed preview (YouTube/Vimeo) */}

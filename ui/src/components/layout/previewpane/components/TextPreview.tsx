@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 import { usePreviewTextEditor } from '../hooks/usePreviewTextEditor';
 import { PreviewTextEditor } from './PreviewTextEditor';
 import { formatTextWithLinks } from '../../../../utils/linkFormatter';
+
+export interface TextPreviewHandle {
+  save: () => Promise<void>;
+  saveAndClose: () => Promise<void>;
+  cancel: () => void;
+}
 
 interface TextPreviewProps {
   title?: string;
@@ -14,14 +20,31 @@ interface TextPreviewProps {
   onStopEdit: () => void;
   onClosePreview?: () => void;
   paneContainerRef?: React.RefObject<HTMLElement | null>;
+  isFullWindow?: boolean;
 }
 
 // TextPreview formats text note content selected from the canvas, showing the title and pre-wrapped body text.
-export function TextPreview({ title, content, tileId, onContentUpdated, isEditing, onStartEdit, onStopEdit, onClosePreview, paneContainerRef }: TextPreviewProps) {
+export const TextPreview = forwardRef<TextPreviewHandle, TextPreviewProps>(({
+  title,
+  content,
+  tileId,
+  onContentUpdated,
+  isEditing,
+  onStartEdit,
+  onStopEdit,
+  onClosePreview,
+  paneContainerRef,
+  isFullWindow = false,
+}: TextPreviewProps, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isClosingRef = useRef(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const titleSize = isFullWindow ? '36px' : '28px';
+  const bodyFontSize = isFullWindow ? '20px' : '18px';
+  const bodyLineHeight = isFullWindow ? '2' : '1.8';
+  const containerPaddingClass = isFullWindow ? 'p-12' : 'p-8';
+  const contentWidthClass = isFullWindow ? 'max-w-4xl w-full mx-auto' : '';
 
   const trimmedTitle = (title || '').trim();
   const firstContentLine = content
@@ -100,6 +123,18 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
     (window as any).__previewCaretPosition = caretPosition;
   };
 
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      await handleSave();
+    },
+    saveAndClose: async () => {
+      await handleSaveAndClose();
+    },
+    cancel: () => {
+      handleCancel();
+    },
+  }), [handleSave, handleSaveAndClose, handleCancel]);
+
   useEffect(() => {
     if (!isEditing) return;
     // Auto-save and close when clicks land outside the preview container
@@ -116,14 +151,18 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
 
   if (isEditing) {
     return (
-      <div ref={containerRef} className="flex-1 h-full">
+      <div
+        ref={containerRef}
+        className="absolute inset-0 flex flex-col"
+        style={{ background: 'var(--background-dark)' }}
+      >
         <PreviewTextEditor
           content={editor.editorState.editedContent}
           onContentChange={editor.updateContent}
           onSave={handleSave}
           onSaveAndClose={handleSaveAndClose}
           onCancel={handleCancel}
-          isFullWindow={false}
+          isFullWindow={isFullWindow}
           isClosingRef={isClosingRef}
         />
       </div>
@@ -133,34 +172,41 @@ export function TextPreview({ title, content, tileId, onContentUpdated, isEditin
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-auto"
+      className="absolute inset-0 flex flex-col"
       style={{ background: 'var(--background-dark)' }}
     >
-      <div className="p-8" style={{ overflowX: 'auto', color: 'var(--color-text-secondary)' }}>
-        <h1
-          ref={titleRef}
-          className="text-3xl font-bold mb-6 cursor-text"
-          style={{ ...FONT_ROLES.paneTitle, fontSize: '28px', color: 'var(--color-text-primary)' }}
-          onDoubleClick={handleDoubleClick}
-        >
-          {formatTextWithLinks(displayTitle)}
-        </h1>
+      <div className="flex-1 min-h-0 overflow-auto custom-scroll">
         <div
-          ref={contentRef}
-          className="leading-loose cursor-text"
-          style={{
-            ...FONT_ROLES.paneBody,
-            fontSize: '18px',
-            lineHeight: '1.8',
-            whiteSpace: 'pre',
-            overflowX: 'auto',
-            color: 'var(--color-text-secondary)',
-          }}
-          onDoubleClick={handleDoubleClick}
+          className={`${containerPaddingClass} ${contentWidthClass} min-h-full`}
+          style={{ overflowX: 'auto', color: 'var(--color-text-secondary)' }}
         >
-          {formatTextWithLinks(content)}
+          <h1
+            ref={titleRef}
+            className={`${isFullWindow ? 'text-4xl' : 'text-3xl'} font-bold mb-6 cursor-text`}
+            style={{ ...FONT_ROLES.paneTitle, fontSize: titleSize, color: 'var(--color-text-primary)' }}
+            onDoubleClick={handleDoubleClick}
+          >
+            {formatTextWithLinks(displayTitle)}
+          </h1>
+          <div
+            ref={contentRef}
+            className="leading-loose cursor-text"
+            style={{
+              ...FONT_ROLES.paneBody,
+              fontSize: bodyFontSize,
+              lineHeight: bodyLineHeight,
+              whiteSpace: 'pre',
+              overflowX: 'auto',
+              color: 'var(--color-text-secondary)',
+            }}
+            onDoubleClick={handleDoubleClick}
+          >
+            {formatTextWithLinks(content)}
+          </div>
         </div>
       </div>
     </div>
   );
-}
+});
+
+TextPreview.displayName = 'TextPreview';

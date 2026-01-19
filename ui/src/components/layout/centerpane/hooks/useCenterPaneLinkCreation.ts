@@ -161,6 +161,7 @@ export const useCenterPaneLinkCreation = ({
               const resolvedUrl = metadata.resolved_url || url;
               const refreshedTitle = truncateLinkTitle(metadata.title || metadata.og_title || defaultTitle);
               const refreshedDescription = metadata.description || metadata.og_description || defaultDescription;
+              const refreshedChannelName = metadata.channel_name;
               const refreshedFavicon = pickFavicon(metadata, resolvedUrl, url) || nextFavicon;
 
               setIconsBySpace((prev) => {
@@ -174,6 +175,7 @@ export const useCenterPaneLinkCreation = ({
                         defaultDescription: refreshedDescription,
                         title: icon.customTitle ? icon.title : refreshedTitle,
                         description: icon.customDescription ?? refreshedDescription,
+                        channelName: refreshedChannelName || icon.channelName,
                         faviconUrl: refreshedFavicon,
                       }
                     : icon
@@ -188,7 +190,12 @@ export const useCenterPaneLinkCreation = ({
                 refreshedDescription,
                 refreshedFavicon
               );
-              window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: editingLink.id } }));
+              window.dispatchEvent(new CustomEvent('link:updated', {
+                detail: {
+                  linkId: editingLink.id,
+                  channelName: refreshedChannelName,
+                },
+              }));
             } catch (err) {
               console.error('[AUTO-REFRESH][EDIT] Failed to refresh metadata:', err);
             }
@@ -290,6 +297,7 @@ export const useCenterPaneLinkCreation = ({
             const resolvedUrl = metadata.resolved_url || url;
             const updatedTitle = truncateLinkTitle(metadata.title || metadata.og_title || created.title);
             const updatedDescription = metadata.description || metadata.og_description || created.description;
+            const updatedChannelName = metadata.channel_name;
             const updatedFavicon = pickFavicon(metadata, resolvedUrl, url) || favicon_url;
             console.log('[AUTO-REFRESH] Using favicon:', updatedFavicon);
 
@@ -304,6 +312,7 @@ export const useCenterPaneLinkCreation = ({
                       defaultDescription: updatedDescription,
                       title: icon.customTitle ? icon.title : updatedTitle,
                       description: icon.customDescription ?? updatedDescription,
+                      channelName: updatedChannelName || icon.channelName,
                       faviconUrl: updatedFavicon,
                       url: resolvedUrl,
                     }
@@ -320,7 +329,12 @@ export const useCenterPaneLinkCreation = ({
               updatedDescription,
               updatedFavicon
             );
-            window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: created.id } }));
+            window.dispatchEvent(new CustomEvent('link:updated', {
+              detail: {
+                linkId: created.id,
+                channelName: updatedChannelName,
+              },
+            }));
           }
         } catch (err) {
           console.error('[AUTO-REFRESH] Failed to refresh metadata:', err);

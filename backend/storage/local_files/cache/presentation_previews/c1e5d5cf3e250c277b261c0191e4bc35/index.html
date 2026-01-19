@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>file_example_PPT_1MB.ppt</title>
+<style>
+body { margin: 0; padding: 24px; font-family: "Segoe UI", Arial, sans-serif; background: #f1f5f9; color: #0f172a; }
+.deck { max-width: 1200px; margin: 0 auto; }
+.slide { background: #ffffff; padding: 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); margin-bottom: 24px; }
+.slide img { width: 100%; height: auto; display: block; background: #e2e8f0; }
+</style>
+</head>
+<body>
+<div class="deck">
+<section class="slide">
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-src="/api/thumbnails/presentation-image/c1e5d5cf3e250c277b261c0191e4bc35/file_example_PPT_1MB.png" alt="Slide 1" loading="lazy" decoding="async">
+</section>
+</div>
+<script>
+(function() {
+  function eagerLoad() {
+    var imgs = document.querySelectorAll('img[data-src]');
+    for (var i = 0; i < imgs.length; i++) {
+      var img = imgs[i];
+      img.src = img.getAttribute('data-src');
+      img.removeAttribute('data-src');
+    }
+  }
+  if (!('IntersectionObserver' in window)) {
+    eagerLoad();
+    return;
+  }
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) {
+        return;
+      }
+      var img = entry.target;
+      img.src = img.getAttribute('data-src');
+      img.removeAttribute('data-src');
+      observer.unobserve(img);
+    });
+  }, { rootMargin: '200px 0px' });
+  var targets = document.querySelectorAll('img[data-src]');
+  for (var j = 0; j < targets.length; j++) {
+    observer.observe(targets[j]);
+  }
+})();
+</script>
+</body>
+</html>

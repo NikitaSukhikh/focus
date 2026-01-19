@@ -30,6 +30,7 @@ export function Tile({
   y,
   url,
   description,
+  channelName,
   faviconUrl,
   filePath,
   content,
@@ -163,6 +164,23 @@ export function Tile({
     ? (effectiveVideoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE)
     : (isAudioFile ? AUDIO_EMBED_HEIGHT : isVideoFile ? VIDEO_EMBED_HEIGHT : undefined);
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
+  const tooltipText = (() => {
+    if (videoEmbed?.provider === 'youtube') {
+      const parts: string[] = [];
+      if (url) parts.push(url);
+      const titleText = title?.trim();
+      if (titleText) parts.push(titleText);
+      const channelText = channelName?.trim();
+      if (channelText) parts.push(channelText);
+      return parts.join('\n');
+    }
+
+    return (
+      description ||
+      (type === 'file' && filePath ? filePath : undefined) ||
+      (type === 'link' && url ? url : title)
+    );
+  })();
 
   useEffect(() => {
     setEmbedFailed(false);
@@ -271,11 +289,7 @@ export function Tile({
         onClick={(event) => onClick?.(event)}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        title={
-          description ||
-          (type === 'file' && filePath ? filePath : undefined) ||
-          (type === 'link' && url ? url : title)
-        }
+        title={tooltipText}
         className={`
           group absolute select-none
           ${type === 'link' || isAudioFile || isVideoFile ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing

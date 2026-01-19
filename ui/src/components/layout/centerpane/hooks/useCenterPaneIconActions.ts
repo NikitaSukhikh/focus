@@ -118,6 +118,7 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
         const newTitle = truncateLinkTitle(rawTitle);
         const newDescription = metadata.description || metadata.og_description || '';
         const newFaviconUrl = pickFavicon(metadata, resolvedUrl, url);
+        const newChannelName = metadata.channel_name;
         console.log('[CENTER PANE] Using favicon URL:', newFaviconUrl);
 
         setIconsBySpace((prev) => ({
@@ -130,6 +131,7 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
                   defaultDescription: newDescription,
                   title: i.customTitle ? i.title : newTitle,
                   description: i.customDescription ?? newDescription,
+                  channelName: newChannelName || i.channelName,
                   faviconUrl: newFaviconUrl,
                   url: resolvedUrl,
                 }
@@ -138,7 +140,12 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
         }));
 
         await objectsApi.updateLink(iconId, resolvedUrl, newTitle, newDescription, newFaviconUrl);
-        window.dispatchEvent(new CustomEvent('link:updated', { detail: { linkId: iconId } }));
+        window.dispatchEvent(new CustomEvent('link:updated', {
+          detail: {
+            linkId: iconId,
+            channelName: newChannelName,
+          },
+        }));
       }
     } catch (err) {
       console.error('[CENTER PANE] Failed to refresh metadata:', err);

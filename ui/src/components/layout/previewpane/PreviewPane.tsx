@@ -21,9 +21,11 @@ import { VideoPreview } from './components/VideoPreview';
 import { WebviewPreview } from './components/WebviewPreview';
 import { HTMLPreview } from './components/HTMLPreview';
 import { MarkdownPreview } from './components/MarkdownPreview';
+import { TextFilePreview } from './components/TextFilePreview';
+import { VideoFilePreview } from './components/VideoFilePreview';
 import { GmailExternalPreview } from './components/gmail_external';
+import { useGmailDetection } from './hooks/useGmailDetection';
 import { DroppedIcon } from '../centerpane/types';
-import { isGmailUrl } from '../centerpane/utils';
 import { API_BASE } from '../../../config/api';
 
 /* eslint-disable react/no-unknown-property */
@@ -84,7 +86,8 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const videoChannelName = videoMetadata?.channelName;
   const videoChannelIconUrl = videoMetadata?.channelIconUrl;
 
-  const isGmail = type === 'gmail' || (url && isGmailUrl(url));
+  const isTextNote = type === 'text';
+  const { isGmail } = useGmailDetection({ type, url });
   const hasNonWebviewPreview = imagePreviewUrl || isAudioFile || isVideoFile || documentPreviewUrl || ebookPreviewUrl || videoEmbed || isTextFile || isMarkdownFile || isHtmlFile || isGmail;
 
   const logic = usePreviewPaneLogic(webviewRef, hasNonWebviewPreview ? undefined : url, isOpen);
@@ -234,8 +237,13 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
       />
 
       <div
-        className="flex-1 overflow-auto relative flex flex-col custom-scroll"
-        style={{ background: 'var(--background-dark)', overflowX: 'auto', overflowY: 'auto', color: 'var(--color-text-secondary)' }}
+        className="flex-1 min-h-0 relative flex flex-col custom-scroll"
+        style={{
+          background: 'var(--background-dark)',
+          overflowX: 'auto',
+          overflowY: isTextFile || isTextNote ? 'hidden' : 'auto',
+          color: 'var(--color-text-secondary)'
+        }}
       >
         <NavigationControls
           onNavigateNext={navigation.navigateNext}
@@ -272,23 +280,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         )}
 
         {isTextFile && (
-          <div
-            className="flex-1 overflow-auto"
-            style={{ background: 'var(--background-dark)', color: 'var(--color-text-primary)' }}
-          >
-            <pre
-              className="whitespace-pre-wrap font-mono text-sm leading-6 w-full h-full m-0 p-6"
-              style={{
-                background: 'transparent',
-                color: 'var(--color-text-primary)',
-                border: 'none',
-                borderRadius: 0,
-                outline: 'none',
-              }}
-            >
-              {content || ''}
-            </pre>
-          </div>
+          <TextFilePreview content={content} filePath={filePath} />
         )}
 
         {isAudioFile && filePath && (
@@ -296,24 +288,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         )}
 
         {isVideoFile && videoPreviewUrl && (
-          <div className="w-full flex justify-center p-6">
-            <div style={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
-              <video
-                src={videoPreviewUrl}
-                controls
-                controlsList="nodownload"
-                preload="metadata"
-                style={{
-                  width: '100%',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                  background: '#000'
-                }}
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
+          <VideoFilePreview videoPreviewUrl={videoPreviewUrl} />
         )}
 
         {imagePreviewUrl && (

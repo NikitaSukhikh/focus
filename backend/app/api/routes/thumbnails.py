@@ -12,6 +12,7 @@ from app.services.thumbnails.file_thumbnail import file_thumbnail_service
 from app.services.documents.document_preview import document_preview_service
 from app.services.documents.excel_preview import excel_preview_service
 from app.services.documents.ebook_preview import ebook_preview_service
+from app.services.documents.presentation_preview import presentation_preview_service
 from app.services.thumbnails.audio_metadata import get_audio_metadata, is_audio_file, format_duration
 from app.core.logging import get_logger
 import mimetypes
@@ -634,6 +635,75 @@ async def get_ebook_image(
 
 
 @router.get(
+    "/presentation-image/{cache_key}/{image_name}",
+    response_class=FileResponse,
+    summary="Get presentation slide image",
+    description="Serve cached slide images from presentation previews.",
+)
+async def get_presentation_image(
+    cache_key: str,
+    image_name: str,
+):
+    """
+    Serve a slide image extracted from a presentation preview.
+
+    Args:
+        cache_key: Presentation preview cache key
+        image_name: Name of the slide image file
+
+    Returns:
+        FileResponse: The slide image file
+
+    Raises:
+        HTTPException: If image not found
+    """
+    try:
+        images_dir = presentation_preview_service.cache_dir / cache_key / "images"
+        image_path = (images_dir / image_name).resolve()
+
+        try:
+            image_path.relative_to(images_dir.resolve())
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Slide image not found.",
+            )
+
+        if not image_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Image not found: {image_name}",
+            )
+
+        if not image_path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {image_name}",
+            )
+
+        media_type, _ = mimetypes.guess_type(str(image_path))
+        if not media_type:
+            media_type = "image/png"
+
+        logger.debug(f"Serving presentation slide: {image_path}")
+
+        return FileResponse(
+            path=str(image_path),
+            media_type=media_type,
+            filename=image_name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve presentation slide: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to serve presentation slide",
+        )
+
+
+@router.get(
     "/ebook-metadata",
     summary="Get ebook metadata",
     description="Extract metadata from ebook files including title and author.",
@@ -695,7 +765,7 @@ async def get_ebook_metadata(
     "/document-preview",
     response_class=FileResponse,
     summary="Get document preview as HTML",
-    description="Convert and serve document files (docx, doc, odt) as HTML for preview.",
+    description="Convert and serve document files (docx, doc, odt, xls/xlsx/ods, ppt/pptx/odp) as HTML for preview.",
 )
 async def get_document_preview(
     file_path: str = Query(..., description="Absolute path to the document file"),
@@ -753,6 +823,28 @@ async def get_document_preview(
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="Excel file is too large or complex to process. Conversion timed out after 2 minutes.",
+                    )
+        # Check if file is a presentation
+        elif presentation_preview_service.is_presentation(file_path):
+            logger.info(f"Converting presentation file: {file_path}")
+
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                try:
+                    html_path = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            executor,
+                            presentation_preview_service.convert_presentation_to_html,
+                            file_path
+                        ),
+                        timeout=120.0
+                    )
+                    logger.info(f"Presentation conversion completed: {html_path}")
+                except asyncio.TimeoutError:
+                    logger.error(f"Presentation conversion timed out after 120 seconds: {file_path}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Presentation is too large or complex to process. Conversion timed out after 2 minutes.",
                     )
         # Check if file is an ebook
         elif ebook_preview_service.is_ebook(file_path):

@@ -13,18 +13,30 @@ interface VideoPreviewProps {
   channelName?: string;
   channelIconUrl?: string;
   isPreviewOpen?: boolean;
+  variant?: 'pane' | 'full';
+  showMetadata?: boolean;
 }
 
 // VideoPreview renders an embedded player for recognized video links (e.g., YouTube/Vimeo) inside the preview pane.
-export function VideoPreview({ videoEmbed, title, description, channelName, channelIconUrl, isPreviewOpen }: VideoPreviewProps) {
+export function VideoPreview({
+  videoEmbed,
+  title,
+  description,
+  channelName,
+  channelIconUrl,
+  isPreviewOpen,
+  variant = 'pane',
+  showMetadata = true,
+}: VideoPreviewProps) {
   const renderOptions = getVideoEmbedRenderOptions(videoEmbed);
   const titleText = title && title.trim().length > 0 ? title : null;
   const descriptionText = description && description.trim().length > 0 ? description : null;
   const channelText = channelName && channelName.trim().length > 0 ? channelName : null;
   const channelIcon = channelIconUrl && channelIconUrl.trim().length > 0 ? channelIconUrl : null;
-  const shouldShowMetadata = !!titleText || !!descriptionText || !!channelText || !!channelIcon;
+  const shouldShowMetadata = showMetadata && (!!titleText || !!descriptionText || !!channelText || !!channelIcon);
   const descriptionPanelHeight = 200;
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const isFullWindow = variant === 'full';
 
   useEffect(() => {
     setIsDescriptionOpen(false);
@@ -35,11 +47,11 @@ export function VideoPreview({ videoEmbed, title, description, channelName, chan
       <div
         className="w-full flex justify-center"
         style={{
-          position: 'sticky',
-          top: 0,
+          position: isFullWindow ? 'relative' : 'sticky',
+          top: isFullWindow ? 'auto' : 0,
           zIndex: Z_INDEX.CONTENT_PREVIEW,
           background: 'var(--background-dark)',
-          padding: '16px 24px 0',
+          padding: isFullWindow ? '0' : '16px 24px 0',
         }}
       >
         <div style={{ position: 'relative', width: '100%', maxWidth: '100%', paddingTop: '56.25%' }}>

@@ -117,7 +117,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         fontSize: `${TEXT_FONT_SIZE}px`,
         fontWeight: TEXT_FONT_WEIGHT,
         lineHeight: TEXT_LINE_HEIGHT,
-        background: 'white',
+        background: 'var(--background-dark)',
         borderRadius: '8px',
         boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
         border: '1px solid var(--color-border-strong)',

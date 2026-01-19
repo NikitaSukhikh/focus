@@ -494,6 +494,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   y={icon.y}
                   url={icon.url}
                   description={icon.description}
+                  channelName={icon.channelName}
                   faviconUrl={icon.faviconUrl}
                   filePath={icon.filePath}
                   content={icon.content}
