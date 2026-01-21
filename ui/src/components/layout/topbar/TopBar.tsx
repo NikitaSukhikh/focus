@@ -1,6 +1,7 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
+import { TOP_BAR } from '../../../constants/panesDimensions';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '../../../styles/typographics';
 import { useTopBarLogic } from './useTopBarLogic';
@@ -27,19 +28,22 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   return (
     <header
       id="top-bar"
-      className="h-10 glass-panel flex items-center px-4 relative"
+      className="glass-panel flex items-center relative"
       style={{
         zIndex: Z_INDEX.TOPBAR,
         borderBottom: '1px solid var(--color-border-subtle)',
+        height: `${TOP_BAR.height}px`,
+        padding: `0 ${TOP_BAR.layout.paddingX}px`,
         // @ts-ignore - Electron specific CSS property
         WebkitAppRegion: 'drag',
       }}
     >
       {/* Left section */}
       <div
-        className="flex items-center gap-3 transition-all duration-200"
+        className="flex items-center transition-all duration-200"
         style={{
-          marginLeft: '-16px',
+          marginLeft: `${TOP_BAR.sidebarToggle.marginLeft}px`,
+          columnGap: `${TOP_BAR.layout.leftSectionGap}px`,
           zIndex: Z_INDEX.BASE_RAISED,
           // @ts-ignore - Electron specific CSS property
           WebkitAppRegion: 'no-drag',
@@ -47,9 +51,10 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       >
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-lg transition-colors"
+          className="rounded-lg transition-colors"
           style={{
             color: 'var(--color-text-secondary)',
+            padding: `${TOP_BAR.button.padding}px`,
             transition: 'all var(--transition-base)',
             outline: 'none',
           }}
@@ -65,23 +70,29 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           }}
           title={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
-          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          {isSidebarOpen ? <X size={TOP_BAR.icons.primary} /> : <Menu size={TOP_BAR.icons.primary} />}
         </button>
-        <div className="flex items-center gap-2 mr-2">
+        <div
+          className="flex items-center"
+          style={{
+            columnGap: `${TOP_BAR.layout.leftGroupGap}px`,
+            marginRight: `${TOP_BAR.layout.leftGroupMarginRight}px`,
+          }}
+        >
           <img
             src={focusLogo}
             alt="Focus logo"
             className="rounded-lg shadow-sm"
             style={{
-              marginLeft: '-10px',
-              width: '18px',
-              height: '18px'
+              marginLeft: `${TOP_BAR.logo.marginLeft}px`,
+              width: `${TOP_BAR.logo.size}px`,
+              height: `${TOP_BAR.logo.size}px`,
             }}
           />
           <span
             style={{
               fontFamily: 'Segoe UI, sans-serif',
-              fontSize: '13px',
+              fontSize: `${TOP_BAR.appName.fontSize}px`,
               fontWeight: 400,
               color: 'var(--color-text-primary)',
             }}
@@ -90,13 +101,14 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           </span>
           <button
             onClick={() => onOpenQuickAdd()}
-            className="p-1.5 rounded-lg flex items-center justify-center transition-all"
+            className="rounded-lg flex items-center justify-center transition-all"
             style={{
               background: 'var(--glass-bg)',
               color: 'var(--color-text-primary)',
               boxShadow: '0 6px 14px rgba(0,0,0,0.08)',
               border: '1px solid var(--color-border-subtle)',
-              marginLeft: '8px',
+              marginLeft: `${TOP_BAR.quickAddButton.marginLeft}px`,
+              padding: `${TOP_BAR.quickAddButton.padding}px`,
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-1px)';
@@ -109,7 +121,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             title="Add links/files"
             aria-label="Add links/files"
           >
-            <Plus size={16} />
+            <Plus size={TOP_BAR.icons.small} />
           </button>
         </div>
       </div>
@@ -126,8 +138,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 onChange={(e) => logic.setEditingSpaceName(e.target.value)}
                 onKeyDown={logic.handleSpaceNameKeyDown}
                 onBlur={logic.handleSpaceNameSubmit}
-                className="text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center max-w-md"
-                style={FONT_ROLES.topbarTitle}
+                className="text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center"
+                style={{
+                  ...FONT_ROLES.topbarTitle,
+                  maxWidth: `${TOP_BAR.title.maxWidth}px`,
+                }}
               />
             ) : (
               <h1
@@ -159,8 +174,9 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
       {/* Right section */}
       <div
-        className="flex items-center gap-2"
+        className="flex items-center"
         style={{
+          columnGap: `${TOP_BAR.layout.rightSectionGap}px`,
           zIndex: Z_INDEX.BASE_RAISED,
           // @ts-ignore - Electron specific CSS property
           WebkitAppRegion: 'no-drag',
@@ -172,31 +188,49 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
         {/* To be implemented in the future: tags button (hidden) */}
         <TopBarTags isOpen={isTagsOpen} onToggle={onTagsClick} onTagSelect={onTagSelect} />
 
-        <div className="flex items-center gap-0 px-1 py-0.5 rounded-lg" style={{ background: 'var(--glass-bg)' }}>
+        <div
+          className="flex items-center rounded-lg"
+          style={{
+            background: 'var(--glass-bg)',
+            padding: `${TOP_BAR.zoomControl.containerPaddingY}px ${TOP_BAR.zoomControl.containerPaddingX}px`,
+          }}
+        >
           <button
             disabled
-            className="px-[10px] py-1 rounded-md transition-colors translate-x-[6px]"
+            className="rounded-md transition-colors"
             style={{
               color: 'var(--color-text-secondary)',
               opacity: 0.5,
+              padding: `${TOP_BAR.zoomControl.buttonPaddingY}px ${TOP_BAR.zoomControl.buttonPaddingX}px`,
+              transform: `translateX(${TOP_BAR.zoomControl.buttonTranslateX}px)`,
             }}
             title="Zoom control"
           >
-            <ZoomOut size={18} className="opacity-75" />
+            <ZoomOut size={TOP_BAR.icons.secondary} className="opacity-75" />
           </button>
-          <div style={{ ...FONT_ROLES.topbarControl, color: 'var(--color-text-primary)' }} className="px-1.5 select-none min-w-[48px] text-center">
+          <div
+            style={{
+              ...FONT_ROLES.topbarControl,
+              color: 'var(--color-text-primary)',
+              minWidth: `${TOP_BAR.zoomControl.valueMinWidth}px`,
+              paddingLeft: `${TOP_BAR.zoomControl.valuePaddingX}px`,
+              paddingRight: `${TOP_BAR.zoomControl.valuePaddingX}px`,
+            }}
+            className="select-none text-center"
+          >
             {(zoom * 100).toFixed(0)}%
           </div>
         </div>
 
         <button
-          className="p-2 rounded-lg transition-colors flex items-center justify-center"
+          className="rounded-lg transition-colors flex items-center justify-center"
           style={{
             background: 'var(--glass-bg)',
             color: 'var(--color-text-primary)',
             border: '1px solid var(--color-border-subtle)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
             display: 'none',
+            padding: `${TOP_BAR.button.padding}px`,
           }}
           title="ShareSpace"
           aria-label="ShareSpace"
@@ -204,18 +238,24 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           <img
             src={shareSpaceIcon}
             alt="ShareSpace"
-            className="w-5 h-5 object-contain"
-            style={{ opacity: 0.6 }}
+            className="object-contain"
+            style={{
+              opacity: 0.6,
+              width: `${TOP_BAR.icons.primary}px`,
+              height: `${TOP_BAR.icons.primary}px`,
+            }}
           />
         </button>
 
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg transition-colors flex items-center justify-center gap-0.5"
+          className="rounded-lg transition-colors flex items-center justify-center"
           style={{
             background: 'transparent',
             color: 'var(--color-text-secondary)',
             border: '1px solid transparent',
+            padding: `${TOP_BAR.button.padding}px`,
+            columnGap: `${TOP_BAR.themeToggle.gap}px`,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--glass-bg)';
@@ -227,17 +267,18 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           }}
           title="Toggle theme"
         >
-          {isDark ? <Moon size={14} /> : <Sun size={14} />}
+          {isDark ? <Moon size={TOP_BAR.icons.tiny} /> : <Sun size={TOP_BAR.icons.tiny} />}
         </button>
 
         <button
           onClick={onToggleGrid}
-          className="p-2 rounded-lg transition-colors relative flex items-center justify-center"
+          className="rounded-lg transition-colors relative flex items-center justify-center"
           style={{
             background: isGridMode ? 'var(--glass-bg)' : 'transparent',
             color: isGridMode ? 'var(--primary-color)' : 'var(--color-text-secondary)',
             border: isGridMode ? '1px solid var(--color-border-strong)' : '1px solid transparent',
             boxShadow: isGridMode ? '0 0 10px var(--shadow)' : 'none',
+            padding: `${TOP_BAR.button.padding}px`,
           }}
           onMouseEnter={(e) => {
             if (!isGridMode) {
@@ -254,23 +295,30 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           title={isGridMode ? 'Grids' : 'Grid-Free'}
         >
           {isGridMode ? (
-            <Grid3x3 size={20} />
+            <Grid3x3 size={TOP_BAR.icons.primary} />
           ) : (
-            <span className="relative inline-block w-5 h-5">
-              <Grid3x3 size={20} className="absolute inset-0 opacity-75" />
-              <Slash size={18} className="absolute inset-0 opacity-85" />
+            <span
+              className="relative inline-block"
+              style={{
+                width: `${TOP_BAR.icons.primary}px`,
+                height: `${TOP_BAR.icons.primary}px`,
+              }}
+            >
+              <Grid3x3 size={TOP_BAR.icons.primary} className="absolute inset-0 opacity-75" />
+              <Slash size={TOP_BAR.icons.secondary} className="absolute inset-0 opacity-85" />
             </span>
           )}
         </button>
 
         <button
           onClick={onTogglePreview}
-          className="p-2 rounded-lg transition-colors"
+          className="rounded-lg transition-colors"
           style={{
             background: isPreviewOpen ? 'var(--glass-bg)' : 'transparent',
             color: isPreviewOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
             border: isPreviewOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
             boxShadow: isPreviewOpen ? '0 0 10px var(--shadow)' : 'none',
+            padding: `${TOP_BAR.button.padding}px`,
           }}
           onMouseEnter={(e) => {
             if (!isPreviewOpen) {
@@ -286,17 +334,18 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           }}
           title="Toggle preview"
         >
-          <PanelRight size={20} />
+          <PanelRight size={TOP_BAR.icons.primary} />
         </button>
         <button
           onClick={onToggleConversation}
-          className="p-2 rounded-lg transition-colors"
+          className="rounded-lg transition-colors"
           style={{
             background: isConversationOpen ? 'var(--glass-bg)' : 'transparent',
             color: isConversationOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
             border: isConversationOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
             boxShadow: isConversationOpen ? '0 0 10px var(--shadow)' : 'none',
             display: 'none',
+            padding: `${TOP_BAR.button.padding}px`,
           }}
           onMouseEnter={(e) => {
             if (!isConversationOpen) {
@@ -312,11 +361,11 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           }}
           title="Toggle conversation"
         >
-          <MessageCircle size={20} />
+          <MessageCircle size={TOP_BAR.icons.primary} />
         </button>
 
         {/* Window Controls */}
-        <div className="ml-0 -mr-2">
+        <div style={{ marginRight: `${TOP_BAR.layout.windowControlsMarginRight}px` }}>
           <WindowControls />
         </div>
       </div>
@@ -327,3 +376,4 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
 export const TopBar = forwardRef(TopBarComponent);
 TopBar.displayName = 'TopBar';
+

@@ -4,7 +4,7 @@ import { ChevronLeft, Plus, Settings } from 'lucide-react';
 import { useSpaceStore } from '../../../stores/spaceStore';
 import { objectsApi } from '../../../api/objects';
 import { Z_INDEX } from '../../../constants/zIndex';
-import { DIMENSIONS } from '../../../constants/panelDimensions';
+import { TOP_BAR } from '../../../constants/panesDimensions';
 import { FONT_ROLES } from '../../../styles/fontManager';
 import { SpaceItem } from './SpaceItem';
 import { LeftSidebarProps } from './types';
@@ -18,7 +18,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
   const [isDeleting, setIsDeleting] = useState(false);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
-  const [topBarHeight, setTopBarHeight] = useState<number>(DIMENSIONS.TOPBAR.HEIGHT);
+  const [topBarHeight, setTopBarHeight] = useState<number>(TOP_BAR.height);
   const sidebarTop = `${topBarHeight}px`;
   const sidebarHeight = `calc(100% - ${topBarHeight}px)`;
 
@@ -397,3 +397,4 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
     </>
   );
 }
+

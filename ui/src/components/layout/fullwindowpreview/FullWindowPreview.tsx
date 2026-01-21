@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, ExternalLink, Minimize2 } from 'lucide-react';
 import { Z_INDEX } from '../../../constants/zIndex';
+import { FULL_WINDOW_PREVIEW } from '../../../constants/panesDimensions';
 import { openExternalUrl } from '../../../platform';
 import { usePreviewPaneLogic } from '../previewpane/usePreviewPaneLogic';
 import { FONT_ROLES } from '../../../styles/fontManager';
@@ -107,9 +108,6 @@ export function FullWindowPreview({
     return rawContent;
   };
 
-  const imageMetadataSummary = imageMetadata
-    ? `Size: ${imageMetadata.file_size_human} | Resolution: ${imageMetadata.height} x ${imageMetadata.width} px | Ratio: ${imageMetadata.aspect_ratio}`
-    : null;
 
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(
     isDocumentFile || isEbookFile,
@@ -272,46 +270,49 @@ export function FullWindowPreview({
         className="fixed flex flex-col"
         style={{
           zIndex: Z_INDEX.MODAL,
-          top: '32px',
-          left: '32px',
-          right: '32px',
-          bottom: '44px', // 32px margin + 12px for scrollbar
+          top: `${FULL_WINDOW_PREVIEW.margin.top}px`,
+          left: `${FULL_WINDOW_PREVIEW.margin.left}px`,
+          right: `${FULL_WINDOW_PREVIEW.margin.right}px`,
+          bottom: `${FULL_WINDOW_PREVIEW.margin.bottom}px`,
           background: 'var(--background-light)',
-          borderRadius: '12px',
+          borderRadius: `${FULL_WINDOW_PREVIEW.borderRadius}px`,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden',
         }}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
+          className="flex items-center justify-between flex-shrink-0"
+          style={{
+            padding: `${FULL_WINDOW_PREVIEW.header.paddingY}px ${FULL_WINDOW_PREVIEW.header.paddingX}px`,
+            borderBottom: '1px solid var(--color-border-subtle)',
+          }}
         >
-          <div className="flex flex-col min-w-0 flex-1">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             <h2
               className="truncate"
               style={{
                 ...FONT_ROLES.paneTitle,
                 color: 'var(--primary-color)',
-                fontSize: '18px'
+                fontSize: `${FULL_WINDOW_PREVIEW.header.titleFontSize}px`,
               }}
             >
               {displayTitle}
             </h2>
             {ebookMetadata?.author && (
-              <p className="truncate text-sm" style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              <span className="truncate text-sm whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
                 by {ebookMetadata.author}
-              </p>
+              </span>
             )}
             {imageMetadata && (
-              <div className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {filePath && (
-                  <div className="break-all">Location: {filePath}</div>
-                )}
-                {imageMetadataSummary && (
-                  <div>{imageMetadataSummary}</div>
-                )}
-              </div>
+              <span className="text-xs whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
+                {imageMetadata.height}×{imageMetadata.width} · {imageMetadata.file_size_human}
+              </span>
+            )}
+            {filePath && (
+              <span className="text-xs truncate" style={{ color: 'var(--color-text-muted)', maxWidth: `${FULL_WINDOW_PREVIEW.header.metadataMaxWidth}px` }}>
+                {filePath}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -358,8 +359,11 @@ export function FullWindowPreview({
           <button
             onClick={navigation.navigatePrevious}
             disabled={!navigation.canNavigatePrevious}
-            className="absolute left-4 rounded-full w-12 h-12 flex items-center justify-center text-2xl"
+            className="absolute rounded-full flex items-center justify-center text-2xl"
             style={{
+              left: `${FULL_WINDOW_PREVIEW.navButton.offset}px`,
+              width: `${FULL_WINDOW_PREVIEW.navButton.size}px`,
+              height: `${FULL_WINDOW_PREVIEW.navButton.size}px`,
               top: '50%',
               transform: 'translateY(-50%)',
               background: 'var(--glass-bg)',
@@ -376,8 +380,11 @@ export function FullWindowPreview({
           <button
             onClick={navigation.navigateNext}
             disabled={!navigation.canNavigateNext}
-            className="absolute right-4 rounded-full w-12 h-12 flex items-center justify-center text-2xl"
+            className="absolute rounded-full flex items-center justify-center text-2xl"
             style={{
+              right: `${FULL_WINDOW_PREVIEW.navButton.offset}px`,
+              width: `${FULL_WINDOW_PREVIEW.navButton.size}px`,
+              height: `${FULL_WINDOW_PREVIEW.navButton.size}px`,
               top: '50%',
               transform: 'translateY(-50%)',
               background: 'var(--glass-bg)',
@@ -672,3 +679,4 @@ export function FullWindowPreview({
     </>
   );
 }
+

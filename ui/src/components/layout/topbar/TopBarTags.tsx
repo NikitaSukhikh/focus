@@ -8,7 +8,7 @@ interface TopBarTagsProps {
   onTagSelect?: (color: TagColor) => void;
 }
 
-// To be implemented in the future: tags button (hidden placeholder)
+// Hidden for current version.
 export const TopBarTags: React.FC<TopBarTagsProps> = ({ isOpen, onToggle, onTagSelect }) => {
   const dropdown = useTagsDropdown({ isOpenProp: isOpen, onToggle });
 

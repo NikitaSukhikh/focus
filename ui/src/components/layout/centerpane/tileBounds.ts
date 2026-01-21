@@ -1,26 +1,18 @@
 import { detectFileType } from '../../../utils/fileTypes';
 import { getVideoEmbed } from '../../../utils/videoEmbeds';
-import {
-  EMBED_LINK_HEIGHT,
-  EMBED_LINK_WIDTH,
-  NON_EMBED_LINK_SIZE,
-  VIDEO_EMBED_HEIGHT,
-  VIDEO_EMBED_WIDTH,
-} from './tile/dimensionHelpers';
+import { TILE, EMBED_LINK, NON_EMBED_LINK, VIDEO_EMBED } from '../../../constants/objectsDimensions';
 import { IconKind } from './types';
 
 type TileBoundsPadding = { x: number; y: number };
 
-const DEFAULT_FILE_TILE_SIZE = 128;
-
 const VIDEO_LINK_PADDING: TileBoundsPadding = {
-  x: Math.max(0, (EMBED_LINK_WIDTH - NON_EMBED_LINK_SIZE) / 2),
-  y: Math.max(0, (EMBED_LINK_HEIGHT - NON_EMBED_LINK_SIZE) / 2),
+  x: Math.max(0, (EMBED_LINK.width - NON_EMBED_LINK.size) / 2),
+  y: Math.max(0, (EMBED_LINK.height - NON_EMBED_LINK.size) / 2),
 };
 
 const VIDEO_FILE_PADDING: TileBoundsPadding = {
-  x: Math.max(0, (VIDEO_EMBED_WIDTH - DEFAULT_FILE_TILE_SIZE) / 2),
-  y: Math.max(0, (VIDEO_EMBED_HEIGHT - DEFAULT_FILE_TILE_SIZE) / 2),
+  x: Math.max(0, (VIDEO_EMBED.width - TILE.defaultFileTileSize) / 2),
+  y: Math.max(0, (VIDEO_EMBED.height - TILE.defaultFileTileSize) / 2),
 };
 
 export const getVideoTilePadding = (

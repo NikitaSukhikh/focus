@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Tag } from 'lucide-react';
+import { TOP_BAR } from '../../../../constants/panesDimensions';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 import { Z_INDEX } from '../../../../constants/zIndex';
 import { TagColor } from '../../../../types/tags';
@@ -22,27 +23,31 @@ export const TagsMenu = forwardRef<HTMLDivElement, TagsMenuProps>(({ isOpen, onS
   return (
     <div
       ref={ref}
-      className="absolute right-0 mt-2 w-44 rounded-lg overflow-hidden"
+      className="absolute right-0 rounded-lg overflow-hidden"
       style={{
         background: 'var(--glass-bg)',
-        border: '1px solid var(--color-border-subtle)',
+        border: `${TOP_BAR.tags.menuBorderWidth}px solid var(--color-border-subtle)`,
         boxShadow: 'var(--shadow-strong)',
         zIndex: Z_INDEX.DROPDOWN_MENU,
         backdropFilter: 'var(--glass-blur)',
+        marginTop: `${TOP_BAR.tags.menuOffsetY}px`,
+        width: `${TOP_BAR.tags.menuWidth}px`,
       }}
       role="menu"
     >
-      <div className="py-1">
+      <div style={{ padding: `${TOP_BAR.tags.menuPaddingY}px 0` }}>
         {TAG_OPTIONS.map((option) => (
           <button
             key={option.id}
             type="button"
             role="menuitem"
             onClick={() => onSelect?.(option.id)}
-            className="w-full px-3 py-2 flex items-center gap-3 transition-colors text-left"
+            className="w-full flex items-center transition-colors text-left"
             style={{
               color: 'var(--color-text-primary)',
               ...FONT_ROLES.topbarControl,
+              padding: `${TOP_BAR.tags.menuItemPaddingY}px ${TOP_BAR.tags.menuItemPaddingX}px`,
+              columnGap: `${TOP_BAR.tags.menuItemGap}px`,
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--glass-bg)';
@@ -52,10 +57,17 @@ export const TagsMenu = forwardRef<HTMLDivElement, TagsMenuProps>(({ isOpen, onS
             }}
           >
             <span
-              className="flex items-center justify-center w-6 h-6 rounded-md"
-              style={{ background: `${option.color}1a`, color: option.color, border: `1px solid ${option.color}33` }}
+              className="flex items-center justify-center"
+              style={{
+                background: `${option.color}1a`,
+                color: option.color,
+                border: `${TOP_BAR.tags.menuIconBorderWidth}px solid ${option.color}33`,
+                width: `${TOP_BAR.tags.menuIconBox}px`,
+                height: `${TOP_BAR.tags.menuIconBox}px`,
+                borderRadius: `${TOP_BAR.tags.menuIconRadius}px`,
+              }}
             >
-              <Tag size={16} color={option.color} />
+              <Tag size={TOP_BAR.tags.menuIconSize} color={option.color} />
             </span>
             <span>{option.label}</span>
           </button>
@@ -66,3 +78,4 @@ export const TagsMenu = forwardRef<HTMLDivElement, TagsMenuProps>(({ isOpen, onS
 });
 
 TagsMenu.displayName = 'TagsMenu';
+

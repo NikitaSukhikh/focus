@@ -5,7 +5,7 @@ export const defaultColors = {
   primaryLight: '#757575',
 
   /* Backgrounds */
-  backgroundDark: '#ffffff',
+  backgroundDark: '#f5f5f0',
   backgroundLight: '#f5f5f5',
   colorSurfacePage: '#ffffff',
   colorSurfacePanel: 'rgba(255, 255, 255, 0.9)',

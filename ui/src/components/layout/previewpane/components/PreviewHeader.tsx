@@ -1,6 +1,10 @@
 import { X, ExternalLink, Maximize2 } from 'lucide-react';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 import { openExternalUrl } from '../../../../platform';
+import { PREVIEW_PANE } from '../../../../constants/panesDimensions';
+import { ICON_SIZES } from '../../../../constants/objectsDimensions';
+
+const { header } = PREVIEW_PANE;
 
 interface EbookMetadata {
   title: string;
@@ -24,7 +28,10 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebo
 
   return (
     <div className="flex flex-col" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-      <div className="flex items-center justify-between px-3 py-2">
+      <div
+        className="flex items-center justify-between"
+        style={{ padding: `${header.paddingY}px ${header.paddingX}px` }}
+      >
         <div className="flex items-baseline gap-2 min-w-0 flex-1">
           <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Preview</h2>
           {showEditHint ? (
@@ -68,7 +75,7 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebo
             }}
             title="Open in full window"
           >
-            <Maximize2 size={18} />
+            <Maximize2 size={ICON_SIZES.headerButton} />
           </button>
           {url && (
             <button
@@ -90,7 +97,7 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebo
             }}
             title="Open in external browser"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={ICON_SIZES.headerButton} />
             </button>
           )}
           <button
@@ -112,10 +119,11 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebo
             }}
             title="Close preview"
           >
-            <X size={18} />
+            <X size={ICON_SIZES.headerButton} />
           </button>
         </div>
       </div>
     </div>
   );
 }
+

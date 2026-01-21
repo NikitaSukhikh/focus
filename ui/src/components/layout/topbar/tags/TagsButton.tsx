@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Tag } from 'lucide-react';
+import { TOP_BAR } from '../../../../constants/panesDimensions';
 import { FONT_ROLES } from '../../../../styles/fontManager';
 
 export interface TagsButtonProps {
@@ -15,12 +16,16 @@ export const TagsButton = forwardRef<HTMLButtonElement, TagsButtonProps>(({ onCl
     aria-pressed={isActive}
     aria-haspopup="menu"
     aria-expanded={isActive}
-    className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors"
+    className="flex items-center rounded-lg transition-colors"
     style={{
       background: isActive ? 'var(--glass-bg)' : 'transparent',
       color: isActive ? 'var(--primary-color)' : 'var(--color-text-secondary)',
-      border: isActive ? '1px solid var(--color-border-strong)' : '1px solid transparent',
-      boxShadow: isActive ? '0 0 10px var(--shadow)' : 'none',
+      border: isActive
+        ? `${TOP_BAR.tags.buttonBorderWidth}px solid var(--color-border-strong)`
+        : `${TOP_BAR.tags.buttonBorderWidth}px solid transparent`,
+      boxShadow: isActive ? `0 0 ${TOP_BAR.tags.buttonActiveShadowBlur}px var(--shadow)` : 'none',
+      columnGap: `${TOP_BAR.tags.buttonGap}px`,
+      padding: `${TOP_BAR.tags.buttonPaddingY}px ${TOP_BAR.tags.buttonPaddingX}px`,
     }}
     onMouseEnter={(e) => {
       if (!isActive) {
@@ -36,9 +41,10 @@ export const TagsButton = forwardRef<HTMLButtonElement, TagsButtonProps>(({ onCl
     }}
     title="Manage tags"
   >
-    <Tag size={18} />
+    <Tag size={TOP_BAR.tags.iconSize} />
     <span style={{ ...FONT_ROLES.topbarControl, color: 'inherit' }}>Tags</span>
   </button>
 ));
 
 TagsButton.displayName = 'TagsButton';
+

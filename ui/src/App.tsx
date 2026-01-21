@@ -10,7 +10,7 @@ import { PreviewTarget } from './components/layout/centerpane/types';
 import { detectFileType } from './utils/fileTypes';
 import { previewApi } from './api/preview';
 import { Z_INDEX } from './constants/zIndex';
-import { PANEL_DIMENSIONS } from './constants/panelDimensions';
+import { PANEL_DIMENSIONS } from './constants/panesDimensions';
 import { useSpaceStore } from './stores/spaceStore';
 import { usePersistedSpace } from './stores/hooks/usePersistedSpace';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
@@ -535,3 +535,4 @@ export function App() {
 }
 
 export default App;
+

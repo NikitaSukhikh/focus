@@ -9,7 +9,8 @@ import { useImageMetadata } from './useImageMetadata';
 import { useEbookMetadata } from './useEbookMetadata';
 import { useContextMenu } from './useContextMenu';
 import { useFileRename } from './useFileRename';
-import { HOVER_SAFE_PADDING, EMBED_LINK_WIDTH, EMBED_LINK_HEIGHT, NON_EMBED_LINK_SIZE, AUDIO_EMBED_HEIGHT, AUDIO_EMBED_WIDTH, VIDEO_EMBED_WIDTH, VIDEO_EMBED_HEIGHT, getThumbnailDimensions } from './dimensionHelpers';
+import { TILE, EMBED_LINK, NON_EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED } from '../../../../constants/objectsDimensions';
+import { getThumbnailDimensions } from './thumbnailHelpers';
 import { VideoEmbedContent } from './VideoEmbedContent';
 import { VideoFileEmbedContent } from './VideoFileEmbedContent';
 import { AudioEmbedContent } from './AudioEmbedContent';
@@ -158,11 +159,11 @@ export function Tile({
   const isAudioFile = fileCategory === 'audio';
   const isVideoFile = fileCategory === 'video';
   const tileWidth = type === 'link'
-    ? (effectiveVideoEmbed ? EMBED_LINK_WIDTH : NON_EMBED_LINK_SIZE)
-    : (isAudioFile ? AUDIO_EMBED_WIDTH : isVideoFile ? VIDEO_EMBED_WIDTH : undefined);
+    ? (effectiveVideoEmbed ? EMBED_LINK.width : NON_EMBED_LINK.size)
+    : (isAudioFile ? AUDIO_EMBED.width : isVideoFile ? VIDEO_EMBED.width : undefined);
   const tileHeight = type === 'link'
-    ? (effectiveVideoEmbed ? EMBED_LINK_HEIGHT : NON_EMBED_LINK_SIZE)
-    : (isAudioFile ? AUDIO_EMBED_HEIGHT : isVideoFile ? VIDEO_EMBED_HEIGHT : undefined);
+    ? (effectiveVideoEmbed ? EMBED_LINK.height : NON_EMBED_LINK.size)
+    : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
   const tooltipText = (() => {
     if (videoEmbed?.provider === 'youtube') {
@@ -253,7 +254,6 @@ export function Tile({
       return (
         <TextContent
           content={content}
-          isSelected={!!isSelected}
           hoverScaleClass={hoverScaleClass}
         />
       );
@@ -303,7 +303,7 @@ export function Tile({
           transition: skipTransition ? 'none' : 'all 0.2s',
           opacity: isDragging ? 0 : 1,
           userSelect: 'none',
-          padding: type === 'text' ? 0 : HOVER_SAFE_PADDING,
+          padding: type === 'text' ? 0 : TILE.hoverSafePadding,
           border: 'none',
           background: 'transparent',
           width: tileWidth ? `${tileWidth}px` : type === 'text' ? 'auto' : undefined,

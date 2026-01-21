@@ -123,6 +123,10 @@ export const TYPOGRAPHY_SIZES = {
     fontSize: '12px',
     lineHeight: '16px',
   },
+  TEXT_TILE: {
+    fontSize: '16px',
+    lineHeight: '1.6',
+  },
 } as const satisfies Record<string, TypographySize>;
 
 export type TypographyFontKey = keyof typeof TYPOGRAPHY_FONTS;

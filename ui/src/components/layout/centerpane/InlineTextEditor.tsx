@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Z_INDEX } from '../../../constants/zIndex';
-import { TEXT_WIDTH, TEXT_FONT_SIZE, TEXT_FONT_WEIGHT, TEXT_LINE_HEIGHT } from './tile/dimensionHelpers';
+import { INLINE_EDITOR } from '../../../constants/objectsDimensions';
+import { TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../styles/typographics';
 
 interface InlineTextEditorProps {
   x: number;
@@ -36,7 +37,7 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
       // Set initial width
-      textareaRef.current.style.width = `${TEXT_WIDTH}px`;
+      textareaRef.current.style.width = `${INLINE_EDITOR.width}px`;
     }
 
     // Cleanup on unmount
@@ -114,15 +115,15 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         padding: '6px 8px',
         margin: '0',
         fontFamily: 'inherit',
-        fontSize: `${TEXT_FONT_SIZE}px`,
-        fontWeight: TEXT_FONT_WEIGHT,
-        lineHeight: TEXT_LINE_HEIGHT,
+        fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
+        fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+        lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
         background: 'var(--background-dark)',
         borderRadius: '8px',
         boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
         border: '1px solid var(--color-border-strong)',
         color: 'var(--color-text-primary)',
-        width: `${TEXT_WIDTH}px`,
+        width: `${INLINE_EDITOR.width}px`,
         height: 'auto',
         overflow: 'hidden',
         whiteSpace: 'pre-wrap',

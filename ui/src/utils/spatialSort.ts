@@ -15,6 +15,7 @@ export const ROW_TOLERANCE = 64;
  * Algorithm:
  * 1. Sort tiles by Y coordinate (top to bottom)
  * 2. Group consecutive tiles into rows based on Y-coordinate similarity
+ *    using running average to prevent drift accumulation
  * 3. Within each row, sort tiles left-to-right by X coordinate
  * 4. Flatten rows into final navigation order
  *
@@ -28,7 +29,6 @@ export const ROW_TOLERANCE = 64;
  * // Returns: [A, B, C, D]
  */
 export function sortTilesSpatially(tiles: DroppedIcon[]): DroppedIcon[] {
-  // Handle edge cases
   if (tiles.length <= 1) {
     return tiles;
   }
@@ -36,7 +36,6 @@ export function sortTilesSpatially(tiles: DroppedIcon[]): DroppedIcon[] {
   // Step 1: Sort all tiles by Y (top to bottom), then by X (left to right) as tiebreaker
   const sortedByY = tiles.slice().sort((a, b) => {
     const yDiff = a.y - b.y;
-    // If Y coordinates are essentially the same, use X as tiebreaker
     if (Math.abs(yDiff) < 0.01) {
       return a.x - b.x;
     }
@@ -44,23 +43,29 @@ export function sortTilesSpatially(tiles: DroppedIcon[]): DroppedIcon[] {
   });
 
   // Step 2: Group tiles into rows based on Y-coordinate proximity
+  // Use running average Y to prevent drift accumulation
   const rows: DroppedIcon[][] = [];
   let currentRow: DroppedIcon[] = [];
-  let currentRowY: number | null = null;
+  let rowYSum = 0;
 
   for (const tile of sortedByY) {
-    if (currentRowY === null) {
+    if (currentRow.length === 0) {
       // First tile - start first row
       currentRow = [tile];
-      currentRowY = tile.y;
-    } else if (Math.abs(tile.y - currentRowY) <= ROW_TOLERANCE) {
-      // Tile is close enough vertically - add to current row
-      currentRow.push(tile);
+      rowYSum = tile.y;
     } else {
-      // Tile is too far down - start new row
-      rows.push(currentRow);
-      currentRow = [tile];
-      currentRowY = tile.y;
+      // Compare against running average Y of current row
+      const rowAvgY = rowYSum / currentRow.length;
+      if (Math.abs(tile.y - rowAvgY) <= ROW_TOLERANCE) {
+        // Tile is close enough to row's average Y - add to current row
+        currentRow.push(tile);
+        rowYSum += tile.y;
+      } else {
+        // Tile is too far down - start new row
+        rows.push(currentRow);
+        currentRow = [tile];
+        rowYSum = tile.y;
+      }
     }
   }
 

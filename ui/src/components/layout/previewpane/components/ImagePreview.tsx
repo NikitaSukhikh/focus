@@ -1,4 +1,5 @@
 import { ImageMetadata } from '../hooks/useImageMetadata';
+import { PREVIEW_PANE } from '../../../../constants/panesDimensions';
 
 interface ImagePreviewProps {
   imagePreviewUrl: string;
@@ -32,8 +33,9 @@ export function ImagePreview({
         />
         {showMetadata && imageMetadata && (
           <div
-            className="w-full p-4"
+            className="w-full"
             style={{
+              padding: `${PREVIEW_PANE.imageMetadata.padding}px`,
               background: 'var(--color-surface-panel)',
               border: '1px solid var(--color-border-subtle)',
               color: 'var(--color-text-secondary)',
@@ -43,19 +45,19 @@ export function ImagePreview({
           >
             <div className="space-y-2 text-sm">
               <div className="flex">
-                <span className="font-semibold w-24" style={{ color: 'var(--color-text-primary)' }}>Location:</span>
+                <span className="font-semibold" style={{ width: `${PREVIEW_PANE.imageMetadata.labelWidth}px`, color: 'var(--color-text-primary)' }}>Location:</span>
                 <span className="break-all flex-1">{filePath}</span>
               </div>
               <div className="flex">
-                <span className="font-semibold w-24" style={{ color: 'var(--color-text-primary)' }}>Size:</span>
+                <span className="font-semibold" style={{ width: `${PREVIEW_PANE.imageMetadata.labelWidth}px`, color: 'var(--color-text-primary)' }}>Size:</span>
                 <span>{imageMetadata.file_size_human}</span>
               </div>
               <div className="flex">
-                <span className="font-semibold w-24" style={{ color: 'var(--color-text-primary)' }}>Resolution:</span>
-                <span>{imageMetadata.height} ƒ- {imageMetadata.width} px</span>
+                <span className="font-semibold" style={{ width: `${PREVIEW_PANE.imageMetadata.labelWidth}px`, color: 'var(--color-text-primary)' }}>Resolution:</span>
+                <span>{imageMetadata.height}×{imageMetadata.width} px</span>
               </div>
               <div className="flex">
-                <span className="font-semibold w-24" style={{ color: 'var(--color-text-primary)' }}>Ratio:</span>
+                <span className="font-semibold" style={{ width: `${PREVIEW_PANE.imageMetadata.labelWidth}px`, color: 'var(--color-text-primary)' }}>Ratio:</span>
                 <span>{imageMetadata.aspect_ratio}</span>
               </div>
             </div>
@@ -65,3 +67,4 @@ export function ImagePreview({
     </div>
   );
 }
+

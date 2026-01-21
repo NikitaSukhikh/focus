@@ -1,6 +1,5 @@
 import React from 'react';
 import { TileIcon } from './Icon';
-import { truncateDisplayPath } from '../../../../utils/text';
 import { ImageMetadata } from './useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
 
@@ -102,10 +101,11 @@ export function DefaultContent({
           >
             {title}
           </div>
-          {filePath && !imageMetadata && (
+          {filePath && (
             <div
               className="text-center whitespace-pre-line break-words line-clamp-2"
               style={{
+                width: imageMetadata ? `${thumbnailWidth}px` : '100%',
                 fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
                 fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
                 lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
@@ -113,7 +113,7 @@ export function DefaultContent({
                 color: 'var(--color-text-muted)',
               }}
             >
-              {truncateDisplayPath(filePath)}
+              {filePath}
             </div>
           )}
         </>
