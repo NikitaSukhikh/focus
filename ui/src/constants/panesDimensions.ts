@@ -5,7 +5,6 @@
  * Includes panel sizes, component dimensions, min/max constraints, and localStorage keys.
  */
 
-// Pane and layout dimensions are defined here.
 export const COMMON = {
   borderRadius: 12,
   aspectRatio16x9: '56.25%', // padding-top for 16:9 aspect ratio
