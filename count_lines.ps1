@@ -2,6 +2,7 @@ $total = 0
 $blankLines = 0
 $commentLines = 0
 $languageStats = @{}
+$otherFiles = @{}
 
 git ls-files | ForEach-Object {
     if (Test-Path $_) {
@@ -60,6 +61,16 @@ git ls-files | ForEach-Object {
             $languageStats[$language].Blank += $fileBlank
             $languageStats[$language].Comment += $fileComment
             $languageStats[$language].Code += $fileCode
+
+            # Track "Other" files by extension
+            if ($language -eq "Other") {
+                $extKey = if ($ext) { $ext } else { "(no extension)" }
+                if (-not $otherFiles.ContainsKey($extKey)) {
+                    $otherFiles[$extKey] = @{Count=0; Lines=0}
+                }
+                $otherFiles[$extKey].Count++
+                $otherFiles[$extKey].Lines += $fileTotal
+            }
         }
     }
 }
@@ -79,6 +90,14 @@ $languageStats.GetEnumerator() | Sort-Object {$_.Value.Code} -Descending | ForEa
     Write-Host "  Code: $($_.Value.Code)" -ForegroundColor Green
     Write-Host "  Blank: $($_.Value.Blank)"
     Write-Host "  Comments: $($_.Value.Comment)"
+}
+
+# Show breakdown of "Other" category if it exists
+if ($otherFiles.Count -gt 0) {
+    Write-Host "`n=== 'Other' Category Breakdown ===" -ForegroundColor Cyan
+    $otherFiles.GetEnumerator() | Sort-Object {$_.Value.Lines} -Descending | ForEach-Object {
+        Write-Host "  $($_.Key): $($_.Value.Count) files, $($_.Value.Lines) lines" -ForegroundColor Gray
+    }
 }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
