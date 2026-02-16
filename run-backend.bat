@@ -10,4 +10,4 @@ echo Starting backend server on http://127.0.0.1:8000
 echo.
 
 cd backend
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000

@@ -60,6 +60,9 @@ __pycache__/
 .venv/
 venv/
 
+# uv cache
+.uv/
+
 # Database
 *.db
 storage/local_files/data/

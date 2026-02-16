@@ -102,23 +102,8 @@ if (-not $SkipBackend) {
 
     Push-Location backend
 
-    # Check if virtual environment exists
-    if (-not (Test-Path "venv")) {
-        Write-Log "  - Creating virtual environment..." -Color Gray
-        Run-Command "python" @("-m", "venv", "venv")
-    }
-
-    # Activate venv and install dependencies
-    Write-Log "  - Activating virtual environment..." -Color Gray
-    & .\venv\Scripts\Activate.ps1
-
-    Write-Log "  - Installing requirements..." -Color Gray
-    Run-Command "pip" @("install", "--upgrade", "pip")
-    Run-Command "pip" @("install", "-r", "requirements.txt")
-
-    # Install PyInstaller if not present
-    Write-Log "  - Installing PyInstaller..." -Color Gray
-    Run-Command "pip" @("install", "pyinstaller")
+    Write-Log "  - Installing dependencies with uv..." -Color Gray
+    Run-Command "uv" @("sync", "--group", "dev")
 
     # Clean previous build
     if (Test-Path "dist") {
@@ -131,7 +116,7 @@ if (-not $SkipBackend) {
 
     # Build backend executable
     Write-Log "  - Running PyInstaller..." -Color Gray
-    Run-Command "pyinstaller" @("focus.spec", "--clean")
+    Run-Command "uv" @("run", "pyinstaller", "focus.spec", "--clean")
 
     if (-not (Test-Path "dist\Focus\Focus.exe")) {
         Write-Error "Backend build failed - dist\Focus\Focus.exe not found"
