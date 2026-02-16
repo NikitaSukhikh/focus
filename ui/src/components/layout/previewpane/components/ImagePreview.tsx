@@ -19,7 +19,7 @@ export function ImagePreview({
   showMetadata = true,
   fillHeight = false,
 }: ImagePreviewProps) {
-  const containerClassName = fillHeight ? 'flex-1 min-h-0 h-full overflow-auto' : 'flex-1 overflow-auto';
+  const containerClassName = fillHeight ? 'flex-1 min-h-0 h-full overflow-auto article-scroll' : 'flex-1 overflow-auto article-scroll';
   const imageClassName = fillHeight ? 'w-full h-full object-contain' : 'w-full h-auto object-contain';
 
   return (

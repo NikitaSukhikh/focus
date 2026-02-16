@@ -7,6 +7,7 @@ import { getVideoEmbed } from '@/utils/videoEmbeds';
 import { Z_INDEX } from '@/constants/zIndex';
 import { AddLinkDialog } from '@/components/dialogs/AddLinkDialog';
 import { AddTextDialog } from '@/components/dialogs/AddTextDialog';
+import { AddWebArticleDialog } from '@/components/dialogs/AddWebArticleDialog';
 import { InlineTextEditor } from '@/components/layout/centerpane/InlineTextEditor';
 import { useSpaceStore } from '@/stores/spaceStore';
 import { Loader2 } from 'lucide-react';
@@ -27,23 +28,30 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const isDuplicating = useSpaceStore((state) => state.isDuplicating);
 
   // Expose methods to parent via ref
+  const getCenterCanvasPos = () => {
+    if (!paneRef.current) return { x: 200, y: 200 };
+    const rect = paneRef.current.getBoundingClientRect();
+    const scrollLeft = paneRef.current.scrollLeft;
+    const scrollTop = paneRef.current.scrollTop;
+    return {
+      x: (rect.width / 2 + scrollLeft) / Math.max(zoom, 0.01),
+      y: (rect.height / 2 + scrollTop) / Math.max(zoom, 0.01),
+    };
+  };
+
   useImperativeHandle(ref, () => ({
     addFiles: logic.handleAddFiles,
     getTilesForSpace: (spaceId: string) => logic.iconsBySpace[spaceId] || [],
     openAddLinkDialog: () => {
-      if (!paneRef.current) {
-        logic.openAddLinkDialog(200, 200);
-        return;
-      }
-      const rect = paneRef.current.getBoundingClientRect();
-      const scrollLeft = paneRef.current.scrollLeft;
-      const scrollTop = paneRef.current.scrollTop;
-      const centerCanvasX = (rect.width / 2 + scrollLeft) / Math.max(zoom, 0.01);
-      const centerCanvasY = (rect.height / 2 + scrollTop) / Math.max(zoom, 0.01);
-      logic.openAddLinkDialog(centerCanvasX, centerCanvasY);
+      const { x, y } = getCenterCanvasPos();
+      logic.openAddLinkDialog(x, y);
+    },
+    openAddWebArticleDialog: () => {
+      const { x, y } = getCenterCanvasPos();
+      logic.openAddWebArticleDialog(x, y);
     },
     pasteFromClipboard: logic.pasteFromClipboard,
-  }), [logic.handleAddFiles, logic.iconsBySpace, logic.openAddLinkDialog, logic.pasteFromClipboard, zoom]);
+  }), [logic.handleAddFiles, logic.iconsBySpace, logic.openAddLinkDialog, logic.openAddWebArticleDialog, logic.pasteFromClipboard, zoom]);
 
   const selectedIcons = useMemo(() => {
     if (!logic.selectedSpace) return [];
@@ -501,6 +509,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   isSelected={logic.selectedIconIds.includes(icon.id)}
                   onClick={(event) => {
                     clearPreviewTimeout();
+                    if (icon.type === 'web_article') return;
                     const isToggle = event.metaKey || event.ctrlKey;
                     if (isToggle) {
                       const isAlreadySelected = logic.selectedIconIds.includes(icon.id);
@@ -522,6 +531,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   }}
                   onDelete={() => logic.handleIconDelete(icon.id)}
                   onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
+                  onEditLink={
+                    icon.type === 'link'
+                      ? () => logic.openLinkEditDialog(icon)
+                      : icon.type === 'web_article'
+                        ? () => logic.openWebArticleEditDialog(icon)
+                        : undefined
+                  }
                   onEdit={(x, y, content, id) => {
                     clearPreviewTimeout();
                     logic.openInlineEditor(x, y, content, id);
@@ -710,6 +726,19 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         isOpen={logic.isAddTextDialogOpen}
         onClose={logic.closeAddTextDialog}
         onAdd={logic.handleAddText}
+      />
+
+      {/* Add Web Article Dialog */}
+      <AddWebArticleDialog
+        isOpen={logic.isAddWebArticleDialogOpen}
+        onClose={logic.closeAddWebArticleDialog}
+        onAdd={logic.handleAddWebArticle}
+        submitLabel={logic.editingArticle ? 'Save Article' : 'Add Web Article'}
+        initialValues={logic.editingArticle ? {
+          id: logic.editingArticle.id,
+          url: logic.editingArticle.url,
+          title: logic.editingArticle.title,
+        } : undefined}
       />
     </div>
   );

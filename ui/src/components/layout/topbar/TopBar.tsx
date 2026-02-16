@@ -89,16 +89,6 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               height: `${TOP_BAR.logo.size}px`,
             }}
           />
-          <span
-            style={{
-              fontFamily: 'Segoe UI, sans-serif',
-              fontSize: `${TOP_BAR.appName.fontSize}px`,
-              fontWeight: 400,
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            Focus
-          </span>
           <button
             onClick={() => onOpenQuickAdd()}
             className="rounded-lg flex items-center justify-center transition-all"
@@ -123,49 +113,47 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           >
             <Plus size={TOP_BAR.icons.small} />
           </button>
-        </div>
-      </div>
-
-      {/* Center section - Space Name (absolute positioned) */}
-      <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none" style={{ zIndex: Z_INDEX.BASE, left: `calc(50% + ${TOP_BAR.title.leftOffset}px)`, transform: `translate(-50%, -50%)` }}>
-        <div className="pointer-events-auto">
-          {logic.selectedSpace ? (
-            logic.isEditingSpaceName ? (
-              <input
-                ref={logic.spaceNameInputRef}
-                type="text"
-                value={logic.editingSpaceName}
-                onChange={(e) => logic.setEditingSpaceName(e.target.value)}
-                onKeyDown={logic.handleSpaceNameKeyDown}
-                onBlur={logic.handleSpaceNameSubmit}
-                className="text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-center"
-                style={{
-                  ...FONT_ROLES.topbarTitle,
-                  maxWidth: `${TOP_BAR.title.maxWidth}px`,
-                }}
-              />
+          <div className="min-w-0" style={{ marginLeft: '6px' }}>
+            {logic.selectedSpace ? (
+              logic.isEditingSpaceName ? (
+                <input
+                  ref={logic.spaceNameInputRef}
+                  type="text"
+                  value={logic.editingSpaceName}
+                  onChange={(e) => logic.setEditingSpaceName(e.target.value)}
+                  onKeyDown={logic.handleSpaceNameKeyDown}
+                  onBlur={logic.handleSpaceNameSubmit}
+                  className="text-slate-900 bg-transparent outline-none focus:ring-0 focus:outline-none border-none p-0 m-0 text-left"
+                  style={{
+                    ...FONT_ROLES.topbarTitle,
+                    color: 'var(--primary-color)',
+                    maxWidth: `${TOP_BAR.title.maxWidth}px`,
+                  }}
+                />
+              ) : (
+                <h1
+                  onDoubleClick={() => logic.setIsEditingSpaceName(true)}
+                  className="cursor-pointer transition-colors truncate"
+                  style={{
+                    ...FONT_ROLES.topbarTitle,
+                    color: 'var(--primary-color)',
+                    maxWidth: `${TOP_BAR.title.maxWidth}px`,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textShadow = '0 0 10px var(--glow)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textShadow = 'none';
+                  }}
+                  title="Double-click to rename"
+                >
+                  {logic.selectedSpace.name}
+                </h1>
+              )
             ) : (
-              <h1
-                onDoubleClick={() => logic.setIsEditingSpaceName(true)}
-                className="cursor-pointer transition-colors"
-                style={{
-                  ...FONT_ROLES.topbarTitle,
-                  color: 'var(--primary-color)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.textShadow = '0 0 10px var(--glow)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.textShadow = 'none';
-                }}
-                title="Double-click to rename"
-              >
-                {logic.selectedSpace.name}
-              </h1>
-            )
-          ) : (
-            <span style={{ ...FONT_ROLES.topbarTitle, color: 'var(--color-text-muted)' }}>No Space Selected</span>
-          )}
+              <span style={{ ...FONT_ROLES.topbarTitle, color: 'var(--color-text-muted)' }}>No Space Selected</span>
+            )}
+          </div>
         </div>
       </div>
 

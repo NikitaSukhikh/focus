@@ -1,6 +1,6 @@
 import { detectFileType } from '@/utils/fileTypes';
 import { getVideoEmbed } from '@/utils/videoEmbeds';
-import { TILE, EMBED_LINK, NON_EMBED_LINK, VIDEO_EMBED } from '@/constants/objectsDimensions';
+import { TILE, EMBED_LINK, NON_EMBED_LINK, VIDEO_EMBED, WEB_ARTICLE_EMBED } from '@/constants/objectsDimensions';
 import { IconKind } from '@/components/layout/centerpane/types';
 
 type TileBoundsPadding = { x: number; y: number };
@@ -15,11 +15,20 @@ const VIDEO_FILE_PADDING: TileBoundsPadding = {
   y: Math.max(0, (VIDEO_EMBED.height - TILE.defaultFileTileSize) / 2),
 };
 
+const WEB_ARTICLE_PADDING: TileBoundsPadding = {
+  x: (WEB_ARTICLE_EMBED.width / 2) - 60,
+  y: (WEB_ARTICLE_EMBED.height / 2) - 60,
+};
+
 export const getVideoTilePadding = (
   type: IconKind,
   url?: string,
   filePath?: string
 ): TileBoundsPadding | null => {
+  if (type === 'web_article') {
+    return WEB_ARTICLE_PADDING;
+  }
+
   if (type === 'link' && getVideoEmbed(url)) {
     return VIDEO_LINK_PADDING;
   }

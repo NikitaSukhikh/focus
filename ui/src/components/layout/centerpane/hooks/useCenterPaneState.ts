@@ -91,7 +91,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const customDescription = ((obj as any).custom_description as string | null | undefined) ?? null;
             const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
             const description = obj.type !== 'google_drive' ? (customDescription ?? obj.description ?? defaultDescription) : undefined;
-            const url = (obj.type === 'link' || obj.type === 'gmail') ? (meta.url as string) : undefined;
+            const url = (obj.type === 'link' || obj.type === 'gmail' || obj.type === 'web_article') ? (meta.url as string) : undefined;
             const service = meta.service as string | undefined;
             const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
             const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
@@ -126,6 +126,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
                 )
                 : obj.type === 'text'
                 ? 'text'
+                : obj.type === 'web_article'
+                ? 'web_article'
                 : 'unknown';
 
             return {

@@ -90,7 +90,7 @@ export function DefaultContent({
 
   return (
     <div
-      className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`}
+      className={`flex flex-col items-start transition-transform duration-150 ${hoverScaleClass}`}
       style={{ pointerEvents: 'none', width: 'max-content', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
     >
       {thumbnailUrl && (
@@ -191,7 +191,7 @@ export function DefaultContent({
           </div>
           {filePath && (
             <div
-              className="text-center whitespace-pre-line break-all line-clamp-2"
+              className="text-left whitespace-pre-line break-all line-clamp-2"
               style={{
                 width: `${contentWidth}px`,
                 fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,

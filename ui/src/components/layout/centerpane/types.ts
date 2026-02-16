@@ -12,6 +12,7 @@ export type IconKind =
   | 'text'
   | 'telegram'
   | 'intstorage'
+  | 'web_article'
   | 'unknown';
 
 export interface ArrowSegment {
@@ -66,6 +67,7 @@ export interface CenterPaneHandle {
   addFiles: () => Promise<void>;
   getTilesForSpace: (spaceId: string) => DroppedIcon[];
   openAddLinkDialog: () => void;
+  openAddWebArticleDialog: () => void;
   pasteFromClipboard: () => Promise<void>;
 }
 
@@ -89,4 +91,5 @@ export interface TileProps {
   onDelete?: () => void;
   onRefreshMetadata?: () => void;
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
+  onEditLink?: () => void;
 }

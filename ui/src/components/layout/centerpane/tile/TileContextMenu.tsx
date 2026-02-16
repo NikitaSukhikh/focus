@@ -16,6 +16,7 @@ interface TileContextMenuProps {
   onOpenExternal: () => void;
   onRefreshMetadata: () => void;
   onRenameFile?: () => void;
+  onEditLink?: () => void;
   onDelete: () => void;
 }
 
@@ -34,6 +35,7 @@ export function TileContextMenu({
   onOpenExternal,
   onRefreshMetadata,
   onRenameFile,
+  onEditLink,
   onDelete,
 }: TileContextMenuProps) {
   if (!show) return null;
@@ -84,7 +86,7 @@ export function TileContextMenu({
             Copy path/URL
           </button>
         )}
-        {type === 'link' && url && (
+        {(type === 'link' || type === 'web_article') && url && (
           <button
             onClick={onOpenExternal}
             title="Open in External Browser"
@@ -110,6 +112,24 @@ export function TileContextMenu({
           >
             <Pencil size={14} />
             Rename file
+          </button>
+        )}
+        {type === 'link' && onEditLink && (
+          <button
+            onClick={onEditLink}
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+          >
+            <Pencil size={14} />
+            Edit URL
+          </button>
+        )}
+        {type === 'web_article' && onEditLink && (
+          <button
+            onClick={onEditLink}
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+          >
+            <Pencil size={14} />
+            Edit URL
           </button>
         )}
         <button

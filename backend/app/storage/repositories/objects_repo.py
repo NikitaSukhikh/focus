@@ -27,6 +27,7 @@ from app.models.object import (
     GoogleDriveObjectCreate,
     GmailObjectCreate,
     TextObjectCreate,
+    WebArticleObjectCreate,
 )
 from app.core.logging import get_logger
 from app.storage.db import AsyncSessionLocal, Object
@@ -86,7 +87,8 @@ class ObjectsRepository:
             FileObjectCreate,
             GoogleDriveObjectCreate,
             GmailObjectCreate,
-            TextObjectCreate
+            TextObjectCreate,
+            WebArticleObjectCreate
         ],
         session: AsyncSession | None = None
     ) -> ObjectResponse:
@@ -204,6 +206,11 @@ class ObjectsRepository:
             }
             if getattr(object_data, "service", None):
                 metadata["service"] = object_data.service
+        elif isinstance(object_data, WebArticleObjectCreate):
+            metadata = {
+                "url": str(object_data.url),
+                "favicon_url": str(object_data.favicon_url) if object_data.favicon_url else None,
+            }
 
         # Add position coordinates if provided
         if hasattr(object_data, 'x') and object_data.x is not None:

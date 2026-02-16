@@ -3,7 +3,7 @@ import { requestTracker } from '@/utils/requestTracker';
 import { TagValue } from '@/types/tags';
 import { API_BASE } from '@/config/api';
 
-export type ObjectType = 'link' | 'file' | 'google_drive' | 'gmail' | 'text';
+export type ObjectType = 'link' | 'file' | 'google_drive' | 'gmail' | 'text' | 'web_article';
 
 export interface ObjectCreatePayload {
   type: ObjectType;

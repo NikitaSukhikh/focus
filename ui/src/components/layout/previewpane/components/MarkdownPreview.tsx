@@ -27,7 +27,7 @@ export function MarkdownPreview({ filePath, content, title }: MarkdownPreviewPro
   }, [content]);
 
   return (
-    <div className="flex-1 overflow-auto min-h-0 h-full" style={{ background: 'var(--background-dark)' }}>
+    <div className="flex-1 overflow-auto min-h-0 h-full article-scroll" style={{ background: 'var(--background-dark)' }}>
       <div className="p-6 max-w-4xl mx-auto w-full">
         <div className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
           {filePath && <div className="font-mono break-all">{filePath}</div>}

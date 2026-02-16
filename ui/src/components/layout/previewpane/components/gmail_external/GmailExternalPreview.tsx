@@ -30,7 +30,7 @@ export function GmailExternalPreview({ url, title, gmailEmail }: GmailExternalPr
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-white">
+    <div className="flex-1 overflow-auto bg-white article-scroll">
       <div className="p-8 max-w-2xl mx-auto">
         {/* Gmail Icon */}
         <div className="mb-6 flex items-center gap-3">

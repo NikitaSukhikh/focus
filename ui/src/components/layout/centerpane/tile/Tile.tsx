@@ -9,11 +9,12 @@ import { useImageMetadata } from '@/components/layout/centerpane/tile/useImageMe
 import { useEbookMetadata } from '@/components/layout/centerpane/tile/useEbookMetadata';
 import { useContextMenu } from '@/components/layout/centerpane/tile/useContextMenu';
 import { useFileRename } from '@/components/layout/centerpane/tile/useFileRename';
-import { TILE, EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED } from '@/constants/objectsDimensions';
+import { TILE, EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED, WEB_ARTICLE_EMBED } from '@/constants/objectsDimensions';
 import { getThumbnailDimensions } from '@/components/layout/centerpane/tile/thumbnailHelpers';
 import { VideoEmbedContent } from '@/components/layout/centerpane/tile/VideoEmbedContent';
 import { VideoFileEmbedContent } from '@/components/layout/centerpane/tile/VideoFileEmbedContent';
 import { AudioEmbedContent } from '@/components/layout/centerpane/tile/AudioEmbedContent';
+import { WebArticleContent } from '@/components/layout/centerpane/tile/WebArticleContent';
 import { LinkContent } from '@/components/layout/centerpane/tile/LinkContent';
 import { TextContent } from '@/components/layout/centerpane/tile/TextContent';
 import { DefaultContent } from '@/components/layout/centerpane/tile/DefaultContent';
@@ -41,7 +42,8 @@ export function Tile({
   onPositionChange: _onPositionChange,
   onDelete,
   onRefreshMetadata,
-  onEdit
+  onEdit,
+  onEditLink,
 }: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isInteractionLocked, setIsInteractionLocked] = useState(false);
@@ -76,7 +78,7 @@ export function Tile({
   });
 
   const openLinkExternally = async () => {
-    if (type !== 'link' || !url) return;
+    if ((type !== 'link' && type !== 'web_article') || !url) return;
     // Simply open URL in external browser - no OAuth needed
     const { openExternalUrl } = await import('../../../../platform');
     openExternalUrl(url);
@@ -159,12 +161,17 @@ export function Tile({
   const isAudioFile = fileCategory === 'audio';
   const isVideoFile = fileCategory === 'video';
   const isVideoLink = type === 'link' && !!effectiveVideoEmbed;
-  const tileWidth = type === 'link'
-    ? (isVideoLink ? EMBED_LINK.width : undefined)
-    : (isAudioFile ? AUDIO_EMBED.width : isVideoFile ? VIDEO_EMBED.width : undefined);
-  const tileHeight = type === 'link'
-    ? (isVideoLink ? EMBED_LINK.height : undefined)
-    : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
+  const isWebArticle = type === 'web_article';
+  const tileWidth = isWebArticle
+    ? WEB_ARTICLE_EMBED.width
+    : type === 'link'
+      ? (isVideoLink ? EMBED_LINK.width : undefined)
+      : (isAudioFile ? AUDIO_EMBED.width : isVideoFile ? VIDEO_EMBED.width : undefined);
+  const tileHeight = isWebArticle
+    ? WEB_ARTICLE_EMBED.height
+    : type === 'link'
+      ? (isVideoLink ? EMBED_LINK.height : undefined)
+      : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
   const tooltipText = (() => {
     if (videoEmbed?.provider === 'youtube') {
@@ -197,6 +204,19 @@ export function Tile({
   };
 
   const renderContent = () => {
+    if (type === 'web_article' && url) {
+      return (
+        <WebArticleContent
+          id={id}
+          url={url}
+          title={title}
+          isSelected={!!isSelected}
+          hoverScaleClass={hoverScaleClass}
+          onInteractionChange={setIsInteractionLocked}
+        />
+      );
+    }
+
     if (type === 'link' && effectiveVideoEmbed) {
       return (
         <VideoEmbedContent
@@ -293,7 +313,7 @@ export function Tile({
         title={tooltipText}
         className={`
           group absolute select-none
-          ${type === 'link' || isAudioFile || isVideoFile ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing
+          ${type === 'link' || type === 'web_article' || isAudioFile || isVideoFile ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing
           outline-none focus:outline-none
           ${isDragging ? 'invisible' : ''}
         `}
@@ -334,6 +354,10 @@ export function Tile({
         onRenameFile={type === 'file' && filePath ? () => {
           setShowContextMenu(false);
           openRenameDialog();
+        } : undefined}
+        onEditLink={(type === 'link' || type === 'web_article') && onEditLink ? () => {
+          setShowContextMenu(false);
+          onEditLink();
         } : undefined}
         onDelete={handleDeleteClick}
       />

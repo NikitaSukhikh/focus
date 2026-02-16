@@ -100,6 +100,79 @@ async def fetch_url_metadata(
         return UrlMetadataResponse()
 
 
+class ArticleContentResponse(BaseModel):
+    """Response model for extracted article content."""
+    title: str | None = None
+    content_html: str | None = None
+    error: str | None = None
+
+
+@router.get(
+    "/article/extract",
+    response_model=ArticleContentResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Extract article content",
+    description="Fetch and extract readable article content from a URL as HTML.",
+    tags=["Preview"]
+)
+async def extract_article_content(
+    url: str = Query(..., description="URL to extract article from")
+) -> ArticleContentResponse:
+    """
+    Extract clean article content from a URL using BeautifulSoup.
+    Strips navigation, ads and boilerplate; returns main article body as HTML.
+    """
+    import httpx
+    from bs4 import BeautifulSoup
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            html = resp.text
+    except Exception as exc:
+        logger.warning(f"[article/extract] Failed to fetch URL: {exc}")
+        return ArticleContentResponse(error=f"Could not fetch URL: {exc}")
+
+    try:
+        soup = BeautifulSoup(html, "lxml")
+
+        for tag in soup(["script", "style", "noscript", "nav", "header",
+                          "footer", "aside", "form", "iframe", "svg",
+                          "button", "input", "select", "textarea"]):
+            tag.decompose()
+
+        title_tag = soup.find("title")
+        title = title_tag.get_text(strip=True) if title_tag else None
+
+        article = None
+        for selector in ["article", '[role="main"]', "main",
+                          ".article-body", ".post-content",
+                          ".entry-content", ".content"]:
+            article = soup.select_one(selector)
+            if article:
+                break
+        if not article:
+            article = soup.find("body")
+
+        content_html = str(article) if article else "<p>No content found.</p>"
+        return ArticleContentResponse(title=title, content_html=content_html)
+
+    except Exception as exc:
+        logger.warning(f"[article/extract] Parse failed: {exc}")
+        return ArticleContentResponse(error=f"Could not parse article: {exc}")
+
+
 @router.get(
     "/objects/{object_id}/preview",
     response_model=PreviewResponse,

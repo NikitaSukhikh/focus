@@ -443,7 +443,7 @@ export function FullWindowPreview({
           )}
 
           {isTextFile && (
-            <div className="flex-1 overflow-auto h-full" style={{ background: 'var(--background-dark)' }}>
+            <div className="flex-1 overflow-auto h-full article-scroll" style={{ background: 'var(--background-dark)' }}>
               <div className="flex flex-col h-full w-full p-6">
                 <div className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
                   {content ? 'Text file preview' : 'Loading text preview...'}
@@ -499,7 +499,7 @@ export function FullWindowPreview({
 
           {/* Image preview */}
           {imagePreviewUrl && (
-            <div className="flex-1 min-h-0 h-full overflow-auto">
+            <div className="flex-1 min-h-0 h-full overflow-auto article-scroll">
               <div className="flex flex-col h-full min-h-0">
                 <div className="flex-1 min-h-0 w-full">
                   <img

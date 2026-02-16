@@ -50,6 +50,7 @@ class ObjectType(str, Enum):
     GOOGLE_DRIVE = "google_drive"  # Google Drive file
     GMAIL = "gmail"              # Gmail email
     TEXT = "text"                # Plain text written in UI (NOT a .txt file!)
+    WEB_ARTICLE = "web_article"  # Embedded web article (rendered inline)
 
 
 class ObjectBase(BaseModel):
@@ -494,6 +495,24 @@ class TextObjectCreate(ObjectBase):
         return v
 
 
+class WebArticleObjectCreate(ObjectBase):
+    """Schema for creating a Web Article object (embedded, scrollable article tile)."""
+
+    type: ObjectType = Field(
+        default=ObjectType.WEB_ARTICLE,
+        description="Object type"
+    )
+    url: HttpUrl = Field(..., description="URL of the article")
+    favicon_url: Optional[HttpUrl] = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: ObjectType) -> ObjectType:
+        if v != ObjectType.WEB_ARTICLE:
+            raise ValueError("Type must be 'web_article' for WebArticleObjectCreate")
+        return v
+
+
 # ============================================================================
 # Union Create Schema
 # ============================================================================
@@ -504,7 +523,8 @@ ObjectCreate = Union[
     FileObjectCreate,
     GoogleDriveObjectCreate,
     GmailObjectCreate,
-    TextObjectCreate
+    TextObjectCreate,
+    WebArticleObjectCreate
 ]
 
 

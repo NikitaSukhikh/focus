@@ -52,7 +52,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
   const displayAlbum = metadata?.album;
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto article-scroll">
       <div className="p-8 max-w-4xl mx-auto">
         {/* Title Section */}
         <div className="mb-8 text-center">

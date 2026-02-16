@@ -375,6 +375,10 @@ export function App() {
     centerPaneRef.current?.openAddLinkDialog();
   };
 
+  const handleQuickAddWebArticle = () => {
+    centerPaneRef.current?.openAddWebArticleDialog();
+  };
+
   const handleQuickAddPaste = () => {
     void centerPaneRef.current?.pasteFromClipboard?.();
   };
@@ -514,6 +518,7 @@ export function App() {
         onClose={closeQuickAdd}
         onAddFiles={handleQuickAddFiles}
         onAddLink={handleQuickAddLink}
+        onAddWebArticle={handleQuickAddWebArticle}
         onPaste={handleQuickAddPaste}
         position={quickAddPosition}
       />

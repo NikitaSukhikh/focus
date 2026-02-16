@@ -33,6 +33,7 @@ export const EMBED_LINK = {
 export const NON_EMBED_LINK = {
   size: 192,
   maxWidth: 420,
+  descriptionMaxWidth: 220,
 };
 
 // ============================================
@@ -49,6 +50,14 @@ export const AUDIO_EMBED = {
 export const VIDEO_EMBED = {
   width: 360,
   height: 260,
+};
+
+// ============================================
+// Web Article Embed Tiles
+// ============================================
+export const WEB_ARTICLE_EMBED = {
+  width: 600,
+  height: 640,
 };
 
 // ============================================

@@ -20,6 +20,7 @@ import { useCenterPaneIconActions } from '@/components/layout/centerpane/hooks/u
 import { useCenterPaneFileHandling } from '@/components/layout/centerpane/hooks/useCenterPaneFileHandling';
 import { useCenterPaneLinkCreation } from '@/components/layout/centerpane/hooks/useCenterPaneLinkCreation';
 import { useCenterPaneTextCreation } from '@/components/layout/centerpane/hooks/useCenterPaneTextCreation';
+import { useCenterPaneWebArticleCreation } from '@/components/layout/centerpane/hooks/useCenterPaneWebArticleCreation';
 import { useInlineTextEditor } from '@/components/layout/centerpane/hooks/useInlineTextEditor';
 import { useUndo } from '@/components/layout/centerpane/hooks/useUndo';
 import { useCenterPanePaste } from '@/components/layout/centerpane/hooks/useCenterPanePaste';
@@ -97,6 +98,13 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     selectedSpace,
     setIconsBySpace,
     clampToBoundaries,
+    clampToBoundariesWithPadding,
+  });
+
+  // Web article creation
+  const webArticleCreation = useCenterPaneWebArticleCreation({
+    selectedSpace,
+    setIconsBySpace,
     clampToBoundariesWithPadding,
   });
 
@@ -178,6 +186,14 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     handleAddLink: linkCreation.handleAddLink,
     closeAddLinkDialog: linkCreation.closeAddLinkDialog,
     editingLink: linkCreation.editingLink,
+
+    // Web article creation
+    isAddWebArticleDialogOpen: webArticleCreation.isAddWebArticleDialogOpen,
+    openAddWebArticleDialog: webArticleCreation.openAddWebArticleDialog,
+    openWebArticleEditDialog: webArticleCreation.openWebArticleEditDialog,
+    closeAddWebArticleDialog: webArticleCreation.closeAddWebArticleDialog,
+    handleAddWebArticle: webArticleCreation.handleAddWebArticle,
+    editingArticle: webArticleCreation.editingArticle,
 
     // Paste handling
     pasteFromClipboard: pasteHandlers.pasteFromClipboard,

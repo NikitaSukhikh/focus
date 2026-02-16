@@ -81,7 +81,7 @@ export function LinkContent({
           </>
         ) : (
           <>
-            <div className="flex items-center gap-1 w-full min-w-0">
+            <div className="flex items-start gap-1 w-full min-w-0">
               <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
                 <TileIcon
                   type="link"
@@ -97,7 +97,7 @@ export function LinkContent({
                 />
               </div>
               <div
-                className="line-clamp-2 text-center flex-1 break-words"
+                className="line-clamp-2 text-left flex-1 break-words"
                 style={{
                   fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
                   fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
@@ -111,13 +111,14 @@ export function LinkContent({
             </div>
             {description && (
               <div
-                className="line-clamp-3 mt-0.5 text-center whitespace-pre-line break-words"
+                className="line-clamp-2 mt-0.5 text-center break-words"
                 style={{
                   fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
                   fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
                   lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
                   fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
                   color: 'var(--color-text-muted)',
+                  maxWidth: `${NON_EMBED_LINK.descriptionMaxWidth}px`,
                 }}
               >
                 <HighlightText text={description} query={searchQuery} />
@@ -125,7 +126,7 @@ export function LinkContent({
             )}
             {url && (
               <div
-                className="mt-1 text-center whitespace-pre-line break-words line-clamp-2"
+                className="mt-1 text-center break-words line-clamp-1"
                 style={{
                   fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
                   fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,

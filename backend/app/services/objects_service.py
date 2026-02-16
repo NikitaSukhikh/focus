@@ -45,6 +45,7 @@ from app.models.object import (
     GoogleDriveObjectCreate,
     GmailObjectCreate,
     TextObjectCreate,
+    WebArticleObjectCreate,
     FileRenameResponse,
 )
 import shutil
@@ -137,7 +138,8 @@ class ObjectsService:
             FileObjectCreate,
             GoogleDriveObjectCreate,
             GmailObjectCreate,
-            TextObjectCreate
+            TextObjectCreate,
+            WebArticleObjectCreate
         ],
         session: AsyncSession | None = None
     ) -> ObjectResponse:
@@ -622,7 +624,8 @@ class ObjectsService:
             FileObjectCreate,
             GoogleDriveObjectCreate,
             GmailObjectCreate,
-            TextObjectCreate
+            TextObjectCreate,
+            WebArticleObjectCreate
         ]
     ) -> None:
         """
@@ -651,6 +654,8 @@ class ObjectsService:
             self._validate_gmail_object(object_data)
         elif isinstance(object_data, TextObjectCreate):
             self._validate_text_object(object_data)
+        elif isinstance(object_data, WebArticleObjectCreate):
+            self._validate_link_object(object_data)  # same URL validation
 
     def _validate_title(self, title: str) -> None:
         """

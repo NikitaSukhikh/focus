@@ -30,84 +30,58 @@ body {
   background: var(--background-dark);
 }
 
-/* Custom scrollbar styling */
-.custom-scroll {
+/* Thin scrollbar — used everywhere */
+.custom-scroll,
+.preview-description-scroll,
+.sidebar-scroll,
+.article-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--primary-color) rgba(10, 10, 32, 0.3);
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
-.custom-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.article-scroll img,
+.article-scroll table,
+.article-scroll pre,
+.article-scroll video,
+.article-scroll iframe {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.custom-scroll::-webkit-scrollbar-track {
-  background: rgba(10, 10, 32, 0.3);
-  border-radius: 4px;
+.article-scroll pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: var(--primary-color);
-  border-radius: 4px;
-  border: 2px solid rgba(10, 10, 32, 0.3);
+.custom-scroll::-webkit-scrollbar,
+.preview-description-scroll::-webkit-scrollbar,
+.sidebar-scroll::-webkit-scrollbar,
+.article-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-light);
-  box-shadow: 0 0 10px var(--shadow);
+.custom-scroll::-webkit-scrollbar-track,
+.preview-description-scroll::-webkit-scrollbar-track,
+.sidebar-scroll::-webkit-scrollbar-track,
+.article-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Compact scrollbar for preview description panel */
-.preview-description-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--primary-color) rgba(10, 10, 32, 0.3);
+.custom-scroll::-webkit-scrollbar-thumb,
+.preview-description-scroll::-webkit-scrollbar-thumb,
+.sidebar-scroll::-webkit-scrollbar-thumb,
+.article-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
 }
 
-.preview-description-scroll::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
-}
-
-.preview-description-scroll::-webkit-scrollbar-track {
-  background: rgba(10, 10, 32, 0.3);
-  border-radius: 4px;
-}
-
-.preview-description-scroll::-webkit-scrollbar-thumb {
-  background: var(--primary-color);
-  border-radius: 4px;
-  border: 1px solid rgba(10, 10, 32, 0.3);
-}
-
-.preview-description-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-light);
-  box-shadow: 0 0 6px var(--shadow);
-}
-
-/* Dark sidebar scrollbar */
-.sidebar-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--primary-dark) rgba(5, 5, 16, 0.8);
-}
-
-.sidebar-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.sidebar-scroll::-webkit-scrollbar-track {
-  background: rgba(5, 5, 16, 0.8);
-  border-radius: 4px;
-}
-
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: var(--primary-dark);
-  border-radius: 4px;
-  border: 2px solid rgba(5, 5, 16, 0.8);
-}
-
-.sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-color);
-  box-shadow: 0 0 10px var(--shadow);
+.custom-scroll::-webkit-scrollbar-thumb:hover,
+.preview-description-scroll::-webkit-scrollbar-thumb:hover,
+.sidebar-scroll::-webkit-scrollbar-thumb:hover,
+.article-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
 }
 
 /* Glass-morphism utility classes */

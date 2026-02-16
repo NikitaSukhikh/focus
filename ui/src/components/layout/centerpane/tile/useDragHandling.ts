@@ -8,6 +8,9 @@ const copyComputedStyle = (source: Element, target: HTMLElement) => {
 };
 
 // Clone the element tree and inline computed styles so the drag image renders as a single flattened PNG.
+// Style copying is capped at MAX_STYLE_NODES to avoid blocking the main thread on large DOM trees (e.g. web articles).
+const MAX_STYLE_NODES = 60;
+
 const cloneNodeWithStyles = (node: HTMLElement): HTMLElement => {
   const clone = node.cloneNode(true) as HTMLElement;
   copyComputedStyle(node, clone);
@@ -15,11 +18,13 @@ const cloneNodeWithStyles = (node: HTMLElement): HTMLElement => {
   const sourceWalker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, null);
   const cloneWalker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT, null);
 
-  while (sourceWalker.nextNode()) {
+  let count = 0;
+  while (sourceWalker.nextNode() && count < MAX_STYLE_NODES) {
     const sourceEl = sourceWalker.currentNode as HTMLElement;
     const cloneEl = cloneWalker.nextNode() as HTMLElement | null;
     if (!cloneEl) break;
     copyComputedStyle(sourceEl, cloneEl);
+    count++;
   }
 
   return clone;
@@ -69,23 +74,31 @@ export function useDragHandling(id: string, x: number, y: number) {
   const buttonRef = useRef<HTMLElement | null>(null);
 
   // Pre-render the tile into a single PNG so the drag image is a unified snapshot.
+  // Scheduled during idle time to avoid blocking the main thread after position updates.
   useEffect(() => {
     let cancelled = false;
-    const el = buttonRef.current;
-    if (!el) return;
 
-    generateDragPreview(el)
-      .then((canvas) => {
-        if (!cancelled) {
-          dragPreviewRef.current = canvas;
-        }
-      })
-      .catch(() => {
-        dragPreviewRef.current = null; // fall back to DOM clone if snapshot fails
-      });
+    const run = () => {
+      const el = buttonRef.current;
+      if (!el || cancelled) return;
+
+      generateDragPreview(el)
+        .then((canvas) => {
+          if (!cancelled) dragPreviewRef.current = canvas;
+        })
+        .catch(() => {
+          dragPreviewRef.current = null;
+        });
+    };
+
+    const idleCb = typeof requestIdleCallback !== 'undefined'
+      ? requestIdleCallback(run, { timeout: 2000 })
+      : setTimeout(run, 200) as unknown as number;
 
     return () => {
       cancelled = true;
+      if (typeof requestIdleCallback !== 'undefined') cancelIdleCallback(idleCb);
+      else clearTimeout(idleCb as unknown as ReturnType<typeof setTimeout>);
     };
   }, [id, x, y]);
 
