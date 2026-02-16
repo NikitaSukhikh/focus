@@ -55,12 +55,23 @@ export const TEXT_TILE = {
 };
 
 // ============================================
+// Text Note Box (shared style for editor + saved tile)
+// ============================================
+export const TEXT_NOTE_BOX = {
+  background: '#000',
+  borderRadius: 8,
+  padding: { x: 8, y: 6 },
+  border: 'none',
+  boxShadow: 'none',
+};
+
+// ============================================
 // Inline Text Editor
 // ============================================
 export const INLINE_EDITOR = {
   width: TEXT_TILE.maxWidth,
-  padding: { x: 8, y: 6 },
-  borderRadius: 8,
+  padding: TEXT_NOTE_BOX.padding,
+  borderRadius: TEXT_NOTE_BOX.borderRadius,
 };
 
 // ============================================

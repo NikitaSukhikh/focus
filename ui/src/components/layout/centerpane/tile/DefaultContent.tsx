@@ -2,6 +2,8 @@ import React from 'react';
 import { TileIcon } from './Icon';
 import { ImageMetadata } from './useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
+import { HighlightText } from './HighlightText';
+import { useSearchStore } from '../../../../stores/searchStore';
 
 interface EbookMetadata {
   title: string;
@@ -41,6 +43,7 @@ export function DefaultContent({
   ebookMetadata,
 }: DefaultContentProps) {
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
+  const searchQuery = useSearchStore((state) => state.searchQuery);
   return (
     <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none' }}>
       <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
@@ -69,7 +72,7 @@ export function DefaultContent({
               color: 'var(--color-text-primary)',
             }}
           >
-            {ebookMetadata.title}
+            <HighlightText text={ebookMetadata.title} query={searchQuery} />
           </div>
           {ebookMetadata.author && (
             <div
@@ -82,7 +85,7 @@ export function DefaultContent({
                 color: 'var(--color-text-muted)',
               }}
             >
-              by {ebookMetadata.author}
+              by <HighlightText text={ebookMetadata.author} query={searchQuery} />
             </div>
           )}
         </>
@@ -99,7 +102,7 @@ export function DefaultContent({
               color: 'var(--color-text-primary)',
             }}
           >
-            {title}
+            <HighlightText text={title} query={searchQuery} />
           </div>
           {filePath && (
             <div
@@ -113,7 +116,7 @@ export function DefaultContent({
                 color: 'var(--color-text-muted)',
               }}
             >
-              {filePath}
+              <HighlightText text={filePath} query={searchQuery} />
             </div>
           )}
         </>

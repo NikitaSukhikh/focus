@@ -3,6 +3,8 @@ import { TileIcon } from './Icon';
 import { truncateDisplayUrl } from '../../../../utils/text';
 import { isGoogleService } from './iconHelpers';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
+import { HighlightText } from './HighlightText';
+import { useSearchStore } from '../../../../stores/searchStore';
 
 interface LinkContentProps {
   url?: string;
@@ -32,6 +34,7 @@ export function LinkContent({
   isSelected,
   hoverScaleClass,
 }: LinkContentProps) {
+  const searchQuery = useSearchStore((state) => state.searchQuery);
   return (
     <div
       className={`w-full h-full transition-transform duration-150 flex flex-col items-center justify-center gap-2 px-1 ${hoverScaleClass}`}
@@ -62,7 +65,7 @@ export function LinkContent({
               color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
             }}
           >
-            {title}
+            <HighlightText text={title} query={searchQuery} />
           </div>
           {description && (
             <div
@@ -75,7 +78,7 @@ export function LinkContent({
                 color: 'var(--color-text-muted)',
               }}
             >
-              {description}
+              <HighlightText text={description} query={searchQuery} />
             </div>
           )}
           {url && !isGoogleService(url) && (
@@ -89,7 +92,7 @@ export function LinkContent({
                 color: isSelected ? '#3b82f6' : 'var(--color-text-muted)',
               }}
             >
-              {truncateDisplayUrl(url)}
+              <HighlightText text={truncateDisplayUrl(url)} query={searchQuery} />
             </div>
           )}
         </>

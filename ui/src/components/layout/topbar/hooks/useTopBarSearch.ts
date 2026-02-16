@@ -1,11 +1,8 @@
-import { useState } from 'react';
+import { useSearchStore } from '../../../../../stores/searchStore';
 
-/**
- * Lightweight search state holder for the top bar.
- * Currently hidden in the UI but preserved for future implementation.
- */
 export const useTopBarSearch = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchQuery = useSearchStore((state) => state.searchQuery);
+  const setSearchQuery = useSearchStore((state) => state.setSearchQuery);
 
   return {
     searchQuery,

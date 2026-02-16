@@ -1,7 +1,8 @@
 import React, { useRef, useState, useLayoutEffect } from 'react';
-import { TEXT_TILE } from '../../../../constants/objectsDimensions';
-import { formatTextWithLinks } from '../../../../utils/linkFormatter';
+import { TEXT_TILE, TEXT_NOTE_BOX } from '../../../../constants/objectsDimensions';
+import { formatTextWithLinksAndHighlight } from '../../../../utils/linkFormatter';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_WEIGHTS, TYPOGRAPHY_SIZES } from '../../../../styles/typographics';
+import { useSearchStore } from '../../../../stores/searchStore';
 
 interface TextContentProps {
   content: string;
@@ -13,6 +14,7 @@ interface TextContentProps {
 export function TextContent({ content, hoverScaleClass }: TextContentProps) {
   const [firstTextLine, ...otherTextLines] = (content || '').split(/\r?\n/);
   const remainingText = otherTextLines.join('\n');
+  const searchQuery = useSearchStore((state) => state.searchQuery);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
@@ -30,6 +32,9 @@ export function TextContent({ content, hoverScaleClass }: TextContentProps) {
         maxWidth: `${TEXT_TILE.maxWidth}px`,
         textAlign: 'left',
         position: 'relative',
+        background: TEXT_NOTE_BOX.background,
+        borderRadius: `${TEXT_NOTE_BOX.borderRadius}px`,
+        padding: `${TEXT_NOTE_BOX.padding.y}px ${TEXT_NOTE_BOX.padding.x}px`,
       }}
     >
       <div
@@ -44,13 +49,13 @@ export function TextContent({ content, hoverScaleClass }: TextContentProps) {
           overflow: 'hidden',
         }}
       >
-        <div style={{ fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE }}>{formatTextWithLinks(firstTextLine)}</div>
+        <div style={{ fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE }}>{formatTextWithLinksAndHighlight(firstTextLine, searchQuery)}</div>
         {remainingText && (
           <div
             className="whitespace-pre-wrap"
             style={{ lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight, fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION, color: 'var(--color-text-secondary)' }}
           >
-            {formatTextWithLinks(remainingText)}
+            {formatTextWithLinksAndHighlight(remainingText, searchQuery)}
           </div>
         )}
       </div>

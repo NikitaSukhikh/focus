@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Z_INDEX } from '../../../constants/zIndex';
-import { INLINE_EDITOR } from '../../../constants/objectsDimensions';
+import { INLINE_EDITOR, TEXT_NOTE_BOX } from '../../../constants/objectsDimensions';
 import { TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../styles/typographics';
 
 interface InlineTextEditorProps {
@@ -118,10 +118,10 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
         fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
         fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
         lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
-        background: 'var(--background-dark)',
-        borderRadius: '8px',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-        border: '1px solid var(--color-border-strong)',
+        background: TEXT_NOTE_BOX.background,
+        borderRadius: `${TEXT_NOTE_BOX.borderRadius}px`,
+        boxShadow: TEXT_NOTE_BOX.boxShadow,
+        border: TEXT_NOTE_BOX.border,
         color: 'var(--color-text-primary)',
         width: `${INLINE_EDITOR.width}px`,
         height: 'auto',

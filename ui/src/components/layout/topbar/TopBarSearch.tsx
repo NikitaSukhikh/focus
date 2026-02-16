@@ -8,10 +8,9 @@ interface TopBarSearchProps {
   setSearchQuery: (value: string) => void;
 }
 
-// Hidden for current version.
 export const TopBarSearch: React.FC<TopBarSearchProps> = ({ searchQuery, setSearchQuery }) => {
   return (
-    <div className="relative" style={{ display: 'none' }} aria-hidden="true">
+    <div className="relative">
       <div
         className="absolute inset-y-0 left-0 flex items-center pointer-events-none"
         style={{ paddingLeft: `${TOP_BAR.search.iconPaddingLeft}px` }}
