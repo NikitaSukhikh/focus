@@ -3,6 +3,7 @@ import { FONT_ROLES } from '@/styles/fontManager';
 import { openExternalUrl } from '@/platform';
 import { PREVIEW_PANE } from '@/constants/panesDimensions';
 import { ICON_SIZES } from '@/constants/objectsDimensions';
+import { renderFileTypeIcon, renderFaviconImage, getGoogleServiceIcon } from '@/components/layout/centerpane/tile/iconHelpers';
 
 const { header } = PREVIEW_PANE;
 
@@ -15,6 +16,8 @@ interface PreviewHeaderProps {
   title?: string;
   type?: string;
   url?: string;
+  filePath?: string;
+  faviconUrl?: string;
   onClose: () => void;
   onOpenFullWindow: () => void;
   ebookMetadata?: EbookMetadata | null;
@@ -22,7 +25,7 @@ interface PreviewHeaderProps {
 }
 
 // PreviewHeader renders the preview title bar and the controls for opening externally, expanding to full window, or closing the pane.
-export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebookMetadata, showEditHint }: PreviewHeaderProps) {
+export function PreviewHeader({ title, type, url, filePath, faviconUrl, onClose, onOpenFullWindow, ebookMetadata, showEditHint }: PreviewHeaderProps) {
   const displayTitle = ebookMetadata?.title || title;
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
 
@@ -32,8 +35,14 @@ export function PreviewHeader({ title, type, url, onClose, onOpenFullWindow, ebo
         className="flex items-center justify-between"
         style={{ padding: `${header.paddingY}px ${header.paddingX}px` }}
       >
-        <div className="flex items-baseline gap-2 min-w-0 flex-1">
-          <h2 style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Preview</h2>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex-shrink-0" style={{ opacity: 0.7 }}>
+            {type === 'file' && filePath
+              ? renderFileTypeIcon(filePath, 16)
+              : type === 'link' && url
+                ? (getGoogleServiceIcon(url, 16) ?? renderFaviconImage(faviconUrl, 16))
+                : null}
+          </div>
           {showEditHint ? (
             <span style={{ ...FONT_ROLES.paneTitle, color: 'var(--color-text-muted)', opacity: 0.7, fontSize: '14px' }}>
               (Double-click to edit or add text)

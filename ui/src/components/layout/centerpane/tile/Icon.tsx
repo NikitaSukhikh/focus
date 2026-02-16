@@ -11,6 +11,7 @@ interface TileIconProps {
   title: string;
   faviconUrl?: string;
   onThumbnailError: () => void;
+  size?: number;
 }
 
 // TileIcon decides which visual to render for a tile (thumbnail, favicon, google service icon, or type icon) based on the tile's data.
@@ -24,6 +25,7 @@ export function TileIcon({
   title,
   faviconUrl,
   onThumbnailError,
+  size,
 }: TileIconProps) {
   if (type === 'file' && thumbnailUrl) {
     return (
@@ -50,20 +52,20 @@ export function TileIcon({
   }
 
   if (type === 'file' && filePath) {
-    return renderFileTypeIcon(filePath);
+    return renderFileTypeIcon(filePath, size ?? 48);
   }
 
   if (type === 'link' && url) {
-    const googleIcon = getGoogleServiceIcon(url);
+    const googleIcon = getGoogleServiceIcon(url, size ?? 48);
     if (googleIcon) {
       return googleIcon;
     }
   }
 
   if (type === 'link') {
-    return renderFaviconImage(faviconUrl);
+    return renderFaviconImage(faviconUrl, size ?? 40);
   }
 
   const Icon = getIconComponent(type);
-  return <Icon size={48} />;
+  return <Icon size={size ?? 48} />;
 }

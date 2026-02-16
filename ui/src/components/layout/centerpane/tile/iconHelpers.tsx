@@ -36,35 +36,34 @@ export function isGoogleService(url: string): boolean {
   );
 }
 
-export function getGoogleServiceIcon(url: string) {
+export function getGoogleServiceIcon(url: string, size = 48) {
   if (!url) return null;
   const urlLower = url.toLowerCase();
 
   if (urlLower.includes('mail.google.com') || urlLower.includes('gmail.com')) {
-    return <GmailIcon size={48} />;
+    return <GmailIcon size={size} />;
   }
   if (urlLower.includes('drive.google.com')) {
-    return <DriveIcon size={48} />;
+    return <DriveIcon size={size} />;
   }
   if (urlLower.includes('docs.google.com/spreadsheets') || urlLower.includes('sheets.google.com')) {
-    return <SheetsIcon size={48} />;
+    return <SheetsIcon size={size} />;
   }
   if (urlLower.includes('docs.google.com/document') || urlLower.includes('docs.google.com')) {
-    return <DocsIcon size={48} />;
+    return <DocsIcon size={size} />;
   }
   if (urlLower.includes('docs.google.com/presentation') || urlLower.includes('slides.google.com')) {
-    return <SlidesIcon size={48} />;
+    return <SlidesIcon size={size} />;
   }
 
   return null;
 }
 
-export function renderFaviconImage(faviconUrl: string | undefined) {
-  const size = 40;
+export function renderFaviconImage(faviconUrl: string | undefined, size = 40) {
   const faviconLower = (faviconUrl || '').toLowerCase();
   const looksLikeFavicon = faviconLower.endsWith('.ico') || faviconLower.includes('favicon');
   const isLargeImage = faviconUrl && !looksLikeFavicon && !faviconLower.startsWith('data:image');
-  const dimension = isLargeImage ? size * 2 : size;
+  const dimension = size === 40 && isLargeImage ? size * 2 : size;
 
   return (
     <img
@@ -83,8 +82,8 @@ export function renderFaviconImage(faviconUrl: string | undefined) {
   );
 }
 
-export function renderFileTypeIcon(filePath: string) {
+export function renderFileTypeIcon(filePath: string, size = 48) {
   const fileTypeInfo = detectFileType(filePath);
   const FileTypeIconComponent = getFileTypeIcon(fileTypeInfo.extension);
-  return <FileTypeIconComponent size={48} />;
+  return <FileTypeIconComponent size={size} />;
 }

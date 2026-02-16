@@ -230,6 +230,8 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
         title={localTitle}
         type={type}
         url={url}
+        filePath={filePath}
+        faviconUrl={tiles.find(t => t.id === tileId)?.faviconUrl}
         onClose={onClose}
         onOpenFullWindow={handleOpenFullWindow}
         ebookMetadata={ebookMetadata}

@@ -15,15 +15,13 @@ const iconStyle = { opacity: 'var(--icon-opacity, 1)' };
 // PDF Icon
 export function PdfIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
-      <FileText size={size} className="text-red-600" />
-      <div
-        className="absolute bottom-0 right-0 bg-red-600 text-white text-xs font-bold px-1 rounded"
-        style={{ fontSize: size * 0.2 }}
-      >
-        PDF
-      </div>
-    </div>
+    <img
+      src="/logos/pdf_logo.png"
+      alt="PDF"
+      className={`object-contain ${className}`}
+      style={{ width: size, height: size, ...iconStyle }}
+      draggable={false}
+    />
   );
 }
 
@@ -60,15 +58,13 @@ export function OdtIcon({ size = 48, className = '' }: FileIconProps) {
 // Excel Icon
 export function ExcelIcon({ size = 48, className = '' }: FileIconProps) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
-      <FileType size={size} className="text-green-600" />
-      <div
-        className="absolute bottom-0 right-0 bg-green-600 text-white text-xs font-bold px-1 rounded"
-        style={{ fontSize: size * 0.2 }}
-      >
-        XLS
-      </div>
-    </div>
+    <img
+      src="/logos/excel_type.jfif"
+      alt="Excel"
+      className={`object-contain ${className}`}
+      style={{ width: size, height: size, ...iconStyle }}
+      draggable={false}
+    />
   );
 }
 
@@ -102,9 +98,66 @@ export function TextFileIcon({ size = 48, className = '' }: FileIconProps) {
   );
 }
 
-// Code File Icon with dynamic extension display
+const VSCODE_ICON_MAP: Record<string, string> = {
+  js: 'file_type_light_js.svg',
+  jsx: 'file_type_reactjs.svg',
+  ts: 'file_type_typescript.svg',
+  tsx: 'file_type_reactts.svg',
+  py: 'file_type_python.svg',
+  pyw: 'file_type_python.svg',
+  java: 'file_type_java.svg',
+  c: 'file_type_c.svg',
+  cpp: 'file_type_cpp.svg',
+  cxx: 'file_type_cpp.svg',
+  cc: 'file_type_cpp.svg',
+  h: 'file_type_cheader.svg',
+  hpp: 'file_type_cheader.svg',
+  cs: 'file_type_csharp.svg',
+  go: 'file_type_go.svg',
+  rs: 'file_type_light_rust.svg',
+  php: 'file_type_php.svg',
+  rb: 'file_type_ruby.svg',
+  swift: 'file_type_swift.svg',
+  kt: 'file_type_kotlin.svg',
+  json: 'file_type_light_json.svg',
+  xml: 'file_type_xml.svg',
+  css: 'file_type_css.svg',
+  scss: 'file_type_scss.svg',
+  sass: 'file_type_scss.svg',
+  yaml: 'file_type_light_yaml.svg',
+  yml: 'file_type_light_yaml.svg',
+  sh: 'file_type_shell.svg',
+  bash: 'file_type_shell.svg',
+  zsh: 'file_type_shell.svg',
+  md: 'file_type_markdown.svg',
+  markdown: 'file_type_markdown.svg',
+  html: 'file_type_html.svg',
+  htm: 'file_type_html.svg',
+  sql: 'file_type_sql.svg',
+  toml: 'file_type_light_toml.svg',
+  cfg: 'file_type_light_ini.svg',
+  ini: 'file_type_light_ini.svg',
+  log: 'file_type_log.svg',
+};
+
+// Code File Icon - uses VS Code default icons when available, falls back to labeled icon
 export function CodeFileIcon({ size = 48, className = '', extension = '' }: FileIconProps & { extension?: string }) {
-  const ext = extension.toUpperCase().slice(0, 4); // Limit to 4 chars for display
+  const ext = extension.toLowerCase();
+  const vscodeIcon = VSCODE_ICON_MAP[ext];
+
+  if (vscodeIcon) {
+    return (
+      <img
+        src={`/logos/code-icons/${vscodeIcon}`}
+        alt={extension}
+        className={`object-contain ${className}`}
+        style={{ width: size, height: size, ...iconStyle }}
+        draggable={false}
+      />
+    );
+  }
+
+  const label = extension.toUpperCase().slice(0, 4);
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size, ...iconStyle }}>
       <FileText size={size} className="text-indigo-600" />
@@ -112,7 +165,7 @@ export function CodeFileIcon({ size = 48, className = '', extension = '' }: File
         className="absolute bottom-0 right-0 bg-indigo-600 text-white text-xs font-bold px-1 rounded"
         style={{ fontSize: size * 0.2 }}
       >
-        {ext}
+        {label}
       </div>
     </div>
   );

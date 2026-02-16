@@ -2,7 +2,7 @@ import React from 'react';
 import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
-import { TILE_RING } from '@/styles/tileStyles';
+import { tileRingOutline, TILE_RING } from '@/styles/tileStyles';
 import { TILE } from '@/constants/objectsDimensions';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
@@ -47,24 +47,26 @@ export function DefaultContent({
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
   const searchQuery = useSearchStore((state) => state.searchQuery);
   return (
-    <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none', width: 'max-content', outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}>
-      <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
-        <TileIcon
-          type={type}
-          url={url}
-          filePath={filePath}
-          thumbnailUrl={thumbnailUrl}
-          thumbnailWidth={thumbnailWidth}
-          thumbnailHeight={thumbnailHeight}
-          title={title}
-          faviconUrl={faviconUrl}
-          onThumbnailError={onThumbnailError}
-        />
-      </div>
+    <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none', width: 'max-content', outline: tileRingOutline('file'), outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}>
+      {thumbnailUrl && (
+        <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
+          <TileIcon
+            type={type}
+            url={url}
+            filePath={filePath}
+            thumbnailUrl={thumbnailUrl}
+            thumbnailWidth={thumbnailWidth}
+            thumbnailHeight={thumbnailHeight}
+            title={title}
+            faviconUrl={faviconUrl}
+            onThumbnailError={onThumbnailError}
+          />
+        </div>
+      )}
       {showEbookInfo ? (
         <>
           <div
-            className="px-1 text-center mt-1 break-words"
+            className="px-1 flex items-center gap-1 mt-1 break-words"
             style={{
               width: `${TILE.defaultFileTileSize}px`,
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
@@ -74,6 +76,22 @@ export function DefaultContent({
               color: 'var(--color-text-primary)',
             }}
           >
+            {!thumbnailUrl && (
+              <div className={`flex-shrink-0 text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
+                <TileIcon
+                  type={type}
+                  url={url}
+                  filePath={filePath}
+                  thumbnailUrl={null}
+                  thumbnailWidth={thumbnailWidth}
+                  thumbnailHeight={thumbnailHeight}
+                  title={title}
+                  faviconUrl={faviconUrl}
+                  onThumbnailError={onThumbnailError}
+                  size={14}
+                />
+              </div>
+            )}
             <HighlightText text={ebookMetadata.title} query={searchQuery} />
           </div>
           {ebookMetadata.author && (
@@ -94,7 +112,7 @@ export function DefaultContent({
       ) : (
         <>
           <div
-            className={`px-1 text-center mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
+            className={`px-1 flex items-center gap-1 mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
             style={{
               width: imageMetadata ? `${thumbnailWidth}px` : `${TILE.defaultFileTileSize}px`,
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
@@ -104,6 +122,22 @@ export function DefaultContent({
               color: 'var(--color-text-primary)',
             }}
           >
+            {!thumbnailUrl && (
+              <div className={`flex-shrink-0 text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
+                <TileIcon
+                  type={type}
+                  url={url}
+                  filePath={filePath}
+                  thumbnailUrl={null}
+                  thumbnailWidth={thumbnailWidth}
+                  thumbnailHeight={thumbnailHeight}
+                  title={title}
+                  faviconUrl={faviconUrl}
+                  onThumbnailError={onThumbnailError}
+                  size={14}
+                />
+              </div>
+            )}
             <HighlightText text={title} query={searchQuery} />
           </div>
           {filePath && (

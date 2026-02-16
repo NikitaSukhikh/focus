@@ -3,7 +3,7 @@ import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { truncateDisplayUrl } from '@/utils/text';
 import { isGoogleService } from '@/components/layout/centerpane/tile/iconHelpers';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
-import { TILE_RING } from '@/styles/tileStyles';
+import { tileRingOutline, TILE_RING } from '@/styles/tileStyles';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
 
@@ -39,34 +39,37 @@ export function LinkContent({
   return (
     <div
       className={`w-full h-full transition-transform duration-150 flex flex-col items-center justify-center gap-2 px-1 ${hoverScaleClass}`}
-      style={{ pointerEvents: 'none', outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}
+      style={{ pointerEvents: 'none', outline: tileRingOutline('link'), outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}
     >
-      <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
-        <TileIcon
-          type="link"
-          url={url}
-          filePath={filePath}
-          thumbnailUrl={thumbnailUrl}
-          thumbnailWidth={thumbnailWidth}
-          thumbnailHeight={thumbnailHeight}
-          title={title}
-          faviconUrl={faviconUrl}
-          onThumbnailError={onThumbnailError}
-        />
-      </div>
       <div className="w-full min-w-0 flex flex-col items-center gap-1">
         <>
-          <div
-            className="line-clamp-2 text-center"
-            style={{
-              fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
-              fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
-              lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
-              fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
-              color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
-            }}
-          >
-            <HighlightText text={title} query={searchQuery} />
+          <div className="flex items-center gap-1 w-full">
+            <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
+              <TileIcon
+                type="link"
+                url={url}
+                filePath={filePath}
+                thumbnailUrl={thumbnailUrl}
+                thumbnailWidth={thumbnailWidth}
+                thumbnailHeight={thumbnailHeight}
+                title={title}
+                faviconUrl={faviconUrl}
+                onThumbnailError={onThumbnailError}
+                size={14}
+              />
+            </div>
+            <div
+              className="line-clamp-2 text-center flex-1"
+              style={{
+                fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
+                fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+                lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
+                fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+                color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
+              }}
+            >
+              <HighlightText text={title} query={searchQuery} />
+            </div>
           </div>
           {description && (
             <div

@@ -28,6 +28,7 @@
         "marked": "^17.0.1",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
+        "vscode-icons-js": "^11.6.1",
         "zustand": "^4.5.2"
     },
     "devDependencies": {
