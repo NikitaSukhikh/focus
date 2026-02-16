@@ -22,6 +22,7 @@ export const TOP_BAR = {
   },
   title: {
     maxWidth: 448,
+    leftOffset: -80,
   },
   logo: {
     size: 18,

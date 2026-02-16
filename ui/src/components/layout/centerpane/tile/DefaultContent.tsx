@@ -2,6 +2,8 @@ import React from 'react';
 import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
+import { TILE_RING } from '@/styles/tileStyles';
+import { TILE } from '@/constants/objectsDimensions';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
 
@@ -45,7 +47,7 @@ export function DefaultContent({
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
   const searchQuery = useSearchStore((state) => state.searchQuery);
   return (
-    <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none' }}>
+    <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none', width: 'max-content', outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}>
       <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
         <TileIcon
           type={type}
@@ -64,7 +66,7 @@ export function DefaultContent({
           <div
             className="px-1 text-center mt-1 break-words"
             style={{
-              width: '100%',
+              width: `${TILE.defaultFileTileSize}px`,
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
               fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
               lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
@@ -94,7 +96,7 @@ export function DefaultContent({
           <div
             className={`px-1 text-center mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
             style={{
-              width: imageMetadata ? `${thumbnailWidth}px` : '100%',
+              width: imageMetadata ? `${thumbnailWidth}px` : `${TILE.defaultFileTileSize}px`,
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
               fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
               lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
@@ -108,7 +110,7 @@ export function DefaultContent({
             <div
               className="text-center whitespace-pre-line break-words line-clamp-2"
               style={{
-                width: imageMetadata ? `${thumbnailWidth}px` : '100%',
+                width: imageMetadata ? `${thumbnailWidth}px` : `${TILE.defaultFileTileSize}px`,
                 fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
                 fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
                 lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,

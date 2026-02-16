@@ -1,6 +1,10 @@
 // Dimensions for content objects (tiles, embeds, icons, inline editor)
 // Pane/layout dimensions are in panesDimensions.ts
 // Typography (font sizes, weights) are in styles/typographics.ts
+// Tile visual styles (rings, borders) are in styles/tileStyles.ts
+
+import { TEXT_NOTE_BOX } from '@/styles/tileStyles';
+export { TEXT_NOTE_BOX, TILE_RING } from '@/styles/tileStyles';
 
 // ============================================
 // Tile Dimensions
@@ -55,21 +59,11 @@ export const TEXT_TILE = {
 };
 
 // ============================================
-// Text Note Box (shared style for editor + saved tile)
-// ============================================
-export const TEXT_NOTE_BOX = {
-  background: '#000',
-  borderRadius: 8,
-  padding: { x: 8, y: 6 },
-  border: 'none',
-  boxShadow: 'none',
-};
-
-// ============================================
 // Inline Text Editor
 // ============================================
 export const INLINE_EDITOR = {
-  width: TEXT_TILE.maxWidth,
+  maxWidth: TEXT_TILE.maxWidth,
+  minWidth: '10ch',
   padding: TEXT_NOTE_BOX.padding,
   borderRadius: TEXT_NOTE_BOX.borderRadius,
 };
@@ -85,4 +79,3 @@ export const ICON_SIZES = {
   large: 28,
   gmail: 56,
 };
-

@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { VideoEmbed, getVideoEmbedRenderOptions } from '@/utils/videoEmbeds';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
+import { TILE_RING } from '@/styles/tileStyles';
 
 interface VideoEmbedContentProps {
   videoEmbed: VideoEmbed;
@@ -58,6 +59,7 @@ export function VideoEmbedContent({
   return (
     <div
       className={`w-full h-full flex flex-col gap-3 transition-transform duration-150 ${hoverScaleClass}`}
+      style={{ outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}
     >
       <div
         className="w-full rounded-lg overflow-hidden bg-black shadow-inner"

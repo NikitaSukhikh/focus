@@ -12,6 +12,15 @@ interface InlineTextEditorProps {
   onCancel: () => void;
 }
 
+const SHARED_TEXT_STYLE = {
+  fontFamily: 'inherit',
+  fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
+  fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+  lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
+  whiteSpace: 'pre',
+  padding: `${INLINE_EDITOR.padding.y}px ${INLINE_EDITOR.padding.x}px`,
+} as const;
+
 // InlineTextEditor is an absolutely positioned textarea used to edit or create text notes directly on the canvas.
 export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
   x,
@@ -22,121 +31,121 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
   onCancel,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const rulerRef = useRef<HTMLSpanElement>(null);
   const isSavingRef = useRef(false);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const resize = (textarea: HTMLTextAreaElement) => {
+    // Height: let scrollHeight drive it
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+
+    // Width: measure longest line via hidden ruler span
+    if (rulerRef.current) {
+      const longestLine = textarea.value.split('\n').reduce(
+        (a, b) => (b.length > a.length ? b : a),
+        ''
+      );
+      rulerRef.current.textContent = longestLine || textarea.placeholder;
+      const measured = rulerRef.current.offsetWidth;
+      const padX = INLINE_EDITOR.padding.x * 2;
+      const clamped = Math.min(
+        Math.max(measured + padX, parseFloat(INLINE_EDITOR.minWidth) * 9),
+        INLINE_EDITOR.maxWidth
+      );
+      textarea.style.width = clamped + 'px';
+    }
+  };
+
   useEffect(() => {
-    // Reset saving flag when component mounts
     isSavingRef.current = false;
 
     if (textareaRef.current) {
       textareaRef.current.focus();
-      // Place cursor at the end (only on mount)
       textareaRef.current.setSelectionRange(content.length, content.length);
-      // Initial auto-resize
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-      // Set initial width
-      textareaRef.current.style.width = `${INLINE_EDITOR.width}px`;
+      resize(textareaRef.current);
     }
 
-    // Cleanup on unmount
     return () => {
-      if (blurTimeoutRef.current) {
-        clearTimeout(blurTimeoutRef.current);
-      }
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     };
-    // Only run on mount (x, y change = new editor instance)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [x, y]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Escape to cancel
     if (e.key === 'Escape') {
       e.preventDefault();
       isSavingRef.current = true;
       onCancel();
       return;
     }
-
-    // Ctrl/Cmd + Enter to save
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       isSavingRef.current = true;
       onSave();
-      // Blur to exit edit mode after explicit save
-      requestAnimationFrame(() => {
-        textareaRef.current?.blur();
-      });
+      requestAnimationFrame(() => textareaRef.current?.blur());
       return;
     }
   };
 
   const handleBlur = () => {
-    // Prevent double-save if already saving
     if (isSavingRef.current) return;
-
-    // Clear any existing timeout
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-    }
-
-    // Use setTimeout to ensure blur happens after any click events
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = setTimeout(() => {
       if (isSavingRef.current) return;
-
       isSavingRef.current = true;
-
-      // Auto-save on blur if there's content
-      if (content.trim()) {
-        onSave();
-      } else {
-        onCancel();
-      }
+      if (content.trim()) onSave();
+      else onCancel();
     }, 0);
   };
 
   return (
-    <textarea
-      ref={textareaRef}
-      data-inline-editor
-      value={content}
-      onChange={(e) => onContentChange(e.target.value)}
-      onKeyDown={handleKeyDown}
-      onBlur={handleBlur}
-      placeholder="Start typing..."
-      maxLength={10000}
-      style={{
-        position: 'absolute',
-        left: x,
-        top: y,
-        outline: 'none',
-        resize: 'none',
-        padding: '6px 8px',
-        margin: '0',
-        fontFamily: 'inherit',
-        fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
-        fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
-        lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
-        background: TEXT_NOTE_BOX.background,
-        borderRadius: `${TEXT_NOTE_BOX.borderRadius}px`,
-        boxShadow: TEXT_NOTE_BOX.boxShadow,
-        border: TEXT_NOTE_BOX.border,
-        color: 'var(--color-text-primary)',
-        width: `${INLINE_EDITOR.width}px`,
-        height: 'auto',
-        overflow: 'hidden',
-        whiteSpace: 'pre-wrap',
-        wordWrap: 'break-word',
-        zIndex: Z_INDEX.CONTENT_DRAGGING,
-      }}
-      rows={1}
-      onInput={(e) => {
-        // Auto-resize height only (width is fixed)
-        const target = e.target as HTMLTextAreaElement;
-        target.style.height = 'auto';
-        target.style.height = target.scrollHeight + 'px';
-      }}
-    />
+    <>
+      {/* Hidden ruler span used to measure text width */}
+      <span
+        ref={rulerRef}
+        aria-hidden
+        style={{
+          ...SHARED_TEXT_STYLE,
+          position: 'fixed',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          top: 0,
+          left: 0,
+        }}
+      />
+      <textarea
+        ref={textareaRef}
+        data-inline-editor
+        value={content}
+        onChange={(e) => onContentChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder="Start typing..."
+        maxLength={10000}
+        rows={1}
+        style={{
+          ...SHARED_TEXT_STYLE,
+          position: 'absolute',
+          left: x,
+          top: y,
+          resize: 'none',
+          margin: '0',
+          background: TEXT_NOTE_BOX.background,
+          borderRadius: `${TEXT_NOTE_BOX.borderRadius}px`,
+          boxShadow: TEXT_NOTE_BOX.boxShadow,
+          outline: TEXT_NOTE_BOX.outline,
+          outlineOffset: `${TEXT_NOTE_BOX.outlineOffset}px`,
+          color: 'var(--color-text-primary)',
+          minWidth: INLINE_EDITOR.minWidth,
+          maxWidth: `${INLINE_EDITOR.maxWidth}px`,
+          width: 'auto',
+          height: 'auto',
+          overflow: 'hidden',
+          zIndex: Z_INDEX.CONTENT_DRAGGING,
+        }}
+        onInput={(e) => resize(e.target as HTMLTextAreaElement)}
+      />
+    </>
   );
 };

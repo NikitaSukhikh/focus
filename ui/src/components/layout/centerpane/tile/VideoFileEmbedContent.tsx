@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { API_BASE } from '@/config/api';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
+import { TILE_RING } from '@/styles/tileStyles';
 
 interface VideoFileEmbedContentProps {
   filePath: string;
@@ -51,6 +52,7 @@ export function VideoFileEmbedContent({
   return (
     <div
       className={`w-full h-full flex flex-col gap-3 transition-transform duration-150 ${hoverScaleClass}`}
+      style={{ outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}
     >
       {/* Video player */}
       <div

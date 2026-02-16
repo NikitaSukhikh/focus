@@ -3,6 +3,7 @@ import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { truncateDisplayUrl } from '@/utils/text';
 import { isGoogleService } from '@/components/layout/centerpane/tile/iconHelpers';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
+import { TILE_RING } from '@/styles/tileStyles';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
 
@@ -38,7 +39,7 @@ export function LinkContent({
   return (
     <div
       className={`w-full h-full transition-transform duration-150 flex flex-col items-center justify-center gap-2 px-1 ${hoverScaleClass}`}
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'none', outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}
     >
       <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
         <TileIcon

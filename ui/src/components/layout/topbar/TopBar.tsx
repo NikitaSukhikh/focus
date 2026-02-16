@@ -127,7 +127,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       </div>
 
       {/* Center section - Space Name (absolute positioned) */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ zIndex: Z_INDEX.BASE }}>
+      <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none" style={{ zIndex: Z_INDEX.BASE, left: `calc(50% + ${TOP_BAR.title.leftOffset}px)`, transform: `translate(-50%, -50%)` }}>
         <div className="pointer-events-auto">
           {logic.selectedSpace ? (
             logic.isEditingSpaceName ? (

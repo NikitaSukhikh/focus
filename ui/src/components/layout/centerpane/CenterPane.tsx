@@ -13,7 +13,6 @@ import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from '@/components/layout/centerpane/hooks/useArrowDrawing';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
-import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchFilter';
 
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
@@ -58,8 +57,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   );
   const hiddenInlinePreviewCount = Math.max(0, selectedIcons.length - inlinePreviewIcons.length);
   const isEmptyState = !(logic.selectedSpace && (logic.iconsBySpace[logic.selectedSpace.id]?.length ?? 0) > 0);
-  const spaceIcons = logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || [];
-  const filteredIcons = useSearchFilter(spaceIcons);
 
   const ghostSize = useMemo(() => {
     const fallback = { width: 128, height: 128 };
@@ -486,7 +483,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               />
             )}
 
-            {filteredIcons.map((icon) => (
+            {(logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || []).map((icon) => (
               logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
                 <Tile
                   key={icon.id}
