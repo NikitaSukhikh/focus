@@ -10,6 +10,7 @@ export const cyberpunkColors = {
   colorSurfacePage: '#050510',
   colorSurfacePanel: 'rgba(10, 10, 32, 0.7)',
   colorSurfaceMuted: 'rgba(10, 10, 32, 0.5)',
+  colorSurfaceTile: '#0a0a20',
 
   /* Text - Light */
   textColor: '#f5f5f5',
@@ -36,4 +37,7 @@ export const cyberpunkColors = {
   warning: '#ff9800',
   infoColor: '#2196f3',
   info: '#2196f3',
+  /* Tile rings */
+  tileRingOpacity: '0.6',
+  tileGlowOpacity: '0.6',
 };

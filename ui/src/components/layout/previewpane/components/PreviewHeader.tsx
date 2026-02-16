@@ -60,7 +60,7 @@ export function PreviewHeader({ title, type, url, filePath, faviconUrl, onClose,
             </div>
           ) : displayTitle && type !== 'text' ? (
             <span className="truncate" style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-muted)' }}>
-              - {displayTitle}
+              {displayTitle}
             </span>
           ) : null}
         </div>

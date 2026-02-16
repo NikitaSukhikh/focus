@@ -110,7 +110,7 @@ export function FullWindowPreview({
 
 
   const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(
-    isDocumentFile || isEbookFile,
+    isDocumentFile || isEbookFile || isPdfFile,
     documentPreviewUrlResolved,
     2000
   );
@@ -133,7 +133,7 @@ export function FullWindowPreview({
   // PDF page navigation with Up/Down arrows (Left/Right reserved for tile navigation)
   usePdfPageNavigation({
     webviewRef,
-    isPdfPreview: isPdfFile,
+    isPdfPreview: isPdfFile && !documentPreviewUrlResolved,
     isEnabled: isOpen,
   });
 

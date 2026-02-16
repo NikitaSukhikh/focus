@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { TILE_RING } from '@/styles/tileStyles';
+import { tileRingStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useAudioMetadata } from '@/components/media/useAudioMetadata';
 import { useSharedAudioController } from '@/components/media/useSharedAudioController';
@@ -77,8 +77,8 @@ export function AudioEmbedContent({
   const displayDuration = metadata?.duration_formatted || formatTime(duration);
 
   return (
-    <div className={`w-full h-full flex flex-col transition-transform duration-150 ${hoverScaleClass}`} style={{ outline: TILE_RING.outline, outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}>
-      <div className="w-full h-full rounded-xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.14)] text-slate-900 flex flex-col overflow-hidden">
+    <div className={`w-full h-full flex flex-col transition-transform duration-150 ${hoverScaleClass}`} style={tileRingStyle('file')}>
+      <div className="w-full h-full rounded-xl border border-slate-200 shadow-[0_12px_30px_rgba(15,23,42,0.14)] text-slate-900 flex flex-col overflow-hidden" style={{ background: TILE_BACKGROUND }}>
         <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold leading-tight truncate text-slate-900">{displayTitle}</div>

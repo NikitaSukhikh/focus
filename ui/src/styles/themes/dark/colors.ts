@@ -10,6 +10,7 @@ export const darkColors = {
   colorSurfacePage: '#1a1a1a',
   colorSurfacePanel: 'rgba(30, 30, 30, 0.95)',
   colorSurfaceMuted: 'rgba(45, 45, 45, 0.8)',
+  colorSurfaceTile: '#2d2d2d',
 
   /* Text */
   textColor: '#e0e0e0',
@@ -36,4 +37,7 @@ export const darkColors = {
   warning: '#ff9800',
   infoColor: '#2196f3',
   info: '#2196f3',
+  /* Tile rings */
+  tileRingOpacity: '0.6',
+  tileGlowOpacity: '0.2',
 };

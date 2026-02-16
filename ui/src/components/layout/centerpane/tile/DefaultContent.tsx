@@ -2,8 +2,8 @@ import React from 'react';
 import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
-import { tileRingOutline, TILE_RING } from '@/styles/tileStyles';
-import { TILE } from '@/constants/objectsDimensions';
+import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
+import { TILE, GOOGLE_INTEGRATION_TILE } from '@/constants/objectsDimensions';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
 
@@ -46,8 +46,53 @@ export function DefaultContent({
 }: DefaultContentProps) {
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
   const searchQuery = useSearchStore((state) => state.searchQuery);
+  const isGoogleIntegration = type === 'gmail' || type === 'google_drive';
+  const ringType = isGoogleIntegration ? 'link' : 'file';
+  const contentWidth = imageMetadata ? thumbnailWidth : TILE.defaultFileTileSize;
+
+  if (isGoogleIntegration) {
+    return (
+      <div
+        className={`flex flex-col items-center transition-transform duration-150 gap-1 px-1 ${hoverScaleClass}`}
+        style={{ pointerEvents: 'none', width: 'max-content', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
+      >
+        <div className={isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}>
+          <TileIcon
+            type={type}
+            url={url}
+            filePath={filePath}
+            thumbnailUrl={thumbnailUrl}
+            thumbnailWidth={thumbnailWidth}
+            thumbnailHeight={thumbnailHeight}
+            title={title}
+            faviconUrl={faviconUrl}
+            onThumbnailError={onThumbnailError}
+            size={GOOGLE_INTEGRATION_TILE.iconSize}
+          />
+        </div>
+        <div
+          className="line-clamp-2 text-center break-words"
+          style={{
+            minWidth: `${GOOGLE_INTEGRATION_TILE.titleMinWidth}px`,
+            maxWidth: `${GOOGLE_INTEGRATION_TILE.titleMaxWidth}px`,
+            fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
+            fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+            lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
+            fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
+            color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
+          }}
+        >
+          <HighlightText text={title} query={searchQuery} />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`} style={{ pointerEvents: 'none', width: 'max-content', outline: tileRingOutline('file'), outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}>
+    <div
+      className={`flex flex-col items-center transition-transform duration-150 ${hoverScaleClass}`}
+      style={{ pointerEvents: 'none', width: 'max-content', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
+    >
       {thumbnailUrl && (
         <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
           <TileIcon
@@ -66,7 +111,7 @@ export function DefaultContent({
       {showEbookInfo ? (
         <>
           <div
-            className="px-1 flex items-center gap-1 mt-1 break-words"
+            className="px-1 flex items-start gap-1 mt-1 min-w-0"
             style={{
               width: `${TILE.defaultFileTileSize}px`,
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
@@ -92,7 +137,9 @@ export function DefaultContent({
                 />
               </div>
             )}
-            <HighlightText text={ebookMetadata.title} query={searchQuery} />
+            <div className="min-w-0 flex-1 break-all whitespace-pre-wrap line-clamp-2">
+              <HighlightText text={ebookMetadata.title} query={searchQuery} />
+            </div>
           </div>
           {ebookMetadata.author && (
             <div
@@ -112,9 +159,9 @@ export function DefaultContent({
       ) : (
         <>
           <div
-            className={`px-1 flex items-center gap-1 mt-1 ${imageMetadata ? 'break-words' : title.length > 20 ? 'break-words' : 'truncate'}`}
+            className="px-1 flex items-start gap-1 mt-1 min-w-0"
             style={{
-              width: imageMetadata ? `${thumbnailWidth}px` : `${TILE.defaultFileTileSize}px`,
+              width: `${contentWidth}px`,
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
               fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
               lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
@@ -138,13 +185,15 @@ export function DefaultContent({
                 />
               </div>
             )}
-            <HighlightText text={title} query={searchQuery} />
+            <div className={`min-w-0 flex-1 ${imageMetadata || title.length > 20 ? 'break-all whitespace-pre-wrap line-clamp-2' : 'truncate'}`}>
+              <HighlightText text={title} query={searchQuery} />
+            </div>
           </div>
           {filePath && (
             <div
-              className="text-center whitespace-pre-line break-words line-clamp-2"
+              className="text-center whitespace-pre-line break-all line-clamp-2"
               style={{
-                width: imageMetadata ? `${thumbnailWidth}px` : `${TILE.defaultFileTileSize}px`,
+                width: `${contentWidth}px`,
                 fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
                 fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
                 lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,

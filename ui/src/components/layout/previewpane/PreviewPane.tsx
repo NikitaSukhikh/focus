@@ -76,15 +76,18 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
   const imageMetadata = useImageMetadata(isImageFile, filePath);
   const ebookMetadata = useEbookMetadata(isEbookFile, filePath);
-  const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(isDocumentFile || isEbookFile, documentPreviewUrl || ebookPreviewUrl);
+  const { documentError, documentLoading, handleDocumentLoad, handleDocumentError } = useDocumentPreview(
+    isDocumentFile || isEbookFile || isPdfFile,
+    documentPreviewUrl || ebookPreviewUrl
+  );
   const textPreviewBody = useTextPreview(type, content, title);
   const updatedTextPreviewBody = useTextPreview(type, localContent, localTitle);
   const videoEmbed = getVideoEmbed(url);
   const videoMetadata = useVideoEmbedMetadata(videoEmbed, url);
   const videoTitle = videoMetadata?.title || title;
-  const videoDescription = videoMetadata?.description;
-  const videoChannelName = videoMetadata?.channelName;
-  const videoChannelIconUrl = videoMetadata?.channelIconUrl;
+  const videoDescription = videoMetadata?.description ?? undefined;
+  const videoChannelName = videoMetadata?.channelName ?? undefined;
+  const videoChannelIconUrl = videoMetadata?.channelIconUrl ?? undefined;
 
   const isTextNote = type === 'text';
   const { isGmail } = useGmailDetection({ type, url });
@@ -151,7 +154,7 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   // PDF page navigation with Up/Down arrows (Left/Right reserved for tile navigation)
   usePdfPageNavigation({
     webviewRef,
-    isPdfPreview: isPdfFile,
+    isPdfPreview: isPdfFile && !documentPreviewUrl,
     isEnabled: isOpen,
   });
 

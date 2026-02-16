@@ -1,6 +1,6 @@
 import React, { useRef, useState, useLayoutEffect } from 'react';
 import { TEXT_TILE } from '@/constants/objectsDimensions';
-import { TEXT_NOTE_BOX, tileRingOutline } from '@/styles/tileStyles';
+import { TEXT_NOTE_BOX, tileRingStyle, tileBackgroundFillStyle } from '@/styles/tileStyles';
 import { formatTextWithLinksAndHighlight } from '@/utils/linkFormatter';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_WEIGHTS, TYPOGRAPHY_SIZES } from '@/styles/typographics';
 import { useSearchStore } from '@/stores/searchStore';
@@ -34,10 +34,9 @@ export function TextContent({ content, hoverScaleClass }: TextContentProps) {
         textAlign: 'left',
         position: 'relative',
         background: TEXT_NOTE_BOX.background,
-        borderRadius: `${TEXT_NOTE_BOX.borderRadius}px`,
+        ...tileBackgroundFillStyle(TEXT_NOTE_BOX.background),
         padding: `${TEXT_NOTE_BOX.padding.y}px ${TEXT_NOTE_BOX.padding.x}px`,
-        outline: tileRingOutline('text'),
-        outlineOffset: `${TEXT_NOTE_BOX.outlineOffset}px`,
+        ...tileRingStyle('text'),
       }}
     >
       <div

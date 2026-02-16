@@ -10,6 +10,7 @@ export interface StyleTheme {
   colorSurfacePage: string;
   colorSurfacePanel: string;
   colorSurfaceMuted: string;
+  colorSurfaceTile: string;
 
   /* Text */
   textColor: string;
@@ -63,4 +64,8 @@ export interface StyleTheme {
 
   /* Icons */
   iconOpacity: string;
+
+  /* Tile rings */
+  tileRingOpacity: string;
+  tileGlowOpacity: string;
 }

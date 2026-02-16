@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { VideoEmbed, getVideoEmbedRenderOptions } from '@/utils/videoEmbeds';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
-import { tileRingOutline, TILE_RING } from '@/styles/tileStyles';
+import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 
 interface VideoEmbedContentProps {
   videoEmbed: VideoEmbed;
@@ -59,12 +59,13 @@ export function VideoEmbedContent({
   return (
     <div
       className={`w-full h-full flex flex-col gap-3 transition-transform duration-150 ${hoverScaleClass}`}
-      style={{ outline: tileRingOutline('link'), outlineOffset: `${TILE_RING.outlineOffset}px`, borderRadius: `${TILE_RING.borderRadius}px` }}
+      style={{ background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle('link') }}
     >
       <div
-        className="w-full rounded-lg overflow-hidden bg-black shadow-inner"
+        className="w-full rounded-lg overflow-hidden shadow-inner"
         style={{
           aspectRatio: '16 / 9',
+          background: TILE_BACKGROUND,
           boxShadow: '0 6px 14px rgba(0,0,0,0.18)',
           flexShrink: 0,
         }}
@@ -91,7 +92,7 @@ export function VideoEmbedContent({
               height: '100%',
               border: 0,
               display: 'block',
-              background: '#000',
+              background: TILE_BACKGROUND,
             }}
           />
         ) : (
@@ -116,7 +117,7 @@ export function VideoEmbedContent({
               height: '100%',
               border: 0,
               display: 'block',
-              background: '#000',
+              background: TILE_BACKGROUND,
             }}
             draggable={false}
           />

@@ -332,7 +332,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               e.currentTarget.style.color = 'var(--color-text-secondary)';
             }
           }}
-          title="Toggle preview"
+          title={'Toggle preview\n(Ctrl+U)'}
         >
           <PanelRight size={TOP_BAR.icons.primary} />
         </button>

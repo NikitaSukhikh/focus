@@ -570,6 +570,67 @@ async def get_video_file(
 
 
 @router.get(
+    "/pdf-file",
+    response_class=FileResponse,
+    summary="Get PDF file for preview",
+    description="Serve PDF files for in-app preview rendering.",
+)
+async def get_pdf_file(
+    file_path: str = Query(..., description="Absolute path to the PDF file"),
+):
+    """
+    Serve a PDF file for preview.
+
+    Args:
+        file_path: Absolute path to the PDF file
+
+    Returns:
+        FileResponse: The PDF file
+
+    Raises:
+        HTTPException: If file not found or not a PDF
+    """
+    try:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {file_path}",
+            )
+
+        if not path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path is not a file: {file_path}",
+            )
+
+        if not file_thumbnail_service.is_pdf(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is not a PDF",
+            )
+
+        logger.debug(f"Serving PDF file: {file_path}")
+
+        return FileResponse(
+            path=str(path),
+            media_type="application/pdf",
+            filename=path.name,
+            headers={"Content-Disposition": "inline"},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve PDF file: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to serve PDF file",
+        )
+
+
+@router.get(
     "/ebook-image/{image_name}",
     response_class=FileResponse,
     summary="Get ebook image",

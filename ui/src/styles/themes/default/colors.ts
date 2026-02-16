@@ -10,6 +10,7 @@ export const defaultColors = {
   colorSurfacePage: '#ffffff',
   colorSurfacePanel: 'rgba(255, 255, 255, 0.9)',
   colorSurfaceMuted: 'rgba(245, 245, 245, 0.8)',
+  colorSurfaceTile: '#f0f0f0',
 
   /* Text */
   textColor: '#212121',
@@ -36,4 +37,7 @@ export const defaultColors = {
   warning: '#ff9800',
   infoColor: '#2196f3',
   info: '#2196f3',
+  /* Tile rings */
+  tileRingOpacity: '0.6',
+  tileGlowOpacity: '0.3',
 };

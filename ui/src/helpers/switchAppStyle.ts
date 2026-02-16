@@ -19,6 +19,7 @@ const cssVarMap: Record<keyof StyleTheme, string> = {
   colorSurfacePage: '--color-surface-page',
   colorSurfacePanel: '--color-surface-panel',
   colorSurfaceMuted: '--color-surface-muted',
+  colorSurfaceTile: '--color-surface-tile',
   textColor: '--text-color',
   colorTextPrimary: '--color-text-primary',
   colorTextSecondary: '--color-text-secondary',
@@ -54,6 +55,8 @@ const cssVarMap: Record<keyof StyleTheme, string> = {
   glassBorder: '--glass-border',
   glassBlur: '--glass-blur',
   iconOpacity: '--icon-opacity',
+  tileRingOpacity: '--tile-ring-opacity',
+  tileGlowOpacity: '--tile-glow-opacity',
 };
 
 export function switchAppStyle(styleType: AppStyleType): void {

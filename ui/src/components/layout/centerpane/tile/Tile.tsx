@@ -9,7 +9,7 @@ import { useImageMetadata } from '@/components/layout/centerpane/tile/useImageMe
 import { useEbookMetadata } from '@/components/layout/centerpane/tile/useEbookMetadata';
 import { useContextMenu } from '@/components/layout/centerpane/tile/useContextMenu';
 import { useFileRename } from '@/components/layout/centerpane/tile/useFileRename';
-import { TILE, EMBED_LINK, NON_EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED } from '@/constants/objectsDimensions';
+import { TILE, EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED } from '@/constants/objectsDimensions';
 import { getThumbnailDimensions } from '@/components/layout/centerpane/tile/thumbnailHelpers';
 import { VideoEmbedContent } from '@/components/layout/centerpane/tile/VideoEmbedContent';
 import { VideoFileEmbedContent } from '@/components/layout/centerpane/tile/VideoFileEmbedContent';
@@ -158,11 +158,12 @@ export function Tile({
   const fileCategory = type === 'file' && filePath ? detectFileType(filePath).category : null;
   const isAudioFile = fileCategory === 'audio';
   const isVideoFile = fileCategory === 'video';
+  const isVideoLink = type === 'link' && !!effectiveVideoEmbed;
   const tileWidth = type === 'link'
-    ? (effectiveVideoEmbed ? EMBED_LINK.width : NON_EMBED_LINK.size)
+    ? (isVideoLink ? EMBED_LINK.width : undefined)
     : (isAudioFile ? AUDIO_EMBED.width : isVideoFile ? VIDEO_EMBED.width : undefined);
   const tileHeight = type === 'link'
-    ? (effectiveVideoEmbed ? EMBED_LINK.height : NON_EMBED_LINK.size)
+    ? (isVideoLink ? EMBED_LINK.height : undefined)
     : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
   const tooltipText = (() => {

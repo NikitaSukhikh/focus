@@ -50,8 +50,8 @@ export function useFileTypeDetection(
       ? `${API_BASE}/thumbnails/video-file?${new URLSearchParams({ file_path: filePath }).toString()}`
       : null;
 
-    const documentPreviewUrl = isDocumentFile && filePath
-      ? `${API_BASE}/thumbnails/document-preview?${new URLSearchParams({ file_path: filePath }).toString()}`
+    const documentPreviewUrl = (isDocumentFile || isPdfFile) && filePath
+      ? `${API_BASE}/thumbnails/${isPdfFile ? 'pdf-file' : 'document-preview'}?${new URLSearchParams({ file_path: filePath }).toString()}`
       : null;
 
     const ebookPreviewUrl = isEbookFile && filePath

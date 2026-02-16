@@ -3,14 +3,15 @@
 // Typography (font sizes, weights) are in styles/typographics.ts
 // Tile visual styles (rings, borders) are in styles/tileStyles.ts
 
-import { TEXT_NOTE_BOX } from '@/styles/tileStyles';
+import { TEXT_NOTE_BOX, TILE_RING } from '@/styles/tileStyles';
 export { TEXT_NOTE_BOX, TILE_RING } from '@/styles/tileStyles';
 
 // ============================================
 // Tile Dimensions
 // ============================================
 export const TILE = {
-  hoverSafePadding: 12,
+  // Keep enough transparent wrapper space so the ring remains fully visible around the tile.
+  hoverSafePadding: Math.ceil(TILE_RING.margin + TILE_RING.strokeWidth),
   defaultFileTileSize: 128,
   thumbnail: {
     defaultSize: 96,
@@ -31,6 +32,7 @@ export const EMBED_LINK = {
 // ============================================
 export const NON_EMBED_LINK = {
   size: 192,
+  maxWidth: 420,
 };
 
 // ============================================
@@ -77,5 +79,15 @@ export const ICON_SIZES = {
   headerButton: 18,
   navButton: 20,
   large: 28,
-  gmail: 56,
+  tileFavicon: 18,
+  tileGoogleService: 40,
+};
+
+// ============================================
+// Google Integration Tiles (Gmail, Drive, etc.)
+// ============================================
+export const GOOGLE_INTEGRATION_TILE = {
+  iconSize: ICON_SIZES.tileGoogleService,
+  titleMinWidth: ICON_SIZES.tileGoogleService * 2,
+  titleMaxWidth: 128,
 };

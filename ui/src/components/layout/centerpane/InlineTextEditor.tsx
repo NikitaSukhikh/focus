@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Z_INDEX } from '@/constants/zIndex';
 import { INLINE_EDITOR, TEXT_NOTE_BOX } from '@/constants/objectsDimensions';
+import { tileRingStyle } from '@/styles/tileStyles';
 import { TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 
 interface InlineTextEditorProps {
@@ -132,10 +133,8 @@ export const InlineTextEditor: React.FC<InlineTextEditorProps> = ({
           resize: 'none',
           margin: '0',
           background: TEXT_NOTE_BOX.background,
-          borderRadius: `${TEXT_NOTE_BOX.borderRadius}px`,
           boxShadow: TEXT_NOTE_BOX.boxShadow,
-          outline: TEXT_NOTE_BOX.outline,
-          outlineOffset: `${TEXT_NOTE_BOX.outlineOffset}px`,
+          ...tileRingStyle('text'),
           color: 'var(--color-text-primary)',
           minWidth: INLINE_EDITOR.minWidth,
           maxWidth: `${INLINE_EDITOR.maxWidth}px`,
