@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { API_BASE } from '../../../../config/api';
-import { canShowImageThumbnail } from '../../../../utils/fileTypes';
+import { API_BASE } from '@/config/api';
+import { canShowImageThumbnail } from '@/utils/fileTypes';
 
 export interface ImageMetadata {
   width: number;

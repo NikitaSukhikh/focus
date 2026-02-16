@@ -11,10 +11,10 @@
  * but orchestrates other specialized hooks following the separation of concerns pattern.
  */
 
-import { CenterPaneHandle } from '../centerpane/types';
-import { useSpaceStore } from '../../../stores/spaceStore';
-import { useSpaceNameEditor } from './hooks/useSpaceNameEditor';
-import { useTopBarSearch } from './hooks/useTopBarSearch';
+import { CenterPaneHandle } from '@/components/layout/centerpane/types';
+import { useSpaceStore } from '@/stores/spaceStore';
+import { useSpaceNameEditor } from '@/components/layout/topbar/hooks/useSpaceNameEditor';
+import { useTopBarSearch } from '@/components/layout/topbar/hooks/useTopBarSearch';
 
 export const useTopBarLogic = (_centerPaneRef: React.RefObject<CenterPaneHandle>) => {
   const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());

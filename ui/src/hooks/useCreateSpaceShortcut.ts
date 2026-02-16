@@ -9,8 +9,8 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useSpaceStore } from '../stores/spaceStore';
-import { isModifierOnlyKey, isTextFieldTarget, preventDefaultAndStop } from './keyboardUtils';
+import { useSpaceStore } from '@/stores/spaceStore';
+import { isModifierOnlyKey, isTextFieldTarget, preventDefaultAndStop } from '@/hooks/keyboardUtils';
 
 const DEFAULT_SPACE_NAME = 'New Space';
 

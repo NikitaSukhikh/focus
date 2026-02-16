@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Z_INDEX } from '../../../../constants/zIndex';
-import { FONT_ROLES } from '../../../../styles/fontManager';
+import { Z_INDEX } from '@/constants/zIndex';
+import { FONT_ROLES } from '@/styles/fontManager';
 
 interface WebviewPreviewProps {
   webviewRef: React.RefObject<HTMLWebViewElement | null>;

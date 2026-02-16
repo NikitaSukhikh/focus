@@ -1,5 +1,5 @@
-import { ImageMetadata } from '../hooks/useImageMetadata';
-import { PREVIEW_PANE } from '../../../../constants/panesDimensions';
+import { ImageMetadata } from '@/components/layout/previewpane/hooks/useImageMetadata';
+import { PREVIEW_PANE } from '@/constants/panesDimensions';
 
 interface ImagePreviewProps {
   imagePreviewUrl: string;

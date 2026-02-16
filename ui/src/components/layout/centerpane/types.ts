@@ -1,5 +1,5 @@
 import type React from 'react';
-import { TagColor } from '../../../types/tags';
+import { TagColor } from '@/types/tags';
 
 export type IconKind =
   | 'link'

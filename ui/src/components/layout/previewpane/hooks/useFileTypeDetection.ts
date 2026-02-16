@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { API_BASE } from '../../../../config/api';
-import { detectFileType, isHtmlCodeFile } from '../../../../utils/fileTypes';
+import { API_BASE } from '@/config/api';
+import { detectFileType, isHtmlCodeFile } from '@/utils/fileTypes';
 
 interface FileTypeDetection {
   isImageFile: boolean;

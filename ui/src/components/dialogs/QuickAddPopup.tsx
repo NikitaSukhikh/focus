@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { Clipboard, FilePlus, Plus } from 'lucide-react';
-import { Z_INDEX } from '../../constants/zIndex';
+import { Z_INDEX } from '@/constants/zIndex';
 
 interface QuickAddPopupProps {
   isOpen: boolean;

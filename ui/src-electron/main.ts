@@ -268,6 +268,26 @@ function createSplashWindow() {
   });
 }
 
+async function waitForDevServer(url: string, retries = 30, interval = 500): Promise<void> {
+  const { net } = await import('electron');
+  for (let i = 0; i < retries; i++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const req = net.request(url);
+        req.on('response', () => resolve());
+        req.on('error', reject);
+        req.end();
+      });
+      console.log('[Electron] Dev server is ready');
+      return;
+    } catch {
+      console.log(`[Electron] Waiting for dev server... (${i + 1}/${retries})`);
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+  }
+  throw new Error(`Dev server at ${url} did not become ready in time`);
+}
+
 async function createMainWindow() {
   console.log('[Electron] Creating main window...');
   logWindowCreation('started');
@@ -315,6 +335,7 @@ async function createMainWindow() {
   // Load renderer - Vite plugin provides the dev server URL or the built file path
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     console.log('[Electron] Loading dev server:', MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    await waitForDevServer(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     await mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     if (shouldOpenDevTools) {
       mainWindow.webContents.openDevTools({ mode: 'detach' });

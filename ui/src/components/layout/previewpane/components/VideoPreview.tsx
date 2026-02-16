@@ -1,10 +1,10 @@
 /* eslint-disable react/no-unknown-property */
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Z_INDEX } from '../../../../constants/zIndex';
-import { FONT_ROLES } from '../../../../styles/fontManager';
-import { VideoEmbed, getVideoEmbedRenderOptions } from '../../../../utils/videoEmbeds';
-import { formatTextWithLinks } from '../../../../utils/linkFormatter';
+import { Z_INDEX } from '@/constants/zIndex';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { VideoEmbed, getVideoEmbedRenderOptions } from '@/utils/videoEmbeds';
+import { formatTextWithLinks } from '@/utils/linkFormatter';
 
 interface VideoPreviewProps {
   videoEmbed: VideoEmbed;

@@ -1,4 +1,4 @@
-import { DroppedIcon } from '../components/layout/centerpane/types';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
 
 /**
  * Y-coordinate tolerance for considering tiles to be in the same row.

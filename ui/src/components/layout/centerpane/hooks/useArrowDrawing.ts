@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
-import { objectsApi } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { ArrowSegment } from '../types';
+import { objectsApi } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { ArrowSegment } from '@/components/layout/centerpane/types';
 
 interface UseArrowDrawingProps {
   zoom: number;

@@ -11,12 +11,12 @@
  */
 
 import { useEffect, useCallback } from 'react';
-import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { buildFaviconUrl } from '../../../../utils/favicon';
-import { DroppedIcon, IconKind } from '../types';
-import { normalizeTag } from '../../../../types/tags';
-import { getVideoTilePadding } from '../tileBounds';
+import { objectsApi, ObjectCreatePayload } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { buildFaviconUrl } from '@/utils/favicon';
+import { DroppedIcon, IconKind } from '@/components/layout/centerpane/types';
+import { normalizeTag } from '@/types/tags';
+import { getVideoTilePadding } from '@/components/layout/centerpane/tileBounds';
 
 interface PasteParams {
   selectedSpace: any;

@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { X, Share2, Copy, CheckCircle2 } from 'lucide-react';
-import { Z_INDEX } from '../../constants/zIndex';
-import { GmailIcon } from '../icons/GoogleServiceIcons';
+import { Z_INDEX } from '@/constants/zIndex';
+import { GmailIcon } from '@/components/icons/GoogleServiceIcons';
 import {
   WhatsAppIcon,
   TelegramShareIcon,
@@ -11,7 +11,7 @@ import {
   LinkedInIcon,
   RedditIcon,
   InstagramIcon
-} from '../icons/SocialShareIcons';
+} from '@/components/icons/SocialShareIcons';
 
 interface SharePlatform {
   name: string;

@@ -12,8 +12,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
-import { useSpaceStore } from '../stores/spaceStore';
+import { isModifierOnlyKey, preventDefaultAndStop } from '@/hooks/keyboardUtils';
+import { useSpaceStore } from '@/stores/spaceStore';
 
 interface UseSpaceNavigationShortcutReturn {
   highlightedSpaceId: string | null;

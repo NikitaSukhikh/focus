@@ -10,7 +10,7 @@
  */
 
 import { useEffect } from 'react';
-import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
+import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from '@/hooks/keyboardUtils';
 
 export const useSidebarShortcut = (isSidebarOpen: boolean, openSidebar: () => void, closeSidebar: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {

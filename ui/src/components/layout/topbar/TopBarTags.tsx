@@ -1,6 +1,6 @@
 import React from 'react';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { TagsButton, TagsMenu, useTagsDropdown, TagColor } from './tags';
+import { Z_INDEX } from '@/constants/zIndex';
+import { TagsButton, TagsMenu, useTagsDropdown, TagColor } from '@/components/layout/topbar/tags';
 
 interface TopBarTagsProps {
   isOpen?: boolean;

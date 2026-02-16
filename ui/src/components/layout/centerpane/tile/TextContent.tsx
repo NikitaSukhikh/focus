@@ -1,8 +1,8 @@
 import React, { useRef, useState, useLayoutEffect } from 'react';
-import { TEXT_TILE, TEXT_NOTE_BOX } from '../../../../constants/objectsDimensions';
-import { formatTextWithLinksAndHighlight } from '../../../../utils/linkFormatter';
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_WEIGHTS, TYPOGRAPHY_SIZES } from '../../../../styles/typographics';
-import { useSearchStore } from '../../../../stores/searchStore';
+import { TEXT_TILE, TEXT_NOTE_BOX } from '@/constants/objectsDimensions';
+import { formatTextWithLinksAndHighlight } from '@/utils/linkFormatter';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_WEIGHTS, TYPOGRAPHY_SIZES } from '@/styles/typographics';
+import { useSearchStore } from '@/stores/searchStore';
 
 interface TextContentProps {
   content: string;

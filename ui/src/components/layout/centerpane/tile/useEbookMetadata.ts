@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { API_BASE } from '../../../../config/api';
-import { detectFileType } from '../../../../utils/fileTypes';
+import { API_BASE } from '@/config/api';
+import { detectFileType } from '@/utils/fileTypes';
 
 interface EbookMetadata {
   title: string;

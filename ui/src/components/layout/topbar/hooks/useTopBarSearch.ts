@@ -1,4 +1,4 @@
-import { useSearchStore } from '../../../../../stores/searchStore';
+import { useSearchStore } from '@/stores/searchStore';
 
 export const useTopBarSearch = () => {
   const searchQuery = useSearchStore((state) => state.searchQuery);

@@ -1,7 +1,7 @@
-import { detectFileType } from '../../../utils/fileTypes';
-import { getVideoEmbed } from '../../../utils/videoEmbeds';
-import { TILE, EMBED_LINK, NON_EMBED_LINK, VIDEO_EMBED } from '../../../constants/objectsDimensions';
-import { IconKind } from './types';
+import { detectFileType } from '@/utils/fileTypes';
+import { getVideoEmbed } from '@/utils/videoEmbeds';
+import { TILE, EMBED_LINK, NON_EMBED_LINK, VIDEO_EMBED } from '@/constants/objectsDimensions';
+import { IconKind } from '@/components/layout/centerpane/types';
 
 type TileBoundsPadding = { x: number; y: number };
 

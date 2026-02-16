@@ -1,8 +1,8 @@
-import { AppStyleType, DEFAULT_STYLE, DARK_STYLE, CYBERPUNK_STYLE } from '../constants/styleTypes';
-import { defaultTheme } from '../styles/themes/default';
-import { darkTheme } from '../styles/themes/dark';
-import { cyberpunkTheme } from '../styles/themes/cyberpunk';
-import { StyleTheme } from '../styles/themes/types';
+import { AppStyleType, DEFAULT_STYLE, DARK_STYLE, CYBERPUNK_STYLE } from '@/constants/styleTypes';
+import { defaultTheme } from '@/styles/themes/default';
+import { darkTheme } from '@/styles/themes/dark';
+import { cyberpunkTheme } from '@/styles/themes/cyberpunk';
+import { StyleTheme } from '@/styles/themes/types';
 
 const styleMap: Record<AppStyleType, StyleTheme> = {
   [DEFAULT_STYLE]: defaultTheme,

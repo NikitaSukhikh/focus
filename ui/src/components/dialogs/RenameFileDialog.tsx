@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Pencil } from 'lucide-react';
-import { Z_INDEX } from '../../constants/zIndex';
+import { Z_INDEX } from '@/constants/zIndex';
 
 interface RenameFileDialogProps {
   isOpen: boolean;

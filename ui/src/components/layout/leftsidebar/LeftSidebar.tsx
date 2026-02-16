@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, Plus, Settings } from 'lucide-react';
-import { useSpaceStore } from '../../../stores/spaceStore';
-import { objectsApi } from '../../../api/objects';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { TOP_BAR } from '../../../constants/panesDimensions';
-import { FONT_ROLES } from '../../../styles/fontManager';
-import { SpaceItem } from './SpaceItem';
-import { LeftSidebarProps } from './types';
-import { mapObjectToPayload, generateUniqueName } from './utils';
-import { SHORTCUT_HINT_LINES } from '../../../constants/shortcutHints';
+import { useSpaceStore } from '@/stores/spaceStore';
+import { objectsApi } from '@/api/objects';
+import { Z_INDEX } from '@/constants/zIndex';
+import { TOP_BAR } from '@/constants/panesDimensions';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { SpaceItem } from '@/components/layout/leftsidebar/SpaceItem';
+import { LeftSidebarProps } from '@/components/layout/leftsidebar/types';
+import { mapObjectToPayload, generateUniqueName } from '@/components/layout/leftsidebar/utils';
+import { SHORTCUT_HINT_LINES } from '@/constants/shortcutHints';
 
 // LeftSidebar lists available spaces and handles basic space CRUD/duplication.
 export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId, renameRequestedSpaceId, renameRequestTimestamp, deleteRequestedSpaceId, deleteRequestTimestamp }: LeftSidebarProps) {

@@ -1,4 +1,4 @@
-import { StyleTheme } from './types';
+import { StyleTheme } from '@/styles/themes/types';
 
 /**
  * Generates CSS tokens string from a theme object

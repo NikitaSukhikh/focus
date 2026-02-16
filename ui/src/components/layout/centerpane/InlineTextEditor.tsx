@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { INLINE_EDITOR, TEXT_NOTE_BOX } from '../../../constants/objectsDimensions';
-import { TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../styles/typographics';
+import { Z_INDEX } from '@/constants/zIndex';
+import { INLINE_EDITOR, TEXT_NOTE_BOX } from '@/constants/objectsDimensions';
+import { TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 
 interface InlineTextEditorProps {
   x: number;

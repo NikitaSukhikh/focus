@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useLayoutEffect, useCallback } from 'react';
-import { AppStyleType, DEFAULT_STYLE, DARK_STYLE } from '../constants/styleTypes';
-import { switchAppStyle } from '../helpers/switchAppStyle';
+import { AppStyleType, DEFAULT_STYLE, DARK_STYLE } from '@/constants/styleTypes';
+import { switchAppStyle } from '@/helpers/switchAppStyle';
 
 const THEME_STORAGE_KEY = 'focus-theme';
 const THEME_TRANSITION_CLASS = 'theme-transitioning';

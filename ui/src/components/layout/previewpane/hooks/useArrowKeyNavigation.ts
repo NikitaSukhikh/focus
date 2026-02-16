@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { isTextFieldTarget } from '../../../../hooks/keyboardUtils';
+import { isTextFieldTarget } from '@/hooks/keyboardUtils';
 
 export interface UseArrowKeyNavigationParams {
   navigateNext: () => void;

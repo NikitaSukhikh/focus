@@ -8,7 +8,7 @@
  */
 
 import { useEffect } from 'react';
-import { useSpaceStore } from '../spaceStore';
+import { useSpaceStore } from '@/stores/spaceStore';
 
 const STORAGE_KEY = 'focus:selectedSpaceId';
 

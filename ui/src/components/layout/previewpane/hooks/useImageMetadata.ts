@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { API_BASE } from '../../../../config/api';
+import { API_BASE } from '@/config/api';
 
 export interface ImageMetadata {
   width: number;

@@ -9,14 +9,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { objectsApi } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { buildFaviconUrl } from '../../../../utils/favicon';
-import { truncateLinkTitle } from '../../../../utils/text';
-import { DroppedIcon } from '../types';
-import { normalizeTag } from '../../../../types/tags';
-import { API_BASE } from '../../../../config/api';
-import { getVideoTilePadding } from '../tileBounds';
+import { objectsApi } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { buildFaviconUrl } from '@/utils/favicon';
+import { truncateLinkTitle } from '@/utils/text';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
+import { normalizeTag } from '@/types/tags';
+import { API_BASE } from '@/config/api';
+import { getVideoTilePadding } from '@/components/layout/centerpane/tileBounds';
 
 interface LinkCreationParams {
   selectedSpace: any;

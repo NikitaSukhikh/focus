@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Link2, ExternalLink, Loader2 } from 'lucide-react';
-import { Z_INDEX } from '../../constants/zIndex';
-import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '../../utils/url';
-import { truncateLinkTitle } from '../../utils/text';
-import { API_BASE } from '../../config/api';
+import { Z_INDEX } from '@/constants/zIndex';
+import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '@/utils/url';
+import { truncateLinkTitle } from '@/utils/text';
+import { API_BASE } from '@/config/api';
 
 interface AddLinkDialogProps {
   isOpen: boolean;

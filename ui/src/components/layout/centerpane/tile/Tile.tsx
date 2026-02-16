@@ -1,26 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { TileProps } from '../types';
-import { getVideoEmbed } from '../../../../utils/videoEmbeds';
-import { detectFileType } from '../../../../utils/fileTypes';
-import { Z_INDEX } from '../../../../constants/zIndex';
-import { useDragHandling } from './useDragHandling';
-import { useThumbnail } from './useThumbnail';
-import { useImageMetadata } from './useImageMetadata';
-import { useEbookMetadata } from './useEbookMetadata';
-import { useContextMenu } from './useContextMenu';
-import { useFileRename } from './useFileRename';
-import { TILE, EMBED_LINK, NON_EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED } from '../../../../constants/objectsDimensions';
-import { getThumbnailDimensions } from './thumbnailHelpers';
-import { VideoEmbedContent } from './VideoEmbedContent';
-import { VideoFileEmbedContent } from './VideoFileEmbedContent';
-import { AudioEmbedContent } from './AudioEmbedContent';
-import { LinkContent } from './LinkContent';
-import { TextContent } from './TextContent';
-import { DefaultContent } from './DefaultContent';
-import { TileContextMenu } from './TileContextMenu';
-import { TileDialogs } from './TileDialogs';
-import { RenameFileDialog } from '../../../dialogs/RenameFileDialog';
-import { openFilePath } from '../../../../platform';
+import { TileProps } from '@/components/layout/centerpane/types';
+import { getVideoEmbed } from '@/utils/videoEmbeds';
+import { detectFileType } from '@/utils/fileTypes';
+import { Z_INDEX } from '@/constants/zIndex';
+import { useDragHandling } from '@/components/layout/centerpane/tile/useDragHandling';
+import { useThumbnail } from '@/components/layout/centerpane/tile/useThumbnail';
+import { useImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
+import { useEbookMetadata } from '@/components/layout/centerpane/tile/useEbookMetadata';
+import { useContextMenu } from '@/components/layout/centerpane/tile/useContextMenu';
+import { useFileRename } from '@/components/layout/centerpane/tile/useFileRename';
+import { TILE, EMBED_LINK, NON_EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED } from '@/constants/objectsDimensions';
+import { getThumbnailDimensions } from '@/components/layout/centerpane/tile/thumbnailHelpers';
+import { VideoEmbedContent } from '@/components/layout/centerpane/tile/VideoEmbedContent';
+import { VideoFileEmbedContent } from '@/components/layout/centerpane/tile/VideoFileEmbedContent';
+import { AudioEmbedContent } from '@/components/layout/centerpane/tile/AudioEmbedContent';
+import { LinkContent } from '@/components/layout/centerpane/tile/LinkContent';
+import { TextContent } from '@/components/layout/centerpane/tile/TextContent';
+import { DefaultContent } from '@/components/layout/centerpane/tile/DefaultContent';
+import { TileContextMenu } from '@/components/layout/centerpane/tile/TileContextMenu';
+import { TileDialogs } from '@/components/layout/centerpane/tile/TileDialogs';
+import { RenameFileDialog } from '@/components/dialogs/RenameFileDialog';
+import { openFilePath } from '@/platform';
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
 export function Tile({

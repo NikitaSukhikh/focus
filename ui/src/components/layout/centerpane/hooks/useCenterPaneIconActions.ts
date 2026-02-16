@@ -8,12 +8,12 @@
  * - Handling canvas empty space clicks to deselect icons
  */
 
-import { objectsApi } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { buildFaviconUrl } from '../../../../utils/favicon';
-import { truncateLinkTitle } from '../../../../utils/text';
-import { DroppedIcon } from '../types';
-import { API_BASE } from '../../../../config/api';
+import { objectsApi } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { buildFaviconUrl } from '@/utils/favicon';
+import { truncateLinkTitle } from '@/utils/text';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
+import { API_BASE } from '@/config/api';
 
 interface IconActionsParams {
   selectedSpace: any;

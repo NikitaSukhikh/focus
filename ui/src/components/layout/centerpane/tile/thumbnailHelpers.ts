@@ -1,5 +1,5 @@
-import { ImageMetadata } from './useImageMetadata';
-import { TILE } from '../../../../constants/objectsDimensions';
+import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
+import { TILE } from '@/constants/objectsDimensions';
 
 export function getThumbnailDimensions(
   type: string,

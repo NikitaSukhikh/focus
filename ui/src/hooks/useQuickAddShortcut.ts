@@ -9,7 +9,7 @@
  */
 
 import { useEffect } from 'react';
-import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from './keyboardUtils';
+import { isTextFieldTarget, isModifierOnlyKey, preventDefaultAndStop } from '@/hooks/keyboardUtils';
 
 export const useQuickAddShortcut = (toggleQuickAdd: () => void, isDialogOpen: boolean = false) => {
   useEffect(() => {

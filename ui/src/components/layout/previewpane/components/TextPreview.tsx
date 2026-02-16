@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { FONT_ROLES } from '../../../../styles/fontManager';
-import { usePreviewTextEditor } from '../hooks/usePreviewTextEditor';
-import { PreviewTextEditor } from './PreviewTextEditor';
-import { formatTextWithLinks } from '../../../../utils/linkFormatter';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { usePreviewTextEditor } from '@/components/layout/previewpane/hooks/usePreviewTextEditor';
+import { PreviewTextEditor } from '@/components/layout/previewpane/components/PreviewTextEditor';
+import { formatTextWithLinks } from '@/utils/linkFormatter';
 
 export interface TextPreviewHandle {
   save: () => Promise<void>;

@@ -1,8 +1,8 @@
 import { X, ExternalLink, Maximize2 } from 'lucide-react';
-import { FONT_ROLES } from '../../../../styles/fontManager';
-import { openExternalUrl } from '../../../../platform';
-import { PREVIEW_PANE } from '../../../../constants/panesDimensions';
-import { ICON_SIZES } from '../../../../constants/objectsDimensions';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { openExternalUrl } from '@/platform';
+import { PREVIEW_PANE } from '@/constants/panesDimensions';
+import { ICON_SIZES } from '@/constants/objectsDimensions';
 
 const { header } = PREVIEW_PANE;
 

@@ -1,11 +1,11 @@
 import React from 'react';
 import { Grid3x3, Link, FileText } from 'lucide-react';
-import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '../../../icons/GoogleServiceIcons';
-import { TelegramIcon } from '../../../../features/telegram/TelegramIcon';
-import { IntStorageIcon } from '../../../../features/intstorage/IntStorageIcon';
-import { FALLBACK_FAVICON } from '../../../../utils/favicon';
-import { detectFileType } from '../../../../utils/fileTypes';
-import { getFileTypeIcon } from '../../../icons/FileTypeIcons';
+import { GmailIcon, DriveIcon, SheetsIcon, DocsIcon, SlidesIcon } from '@/components/icons/GoogleServiceIcons';
+import { TelegramIcon } from '@/features/telegram/TelegramIcon';
+import { IntStorageIcon } from '@/features/intstorage/IntStorageIcon';
+import { FALLBACK_FAVICON } from '@/utils/favicon';
+import { detectFileType } from '@/utils/fileTypes';
+import { getFileTypeIcon } from '@/components/icons/FileTypeIcons';
 
 export function getIconComponent(type: string) {
   switch (type) {

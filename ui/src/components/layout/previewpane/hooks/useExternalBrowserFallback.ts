@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { openExternalUrl } from '../../../../platform';
+import { openExternalUrl } from '@/platform';
 
 interface FailedLoadAttempt {
   url: string;

@@ -1,19 +1,19 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon } from 'lucide-react';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { TOP_BAR } from '../../../constants/panesDimensions';
-import { FONT_ROLES } from '../../../styles/fontManager';
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '../../../styles/typographics';
-import { useTopBarLogic } from './useTopBarLogic';
-import { TopBarProps, TopBarHandle } from './types';
-import { TopBarSearch } from './TopBarSearch';
-import { TopBarTags } from './TopBarTags';
-import { WindowControls } from './WindowControls';
-import focusLogo from '../../../assets/focus.png';
-import shareSpaceIcon from '../../../assets/sharespace_icon.jpg';
-import { useThemeToggle } from '../../../hooks/useThemeToggle';
+import { Z_INDEX } from '@/constants/zIndex';
+import { TOP_BAR } from '@/constants/panesDimensions';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '@/styles/typographics';
+import { useTopBarLogic } from '@/components/layout/topbar/useTopBarLogic';
+import { TopBarProps, TopBarHandle } from '@/components/layout/topbar/types';
+import { TopBarSearch } from '@/components/layout/topbar/TopBarSearch';
+import { TopBarTags } from '@/components/layout/topbar/TopBarTags';
+import { WindowControls } from '@/components/layout/topbar/WindowControls';
+import focusLogo from '@/assets/focus.png';
+import shareSpaceIcon from '@/assets/sharespace_icon.jpg';
+import { useThemeToggle } from '@/hooks/useThemeToggle';
 
-export type { TopBarHandle } from './types';
+export type { TopBarHandle } from '@/components/layout/topbar/types';
 
 // TopBar renders the global header controls (sidebar toggle, space title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {

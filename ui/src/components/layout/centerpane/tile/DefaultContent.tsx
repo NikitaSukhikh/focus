@@ -1,9 +1,9 @@
 import React from 'react';
-import { TileIcon } from './Icon';
-import { ImageMetadata } from './useImageMetadata';
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
-import { HighlightText } from './HighlightText';
-import { useSearchStore } from '../../../../stores/searchStore';
+import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
+import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
+import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
+import { useSearchStore } from '@/stores/searchStore';
 
 interface EbookMetadata {
   title: string;

@@ -1,6 +1,6 @@
-export { TagsButton } from './TagsButton';
-export type { TagsButtonProps } from './TagsButton';
-export { TagsMenu } from './TagsMenu';
-export type { TagsMenuProps } from './TagsMenu';
-export { useTagsDropdown } from './useTagsDropdown';
-export type { TagColor, TagValue } from '../../../../types/tags';
+export { TagsButton } from '@/components/layout/topbar/tags/TagsButton';
+export type { TagsButtonProps } from '@/components/layout/topbar/tags/TagsButton';
+export { TagsMenu } from '@/components/layout/topbar/tags/TagsMenu';
+export type { TagsMenuProps } from '@/components/layout/topbar/tags/TagsMenu';
+export { useTagsDropdown } from '@/components/layout/topbar/tags/useTagsDropdown';
+export type { TagColor, TagValue } from '@/types/tags';

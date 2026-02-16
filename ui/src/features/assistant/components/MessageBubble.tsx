@@ -1,5 +1,5 @@
 import React from 'react';
-import { Message } from '../models/assistant';
+import { Message } from '@/features/assistant/models/assistant';
 
 interface MessageBubbleProps {
   message: Message;

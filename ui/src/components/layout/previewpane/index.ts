@@ -1,1 +1,1 @@
-export { PreviewPane } from './PreviewPane';
+export { PreviewPane } from '@/components/layout/previewpane/PreviewPane';

@@ -5,7 +5,7 @@
  * Used by both PreviewPane and FullWindowPreview to ensure consistent handling.
  */
 
-import { isGmailUrl } from '../../centerpane/utils';
+import { isGmailUrl } from '@/components/layout/centerpane/utils';
 
 interface UseGmailDetectionParams {
   type?: string;

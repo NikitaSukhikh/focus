@@ -14,11 +14,11 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react';
-import { useWebviewState } from './hooks/useWebviewState';
-import { useWebviewNavigation } from './hooks/useWebviewNavigation';
-import { useWebviewEventHandlers } from './hooks/useWebviewEventHandlers';
-import { useWebviewPreloader } from './hooks/useWebviewPreloader';
-import { useExternalBrowserFallback } from './hooks/useExternalBrowserFallback';
+import { useWebviewState } from '@/components/layout/previewpane/hooks/useWebviewState';
+import { useWebviewNavigation } from '@/components/layout/previewpane/hooks/useWebviewNavigation';
+import { useWebviewEventHandlers } from '@/components/layout/previewpane/hooks/useWebviewEventHandlers';
+import { useWebviewPreloader } from '@/components/layout/previewpane/hooks/useWebviewPreloader';
+import { useExternalBrowserFallback } from '@/components/layout/previewpane/hooks/useExternalBrowserFallback';
 
 export const usePreviewPaneLogic = (
   webviewRef: React.RefObject<HTMLWebViewElement | null>,

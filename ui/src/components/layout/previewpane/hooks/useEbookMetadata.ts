@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { API_BASE } from '../../../../config/api';
+import { API_BASE } from '@/config/api';
 
 interface EbookMetadata {
   title: string;

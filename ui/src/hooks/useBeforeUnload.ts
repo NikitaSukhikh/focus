@@ -6,7 +6,7 @@
  */
 
 import { useEffect } from 'react';
-import { requestTracker } from '../utils/requestTracker';
+import { requestTracker } from '@/utils/requestTracker';
 
 export const useBeforeUnload = () => {
   useEffect(() => {

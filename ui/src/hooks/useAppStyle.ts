@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AppStyleType } from '../constants/styleTypes';
-import { switchAppStyle, getCurrentStyle } from '../helpers/switchAppStyle';
+import { AppStyleType } from '@/constants/styleTypes';
+import { switchAppStyle, getCurrentStyle } from '@/helpers/switchAppStyle';
 
 export function useAppStyle() {
   const [currentStyle, setCurrentStyle] = useState<AppStyleType>(getCurrentStyle());

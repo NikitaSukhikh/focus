@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { API_BASE } from '../../../../config/api';
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
+import { API_BASE } from '@/config/api';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 
 interface VideoFileEmbedContentProps {
   filePath: string;

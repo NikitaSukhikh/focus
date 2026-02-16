@@ -12,17 +12,17 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useSpaceStore } from '../../../../stores/spaceStore';
-import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
-import { objectsApi } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { buildFaviconUrl } from '../../../../utils/favicon';
-import { truncateLinkTitle } from '../../../../utils/text';
-import { DroppedIcon, IconKind, ArrowSegment } from '../types';
-import { normalizeTag } from '../../../../types/tags';
-import { isGmailUrl } from '../utils';
-import { calculateContentHeight } from '../boundaries';
-import { API_BASE } from '../../../../config/api';
+import { useSpaceStore } from '@/stores/spaceStore';
+import { useUndoHistoryStore } from '@/stores/undoHistoryStore';
+import { objectsApi } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { buildFaviconUrl } from '@/utils/favicon';
+import { truncateLinkTitle } from '@/utils/text';
+import { DroppedIcon, IconKind, ArrowSegment } from '@/components/layout/centerpane/types';
+import { normalizeTag } from '@/types/tags';
+import { isGmailUrl } from '@/components/layout/centerpane/utils';
+import { calculateContentHeight } from '@/components/layout/centerpane/boundaries';
+import { API_BASE } from '@/config/api';
 
 const looksLikeFavicon = (src?: string) => {
   const s = (src || '').toLowerCase();

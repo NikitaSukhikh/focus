@@ -12,9 +12,9 @@
  * and Gmail API (to be placed in gmail_oauth folder).
  */
 
-import { openExternalUrl } from '../../../../../platform';
-import { FONT_ROLES } from '../../../../../styles/fontManager';
-import { GmailIcon } from '../../../../icons/GoogleServiceIcons';
+import { openExternalUrl } from '@/platform';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { GmailIcon } from '@/components/icons/GoogleServiceIcons';
 
 interface GmailExternalPreviewProps {
   url?: string;

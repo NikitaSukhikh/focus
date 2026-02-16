@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Message } from '../models/assistant';
+import { Message } from '@/features/assistant/models/assistant';
 
 // Placeholder hook for assistant functionality
 // Will be connected to Zustand store and API later

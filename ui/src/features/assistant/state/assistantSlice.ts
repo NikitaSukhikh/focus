@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { Message } from '../models/assistant';
+import { Message } from '@/features/assistant/models/assistant';
 
 export interface AssistantState {
   messages: Message[];

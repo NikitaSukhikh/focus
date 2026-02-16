@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Plus } from 'lucide-react';
-import { Z_INDEX } from '../../constants/zIndex';
-import { GmailIcon } from '../icons/GoogleServiceIcons';
+import { Z_INDEX } from '@/constants/zIndex';
+import { GmailIcon } from '@/components/icons/GoogleServiceIcons';
 
 interface GoogleAccount {
   email: string;

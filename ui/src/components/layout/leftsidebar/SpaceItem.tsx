@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Edit2, Trash2, Copy } from 'lucide-react';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { FONT_ROLES } from '../../../styles/fontManager';
-import { SpaceItemProps } from './types';
+import { Z_INDEX } from '@/constants/zIndex';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { SpaceItemProps } from '@/components/layout/leftsidebar/types';
 
 // SpaceItem renders a single space row with inline rename, selection, and context menu actions used inside the sidebar list.
 export function SpaceItem({

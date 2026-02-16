@@ -1,1 +1,1 @@
-export { FullWindowPreview } from './FullWindowPreview';
+export { FullWindowPreview } from '@/components/layout/fullwindowpreview/FullWindowPreview';

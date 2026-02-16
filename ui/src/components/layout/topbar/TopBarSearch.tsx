@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search } from 'lucide-react';
-import { TOP_BAR } from '../../../constants/panesDimensions';
-import { FONT_ROLES } from '../../../styles/fontManager';
+import { TOP_BAR } from '@/constants/panesDimensions';
+import { FONT_ROLES } from '@/styles/fontManager';
 
 interface TopBarSearchProps {
   searchQuery: string;

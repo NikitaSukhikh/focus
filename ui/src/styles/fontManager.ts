@@ -1,4 +1,4 @@
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_OPACITY, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from './typographics';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_OPACITY, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 
 type FontDefinition = {
   fontFamily: string;

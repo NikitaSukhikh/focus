@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { marked } from 'marked';
-import { useThemeContext } from '../../../../context/ThemeContext';
+import { useThemeContext } from '@/context/ThemeContext';
 
 interface MarkdownPreviewProps {
   filePath?: string;

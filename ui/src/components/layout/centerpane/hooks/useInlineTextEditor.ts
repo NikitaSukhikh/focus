@@ -10,13 +10,13 @@
  */
 
 import { useState, useCallback } from 'react';
-import { objectsApi } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { DroppedIcon } from '../types';
-import { normalizeTag } from '../../../../types/tags';
-import { autoWrapText } from '../utils';
-import { API_BASE } from '../../../../config/api';
-import { TEXT_TILE } from '../../../../constants/objectsDimensions';
+import { objectsApi } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
+import { normalizeTag } from '@/types/tags';
+import { autoWrapText } from '@/components/layout/centerpane/utils';
+import { API_BASE } from '@/config/api';
+import { TEXT_TILE } from '@/constants/objectsDimensions';
 
 interface InlineEditorParams {
   selectedSpace: any;

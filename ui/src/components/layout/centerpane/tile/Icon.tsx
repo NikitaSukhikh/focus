@@ -1,5 +1,5 @@
 import React from 'react';
-import { getIconComponent, getGoogleServiceIcon, renderFaviconImage, renderFileTypeIcon } from './iconHelpers';
+import { getIconComponent, getGoogleServiceIcon, renderFaviconImage, renderFileTypeIcon } from '@/components/layout/centerpane/tile/iconHelpers';
 
 interface TileIconProps {
   type: string;

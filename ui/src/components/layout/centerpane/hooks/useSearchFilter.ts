@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useSearchStore } from '../../../../stores/searchStore';
-import { DroppedIcon } from '../types';
+import { useSearchStore } from '@/stores/searchStore';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
 
 export const useSearchFilter = (icons: DroppedIcon[]): DroppedIcon[] => {
   const searchQuery = useSearchStore((state) => state.searchQuery);

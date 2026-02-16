@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { Message } from '../models/assistant';
-import { MessageBubble } from './MessageBubble';
+import { Message } from '@/features/assistant/models/assistant';
+import { MessageBubble } from '@/features/assistant/components/MessageBubble';
 
 interface MessageListProps {
   messages: Message[];

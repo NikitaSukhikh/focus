@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import React, { useEffect } from 'react';
-import { VideoEmbed, getVideoEmbedRenderOptions } from '../../../../utils/videoEmbeds';
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '../../../../styles/typographics';
+import { VideoEmbed, getVideoEmbedRenderOptions } from '@/utils/videoEmbeds';
+import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 
 interface VideoEmbedContentProps {
   videoEmbed: VideoEmbed;

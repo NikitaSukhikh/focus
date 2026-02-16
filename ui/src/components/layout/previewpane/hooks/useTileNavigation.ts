@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
-import { DroppedIcon } from '../../centerpane/types';
-import { sortTilesSpatially } from '../../../../utils/spatialSort';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
+import { sortTilesSpatially } from '@/utils/spatialSort';
 
 export interface UseTileNavigationParams {
   tiles: DroppedIcon[];

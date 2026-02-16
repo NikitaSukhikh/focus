@@ -13,17 +13,17 @@
  */
 
 import { useCallback } from 'react';
-import { clampToBoundaries as clampPosition, clampToBoundariesWithPadding as clampPositionWithPadding } from './boundaries';
-import { useCenterPaneState } from './hooks/useCenterPaneState';
-import { useCenterPaneDragDrop } from './hooks/useCenterPaneDragDrop';
-import { useCenterPaneIconActions } from './hooks/useCenterPaneIconActions';
-import { useCenterPaneFileHandling } from './hooks/useCenterPaneFileHandling';
-import { useCenterPaneLinkCreation } from './hooks/useCenterPaneLinkCreation';
-import { useCenterPaneTextCreation } from './hooks/useCenterPaneTextCreation';
-import { useInlineTextEditor } from './hooks/useInlineTextEditor';
-import { useUndo } from './hooks/useUndo';
-import { useCenterPanePaste } from './hooks/useCenterPanePaste';
-import { useCenterPanePointerLocation } from './hooks/useCenterPanePointerLocation';
+import { clampToBoundaries as clampPosition, clampToBoundariesWithPadding as clampPositionWithPadding } from '@/components/layout/centerpane/boundaries';
+import { useCenterPaneState } from '@/components/layout/centerpane/hooks/useCenterPaneState';
+import { useCenterPaneDragDrop } from '@/components/layout/centerpane/hooks/useCenterPaneDragDrop';
+import { useCenterPaneIconActions } from '@/components/layout/centerpane/hooks/useCenterPaneIconActions';
+import { useCenterPaneFileHandling } from '@/components/layout/centerpane/hooks/useCenterPaneFileHandling';
+import { useCenterPaneLinkCreation } from '@/components/layout/centerpane/hooks/useCenterPaneLinkCreation';
+import { useCenterPaneTextCreation } from '@/components/layout/centerpane/hooks/useCenterPaneTextCreation';
+import { useInlineTextEditor } from '@/components/layout/centerpane/hooks/useInlineTextEditor';
+import { useUndo } from '@/components/layout/centerpane/hooks/useUndo';
+import { useCenterPanePaste } from '@/components/layout/centerpane/hooks/useCenterPanePaste';
+import { useCenterPanePointerLocation } from '@/components/layout/centerpane/hooks/useCenterPanePointerLocation';
 
 export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | null>, zoom: number = 1) => {
   // State management

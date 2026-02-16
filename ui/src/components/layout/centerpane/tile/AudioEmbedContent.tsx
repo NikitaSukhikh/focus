@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import { useAudioMetadata } from '../../../media/useAudioMetadata';
-import { useSharedAudioController } from '../../../media/useSharedAudioController';
+import { useAudioMetadata } from '@/components/media/useAudioMetadata';
+import { useSharedAudioController } from '@/components/media/useSharedAudioController';
 
 interface AudioEmbedContentProps {
   filePath: string;

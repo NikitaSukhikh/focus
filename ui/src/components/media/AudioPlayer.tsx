@@ -1,6 +1,6 @@
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { useAudioMetadata } from './useAudioMetadata';
-import { useSharedAudioController } from './useSharedAudioController';
+import { useAudioMetadata } from '@/components/media/useAudioMetadata';
+import { useSharedAudioController } from '@/components/media/useSharedAudioController';
 
 interface AudioPlayerProps {
   filePath: string;

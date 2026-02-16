@@ -1,5 +1,5 @@
-import { CenterPaneHandle } from '../centerpane/types';
-import { TagColor } from './tags';
+import { CenterPaneHandle } from '@/components/layout/centerpane/types';
+import { TagColor } from '@/components/layout/topbar/tags';
 
 export interface TopBarProps {
   onToggleSidebar: () => void;

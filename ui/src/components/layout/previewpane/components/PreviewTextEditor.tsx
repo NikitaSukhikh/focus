@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { FONT_ROLES } from '../../../../styles/fontManager';
+import { FONT_ROLES } from '@/styles/fontManager';
 
 interface PreviewTextEditorProps {
   content: string;

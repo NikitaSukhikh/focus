@@ -12,8 +12,8 @@
  */
 
 import { useEffect } from 'react';
-import { isGmailUrl } from '../../centerpane/utils';
-import { openAuthWindow } from '../../../../platform';
+import { isGmailUrl } from '@/components/layout/centerpane/utils';
+import { openAuthWindow } from '@/platform';
 
 interface EventHandlersState {
   setIsLoading: (loading: boolean) => void;

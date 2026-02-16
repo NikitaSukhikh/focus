@@ -1,19 +1,19 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect } from 'react';
-import { Tile } from './tile/Tile';
-import { CenterPaneProps, CenterPaneHandle, DroppedIcon } from './types';
-import { useCenterPaneLogic } from './useCenterPaneLogic';
-import { FONT_ROLES } from '../../../styles/fontManager';
-import { getVideoEmbed } from '../../../utils/videoEmbeds';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { AddLinkDialog } from '../../dialogs/AddLinkDialog';
-import { AddTextDialog } from '../../dialogs/AddTextDialog';
-import { InlineTextEditor } from './InlineTextEditor';
-import { useSpaceStore } from '../../../stores/spaceStore';
+import { Tile } from '@/components/layout/centerpane/tile/Tile';
+import { CenterPaneProps, CenterPaneHandle, DroppedIcon } from '@/components/layout/centerpane/types';
+import { useCenterPaneLogic } from '@/components/layout/centerpane/useCenterPaneLogic';
+import { FONT_ROLES } from '@/styles/fontManager';
+import { getVideoEmbed } from '@/utils/videoEmbeds';
+import { Z_INDEX } from '@/constants/zIndex';
+import { AddLinkDialog } from '@/components/dialogs/AddLinkDialog';
+import { AddTextDialog } from '@/components/dialogs/AddTextDialog';
+import { InlineTextEditor } from '@/components/layout/centerpane/InlineTextEditor';
+import { useSpaceStore } from '@/stores/spaceStore';
 import { Loader2 } from 'lucide-react';
-import { useArrowDrawing } from './hooks/useArrowDrawing';
-import { ARROW_SETTINGS } from '../../../styles/arrowSettings';
-import { SHORTCUT_HINT_TEXT } from '../../../constants/shortcutHints';
-import { useSearchFilter } from './hooks/useSearchFilter';
+import { useArrowDrawing } from '@/components/layout/centerpane/hooks/useArrowDrawing';
+import { ARROW_SETTINGS } from '@/styles/arrowSettings';
+import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
+import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchFilter';
 
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {

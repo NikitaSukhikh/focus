@@ -1,4 +1,4 @@
-import { TEXT_TILE } from '../../../constants/objectsDimensions';
+import { TEXT_TILE } from '@/constants/objectsDimensions';
 
 export const isGmailUrl = (url: string): boolean => {
   try {

@@ -1,4 +1,4 @@
-import { ObjectResponse, ObjectCreatePayload } from '../../../api/objects';
+import { ObjectResponse, ObjectCreatePayload } from '@/api/objects';
 
 export const mapObjectToPayload = (obj: ObjectResponse): ObjectCreatePayload | null => {
   const meta = (obj.metadata || {}) as Record<string, any>;

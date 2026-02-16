@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Space, spacesApi } from '../api/spaces';
+import { Space, spacesApi } from '@/api/spaces';
 
 interface SpaceStore {
   _fetchVersion: number;

@@ -12,7 +12,7 @@
  */
 
 import { useState, useRef } from 'react';
-import { useWebviewCache } from './useWebviewCache';
+import { useWebviewCache } from '@/components/layout/previewpane/hooks/useWebviewCache';
 
 const MAX_RETRIES = 4;
 const RETRY_DELAY_MS = 600;

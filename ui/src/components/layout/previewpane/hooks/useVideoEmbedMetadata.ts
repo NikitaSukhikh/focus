@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { API_BASE } from '../../../../config/api';
-import { VideoEmbed, getYoutubeWatchUrl } from '../../../../utils/videoEmbeds';
+import { API_BASE } from '@/config/api';
+import { VideoEmbed, getYoutubeWatchUrl } from '@/utils/videoEmbeds';
 
 export interface VideoEmbedMetadata {
   title?: string | null;

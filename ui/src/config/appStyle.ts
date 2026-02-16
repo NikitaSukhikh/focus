@@ -1,4 +1,4 @@
-import { DEFAULT_STYLE, CYBERPUNK_STYLE, AppStyleType } from '../constants/styleTypes';
+import { DEFAULT_STYLE, CYBERPUNK_STYLE, AppStyleType } from '@/constants/styleTypes';
 
 // Change this constant to switch between styles
 export const CURRENT_APP_STYLE: AppStyleType = DEFAULT_STYLE;

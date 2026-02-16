@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { X, MessageCircle } from 'lucide-react';
-import { Z_INDEX } from '../../../constants/zIndex';
-import { Message } from '../../../features/assistant/models/assistant';
-import { MessageList } from '../../../features/assistant/components/MessageList';
-import { AssistantInput } from '../../../features/assistant/components/AssistantInput';
-import { FONT_ROLES } from '../../../styles/fontManager';
+import { Z_INDEX } from '@/constants/zIndex';
+import { Message } from '@/features/assistant/models/assistant';
+import { MessageList } from '@/features/assistant/components/MessageList';
+import { AssistantInput } from '@/features/assistant/components/AssistantInput';
+import { FONT_ROLES } from '@/styles/fontManager';
 
 interface AssistantPaneProps {
   isOpen: boolean;

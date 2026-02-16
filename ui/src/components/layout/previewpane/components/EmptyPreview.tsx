@@ -1,5 +1,5 @@
-import { Z_INDEX } from '../../../../constants/zIndex';
-import { FONT_ROLES } from '../../../../styles/fontManager';
+import { Z_INDEX } from '@/constants/zIndex';
+import { FONT_ROLES } from '@/styles/fontManager';
 
 // EmptyPreview fills the pane with a simple placeholder when nothing is available to render.
 export function EmptyPreview() {

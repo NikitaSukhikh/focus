@@ -11,11 +11,11 @@
  */
 
 import { useCallback } from 'react';
-import { objectsApi, ObjectCreatePayload } from '../../../../api/objects';
-import { undoApi } from '../../../../api/undo';
-import { openFilePicker } from '../../../../platform';
-import { DroppedIcon } from '../types';
-import { normalizeTag } from '../../../../types/tags';
+import { objectsApi, ObjectCreatePayload } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { openFilePicker } from '@/platform';
+import { DroppedIcon } from '@/components/layout/centerpane/types';
+import { normalizeTag } from '@/types/tags';
 
 interface FileHandlingParams {
   selectedSpace: any;

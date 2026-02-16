@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2, Pencil } from 'lucide-react';
-import { Z_INDEX } from '../../../../constants/zIndex';
+import { Z_INDEX } from '@/constants/zIndex';
 
 interface TileContextMenuProps {
   show: boolean;

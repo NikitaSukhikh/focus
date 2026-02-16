@@ -1,5 +1,5 @@
-import { Z_INDEX } from '../../../../constants/zIndex';
-import { FONT_ROLES } from '../../../../styles/fontManager';
+import { Z_INDEX } from '@/constants/zIndex';
+import { FONT_ROLES } from '@/styles/fontManager';
 
 interface DocumentPreviewProps {
   documentPreviewUrl: string;

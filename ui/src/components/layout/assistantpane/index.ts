@@ -1,1 +1,1 @@
-export { AssistantPane } from './AssistantPane';
+export { AssistantPane } from '@/components/layout/assistantpane/AssistantPane';

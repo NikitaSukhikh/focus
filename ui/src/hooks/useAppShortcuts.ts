@@ -8,11 +8,11 @@
  * - Managing shortcut registrations and cleanup
  */
 
-import { useSidebarShortcut } from './useSidebarShortcut';
-import { useConversationShortcut } from './useConversationShortcut';
-import { usePreviewShortcut } from './usePreviewShortcut';
-import { useQuickAddShortcut } from './useQuickAddShortcut';
-import { useCreateSpaceShortcut } from './useCreateSpaceShortcut';
+import { useSidebarShortcut } from '@/hooks/useSidebarShortcut';
+import { useConversationShortcut } from '@/hooks/useConversationShortcut';
+import { usePreviewShortcut } from '@/hooks/usePreviewShortcut';
+import { useQuickAddShortcut } from '@/hooks/useQuickAddShortcut';
+import { useCreateSpaceShortcut } from '@/hooks/useCreateSpaceShortcut';
 
 interface AppShortcutsHandlers {
   isSidebarOpen: boolean;

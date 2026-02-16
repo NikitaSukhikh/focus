@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShareDialog } from '../../../dialogs/ShareDialog';
+import { ShareDialog } from '@/components/dialogs/ShareDialog';
 
 interface TileDialogsProps {
   showShareDialog: boolean;

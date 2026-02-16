@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { objectsApi } from '../../../../api/objects';
+import { objectsApi } from '@/api/objects';
 
 interface UseFileRenameOptions {
   objectId: string;

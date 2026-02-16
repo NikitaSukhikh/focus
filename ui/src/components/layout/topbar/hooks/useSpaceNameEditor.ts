@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Space } from '../../../../api/spaces';
+import { Space } from '@/api/spaces';
 
 interface SpaceNameEditorParams {
   selectedSpace: Space | null;

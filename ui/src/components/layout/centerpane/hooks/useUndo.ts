@@ -10,13 +10,13 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { undoApi } from '../../../../api/undo';
-import { objectsApi } from '../../../../api/objects';
-import { DroppedIcon, ArrowSegment } from '../types';
-import { normalizeTag } from '../../../../types/tags';
-import { useUndoHistoryStore } from '../../../../stores/undoHistoryStore';
-import type { UndoEventResponse } from '../../../../api/undo';
-import { API_BASE } from '../../../../config/api';
+import { undoApi } from '@/api/undo';
+import { objectsApi } from '@/api/objects';
+import { DroppedIcon, ArrowSegment } from '@/components/layout/centerpane/types';
+import { normalizeTag } from '@/types/tags';
+import { useUndoHistoryStore } from '@/stores/undoHistoryStore';
+import type { UndoEventResponse } from '@/api/undo';
+import { API_BASE } from '@/config/api';
 
 interface UseUndoProps {
   selectedSpaceId?: string;
