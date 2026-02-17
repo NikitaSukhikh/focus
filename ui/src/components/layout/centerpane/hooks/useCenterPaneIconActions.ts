@@ -12,15 +12,28 @@ import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
 import { truncateLinkTitle } from '@/utils/text';
-import { DroppedIcon } from '@/components/layout/centerpane/types';
+import { ArrowSegment, DroppedIcon } from '@/components/layout/centerpane/types';
 import { API_BASE } from '@/config/api';
 
 interface IconActionsParams {
   selectedSpace: any;
   setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
+  arrowsBySpace: Record<string, ArrowSegment[]>;
 }
 
-export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: IconActionsParams) => {
+const toArrowUndoPayload = (arrow: ArrowSegment) => ({
+  id: arrow.id,
+  start: { x: arrow.start.x, y: arrow.start.y },
+  end: { x: arrow.end.x, y: arrow.end.y },
+  start_anchor: arrow.startAnchor
+    ? { tile_id: arrow.startAnchor.tileId, edge: arrow.startAnchor.edge, edge_index: arrow.startAnchor.edgeIndex }
+    : undefined,
+  end_anchor: arrow.endAnchor
+    ? { tile_id: arrow.endAnchor.tileId, edge: arrow.endAnchor.edge, edge_index: arrow.endAnchor.edgeIndex }
+    : undefined,
+});
+
+export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace, arrowsBySpace }: IconActionsParams) => {
 
   const looksLikeFavicon = (src?: string) => {
     const s = (src || '').toLowerCase();
@@ -39,6 +52,10 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
   const handleIconDelete = (iconId: string) => {
     if (!selectedSpace) return;
 
+    const connectedArrows = (arrowsBySpace[selectedSpace.id] || [])
+      .filter((arrow) => arrow.startAnchor?.tileId === iconId || arrow.endAnchor?.tileId === iconId)
+      .map(toArrowUndoPayload);
+
     setIconsBySpace((prev) => {
       const tile = (prev[selectedSpace.id] || []).find((i) => i.id === iconId);
       if (tile) {
@@ -56,6 +73,7 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
                   x: tile.x,
                   y: tile.y,
                 },
+                deleted_arrows: connectedArrows,
               },
             })
             .catch((err) => console.error('Failed to create undo event:', err));
@@ -82,6 +100,7 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace }: Ico
                   service: tile.service,
                   content: tile.content,
                 },
+                deleted_arrows: connectedArrows,
               },
             })
             .catch((err) => console.error('Failed to create undo event:', err));

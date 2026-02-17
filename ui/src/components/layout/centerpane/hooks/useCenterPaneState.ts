@@ -24,6 +24,9 @@ import { isGmailUrl } from '@/components/layout/centerpane/utils';
 import { calculateContentHeight } from '@/components/layout/centerpane/boundaries';
 import { API_BASE } from '@/config/api';
 
+const isFocusRingEdge = (value: unknown): value is 'top' | 'right' | 'bottom' | 'left' =>
+  value === 'top' || value === 'right' || value === 'bottom' || value === 'left';
+
 const looksLikeFavicon = (src?: string) => {
   const s = (src || '').toLowerCase();
   return s.endsWith('.ico') || s.includes('favicon');
@@ -37,6 +40,18 @@ const pickFavicon = (metadata: any, resolvedUrl: string, originalUrl: string) =>
   }
   return metadata?.favicon_url || buildFaviconUrl(targetUrl);
 };
+
+const toArrowUndoPayload = (arrow: ArrowSegment) => ({
+  id: arrow.id,
+  start: { x: arrow.start.x, y: arrow.start.y },
+  end: { x: arrow.end.x, y: arrow.end.y },
+  start_anchor: arrow.startAnchor
+    ? { tile_id: arrow.startAnchor.tileId, edge: arrow.startAnchor.edge, edge_index: arrow.startAnchor.edgeIndex }
+    : undefined,
+  end_anchor: arrow.endAnchor
+    ? { tile_id: arrow.endAnchor.tileId, edge: arrow.endAnchor.edge, edge_index: arrow.endAnchor.edgeIndex }
+    : undefined,
+});
 
 export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | null>) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -77,8 +92,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const x = meta.x;
             const y = meta.y;
             const deletedAt = meta.deleted_at;
+            const isArrow = meta.arrow === true;
             const hasCoords = typeof x === 'number' && typeof y === 'number' && x >= 0 && y >= 0;
-            return hasCoords && !deletedAt;
+            return hasCoords && !deletedAt && !isArrow;
           })
           .map((obj, idx) => {
             const meta = (obj.metadata || {}) as Record<string, any>;
@@ -159,11 +175,33 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           const startY = meta.start_y;
           const endX = meta.end_x;
           const endY = meta.end_y;
+          const startTileId = typeof meta.start_tile_id === 'string' ? meta.start_tile_id : undefined;
+          const startAnchorEdge = isFocusRingEdge(meta.start_anchor_edge) ? meta.start_anchor_edge : undefined;
+          const startAnchorIndex = Number.isInteger(meta.start_anchor_index) ? Number(meta.start_anchor_index) : undefined;
+          const endTileId = typeof meta.end_tile_id === 'string' ? meta.end_tile_id : undefined;
+          const endAnchorEdge = isFocusRingEdge(meta.end_anchor_edge) ? meta.end_anchor_edge : undefined;
+          const endAnchorIndex = Number.isInteger(meta.end_anchor_index) ? Number(meta.end_anchor_index) : undefined;
           if (hasArrowFlag && [startX, startY, endX, endY].every((v) => typeof v === 'number')) {
             arrows.push({
               id: obj.id,
               start: { x: startX, y: startY },
               end: { x: endX, y: endY },
+              startAnchor:
+                startTileId && startAnchorEdge && typeof startAnchorIndex === 'number'
+                  ? {
+                      tileId: startTileId,
+                      edge: startAnchorEdge,
+                      edgeIndex: startAnchorIndex,
+                    }
+                  : undefined,
+              endAnchor:
+                endTileId && endAnchorEdge && typeof endAnchorIndex === 'number'
+                  ? {
+                      tileId: endTileId,
+                      edge: endAnchorEdge,
+                      edgeIndex: endAnchorIndex,
+                    }
+                  : undefined,
             });
           }
         });
@@ -353,6 +391,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
         // Find the tile to save to history
         const tileToDelete = (iconsBySpace[selectedSpace.id] || []).find((i) => i.id === primarySelectedId);
+        const connectedArrows = (arrowsBySpace[selectedSpace.id] || [])
+          .filter((arrow) => arrow.startAnchor?.tileId === primarySelectedId || arrow.endAnchor?.tileId === primarySelectedId)
+          .map(toArrowUndoPayload);
         if (tileToDelete) {
           // Keep keyboard delete in both local undo store and server undo log
           const isTextTile = tileToDelete.type === 'text';
@@ -390,7 +431,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           undoApi
             .createEvent(selectedSpace.id, {
               event_type: isTextTile ? 'text_delete' : 'tile_delete',
-              event_data: isTextTile ? { text: textEventPayload } : { tile: tileEventPayload },
+              event_data: isTextTile
+                ? { text: textEventPayload, deleted_arrows: connectedArrows }
+                : { tile: tileEventPayload, deleted_arrows: connectedArrows },
             })
             .catch((err) => console.error('Failed to create undo event:', err));
         }
@@ -412,7 +455,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIconIds, selectedSpace, iconsBySpace, addEvent]);
+  }, [selectedIconIds, selectedSpace, iconsBySpace, arrowsBySpace, addEvent]);
 
   return {
     isDragOver,

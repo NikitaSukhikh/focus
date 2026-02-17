@@ -15,10 +15,20 @@ export type IconKind =
   | 'web_article'
   | 'unknown';
 
+export type FocusRingEdge = 'top' | 'right' | 'bottom' | 'left';
+
+export interface ArrowAnchorRef {
+  tileId: string;
+  edge: FocusRingEdge;
+  edgeIndex: number;
+}
+
 export interface ArrowSegment {
   id: string;
   start: { x: number; y: number };
   end: { x: number; y: number };
+  startAnchor?: ArrowAnchorRef;
+  endAnchor?: ArrowAnchorRef;
 }
 
 export interface DroppedIcon {
@@ -85,11 +95,21 @@ export interface TileProps {
   content?: string;
   tag?: TagColor | '';
   isSelected?: boolean;
-  onClick?: (event: React.MouseEvent) => void;
+  onClick?: (_event: React.MouseEvent) => void;
   onDoubleClick?: () => void;
   onPositionChange?: (_x: number, _y: number) => void;
   onDelete?: () => void;
   onRefreshMetadata?: () => void;
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
   onEditLink?: () => void;
+  onFocusRingPointerDown?: (_event: React.PointerEvent<HTMLElement | SVGElement>, _tileId: string) => void;
+  onMetricsChange?: (
+    _tileId: string,
+    _metrics: {
+      width: number;
+      height: number;
+      contentInset: number;
+      isCentered: boolean;
+    }
+  ) => void;
 }

@@ -11,7 +11,7 @@ interface TextContentProps {
   hoverScaleClass: string;
 }
 
-// TextContent keeps long notes readable in-place while preserving full-text drag behavior at the tile level.
+// TextContent keeps long notes readable in-place while leaving drag affordance to dedicated handle hit areas.
 export function TextContent({ content, hoverScaleClass }: TextContentProps) {
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const textViewportMaxHeight = TEXT_TILE.maxHeight - (TEXT_NOTE_BOX.padding.y * 2);
@@ -46,7 +46,7 @@ export function TextContent({ content, hoverScaleClass }: TextContentProps) {
           maxHeight: `${textViewportMaxHeight}px`,
           overflowY: 'auto',
           overflowX: 'hidden',
-          cursor: 'grab',
+          cursor: 'default',
           userSelect: 'none',
           boxSizing: 'border-box',
           paddingRight: '14px',

@@ -12,7 +12,7 @@
 import { useEffect, useRef } from 'react';
 import { undoApi } from '@/api/undo';
 import { objectsApi } from '@/api/objects';
-import { DroppedIcon, ArrowSegment } from '@/components/layout/centerpane/types';
+import { ArrowAnchorRef, DroppedIcon, ArrowSegment } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
 import { useUndoHistoryStore } from '@/stores/undoHistoryStore';
 import type { UndoEventResponse } from '@/api/undo';
@@ -23,6 +23,29 @@ interface UseUndoProps {
   setIconsBySpace: React.Dispatch<React.SetStateAction<Record<string, DroppedIcon[]>>>;
   setArrowsBySpace: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
 }
+
+interface UndoArrowPayload {
+  id: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  start_anchor?: { tile_id?: string; edge?: string; edge_index?: number };
+  end_anchor?: { tile_id?: string; edge?: string; edge_index?: number };
+}
+
+const isUndoArrowPayload = (value: unknown): value is UndoArrowPayload => {
+  const arrow = value as UndoArrowPayload | null;
+  if (!arrow || typeof arrow !== 'object') return false;
+  if (typeof arrow.id !== 'string') return false;
+  if (typeof arrow.start?.x !== 'number' || typeof arrow.start?.y !== 'number') return false;
+  if (typeof arrow.end?.x !== 'number' || typeof arrow.end?.y !== 'number') return false;
+  return true;
+};
+
+const parseDeletedArrows = (eventData: Record<string, unknown>): UndoArrowPayload[] => {
+  const raw = eventData.deleted_arrows;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is UndoArrowPayload => isUndoArrowPayload(item));
+};
 
 export const useUndo = ({
   selectedSpaceId,
@@ -40,7 +63,7 @@ export const useUndo = ({
 
   const resolveArrowId = (
     currentArrows: ArrowSegment[],
-    eventArrow?: { id: string; start: { x: number; y: number }; end: { x: number; y: number } }
+    eventArrow?: UndoArrowPayload
   ): string | null => {
     if (!eventArrow) return null;
     const aliasId = arrowIdAliasRef.current.get(eventArrow.id);
@@ -94,6 +117,88 @@ export const useUndo = ({
     tag: normalizeTag(text.tag),
     content: text.content,
   });
+
+  const toAnchorRef = (anchor?: UndoArrowPayload['start_anchor']): ArrowAnchorRef | undefined => {
+    if (!anchor?.tile_id) return undefined;
+    if (anchor.edge !== 'top' && anchor.edge !== 'right' && anchor.edge !== 'bottom' && anchor.edge !== 'left') {
+      return undefined;
+    }
+    if (!Number.isInteger(anchor.edge_index)) return undefined;
+    return {
+      tileId: anchor.tile_id,
+      edge: anchor.edge,
+      edgeIndex: Number(anchor.edge_index),
+    };
+  };
+
+  const toArrowSegmentFromEvent = (arrow: UndoArrowPayload, idOverride?: string): ArrowSegment => ({
+    id: idOverride ?? arrow.id,
+    start: arrow.start,
+    end: arrow.end,
+    startAnchor: toAnchorRef(arrow.start_anchor),
+    endAnchor: toAnchorRef(arrow.end_anchor),
+  });
+
+  const toArrowMetadata = (arrow: ArrowSegment) => ({
+    arrow: true,
+    start_x: arrow.start.x,
+    start_y: arrow.start.y,
+    end_x: arrow.end.x,
+    end_y: arrow.end.y,
+    start_tile_id: arrow.startAnchor?.tileId ?? null,
+    start_anchor_edge: arrow.startAnchor?.edge ?? null,
+    start_anchor_index: arrow.startAnchor?.edgeIndex ?? null,
+    end_tile_id: arrow.endAnchor?.tileId ?? null,
+    end_anchor_edge: arrow.endAnchor?.edge ?? null,
+    end_anchor_index: arrow.endAnchor?.edgeIndex ?? null,
+  });
+
+  const restoreDeletedArrows = async (deletedArrows: UndoArrowPayload[]) => {
+    if (!selectedSpaceId || deletedArrows.length === 0) return;
+
+    const staged = deletedArrows.map((payload, index) => ({
+      tempId: crypto.randomUUID ? crypto.randomUUID() : `arrow-restore-${Date.now()}-${index}`,
+      payload,
+      segment: toArrowSegmentFromEvent(payload),
+    }));
+
+    setArrowsBySpace((prev) => ({
+      ...prev,
+      [selectedSpaceId]: [
+        ...(prev[selectedSpaceId] || []),
+        ...staged.map((item) => ({ ...item.segment, id: item.tempId })),
+      ],
+    }));
+
+    for (const item of staged) {
+      try {
+        const created = await objectsApi.create(selectedSpaceId, {
+          type: 'text',
+          title: 'Arrow',
+          content: 'Arrow connection',
+        });
+
+        await objectsApi.updateMetadata(created.id, {
+          ...toArrowMetadata(item.segment),
+          content: 'Arrow connection',
+        });
+
+        setArrowsBySpace((prev) => ({
+          ...prev,
+          [selectedSpaceId]: (prev[selectedSpaceId] || []).map((arrow) =>
+            arrow.id === item.tempId ? { ...arrow, id: created.id } : arrow
+          ),
+        }));
+        arrowIdAliasRef.current.set(item.payload.id, created.id);
+      } catch (err) {
+        console.error('[UNDO] Failed to restore grouped deleted arrow:', err);
+        setArrowsBySpace((prev) => ({
+          ...prev,
+          [selectedSpaceId]: (prev[selectedSpaceId] || []).filter((arrow) => arrow.id !== item.tempId),
+        }));
+      }
+    }
+  };
 
   const processUndoRedoEvent = async (event: UndoEventResponse, direction: UndoDirection) => {
     const isRedo = direction === 'redo';
@@ -190,6 +295,7 @@ export const useUndo = ({
 
       case 'tile_delete': {
         const { tile } = event.event_data;
+        const deletedArrows = parseDeletedArrows(event.event_data as Record<string, unknown>);
         if (!tile || !selectedSpaceId) break;
 
         if (isRedo) {
@@ -212,17 +318,18 @@ export const useUndo = ({
           objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
             console.error('[UNDO] Failed to restore tile position:', err);
           });
+          await restoreDeletedArrows(deletedArrows);
         }
         break;
       }
 
       case 'arrow_create': {
-        const { arrow } = event.event_data;
+        const { arrow } = event.event_data as { arrow?: UndoArrowPayload };
         if (!arrow || !selectedSpaceId) break;
 
         if (isRedo) {
           const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
-          const tempArrow: ArrowSegment = { id: tempId, start: arrow.start, end: arrow.end };
+          const tempArrow: ArrowSegment = toArrowSegmentFromEvent(arrow, tempId);
 
           setArrowsBySpace((prev) => ({
             ...prev,
@@ -238,11 +345,7 @@ export const useUndo = ({
               });
 
               await objectsApi.updateMetadata(created.id, {
-                arrow: true,
-                start_x: arrow.start.x,
-                start_y: arrow.start.y,
-                end_x: arrow.end.x,
-                end_y: arrow.end.y,
+                ...toArrowMetadata(tempArrow),
                 content: 'Arrow connection',
               });
 
@@ -287,14 +390,31 @@ export const useUndo = ({
       }
 
       case 'arrow_move': {
-        const { arrow, from, to } = event.event_data;
+        const { arrow, from, to } = event.event_data as {
+          arrow?: UndoArrowPayload;
+          from?: {
+            start?: { x: number; y: number };
+            end?: { x: number; y: number };
+            start_anchor?: UndoArrowPayload['start_anchor'];
+            end_anchor?: UndoArrowPayload['end_anchor'];
+          };
+          to?: {
+            start?: { x: number; y: number };
+            end?: { x: number; y: number };
+            start_anchor?: UndoArrowPayload['start_anchor'];
+            end_anchor?: UndoArrowPayload['end_anchor'];
+          };
+        };
         if (!arrow || !selectedSpaceId) break;
+        const targetFrame = isRedo ? (to || {}) : (from || {});
         const targetStart = isRedo
           ? (to && typeof to.start?.x === 'number' && typeof to.start?.y === 'number' ? to.start : arrow.start)
           : (from && typeof from.start?.x === 'number' && typeof from.start?.y === 'number' ? from.start : arrow.start);
         const targetEnd = isRedo
           ? (to && typeof to.end?.x === 'number' && typeof to.end?.y === 'number' ? to.end : arrow.end)
           : (from && typeof from.end?.x === 'number' && typeof from.end?.y === 'number' ? from.end : arrow.end);
+        const targetStartAnchor = toAnchorRef(targetFrame.start_anchor) ?? toAnchorRef(arrow.start_anchor);
+        const targetEndAnchor = toAnchorRef(targetFrame.end_anchor) ?? toAnchorRef(arrow.end_anchor);
 
         let updatedArrowId = arrow.id;
         setArrowsBySpace((prev) => {
@@ -310,7 +430,9 @@ export const useUndo = ({
             return {
               ...prev,
               [selectedSpaceId]: current.map((a) =>
-                a.id === resolvedId ? { ...a, start: targetStart, end: targetEnd } : a
+                a.id === resolvedId
+                  ? { ...a, start: targetStart, end: targetEnd, startAnchor: targetStartAnchor, endAnchor: targetEndAnchor }
+                  : a
               ),
             };
           }
@@ -319,6 +441,8 @@ export const useUndo = ({
             id: resolvedId,
             start: targetStart,
             end: targetEnd,
+            startAnchor: targetStartAnchor,
+            endAnchor: targetEndAnchor,
           };
 
           if (resolvedId !== arrow.id) {
@@ -331,14 +455,16 @@ export const useUndo = ({
           };
         });
 
+        const movedArrow: ArrowSegment = {
+          id: updatedArrowId,
+          start: targetStart,
+          end: targetEnd,
+          startAnchor: targetStartAnchor,
+          endAnchor: targetEndAnchor,
+        };
+
         objectsApi
-          .updateMetadata(updatedArrowId, {
-            arrow: true,
-            start_x: targetStart.x,
-            start_y: targetStart.y,
-            end_x: targetEnd.x,
-            end_y: targetEnd.y,
-          })
+          .updateMetadata(updatedArrowId, toArrowMetadata(movedArrow))
           .catch((err) => {
             console.error(`[${direction.toUpperCase()}] Failed to move arrow:`, err);
           });
@@ -346,7 +472,7 @@ export const useUndo = ({
       }
 
       case 'arrow_delete': {
-        const { arrow } = event.event_data;
+        const { arrow } = event.event_data as { arrow?: UndoArrowPayload };
         if (!arrow || !selectedSpaceId) break;
 
         if (isRedo) {
@@ -373,11 +499,7 @@ export const useUndo = ({
           );
         } else {
           const tempId = crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`;
-          const tempArrow: ArrowSegment = {
-            id: tempId,
-            start: arrow.start,
-            end: arrow.end,
-          };
+          const tempArrow: ArrowSegment = toArrowSegmentFromEvent(arrow, tempId);
 
           setArrowsBySpace((prev) => ({
             ...prev,
@@ -393,11 +515,7 @@ export const useUndo = ({
               });
 
               await objectsApi.updateMetadata(created.id, {
-                arrow: true,
-                start_x: arrow.start.x,
-                start_y: arrow.start.y,
-                end_x: arrow.end.x,
-                end_y: arrow.end.y,
+                ...toArrowMetadata(tempArrow),
                 content: 'Arrow connection',
               });
 
@@ -454,6 +572,7 @@ export const useUndo = ({
 
       case 'text_delete': {
         const { text } = event.event_data;
+        const deletedArrows = parseDeletedArrows(event.event_data as Record<string, unknown>);
         if (!text || !selectedSpaceId) break;
 
         if (isRedo) {
@@ -476,6 +595,7 @@ export const useUndo = ({
           objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
             console.error('[UNDO] Failed to restore text note:', err);
           });
+          await restoreDeletedArrows(deletedArrows);
         }
         break;
       }

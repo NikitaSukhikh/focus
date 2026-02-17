@@ -49,6 +49,13 @@ export const useCenterPaneDragDrop = ({
   const autoScrollIntervalRef = useRef<number | null>(null);
   const dragStartScrollTopRef = useRef<number>(0);
   const dragDepthRef = useRef<number>(0);
+  const activeTileDragRef = useRef<{
+    iconId: string;
+    spaceId: string;
+    startX: number;
+    startY: number;
+    droppedInPane: boolean;
+  } | null>(null);
   const { updatePosition } = useDebouncedPositionUpdate();
   const safeZoom = Math.max(zoom, 0.01);
 
@@ -198,6 +205,34 @@ export const useCenterPaneDragDrop = ({
         draggedIcon?.filePath
       );
       if (draggedIcon) {
+        if (selectedSpace && (!activeTileDragRef.current || activeTileDragRef.current.iconId !== draggedId)) {
+          activeTileDragRef.current = {
+            iconId: draggedId,
+            spaceId: selectedSpace.id,
+            startX: dragStart.iconX,
+            startY: dragStart.iconY,
+            droppedInPane: false,
+          };
+        }
+
+        if (selectedSpace) {
+          setIconsBySpace((prev) => {
+            const current = prev[selectedSpace.id] || [];
+            let changed = false;
+            const next = current.map((icon) =>
+              icon.id === draggedId
+                ? (() => {
+                    if (icon.x === x && icon.y === y) return icon;
+                    changed = true;
+                    return { ...icon, x, y };
+                  })()
+                : icon
+            );
+            if (!changed) return prev;
+            return { ...prev, [selectedSpace.id]: next };
+          });
+        }
+
         setDragGhost({ id: draggedId, x, y, type: draggedIcon.type });
       }
     }
@@ -239,6 +274,10 @@ export const useCenterPaneDragDrop = ({
     // Handle existing icon drag
     const iconId = e.dataTransfer.getData('application/x-icon-id');
     if (iconId) {
+      if (activeTileDragRef.current?.iconId === iconId) {
+        activeTileDragRef.current.droppedInPane = true;
+      }
+
       const startData = e.dataTransfer.getData('application/x-drag-start');
       const dragStart = parseDragStart(startData, {
         startCursorX: e.clientX,
@@ -261,7 +300,7 @@ export const useCenterPaneDragDrop = ({
         movedIcon?.url,
         movedIcon?.filePath
       );
-      const hasMoved = movedIcon ? movedIcon.x !== x || movedIcon.y !== y : true;
+      const hasMoved = dragStart.iconX !== x || dragStart.iconY !== y;
       const fromX = dragStart.iconX;
       const fromY = dragStart.iconY;
 
@@ -315,6 +354,8 @@ export const useCenterPaneDragDrop = ({
           })
           .catch((err) => console.error('Failed to create tile move undo event:', err));
       }
+
+      activeTileDragRef.current = null;
       return;
     }
 
@@ -660,20 +701,41 @@ export const useCenterPaneDragDrop = ({
 
   // Ensure drag state is cleaned up even if the drag ends outside the canvas
   useEffect(() => {
-    const handleGlobalDragEnd = () => {
+    const clearGlobalDragUiState = () => {
       dragDepthRef.current = 0;
       setIsDragOver(false);
       setDragGhost(null);
       stopAutoScroll();
     };
 
+    const handleGlobalDrop = () => {
+      clearGlobalDragUiState();
+    };
+
+    const handleGlobalDragEnd = () => {
+      const activeDrag = activeTileDragRef.current;
+      if (activeDrag && !activeDrag.droppedInPane) {
+        setIconsBySpace((prev) => {
+          const current = prev[activeDrag.spaceId] || [];
+          const next = current.map((icon) =>
+            icon.id === activeDrag.iconId
+              ? { ...icon, x: activeDrag.startX, y: activeDrag.startY }
+              : icon
+          );
+          return { ...prev, [activeDrag.spaceId]: next };
+        });
+      }
+      activeTileDragRef.current = null;
+      clearGlobalDragUiState();
+    };
+
     window.addEventListener('dragend', handleGlobalDragEnd, true);
-    window.addEventListener('drop', handleGlobalDragEnd, true);
+    window.addEventListener('drop', handleGlobalDrop, true);
     return () => {
       window.removeEventListener('dragend', handleGlobalDragEnd, true);
-      window.removeEventListener('drop', handleGlobalDragEnd, true);
+      window.removeEventListener('drop', handleGlobalDrop, true);
     };
-  }, [setDragGhost, setIsDragOver, stopAutoScroll]);
+  }, [setDragGhost, setIconsBySpace, setIsDragOver, stopAutoScroll]);
 
   return {
     handleDragEnter,

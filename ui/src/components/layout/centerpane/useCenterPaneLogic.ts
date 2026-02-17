@@ -83,6 +83,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
   const iconActions = useCenterPaneIconActions({
     selectedSpace,
     setIconsBySpace,
+    arrowsBySpace,
   });
 
   // File handling

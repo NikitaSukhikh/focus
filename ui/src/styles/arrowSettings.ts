@@ -1,6 +1,8 @@
+import { TILE_RING } from '@/styles/tileStyles';
+
 export const ARROW_SETTINGS = {
-  color: '#FFEB3B',
-  strokeWidth: 3,
+  color: '#3b82f6',
+  strokeWidth: TILE_RING.strokeWidth,
   clickAreaPadding: 6,
   opacity: {
     normal: 'var(--icon-opacity, 1)',

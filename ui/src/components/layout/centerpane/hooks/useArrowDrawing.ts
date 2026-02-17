@@ -1,8 +1,13 @@
+// useArrowDrawing handles anchor-based arrow creation, endpoint retargeting, and graph-link persistence.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
-import { ArrowSegment } from '@/components/layout/centerpane/types';
+import { ArrowAnchorRef, ArrowSegment } from '@/components/layout/centerpane/types';
+import {
+  findFocusRingTileIdAtClientPoint,
+  getNearestAnchorForTile,
+} from '@/components/layout/centerpane/arrowGeometry';
 
 interface UseArrowDrawingProps {
   zoom: number;
@@ -11,14 +16,127 @@ interface UseArrowDrawingProps {
   arrowsBySpace: Record<string, ArrowSegment[]>;
   setArrowsBySpace: React.Dispatch<React.SetStateAction<Record<string, ArrowSegment[]>>>;
   contentHeight: number;
-  toCanvasCoords: (clientX: number, clientY: number) => { x: number; y: number };
+  toCanvasCoords: (_clientX: number, _clientY: number) => { x: number; y: number };
   contextMenuOpen: boolean;
-  isTargetBlocked: (el: HTMLElement) => boolean;
+}
+
+interface ArrowUndoPayload {
+  id: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  start_anchor?: { tile_id: string; edge: string; edge_index: number };
+  end_anchor?: { tile_id: string; edge: string; edge_index: number };
+}
+
+interface ArrowUndoFrame {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  start_anchor?: { tile_id: string; edge: string; edge_index: number };
+  end_anchor?: { tile_id: string; edge: string; edge_index: number };
+}
+
+interface DrawState {
+  pointerId: number;
+  startTileId: string;
+  startAnchor: ArrowAnchorRef;
+  startPoint: { x: number; y: number };
+}
+
+type ArrowEndpoint = 'start' | 'end';
+
+interface EndpointDragState {
+  pointerId: number;
+  arrowId: string;
+  endpoint: ArrowEndpoint;
+  initial: ArrowSegment;
 }
 
 const ARROW_PADDING = 120;
 
-// useArrowDrawing handles pointer-based arrow creation/selection on the canvas and keeps arrow segments in sync with backend objects and undo events.
+const cloneAnchor = (anchor?: ArrowAnchorRef): ArrowAnchorRef | undefined =>
+  anchor
+    ? { tileId: anchor.tileId, edge: anchor.edge, edgeIndex: anchor.edgeIndex }
+    : undefined;
+
+const cloneSegment = (segment: ArrowSegment): ArrowSegment => ({
+  id: segment.id,
+  start: { x: segment.start.x, y: segment.start.y },
+  end: { x: segment.end.x, y: segment.end.y },
+  startAnchor: cloneAnchor(segment.startAnchor),
+  endAnchor: cloneAnchor(segment.endAnchor),
+});
+
+const toMetadataAnchor = (anchor: ArrowAnchorRef) => ({
+  tile_id: anchor.tileId,
+  edge: anchor.edge,
+  edge_index: anchor.edgeIndex,
+});
+
+const toUndoPayload = (arrow: ArrowSegment): ArrowUndoPayload => ({
+  id: arrow.id,
+  start: { x: arrow.start.x, y: arrow.start.y },
+  end: { x: arrow.end.x, y: arrow.end.y },
+  start_anchor: arrow.startAnchor ? toMetadataAnchor(arrow.startAnchor) : undefined,
+  end_anchor: arrow.endAnchor ? toMetadataAnchor(arrow.endAnchor) : undefined,
+});
+
+const toUndoFrame = (arrow: ArrowSegment): ArrowUndoFrame => ({
+  start: { x: arrow.start.x, y: arrow.start.y },
+  end: { x: arrow.end.x, y: arrow.end.y },
+  start_anchor: arrow.startAnchor ? toMetadataAnchor(arrow.startAnchor) : undefined,
+  end_anchor: arrow.endAnchor ? toMetadataAnchor(arrow.endAnchor) : undefined,
+});
+
+const toArrowMetadata = (arrow: ArrowSegment) => ({
+  arrow: true,
+  start_x: arrow.start.x,
+  start_y: arrow.start.y,
+  end_x: arrow.end.x,
+  end_y: arrow.end.y,
+  start_tile_id: arrow.startAnchor?.tileId ?? null,
+  start_anchor_edge: arrow.startAnchor?.edge ?? null,
+  start_anchor_index: arrow.startAnchor?.edgeIndex ?? null,
+  end_tile_id: arrow.endAnchor?.tileId ?? null,
+  end_anchor_edge: arrow.endAnchor?.edge ?? null,
+  end_anchor_index: arrow.endAnchor?.edgeIndex ?? null,
+});
+
+const isSameAnchor = (a?: ArrowAnchorRef, b?: ArrowAnchorRef) => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.tileId === b.tileId && a.edge === b.edge && a.edgeIndex === b.edgeIndex;
+};
+
+const didArrowChange = (before: ArrowSegment, after: ArrowSegment) => {
+  const moved =
+    Math.abs(before.start.x - after.start.x) > 0.5 ||
+    Math.abs(before.start.y - after.start.y) > 0.5 ||
+    Math.abs(before.end.x - after.end.x) > 0.5 ||
+    Math.abs(before.end.y - after.end.y) > 0.5;
+  return moved || !isSameAnchor(before.startAnchor, after.startAnchor) || !isSameAnchor(before.endAnchor, after.endAnchor);
+};
+
+const applyEndpointRetarget = (
+  original: ArrowSegment,
+  endpoint: ArrowEndpoint,
+  point: { x: number; y: number },
+  anchor?: ArrowAnchorRef
+): ArrowSegment => {
+  if (endpoint === 'start') {
+    return {
+      ...original,
+      start: point,
+      startAnchor: cloneAnchor(anchor),
+    };
+  }
+  return {
+    ...original,
+    end: point,
+    endAnchor: cloneAnchor(anchor),
+  };
+};
+
+// Anchor-only arrows keep graph relationships stable and endpoint retargeting makes graph editing explicit.
 export const useArrowDrawing = ({
   zoom,
   paneRef,
@@ -28,31 +146,21 @@ export const useArrowDrawing = ({
   contentHeight,
   toCanvasCoords,
   contextMenuOpen,
-  isTargetBlocked,
 }: UseArrowDrawingProps) => {
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
   const [draftArrow, setDraftArrow] = useState<ArrowSegment | null>(null);
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
-  const [hasArrowMovement, setHasArrowMovement] = useState(false);
-  const arrowStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [draggingArrowId, setDraggingArrowId] = useState<string | null>(null);
-  const arrowDragStateRef = useRef<{
-    arrowId: string;
-    pointerStart: { x: number; y: number };
-    initial: { start: { x: number; y: number }; end: { x: number; y: number } };
-    last?: { start: { x: number; y: number }; end: { x: number; y: number } };
-  } | null>(null);
-  const arrowDragMovedRef = useRef(false);
+  const drawStateRef = useRef<DrawState | null>(null);
+  const endpointDragStateRef = useRef<EndpointDragState | null>(null);
+  const [draggingEndpoint, setDraggingEndpoint] = useState<{ arrowId: string; endpoint: ArrowEndpoint } | null>(null);
 
   useEffect(() => {
     setDraftArrow(null);
     setIsDrawingArrow(false);
-    setHasArrowMovement(false);
     setSelectedArrowId(null);
-    arrowStartRef.current = null;
-    setDraggingArrowId(null);
-    arrowDragStateRef.current = null;
-    arrowDragMovedRef.current = false;
+    drawStateRef.current = null;
+    endpointDragStateRef.current = null;
+    setDraggingEndpoint(null);
   }, [selectedSpaceId]);
 
   const deleteArrow = useCallback(
@@ -71,16 +179,11 @@ export const useArrowDrawing = ({
       setSelectedArrowId((prev) => (prev === arrowId ? null : prev));
 
       if (arrowToDelete) {
-        // Track deletion in undo log so keyboard/context actions stay reversible
         undoApi
           .createEvent(selectedSpaceId, {
             event_type: 'arrow_delete',
             event_data: {
-              arrow: {
-                id: arrowToDelete.id,
-                start: { x: arrowToDelete.start.x, y: arrowToDelete.start.y },
-                end: { x: arrowToDelete.end.x, y: arrowToDelete.end.y },
-              },
+              arrow: toUndoPayload(arrowToDelete),
             },
           })
           .catch((err) => console.error('Failed to create undo event:', err));
@@ -99,286 +202,354 @@ export const useArrowDrawing = ({
     return arrowsBySpace[selectedSpaceId] || [];
   }, [arrowsBySpace, selectedSpaceId]);
 
-  const toArrowCoords = (clientX: number, clientY: number) => {
-    const base = toCanvasCoords(clientX, clientY);
-    const safeZoom = Math.max(zoom, 0.01);
-    return {
-      x: base.x - 24 / safeZoom,
-      y: base.y - 34 / safeZoom,
-    };
-  };
+  const getPointerCanvasPoint = useCallback(
+    (clientX: number, clientY: number) => toCanvasCoords(clientX, clientY),
+    [toCanvasCoords]
+  );
 
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  const getAnchorAtPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      const hoveredTileId = findFocusRingTileIdAtClientPoint(clientX, clientY);
+      if (!hoveredTileId) return null;
+      return getNearestAnchorForTile(hoveredTileId, clientX, clientY, toCanvasCoords);
+    },
+    [toCanvasCoords]
+  );
+
+  const computeDraftEndpoint = useCallback(
+    (startTileId: string, clientX: number, clientY: number) => {
+      const anchorHit = getAnchorAtPointer(clientX, clientY);
+      const pointerPoint = getPointerCanvasPoint(clientX, clientY);
+      if (!anchorHit || anchorHit.anchor.tileId === startTileId) {
+        return { point: pointerPoint, anchor: null as ArrowAnchorRef | null };
+      }
+      return { point: anchorHit.point, anchor: anchorHit.anchor };
+    },
+    [getAnchorAtPointer, getPointerCanvasPoint]
+  );
+
+  const handleFocusRingPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLElement | SVGElement>, tileId: string) => {
+      if (event.button !== 0) return;
+      if (!selectedSpaceId || contextMenuOpen || endpointDragStateRef.current) return;
+
+      const startAnchor = getNearestAnchorForTile(tileId, event.clientX, event.clientY, toCanvasCoords);
+      if (!startAnchor) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      drawStateRef.current = {
+        pointerId: event.pointerId,
+        startTileId: tileId,
+        startAnchor: startAnchor.anchor,
+        startPoint: startAnchor.point,
+      };
+
+      setSelectedArrowId(null);
+      setIsDrawingArrow(true);
+      setDraftArrow({
+        id: 'arrow-draft',
+        start: startAnchor.point,
+        end: startAnchor.point,
+        startAnchor: startAnchor.anchor,
+      });
+    },
+    [contextMenuOpen, selectedSpaceId, toCanvasCoords]
+  );
+
+  const handleArrowPointerDown = (segment: ArrowSegment, e: React.PointerEvent<SVGPathElement>) => {
     if (e.button !== 0) return;
-    if (!paneRef.current || !selectedSpaceId) return;
-    if (contextMenuOpen) return;
-
-    const target = e.target as HTMLElement;
-    if (isTargetBlocked(target)) return;
-
-    arrowStartRef.current = toArrowCoords(e.clientX, e.clientY);
-    setDraftArrow(null);
-    setIsDrawingArrow(true);
-    setHasArrowMovement(false);
-    setSelectedArrowId(null);
-  };
-
-  const startArrowDrag = (segment: ArrowSegment, e: React.PointerEvent<SVGLineElement>) => {
-    if (e.button !== 0) return;
-    if (!selectedSpaceId) return;
-
     e.preventDefault();
     e.stopPropagation();
-
     setSelectedArrowId(segment.id);
-    setDraggingArrowId(segment.id);
-    arrowDragMovedRef.current = false;
-
-    const pointerStart = toArrowCoords(e.clientX, e.clientY);
-    arrowDragStateRef.current = {
-      arrowId: segment.id,
-      pointerStart,
-      initial: { start: { ...segment.start }, end: { ...segment.end } },
-    };
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDrawingArrow) return;
-    if (!arrowStartRef.current) return;
+  const handleArrowEndpointPointerDown = useCallback(
+    (segment: ArrowSegment, endpoint: ArrowEndpoint, e: React.PointerEvent<SVGCircleElement>) => {
+      if (e.button !== 0) return;
+      if (!selectedSpaceId || isDrawingArrow) return;
 
-    const nextEnd = toArrowCoords(e.clientX, e.clientY);
-    const dx = nextEnd.x - arrowStartRef.current.x;
-    const dy = nextEnd.y - arrowStartRef.current.y;
-    const distance = Math.hypot(dx, dy);
+      e.preventDefault();
+      e.stopPropagation();
 
-    const movedEnough = distance > 3;
-    if (movedEnough && !draftArrow) {
-      setDraftArrow({ id: 'arrow-draft', start: arrowStartRef.current, end: nextEnd });
-    } else if (draftArrow) {
-      setDraftArrow((prev) => (prev ? { ...prev, end: nextEnd } : prev));
-    }
-
-    if (movedEnough && !hasArrowMovement) {
-      setHasArrowMovement(true);
-    }
-  };
-
-  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDrawingArrow) return;
-
-    setIsDrawingArrow(false);
-
-    const target = e.target as HTMLElement;
-    if (isTargetBlocked(target)) {
-      setDraftArrow(null);
-      arrowStartRef.current = null;
-      setHasArrowMovement(false);
-      return;
-    }
-
-    if (!paneRef.current || !selectedSpaceId) {
-      setDraftArrow(null);
-      arrowStartRef.current = null;
-      setHasArrowMovement(false);
-      return;
-    }
-
-    const rect = paneRef.current.getBoundingClientRect();
-    const isInsidePane =
-      e.clientX >= rect.left &&
-      e.clientX <= rect.right &&
-      e.clientY >= rect.top &&
-      e.clientY <= rect.bottom;
-    const end = toArrowCoords(e.clientX, e.clientY);
-    const startPoint = arrowStartRef.current;
-    const moved = hasArrowMovement || (startPoint ? Math.hypot(end.x - startPoint.x, end.y - startPoint.y) > 3 : false);
-
-    if (!isInsidePane || !moved) {
-      setDraftArrow(null);
-      setHasArrowMovement(false);
-      arrowStartRef.current = null;
-      return;
-    }
-
-    const start = draftArrow?.start || startPoint;
-    if (!start) {
-      setDraftArrow(null);
-      setHasArrowMovement(false);
-      arrowStartRef.current = null;
-      return;
-    }
-
-    const newArrow: ArrowSegment = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`,
-      start,
-      end,
-    };
-
-    const spaceId = selectedSpaceId;
-
-    setArrowsBySpace((prev) => {
-      const current = prev[selectedSpaceId] || [];
-      return {
-        ...prev,
-        [selectedSpaceId]: [...current, newArrow],
+      setSelectedArrowId(segment.id);
+      endpointDragStateRef.current = {
+        pointerId: e.pointerId,
+        arrowId: segment.id,
+        endpoint,
+        initial: cloneSegment(segment),
       };
-    });
-    setSelectedArrowId(newArrow.id);
-    setDraftArrow(null);
-    setHasArrowMovement(false);
-    arrowStartRef.current = null;
-
-    void (async () => {
-      try {
-        const created = await objectsApi.create(spaceId, {
-          type: 'text',
-          title: 'Arrow',
-          content: 'Arrow connection',
-        });
-        await objectsApi.updateMetadata(created.id, {
-          arrow: true,
-          start_x: newArrow.start.x,
-          start_y: newArrow.start.y,
-          end_x: newArrow.end.x,
-          end_y: newArrow.end.y,
-          content: 'Arrow connection',
-        });
-        setArrowsBySpace((prev) => {
-          const current = prev[spaceId] || [];
-          return {
-            ...prev,
-            [spaceId]: current.map((segment) =>
-              segment.id === newArrow.id ? { ...segment, id: created.id } : segment
-            ),
-          };
-        });
-        setSelectedArrowId(created.id);
-
-        // Add to backend undo history
-        undoApi
-          .createEvent(spaceId, {
-            event_type: 'arrow_create',
-            event_data: {
-              arrow: {
-                id: created.id,
-                start: { x: newArrow.start.x, y: newArrow.start.y },
-                end: { x: newArrow.end.x, y: newArrow.end.y },
-              },
-            },
-          })
-          .catch((err) => console.error('Failed to create undo event:', err));
-
-        window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id } }));
-      } catch (err) {
-        console.error('Failed to persist arrow', err);
-        setArrowsBySpace((prev) => {
-          const current = prev[selectedSpaceId] || [];
-          return {
-            ...prev,
-            [selectedSpaceId]: current.filter((segment) => segment.id !== newArrow.id),
-          };
-        });
-        setSelectedArrowId(null);
-      }
-    })();
-  };
+      setDraggingEndpoint({ arrowId: segment.id, endpoint });
+    },
+    [isDrawingArrow, selectedSpaceId]
+  );
 
   useEffect(() => {
-    if (!draggingArrowId) return;
+    if (!isDrawingArrow) return;
 
-    // Track pointer-driven arrow moves and emit undo/redo events on release
     const handlePointerMove = (e: PointerEvent) => {
-      if (!selectedSpaceId) return;
-      const dragState = arrowDragStateRef.current;
-      if (!dragState) return;
+      const drawState = drawStateRef.current;
+      if (!drawState) return;
+      if (e.pointerId !== drawState.pointerId) return;
 
-      const current = toArrowCoords(e.clientX, e.clientY);
-      const dx = current.x - dragState.pointerStart.x;
-      const dy = current.y - dragState.pointerStart.y;
+      const next = computeDraftEndpoint(drawState.startTileId, e.clientX, e.clientY);
 
-      const nextStart = {
-        x: dragState.initial.start.x + dx,
-        y: dragState.initial.start.y + dy,
-      };
-      const nextEnd = {
-        x: dragState.initial.end.x + dx,
-        y: dragState.initial.end.y + dy,
-      };
+      setDraftArrow({
+        id: 'arrow-draft',
+        start: drawState.startPoint,
+        end: next.point,
+        startAnchor: drawState.startAnchor,
+        endAnchor: next.anchor ?? undefined,
+      });
+    };
 
-      dragState.last = { start: nextStart, end: nextEnd };
+    const finishDrawing = (e: PointerEvent) => {
+      const drawState = drawStateRef.current;
+      if (!drawState) return;
+      if (e.pointerId !== drawState.pointerId) return;
 
-      const moved =
-        Math.abs(nextStart.x - dragState.initial.start.x) > 0.5 ||
-        Math.abs(nextStart.y - dragState.initial.start.y) > 0.5 ||
-        Math.abs(nextEnd.x - dragState.initial.end.x) > 0.5 ||
-        Math.abs(nextEnd.y - dragState.initial.end.y) > 0.5;
+      const next = computeDraftEndpoint(drawState.startTileId, e.clientX, e.clientY);
 
-      if (moved) {
-        arrowDragMovedRef.current = true;
+      setIsDrawingArrow(false);
+      setDraftArrow(null);
+      drawStateRef.current = null;
+
+      if (!selectedSpaceId || !next.anchor || next.anchor.tileId === drawState.startTileId) {
+        return;
       }
 
+      const newArrow: ArrowSegment = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`,
+        start: drawState.startPoint,
+        end: next.point,
+        startAnchor: drawState.startAnchor,
+        endAnchor: next.anchor,
+      };
+
+      const spaceId = selectedSpaceId;
+
       setArrowsBySpace((prev) => {
-        const currentArrows = prev[selectedSpaceId] || [];
+        const current = prev[spaceId] || [];
+        return { ...prev, [spaceId]: [...current, newArrow] };
+      });
+      setSelectedArrowId(newArrow.id);
+
+      void (async () => {
+        try {
+          const created = await objectsApi.create(spaceId, {
+            type: 'text',
+            title: 'Arrow',
+            content: 'Arrow connection',
+          });
+
+          await objectsApi.updateMetadata(created.id, {
+            ...toArrowMetadata(newArrow),
+            content: 'Arrow connection',
+          });
+
+          setArrowsBySpace((prev) => {
+            const current = prev[spaceId] || [];
+            return {
+              ...prev,
+              [spaceId]: current.map((segment) =>
+                segment.id === newArrow.id ? { ...segment, id: created.id } : segment
+              ),
+            };
+          });
+          setSelectedArrowId(created.id);
+
+          undoApi
+            .createEvent(spaceId, {
+              event_type: 'arrow_create',
+              event_data: {
+                arrow: {
+                  ...toUndoPayload(newArrow),
+                  id: created.id,
+                },
+              },
+            })
+            .catch((err) => console.error('Failed to create undo event:', err));
+
+          window.dispatchEvent(new CustomEvent('arrow:created', { detail: { arrowId: created.id } }));
+        } catch (err) {
+          console.error('Failed to persist arrow', err);
+          setArrowsBySpace((prev) => {
+            const current = prev[spaceId] || [];
+            return { ...prev, [spaceId]: current.filter((segment) => segment.id !== newArrow.id) };
+          });
+          setSelectedArrowId(null);
+        }
+      })();
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, true);
+    window.addEventListener('pointerup', finishDrawing, true);
+    window.addEventListener('pointercancel', finishDrawing, true);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove, true);
+      window.removeEventListener('pointerup', finishDrawing, true);
+      window.removeEventListener('pointercancel', finishDrawing, true);
+    };
+  }, [computeDraftEndpoint, isDrawingArrow, selectedSpaceId, setArrowsBySpace]);
+
+  useEffect(() => {
+    if (!draggingEndpoint) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const dragState = endpointDragStateRef.current;
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      if (!selectedSpaceId) return;
+
+      const anchorHit = getAnchorAtPointer(e.clientX, e.clientY);
+      const point = anchorHit?.point ?? getPointerCanvasPoint(e.clientX, e.clientY);
+      const nextSegment = applyEndpointRetarget(
+        dragState.initial,
+        dragState.endpoint,
+        point,
+        anchorHit?.anchor
+      );
+
+      setArrowsBySpace((prev) => {
+        const current = prev[selectedSpaceId] || [];
         return {
           ...prev,
-          [selectedSpaceId]: currentArrows.map((a) =>
-            a.id === dragState.arrowId ? { ...a, start: nextStart, end: nextEnd } : a
+          [selectedSpaceId]: current.map((segment) =>
+            segment.id === dragState.arrowId ? nextSegment : segment
           ),
         };
       });
     };
 
-    const handlePointerUp = (e: PointerEvent) => {
-      const dragState = arrowDragStateRef.current;
-      arrowDragStateRef.current = null;
-      setDraggingArrowId(null);
+    const finishRetarget = (e: PointerEvent) => {
+      const dragState = endpointDragStateRef.current;
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
 
-      if (!selectedSpaceId || !dragState) return;
-      if (!arrowDragMovedRef.current || !dragState.last) return;
+      endpointDragStateRef.current = null;
+      setDraggingEndpoint(null);
 
-      const finalStart = dragState.last.start;
-      const finalEnd = dragState.last.end;
+      if (!selectedSpaceId) return;
 
-      // Persist move
+      const anchorHit = getAnchorAtPointer(e.clientX, e.clientY);
+      if (!anchorHit || !anchorHit.anchor) {
+        setArrowsBySpace((prev) => {
+          const current = prev[selectedSpaceId] || [];
+          return {
+            ...prev,
+            [selectedSpaceId]: current.map((segment) =>
+              segment.id === dragState.arrowId ? dragState.initial : segment
+            ),
+          };
+        });
+        return;
+      }
+
+      const finalSegment = applyEndpointRetarget(dragState.initial, dragState.endpoint, anchorHit.point, anchorHit.anchor);
+
+      setArrowsBySpace((prev) => {
+        const current = prev[selectedSpaceId] || [];
+        return {
+          ...prev,
+          [selectedSpaceId]: current.map((segment) =>
+            segment.id === dragState.arrowId ? finalSegment : segment
+          ),
+        };
+      });
+
+      if (!didArrowChange(dragState.initial, finalSegment)) {
+        return;
+      }
+
+      const persistedSegment = { ...finalSegment, id: dragState.arrowId };
       objectsApi
-        .updateMetadata(dragState.arrowId, {
-          arrow: true,
-          start_x: finalStart.x,
-          start_y: finalStart.y,
-          end_x: finalEnd.x,
-          end_y: finalEnd.y,
-        })
+        .updateMetadata(dragState.arrowId, toArrowMetadata(persistedSegment))
         .catch((err) => {
-          console.error('[ARROW] Failed to persist arrow move:', err);
+          console.error('[ARROW] Failed to persist endpoint retarget:', err);
         });
 
-      // Record undo/redo event
       undoApi
         .createEvent(selectedSpaceId, {
           event_type: 'arrow_move',
           event_data: {
-            arrow: {
-              id: dragState.arrowId,
-              start: finalStart,
-              end: finalEnd,
-            },
-            from: dragState.initial,
-            to: { start: finalStart, end: finalEnd },
+            arrow: toUndoPayload(persistedSegment),
+            from: toUndoFrame(dragState.initial),
+            to: toUndoFrame(persistedSegment),
           },
         })
         .catch((err) => console.error('Failed to create arrow move undo event:', err));
     };
 
     window.addEventListener('pointermove', handlePointerMove, true);
-    window.addEventListener('pointerup', handlePointerUp, true);
-    window.addEventListener('pointercancel', handlePointerUp, true);
+    window.addEventListener('pointerup', finishRetarget, true);
+    window.addEventListener('pointercancel', finishRetarget, true);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove, true);
-      window.removeEventListener('pointerup', handlePointerUp, true);
-      window.removeEventListener('pointercancel', handlePointerUp, true);
+      window.removeEventListener('pointerup', finishRetarget, true);
+      window.removeEventListener('pointercancel', finishRetarget, true);
     };
-  }, [draggingArrowId, selectedSpaceId, setArrowsBySpace]);
+  }, [
+    draggingEndpoint,
+    getAnchorAtPointer,
+    getPointerCanvasPoint,
+    selectedSpaceId,
+    setArrowsBySpace,
+  ]);
+
+  useEffect(() => {
+    const handleTileDeleted = (event: Event) => {
+      if (!selectedSpaceId) return;
+
+      const customEvent = event as CustomEvent<{ tileId?: string }>;
+      const tileId = customEvent.detail?.tileId;
+      if (!tileId) return;
+
+      let removedArrows: ArrowSegment[] = [];
+
+      setArrowsBySpace((prev) => {
+        const current = prev[selectedSpaceId] || [];
+        removedArrows = current.filter(
+          (arrow) => arrow.startAnchor?.tileId === tileId || arrow.endAnchor?.tileId === tileId
+        );
+        if (!removedArrows.length) return prev;
+
+        const removedIds = new Set(removedArrows.map((arrow) => arrow.id));
+        return {
+          ...prev,
+          [selectedSpaceId]: current.filter((arrow) => !removedIds.has(arrow.id)),
+        };
+      });
+
+      if (!removedArrows.length) return;
+
+      const removedIds = new Set(removedArrows.map((arrow) => arrow.id));
+      setSelectedArrowId((prev) => (prev && removedIds.has(prev) ? null : prev));
+      setDraggingEndpoint((prev) => (prev && removedIds.has(prev.arrowId) ? null : prev));
+
+      const endpointState = endpointDragStateRef.current;
+      if (endpointState && removedIds.has(endpointState.arrowId)) {
+        endpointDragStateRef.current = null;
+      }
+
+      const drawState = drawStateRef.current;
+      if (drawState && drawState.startTileId === tileId) {
+        drawStateRef.current = null;
+        setDraftArrow(null);
+        setIsDrawingArrow(false);
+      }
+
+      removedArrows.forEach((arrow) => {
+        objectsApi.delete(arrow.id).catch((err) => {
+          console.error('Failed to delete connected arrow', err);
+        });
+        window.dispatchEvent(new CustomEvent('arrow:deleted', { detail: { arrowId: arrow.id, cascade: true } }));
+      });
+    };
+
+    window.addEventListener('tile:deleted', handleTileDeleted);
+    return () => window.removeEventListener('tile:deleted', handleTileDeleted);
+  }, [selectedSpaceId, setArrowsBySpace]);
 
   useEffect(() => {
     const handleDeleteArrow = (e: KeyboardEvent) => {
@@ -396,12 +567,9 @@ export const useArrowDrawing = ({
     return () => window.removeEventListener('keydown', handleDeleteArrow, true);
   }, [deleteArrow, selectedArrowId, selectedSpaceId]);
 
-
   const allArrowSegments = useMemo(() => {
     const segments = [...currentArrows];
-    if (draftArrow) {
-      segments.push(draftArrow);
-    }
+    if (draftArrow) segments.push(draftArrow);
     return segments;
   }, [currentArrows, draftArrow]);
 
@@ -423,13 +591,14 @@ export const useArrowDrawing = ({
     setSelectedArrowId,
     deleteArrow,
     clearArrowSelection: () => setSelectedArrowId(null),
-    handleCanvasMouseDown,
-    handleCanvasMouseMove,
-    handleCanvasMouseUp,
-    handleArrowPointerDown: startArrowDrag,
+    handleFocusRingPointerDown,
+    handleArrowPointerDown,
+    handleArrowEndpointPointerDown,
     allArrowSegments,
     svgWidth,
     svgHeight,
     contentHeightWithArrows,
+    isDrawingArrow,
+    draggingEndpoint,
   };
 };

@@ -1,5 +1,5 @@
 // Tile composes each canvas object shell and now exposes visible focus-ring anchor points for graph linking.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TileProps } from '@/components/layout/centerpane/types';
 import { getVideoEmbed } from '@/utils/videoEmbeds';
 import { detectFileType } from '@/utils/fileTypes';
@@ -10,7 +10,7 @@ import { useImageMetadata } from '@/components/layout/centerpane/tile/useImageMe
 import { useEbookMetadata } from '@/components/layout/centerpane/tile/useEbookMetadata';
 import { useContextMenu } from '@/components/layout/centerpane/tile/useContextMenu';
 import { useFileRename } from '@/components/layout/centerpane/tile/useFileRename';
-import { TILE, TILE_RING, EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED, WEB_ARTICLE_EMBED } from '@/constants/objectsDimensions';
+import { TILE, EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED, WEB_ARTICLE_EMBED } from '@/constants/objectsDimensions';
 import { getThumbnailDimensions } from '@/components/layout/centerpane/tile/thumbnailHelpers';
 import { VideoEmbedContent } from '@/components/layout/centerpane/tile/VideoEmbedContent';
 import { VideoFileEmbedContent } from '@/components/layout/centerpane/tile/VideoFileEmbedContent';
@@ -19,49 +19,11 @@ import { WebArticleContent } from '@/components/layout/centerpane/tile/WebArticl
 import { LinkContent } from '@/components/layout/centerpane/tile/LinkContent';
 import { TextContent } from '@/components/layout/centerpane/tile/TextContent';
 import { DefaultContent } from '@/components/layout/centerpane/tile/DefaultContent';
+import { FocusRing } from '@/components/layout/centerpane/tile/FocusRing';
 import { TileContextMenu } from '@/components/layout/centerpane/tile/TileContextMenu';
 import { TileDialogs } from '@/components/layout/centerpane/tile/TileDialogs';
 import { RenameFileDialog } from '@/components/dialogs/RenameFileDialog';
 import { openFilePath } from '@/platform';
-
-type FocusRingEdge = 'top' | 'right' | 'bottom' | 'left';
-
-interface FocusRingAnchor {
-  edge: FocusRingEdge;
-  edgeIndex: number;
-  x: number;
-  y: number;
-}
-
-const FOCUS_RING_DOTS_PER_EDGE = 3;
-const FOCUS_RING_ANCHOR_DIAMETER = 8;
-const FOCUS_RING_CENTER_OFFSET = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
-
-const buildFocusRingAnchors = (tileWidth: number, tileHeight: number, contentInset: number): FocusRingAnchor[] => {
-  const safeContentWidth = Math.max(1, tileWidth - (contentInset * 2));
-  const safeContentHeight = Math.max(1, tileHeight - (contentInset * 2));
-  const ringLeft = contentInset - FOCUS_RING_CENTER_OFFSET;
-  const ringTop = contentInset - FOCUS_RING_CENTER_OFFSET;
-  const ringWidth = safeContentWidth + (FOCUS_RING_CENTER_OFFSET * 2);
-  const ringHeight = safeContentHeight + (FOCUS_RING_CENTER_OFFSET * 2);
-  const edgeFractions = Array.from(
-    { length: FOCUS_RING_DOTS_PER_EDGE },
-    (_, index) => (index + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1)
-  );
-
-  const anchors: FocusRingAnchor[] = [];
-  edgeFractions.forEach((fraction, edgeIndex) => {
-    const edgeX = ringLeft + (ringWidth * fraction);
-    const edgeY = ringTop + (ringHeight * fraction);
-
-    anchors.push({ edge: 'top', edgeIndex, x: edgeX, y: ringTop });
-    anchors.push({ edge: 'right', edgeIndex, x: ringLeft + ringWidth, y: edgeY });
-    anchors.push({ edge: 'bottom', edgeIndex, x: edgeX, y: ringTop + ringHeight });
-    anchors.push({ edge: 'left', edgeIndex, x: ringLeft, y: edgeY });
-  });
-
-  return anchors;
-};
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
 export function Tile({
@@ -84,6 +46,8 @@ export function Tile({
   onRefreshMetadata,
   onEdit,
   onEditLink,
+  onFocusRingPointerDown,
+  onMetricsChange,
 }: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isInteractionLocked, setIsInteractionLocked] = useState(false);
@@ -208,6 +172,7 @@ export function Tile({
   const isGmailTile = type === 'gmail';
   const isStandardFileTile = type === 'file' && !isAudioFile && !isVideoFile;
   const tilePadding = type === 'text' ? 0 : TILE.hoverSafePadding;
+  const isCenteredTile = type !== 'text';
   const tileWidth = isWebArticle
     ? WEB_ARTICLE_EMBED.width
     : type === 'link'
@@ -270,10 +235,16 @@ export function Tile({
     return () => observer.disconnect();
   }, [tileHeight, tilePadding, tileWidth]);
 
-  const focusRingAnchors = useMemo(() => {
-    if (tileBoxSize.width <= 0 || tileBoxSize.height <= 0) return [];
-    return buildFocusRingAnchors(tileBoxSize.width, tileBoxSize.height, tilePadding);
-  }, [tileBoxSize.height, tileBoxSize.width, tilePadding]);
+  useEffect(() => {
+    if (!onMetricsChange) return;
+    if (tileBoxSize.width <= 0 || tileBoxSize.height <= 0) return;
+    onMetricsChange(id, {
+      width: tileBoxSize.width,
+      height: tileBoxSize.height,
+      contentInset: tilePadding,
+      isCentered: isCenteredTile,
+    });
+  }, [id, isCenteredTile, onMetricsChange, tileBoxSize.height, tileBoxSize.width, tilePadding]);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (isInteractionLocked) {
@@ -383,6 +354,7 @@ export function Tile({
     <>
       <div
         data-icon-tile
+        data-icon-tile-id={id}
         ref={(node) => {
           tileContainerRef.current = node;
           dragRef.current = node;
@@ -400,7 +372,7 @@ export function Tile({
         style={{
           top: y,
           left: x,
-          transform: type === 'text' ? 'translate(0, 0)' : 'translate(-50%, -50%)',
+          transform: isCenteredTile ? 'translate(-50%, -50%)' : 'translate(0, 0)',
           transition: skipTransition ? 'none' : 'all 0.2s',
           opacity: isDragging ? 0 : 1,
           userSelect: 'none',
@@ -441,31 +413,14 @@ export function Tile({
           <span className={dragHandleBarClass} />
         </div>
         {renderContent()}
-        <div
-          className={`absolute inset-0 pointer-events-none transition-transform duration-150 ${hoverScaleClass}`}
-          style={{ zIndex: 30 }}
-        >
-          {focusRingAnchors.map((anchor) => (
-            <span
-              key={`${anchor.edge}-${anchor.edgeIndex}`}
-              data-focus-ring-anchor
-              data-focus-ring-edge={anchor.edge}
-              data-focus-ring-edge-index={anchor.edgeIndex}
-              style={{
-                position: 'absolute',
-                left: `${anchor.x}px`,
-                top: `${anchor.y}px`,
-                width: `${FOCUS_RING_ANCHOR_DIAMETER}px`,
-                height: `${FOCUS_RING_ANCHOR_DIAMETER}px`,
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '9999px',
-                border: '1px solid rgba(255,255,255,0.95)',
-                background: 'rgba(56, 189, 248, 0.95)',
-                boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.65), 0 0 8px rgba(56, 189, 248, 0.85)',
-              }}
-            />
-          ))}
-        </div>
+        <FocusRing
+          tileId={id}
+          tileWidth={tileBoxSize.width}
+          tileHeight={tileBoxSize.height}
+          contentInset={tilePadding}
+          hoverScaleClass={hoverScaleClass}
+          onPointerDown={onFocusRingPointerDown}
+        />
       </div>
 
       <TileContextMenu

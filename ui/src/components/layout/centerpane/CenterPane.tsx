@@ -1,7 +1,8 @@
-import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { Tile } from '@/components/layout/centerpane/tile/Tile';
-import { CenterPaneProps, CenterPaneHandle, DroppedIcon } from '@/components/layout/centerpane/types';
+import { ArrowAnchorRef, ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon, FocusRingEdge } from '@/components/layout/centerpane/types';
 import { useCenterPaneLogic } from '@/components/layout/centerpane/useCenterPaneLogic';
+import { objectsApi } from '@/api/objects';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { getVideoEmbed } from '@/utils/videoEmbeds';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -16,6 +17,48 @@ import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchF
 import { useSearchStore } from '@/stores/searchStore';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
+import { buildArrowPath, countArrowSegments } from '@/components/layout/centerpane/arrowGeometry';
+import { TILE_RING } from '@/constants/objectsDimensions';
+import { TILE_RING_COLORS } from '@/styles/tileStyles';
+import { useThemeToggle } from '@/hooks/useThemeToggle';
+
+interface TileMetricsSnapshot {
+  width: number;
+  height: number;
+  contentInset: number;
+  isCentered: boolean;
+}
+
+const FOCUS_RING_DOTS_PER_EDGE = 3;
+type TileRingType = keyof typeof TILE_RING_COLORS;
+const LINK_LIKE_TYPES = new Set<DroppedIcon['type']>(['link', 'web_article', 'gmail', 'google_drive']);
+const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+const toTileRingType = (iconType: DroppedIcon['type']): TileRingType => {
+  if (iconType === 'text') return 'text';
+  if (LINK_LIKE_TYPES.has(iconType)) return 'link';
+  return 'file';
+};
+
+const isSameAnchorRef = (a?: ArrowAnchorRef, b?: ArrowAnchorRef) => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.tileId === b.tileId && a.edge === b.edge && a.edgeIndex === b.edgeIndex;
+};
+
+const toArrowMetadata = (arrow: ArrowSegment) => ({
+  arrow: true,
+  start_x: arrow.start.x,
+  start_y: arrow.start.y,
+  end_x: arrow.end.x,
+  end_y: arrow.end.y,
+  start_tile_id: arrow.startAnchor?.tileId ?? null,
+  start_anchor_edge: arrow.startAnchor?.edge ?? null,
+  start_anchor_index: arrow.startAnchor?.edgeIndex ?? null,
+  end_tile_id: arrow.endAnchor?.tileId ?? null,
+  end_anchor_edge: arrow.endAnchor?.edge ?? null,
+  end_anchor_index: arrow.endAnchor?.edgeIndex ?? null,
+});
 
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
@@ -27,11 +70,30 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const TEXT_PREVIEW_DELAY_MS = 180;
 
   const logic = useCenterPaneLogic(paneRef, zoom);
+  const selectedSpaceId = logic.selectedSpace?.id;
+  const arrowsBySpace = logic.arrowsBySpace;
+  const setArrowsBySpace = logic.setArrowsBySpace;
   const isDuplicating = useSpaceStore((state) => state.isDuplicating);
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const isSearchMode = searchQuery.trim().length > 0;
-  const currentSpaceIcons = logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || [];
+  const { isDark } = useThemeToggle();
+  const currentSpaceIcons = useMemo(
+    () => logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || [],
+    [logic.iconsBySpace, logic.selectedSpace?.id]
+  );
   const filteredIcons = useSearchFilter(currentSpaceIcons);
+  const [tileMetricsById, setTileMetricsById] = useState<Record<string, TileMetricsSnapshot>>({});
+  const iconsById = useMemo(
+    () => new Map(currentSpaceIcons.map((icon) => [icon.id, icon])),
+    [currentSpaceIcons]
+  );
+
+  const getArrowColorForTile = useCallback((tileId?: string | null): string | null => {
+    if (!tileId) return null;
+    const icon = iconsById.get(tileId);
+    if (!icon) return null;
+    return TILE_RING_COLORS[toTileRingType(icon.type)];
+  }, [iconsById]);
 
   // Expose methods to parent via ref
   const getCenterCanvasPos = () => {
@@ -108,18 +170,22 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     return () => window.removeEventListener('keydown', handleKeyZoom, true);
   }, [onZoomIn, onZoomOut]);
 
-  const toCanvasCoords = (clientX: number, clientY: number) => {
-    if (!paneRef.current) return { x: clientX, y: clientY };
+  const toCanvasCoords = useCallback((clientX: number, clientY: number) => {
+    const safeZoom = Math.max(zoom, 0.01);
+    if (!paneRef.current) return { x: clientX / safeZoom, y: clientY / safeZoom };
     const rect = paneRef.current.getBoundingClientRect();
     const scrollLeft = paneRef.current.scrollLeft;
     const scrollTop = paneRef.current.scrollTop;
+    const paneStyle = window.getComputedStyle(paneRef.current);
+    const paddingLeft = Number.parseFloat(paneStyle.paddingLeft) || 0;
+    const paddingTop = Number.parseFloat(paneStyle.paddingTop) || 0;
     return {
-      x: (clientX - rect.left + scrollLeft) / Math.max(zoom, 0.01),
-      y: (clientY - rect.top + scrollTop) / Math.max(zoom, 0.01),
+      x: (clientX - rect.left - paddingLeft + scrollLeft) / safeZoom,
+      y: (clientY - rect.top - paddingTop + scrollTop) / safeZoom,
     };
-  };
+  }, [zoom]);
 
-  const toPaneCoords = (clientX: number, clientY: number) => {
+  const toPaneCoords = useCallback((clientX: number, clientY: number) => {
     if (!paneRef.current) return { x: clientX, y: clientY };
     const rect = paneRef.current.getBoundingClientRect();
     const scrollLeft = paneRef.current.scrollLeft;
@@ -128,32 +194,255 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       x: clientX - rect.left + scrollLeft,
       y: clientY - rect.top + scrollTop,
     };
-  };
+  }, []);
 
   const {
     selectedArrowId,
     setSelectedArrowId,
     deleteArrow,
     clearArrowSelection,
-    handleCanvasMouseDown,
-    handleCanvasMouseMove,
-    handleCanvasMouseUp,
+    handleFocusRingPointerDown,
     handleArrowPointerDown,
+    handleArrowEndpointPointerDown,
     allArrowSegments,
     svgWidth,
     svgHeight,
     contentHeightWithArrows,
+    isDrawingArrow,
+    draggingEndpoint,
   } = useArrowDrawing({
     zoom,
     paneRef,
-    selectedSpaceId: logic.selectedSpace?.id,
-    arrowsBySpace: logic.arrowsBySpace,
-    setArrowsBySpace: logic.setArrowsBySpace,
+    selectedSpaceId,
+    arrowsBySpace,
+    setArrowsBySpace,
     contentHeight: logic.contentHeight,
     toCanvasCoords,
     contextMenuOpen: !!contextMenu || !!arrowContextMenu,
-    isTargetBlocked: (el) => Boolean(el.closest('[data-icon-tile]') || el.closest('[data-inline-editor]')),
   });
+
+  const handleTileMetricsChange = useCallback((tileId: string, metrics: TileMetricsSnapshot) => {
+    setTileMetricsById((prev) => {
+      const existing = prev[tileId];
+      if (
+        existing &&
+        existing.width === metrics.width &&
+        existing.height === metrics.height &&
+        existing.contentInset === metrics.contentInset &&
+        existing.isCentered === metrics.isCentered
+      ) {
+        return prev;
+      }
+      return { ...prev, [tileId]: metrics };
+    });
+  }, []);
+
+  useEffect(() => {
+    const validIds = new Set(currentSpaceIcons.map((icon) => icon.id));
+    setTileMetricsById((prev) => {
+      let changed = false;
+      const next: Record<string, TileMetricsSnapshot> = {};
+      Object.entries(prev).forEach(([tileId, metrics]) => {
+        if (!validIds.has(tileId)) {
+          changed = true;
+          return;
+        }
+        next[tileId] = metrics;
+      });
+      return changed ? next : prev;
+    });
+  }, [currentSpaceIcons]);
+
+  const resolveAnchorFromTileState = useCallback(
+    (
+      anchorRef: ArrowSegment['startAnchor'],
+      fallback: { x: number; y: number }
+    ): { x: number; y: number } => {
+      if (!anchorRef) return fallback;
+
+      const icon = iconsById.get(anchorRef.tileId);
+      const metrics = tileMetricsById[anchorRef.tileId];
+      if (!icon || !metrics) return fallback;
+      if (metrics.width <= 0 || metrics.height <= 0) return fallback;
+      if (anchorRef.edgeIndex < 0 || anchorRef.edgeIndex >= FOCUS_RING_DOTS_PER_EDGE) return fallback;
+
+      const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
+      const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
+      const ringOffset = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
+      const safeContentWidth = Math.max(1, metrics.width - (metrics.contentInset * 2));
+      const safeContentHeight = Math.max(1, metrics.height - (metrics.contentInset * 2));
+      const ringLeft = originLeft + metrics.contentInset - ringOffset;
+      const ringTop = originTop + metrics.contentInset - ringOffset;
+      const ringWidth = safeContentWidth + (ringOffset * 2);
+      const ringHeight = safeContentHeight + (ringOffset * 2);
+      const fraction = (anchorRef.edgeIndex + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1);
+      const edgeX = ringLeft + (ringWidth * fraction);
+      const edgeY = ringTop + (ringHeight * fraction);
+
+      if (anchorRef.edge === 'top') return { x: edgeX, y: ringTop };
+      if (anchorRef.edge === 'right') return { x: ringLeft + ringWidth, y: edgeY };
+      if (anchorRef.edge === 'bottom') return { x: edgeX, y: ringTop + ringHeight };
+      return { x: ringLeft, y: edgeY };
+    },
+    [iconsById, tileMetricsById]
+  );
+
+  const getTileAnchorCandidates = useCallback(
+    (tileId: string): Array<{ anchor: ArrowAnchorRef; point: { x: number; y: number } }> => {
+      const icon = iconsById.get(tileId);
+      const metrics = tileMetricsById[tileId];
+      if (!icon || !metrics) return [];
+      if (metrics.width <= 0 || metrics.height <= 0) return [];
+
+      const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
+      const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
+      const ringOffset = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
+      const safeContentWidth = Math.max(1, metrics.width - (metrics.contentInset * 2));
+      const safeContentHeight = Math.max(1, metrics.height - (metrics.contentInset * 2));
+      const ringLeft = originLeft + metrics.contentInset - ringOffset;
+      const ringTop = originTop + metrics.contentInset - ringOffset;
+      const ringWidth = safeContentWidth + (ringOffset * 2);
+      const ringHeight = safeContentHeight + (ringOffset * 2);
+
+      const candidates: Array<{ anchor: ArrowAnchorRef; point: { x: number; y: number } }> = [];
+      for (let edgeIndex = 0; edgeIndex < FOCUS_RING_DOTS_PER_EDGE; edgeIndex += 1) {
+        const fraction = (edgeIndex + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1);
+        const edgeX = ringLeft + (ringWidth * fraction);
+        const edgeY = ringTop + (ringHeight * fraction);
+        const push = (edge: FocusRingEdge, x: number, y: number) => {
+          candidates.push({
+            anchor: { tileId, edge, edgeIndex },
+            point: { x, y },
+          });
+        };
+        push('top', edgeX, ringTop);
+        push('right', ringLeft + ringWidth, edgeY);
+        push('bottom', edgeX, ringTop + ringHeight);
+        push('left', ringLeft, edgeY);
+      }
+      return candidates;
+    },
+    [iconsById, tileMetricsById]
+  );
+
+  const renderArrowSegments: ArrowSegment[] = useMemo(
+    () =>
+      allArrowSegments.map((segment) => {
+        const resolvedStart = resolveAnchorFromTileState(segment.startAnchor, segment.start);
+        const resolvedEnd = resolveAnchorFromTileState(segment.endAnchor, segment.end);
+
+        if (!segment.endAnchor) {
+          return {
+            ...segment,
+            start: resolvedStart,
+            end: resolvedEnd,
+          };
+        }
+
+        const currentSegments = countArrowSegments(resolvedStart, resolvedEnd, {
+          startEdge: segment.startAnchor?.edge,
+          endEdge: segment.endAnchor.edge,
+        });
+
+        if (currentSegments <= 3) {
+          return {
+            ...segment,
+            start: resolvedStart,
+            end: resolvedEnd,
+          };
+        }
+
+        const endAnchorCandidates = getTileAnchorCandidates(segment.endAnchor.tileId);
+        const rankedCandidates = endAnchorCandidates
+          .map((candidate) => ({
+            ...candidate,
+            segmentCount: countArrowSegments(resolvedStart, candidate.point, {
+              startEdge: segment.startAnchor?.edge,
+              endEdge: candidate.anchor.edge,
+            }),
+            distanceToStart: Math.hypot(candidate.point.x - resolvedStart.x, candidate.point.y - resolvedStart.y),
+            distanceToCurrentEnd: Math.hypot(candidate.point.x - resolvedEnd.x, candidate.point.y - resolvedEnd.y),
+          }))
+          .filter((candidate) => !isSameAnchorRef(candidate.anchor, segment.endAnchor));
+
+        if (!rankedCandidates.length) {
+          return {
+            ...segment,
+            start: resolvedStart,
+            end: resolvedEnd,
+          };
+        }
+
+        rankedCandidates.sort((a, b) => {
+          if (a.segmentCount !== b.segmentCount) return a.segmentCount - b.segmentCount;
+          if (Math.abs(a.distanceToStart - b.distanceToStart) > 0.001) {
+            return a.distanceToStart - b.distanceToStart;
+          }
+          return a.distanceToCurrentEnd - b.distanceToCurrentEnd;
+        });
+        const nearest = rankedCandidates[0];
+
+        return {
+          ...segment,
+          start: resolvedStart,
+          end: nearest.point,
+          endAnchor: nearest.anchor,
+        };
+      }),
+    [allArrowSegments, getTileAnchorCandidates, resolveAnchorFromTileState]
+  );
+
+  useEffect(() => {
+    if (!selectedSpaceId) return;
+    if (isDrawingArrow || draggingEndpoint) return;
+
+    const persistedArrows = arrowsBySpace[selectedSpaceId] || [];
+    if (!persistedArrows.length) return;
+
+    const persistedById = new Map(persistedArrows.map((arrow) => [arrow.id, arrow]));
+    const remapped = renderArrowSegments.filter((segment) => {
+      if (segment.id === 'arrow-draft') return false;
+      const persisted = persistedById.get(segment.id);
+      if (!persisted) return false;
+      return !isSameAnchorRef(persisted.endAnchor, segment.endAnchor);
+    });
+
+    if (!remapped.length) return;
+
+    setArrowsBySpace((prev) => {
+      const current = prev[selectedSpaceId] || [];
+      const remappedById = new Map(remapped.map((segment) => [segment.id, segment]));
+      return {
+        ...prev,
+        [selectedSpaceId]: current.map((segment) => {
+          const corrected = remappedById.get(segment.id);
+          return corrected
+            ? { ...segment, end: corrected.end, endAnchor: corrected.endAnchor }
+            : segment;
+        }),
+      };
+    });
+
+    remapped.forEach((segment) => {
+      const persisted = persistedById.get(segment.id);
+      if (!persisted) return;
+      const corrected: ArrowSegment = {
+        ...persisted,
+        end: segment.end,
+        endAnchor: segment.endAnchor,
+      };
+      objectsApi.updateMetadata(segment.id, toArrowMetadata(corrected)).catch((err) => {
+        console.error('[ARROW] Failed to persist automatic end-anchor remap:', err);
+      });
+    });
+  }, [
+    arrowsBySpace,
+    draggingEndpoint,
+    isDrawingArrow,
+    renderArrowSegments,
+    selectedSpaceId,
+    setArrowsBySpace,
+  ]);
 
   const menuItems = useMemo(() => [
     {
@@ -223,7 +512,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     return () => window.removeEventListener('keydown', handleKey);
   }, [contextMenu, menuItems]);
 
-  const handleArrowContextMenu = (e: React.MouseEvent<SVGLineElement>, arrowId: string) => {
+  const handleArrowContextMenu = (e: React.MouseEvent<SVGPathElement>, arrowId: string) => {
     e.preventDefault();
     e.stopPropagation();
     // Right-click on arrow opens a focused delete-only context menu
@@ -345,9 +634,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         onContextMenu={handleCanvasContextMenu}
         onDoubleClick={handleCanvasDoubleClick}
         onWheel={handleWheel}
-        onMouseDown={handleCanvasMouseDown}
-        onMouseMove={handleCanvasMouseMove}
-        onMouseUp={handleCanvasMouseUp}
       >
         {/* Loading Spinner Overlay */}
         {isDuplicating && (
@@ -409,7 +695,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               />
             )}
 
-            {(!isSearchMode && allArrowSegments.length > 0) && (
+            {(!isSearchMode && renderArrowSegments.length > 0) && (
               <svg
                 aria-hidden
                 width={svgWidth}
@@ -418,62 +704,137 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  pointerEvents: 'auto',
+                  pointerEvents: isDrawingArrow ? 'none' : 'auto',
                   overflow: 'visible',
                   zIndex: Z_INDEX.CONTENT_DEFAULT - 1,
                 }}
               >
-                <defs>
-                  <marker
-                    id={ARROW_SETTINGS.marker.id}
-                    markerWidth={ARROW_SETTINGS.marker.width}
-                    markerHeight={ARROW_SETTINGS.marker.height}
-                    refX={ARROW_SETTINGS.marker.refX}
-                    refY={ARROW_SETTINGS.marker.refY}
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d={ARROW_SETTINGS.marker.path} fill={ARROW_SETTINGS.color} />
-                  </marker>
-                </defs>
-                {allArrowSegments.map((segment) => {
+                {renderArrowSegments.map((segment) => {
                   const isDraft = segment.id === 'arrow-draft';
+                  const isSelectedArrow = selectedArrowId === segment.id && !isDraft;
+                  const isDraggingStart = draggingEndpoint?.arrowId === segment.id && draggingEndpoint.endpoint === 'start';
+                  const isDraggingEnd = draggingEndpoint?.arrowId === segment.id && draggingEndpoint.endpoint === 'end';
                   const clickableWidth = ARROW_SETTINGS.strokeWidth + (ARROW_SETTINGS.clickAreaPadding * 2);
-                  const arrowOpacity = isDraft ? ARROW_SETTINGS.opacity.draft : ARROW_SETTINGS.opacity.normal;
+                  const arrowOpacity = isDraft
+                    ? ARROW_SETTINGS.opacity.draft
+                    : (isDark ? ARROW_SETTINGS.opacity.normal : 'var(--tile-ring-opacity, 0.8)');
+                  const startRingColor = getArrowColorForTile(segment.startAnchor?.tileId);
+                  const endRingColor = getArrowColorForTile(segment.endAnchor?.tileId);
+                  const fallbackArrowColor = startRingColor ?? endRingColor ?? ARROW_SETTINGS.color;
+                  const arrowStartColor = startRingColor ?? fallbackArrowColor;
+                  const arrowEndColor = endRingColor ?? fallbackArrowColor;
+                  const hasSplitGradient = arrowStartColor !== arrowEndColor;
+                  const svgSafeId = sanitizeSvgId(segment.id);
+                  const gradientId = `center-pane-arrow-gradient-${svgSafeId}`;
+                  const markerId = `center-pane-arrowhead-${svgSafeId}`;
+                  const visibleStroke = hasSplitGradient ? `url(#${gradientId})` : arrowStartColor;
+                  const pathData = buildArrowPath(segment.start, segment.end, {
+                    startEdge: segment.startAnchor?.edge,
+                    endEdge: segment.endAnchor?.edge,
+                  });
                   return (
                     <g key={segment.id} style={{ opacity: arrowOpacity }}>
+                      <defs>
+                        {hasSplitGradient && (
+                          <linearGradient
+                            id={gradientId}
+                            gradientUnits="userSpaceOnUse"
+                            x1={segment.start.x}
+                            y1={segment.start.y}
+                            x2={segment.end.x}
+                            y2={segment.end.y}
+                          >
+                            <stop offset="0%" stopColor={arrowStartColor} />
+                            <stop offset="33.333%" stopColor={arrowStartColor} />
+                            <stop offset="66.667%" stopColor={arrowEndColor} />
+                            <stop offset="100%" stopColor={arrowEndColor} />
+                          </linearGradient>
+                        )}
+                        <marker
+                          id={markerId}
+                          markerWidth={ARROW_SETTINGS.marker.width}
+                          markerHeight={ARROW_SETTINGS.marker.height}
+                          refX={ARROW_SETTINGS.marker.refX}
+                          refY={ARROW_SETTINGS.marker.refY}
+                          orient="auto"
+                          markerUnits="userSpaceOnUse"
+                        >
+                          <path d={ARROW_SETTINGS.marker.path} fill={arrowEndColor} />
+                        </marker>
+                      </defs>
                       {/* Invisible wider line for click area */}
-                      <line
-                        x1={segment.start.x}
-                        y1={segment.start.y}
-                        x2={segment.end.x}
-                        y2={segment.end.y}
+                      <path
+                        d={pathData}
                         stroke="transparent"
+                        fill="none"
                         strokeWidth={clickableWidth}
                         strokeLinecap="round"
-                        style={{ cursor: 'pointer', pointerEvents: 'stroke' as any }}
-                        onPointerDown={(e) => {
-                          // Kick off arrow drag/move handling and clear tile selection
-                          handleArrowPointerDown(segment, e);
-                          logic.setSelectedIconIds([]);
+                        strokeLinejoin="round"
+                        style={{
+                          cursor: isDraft ? 'default' : 'pointer',
+                          pointerEvents: isDraft ? 'none' : ('stroke' as any),
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onContextMenu={(e) => handleArrowContextMenu(e, segment.id)}
+                        onPointerDown={
+                          isDraft
+                            ? undefined
+                            : (e) => {
+                                // Select arrow without affecting tile selection flow.
+                                handleArrowPointerDown(segment, e);
+                                logic.setSelectedIconIds([]);
+                              }
+                        }
+                        onClick={isDraft ? undefined : (e) => e.stopPropagation()}
+                        onContextMenu={isDraft ? undefined : (e) => handleArrowContextMenu(e, segment.id)}
                       />
                       {/* Visible arrow line */}
-                      <line
-                        x1={segment.start.x}
-                        y1={segment.start.y}
-                        x2={segment.end.x}
-                        y2={segment.end.y}
-                        stroke={ARROW_SETTINGS.color}
-                        strokeWidth={ARROW_SETTINGS.strokeWidth}
+                      <path
+                        d={pathData}
+                        stroke={visibleStroke}
+                        strokeWidth={isSelectedArrow ? ARROW_SETTINGS.strokeWidth + 0.8 : ARROW_SETTINGS.strokeWidth}
                         strokeLinecap="round"
-                        markerEnd={`url(#${ARROW_SETTINGS.marker.id})`}
+                        strokeLinejoin="round"
+                        fill="none"
+                        markerEnd={`url(#${markerId})`}
                         style={{ pointerEvents: 'none' }}
                       />
+                      {isSelectedArrow && (
+                        <>
+                          <circle
+                            cx={segment.start.x}
+                            cy={segment.start.y}
+                            r={10}
+                            fill="transparent"
+                            style={{ cursor: 'grab', pointerEvents: 'all' }}
+                            onPointerDown={(e) => handleArrowEndpointPointerDown(segment, 'start', e)}
+                          />
+                          <circle
+                            cx={segment.start.x}
+                            cy={segment.start.y}
+                            r={4.2}
+                            fill={isDraggingStart ? '#38BDF8' : arrowStartColor}
+                            stroke="#0f172a"
+                            strokeWidth={1}
+                            style={{ pointerEvents: 'none' }}
+                          />
+                          <circle
+                            cx={segment.end.x}
+                            cy={segment.end.y}
+                            r={10}
+                            fill="transparent"
+                            style={{ cursor: 'grab', pointerEvents: 'all' }}
+                            onPointerDown={(e) => handleArrowEndpointPointerDown(segment, 'end', e)}
+                          />
+                          <circle
+                            cx={segment.end.x}
+                            cy={segment.end.y}
+                            r={4.8}
+                            fill={isDraggingEnd ? '#38BDF8' : arrowEndColor}
+                            stroke="#0f172a"
+                            strokeWidth={1}
+                            style={{ pointerEvents: 'none' }}
+                          />
+                        </>
+                      )}
                     </g>
                   );
                 })}
@@ -559,6 +920,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                     clearPreviewTimeout();
                     logic.openInlineEditor(x, y, content, id);
                   }}
+                  onFocusRingPointerDown={handleFocusRingPointerDown}
+                  onMetricsChange={handleTileMetricsChange}
                 />
               )
             ))}
