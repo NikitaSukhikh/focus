@@ -1,4 +1,5 @@
-import React, { useRef, useState, useLayoutEffect } from 'react';
+// TextContent renders note tiles as a single continuous text surface without a separate header treatment.
+import React from 'react';
 import { TEXT_TILE } from '@/constants/objectsDimensions';
 import { TEXT_NOTE_BOX, tileRingStyle, tileBackgroundFillStyle } from '@/styles/tileStyles';
 import { formatTextWithLinksAndHighlight } from '@/utils/linkFormatter';
@@ -10,76 +11,50 @@ interface TextContentProps {
   hoverScaleClass: string;
 }
 
-// TextContent shows text note tiles, splitting the first line into a heading with the remaining body beneath it.
-// Text is folded to match video embed height with an ellipsis indicator when content overflows.
+// TextContent keeps long notes readable in-place while preserving full-text drag behavior at the tile level.
 export function TextContent({ content, hoverScaleClass }: TextContentProps) {
-  const [firstTextLine, ...otherTextLines] = (content || '').split(/\r?\n/);
-  const remainingText = otherTextLines.join('\n');
   const searchQuery = useSearchStore((state) => state.searchQuery);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useLayoutEffect(() => {
-    if (contentRef.current) {
-      setIsOverflowing(contentRef.current.scrollHeight > TEXT_TILE.maxHeight);
-    }
-  }, [content]);
+  const textViewportMaxHeight = TEXT_TILE.maxHeight - (TEXT_NOTE_BOX.padding.y * 2);
+  const textTileRightPadding = 0;
 
   return (
     <div
       className={`transition-transform duration-150 ${hoverScaleClass}`}
       style={{
-        pointerEvents: 'none',
+        pointerEvents: 'auto',
         maxWidth: `${TEXT_TILE.maxWidth}px`,
+        maxHeight: `${TEXT_TILE.maxHeight}px`,
         textAlign: 'left',
         position: 'relative',
         background: TEXT_NOTE_BOX.background,
         ...tileBackgroundFillStyle(TEXT_NOTE_BOX.background),
-        padding: `${TEXT_NOTE_BOX.padding.y}px ${TEXT_NOTE_BOX.padding.x}px`,
+        paddingTop: `${TEXT_NOTE_BOX.padding.y}px`,
+        paddingRight: `${textTileRightPadding}px`,
+        paddingBottom: `${TEXT_NOTE_BOX.padding.y}px`,
+        paddingLeft: `${TEXT_NOTE_BOX.padding.x}px`,
         ...tileRingStyle('text'),
       }}
     >
       <div
-        ref={contentRef}
-        className="leading-relaxed"
+        className="whitespace-pre-wrap article-scroll"
         style={{
           fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
           fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
           lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
           color: 'var(--color-text-primary)',
-          maxHeight: `${TEXT_TILE.maxHeight}px`,
-          overflow: 'hidden',
+          fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
+          maxHeight: `${textViewportMaxHeight}px`,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          cursor: 'grab',
+          userSelect: 'none',
+          boxSizing: 'border-box',
+          paddingRight: '14px',
+          paddingBottom: '6px',
         }}
       >
-        <div style={{ fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE, whiteSpace: 'pre-wrap' }}>{formatTextWithLinksAndHighlight(firstTextLine, searchQuery)}</div>
-        {remainingText && (
-          <div
-            className="whitespace-pre-wrap"
-            style={{ lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight, fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION, color: 'var(--color-text-secondary)' }}
-          >
-            {formatTextWithLinksAndHighlight(remainingText, searchQuery)}
-          </div>
-        )}
+        {formatTextWithLinksAndHighlight(content || '', searchQuery)}
       </div>
-      {isOverflowing && (
-        <div
-          style={{
-            marginTop: '2px',
-            textAlign: 'left',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '20px',
-              letterSpacing: '2px',
-              color: 'var(--color-text-tertiary)',
-              fontWeight: 600,
-            }}
-          >
-            •••
-          </span>
-        </div>
-      )}
     </div>
   );
 }

@@ -12,6 +12,8 @@ import { InlineTextEditor } from '@/components/layout/centerpane/InlineTextEdito
 import { useSpaceStore } from '@/stores/spaceStore';
 import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from '@/components/layout/centerpane/hooks/useArrowDrawing';
+import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchFilter';
+import { useSearchStore } from '@/stores/searchStore';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
 
@@ -26,6 +28,10 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
   const logic = useCenterPaneLogic(paneRef, zoom);
   const isDuplicating = useSpaceStore((state) => state.isDuplicating);
+  const searchQuery = useSearchStore((state) => state.searchQuery);
+  const isSearchMode = searchQuery.trim().length > 0;
+  const currentSpaceIcons = logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || [];
+  const filteredIcons = useSearchFilter(currentSpaceIcons);
 
   // Expose methods to parent via ref
   const getCenterCanvasPos = () => {
@@ -51,13 +57,18 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       logic.openAddWebArticleDialog(x, y);
     },
     pasteFromClipboard: logic.pasteFromClipboard,
-  }), [logic.handleAddFiles, logic.iconsBySpace, logic.openAddLinkDialog, logic.openAddWebArticleDialog, logic.pasteFromClipboard, zoom]);
+  }), [
+    logic.handleAddFiles,
+    logic.iconsBySpace,
+    logic.openAddLinkDialog,
+    logic.openAddWebArticleDialog,
+    logic.pasteFromClipboard,
+    zoom,
+  ]);
 
   const selectedIcons = useMemo(() => {
-    if (!logic.selectedSpace) return [];
-    const icons = logic.iconsBySpace[logic.selectedSpace.id] || [];
-    return icons.filter((icon) => logic.selectedIconIds.includes(icon.id));
-  }, [logic.iconsBySpace, logic.selectedIconIds, logic.selectedSpace]);
+    return filteredIcons.filter((icon) => logic.selectedIconIds.includes(icon.id));
+  }, [filteredIcons, logic.selectedIconIds]);
   const INLINE_PREVIEW_LIMIT = 6;
   const inlinePreviewIcons = useMemo(
     () => selectedIcons.slice(0, INLINE_PREVIEW_LIMIT),
@@ -177,6 +188,12 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   useEffect(() => {
     setArrowContextMenu(null);
   }, [logic.selectedSpace?.id]);
+
+  useEffect(() => {
+    if (!isSearchMode) return;
+    setArrowContextMenu(null);
+    clearArrowSelection();
+  }, [clearArrowSelection, isSearchMode]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -392,7 +409,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               />
             )}
 
-            {(allArrowSegments.length > 0) && (
+            {(!isSearchMode && allArrowSegments.length > 0) && (
               <svg
                 aria-hidden
                 width={svgWidth}
@@ -491,7 +508,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
               />
             )}
 
-            {(logic.iconsBySpace[logic.selectedSpace?.id ?? ''] || []).map((icon) => (
+            {filteredIcons.map((icon) => (
               logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
                 <Tile
                   key={icon.id}

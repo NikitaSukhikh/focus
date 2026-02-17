@@ -7,11 +7,20 @@
 
 
 ### Tech Stack
-
+Backend:
 - **Python 3.12+**
 - **uv** — package and project manager (replaces pip/venv)
 - **pytest** — testing
 
+Frontend:
+- Typescript + React/Node + Electron
+
+
+## Comment rules
+- Always comment module at the top by default. 
+- Clarify ‘Why’ Over ‘What’
+- Keep Comments Relevant and Updated
+- Avoid redundant comments (do not use comments for self-explanatory code) 
 ---
 
 ## Build and Test Commands

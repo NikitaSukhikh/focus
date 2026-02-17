@@ -162,6 +162,8 @@ export function Tile({
   const isVideoFile = fileCategory === 'video';
   const isVideoLink = type === 'link' && !!effectiveVideoEmbed;
   const isWebArticle = type === 'web_article';
+  const isGoogleIntegrationTile = type === 'gmail' || type === 'google_drive' || type === 'google_sheets' || type === 'google_docs' || type === 'google_slides';
+  const isGmailTile = type === 'gmail';
   const tileWidth = isWebArticle
     ? WEB_ARTICLE_EMBED.width
     : type === 'link'
@@ -172,6 +174,12 @@ export function Tile({
     : type === 'link'
       ? (isVideoLink ? EMBED_LINK.height : undefined)
       : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
+  // Keep drag handles functionally active while allowing visuals to be toggled during focus-ring iteration.
+  const showDragHandles = false;
+  const dragHandleHorizontalInset = TILE.hoverSafePadding + (isGmailTile ? 14 : 2);
+  const dragHandleBarClass = showDragHandles
+    ? 'h-1.5 w-full rounded-full bg-slate-400/70 transition-colors group-hover:bg-slate-500/80'
+    : 'h-1.5 w-full rounded-full bg-transparent';
   const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
   const tooltipText = (() => {
     if (videoEmbed?.provider === 'youtube') {
@@ -303,17 +311,14 @@ export function Tile({
     <>
       <div
         data-icon-tile
-        draggable={!isInteractionLocked}
         ref={dragRef as any}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
         onClick={(event) => onClick?.(event)}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         title={tooltipText}
         className={`
           group absolute select-none
-          ${type === 'link' || type === 'web_article' || isAudioFile || isVideoFile ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'} cursor-grab active:cursor-grabbing
+          ${type === 'link' || type === 'web_article' || isAudioFile || isVideoFile || isGoogleIntegrationTile ? 'flex items-center justify-center' : type === 'text' ? '' : 'text-center w-32'}
           outline-none focus:outline-none
           ${isDragging ? 'invisible' : ''}
         `}
@@ -332,6 +337,34 @@ export function Tile({
           zIndex: isSelected ? Z_INDEX.CONTENT_SELECTED : isDragging ? Z_INDEX.CONTENT_DRAGGING : Z_INDEX.CONTENT_DEFAULT
         } as any}
       >
+        <div
+          draggable={!isInteractionLocked}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          className={`absolute top-3 z-20 flex h-4 items-center justify-center rounded-full px-2 ${
+            isInteractionLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+          }`}
+          style={{
+            left: dragHandleHorizontalInset,
+            right: dragHandleHorizontalInset,
+          }}
+        >
+          <span className={dragHandleBarClass} />
+        </div>
+        <div
+          draggable={!isInteractionLocked}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          className={`absolute top-1/2 z-20 flex h-4 -translate-y-1/2 items-center justify-center rounded-full px-2 ${
+            isInteractionLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+          }`}
+          style={{
+            left: dragHandleHorizontalInset,
+            right: dragHandleHorizontalInset,
+          }}
+        >
+          <span className={dragHandleBarClass} />
+        </div>
         {renderContent()}
       </div>
 

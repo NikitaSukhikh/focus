@@ -5,15 +5,20 @@ Business logic layer for Space operations.
 Handles validation, orchestration, and business rules for spaces.
 """
 
-from typing import List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from app.models.object import ObjectResponse, ObjectType
 from app.models.space import (
     SpaceCreate,
     SpaceUpdate,
     SpaceResponse,
     SpaceList,
     SpaceDeleteResponse,
+    SpaceShareExportRequest,
+    SpaceShareExportResponse,
+    SpaceShareItem,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.storage.repositories.spaces_repo import spaces_repository
@@ -69,6 +74,15 @@ class SpacesService:
     MAX_ISLANDS = 100  # Maximum number of spaces per user
     MAX_NAME_LENGTH = 100
     MIN_NAME_LENGTH = 1
+    MAX_SHARE_EXPORT_ITEMS = 10_000
+    MAX_SHARE_FILE_SIZE_BYTES = 1024 * 1024 * 1024  # 1 GiB hard limit for file sharing
+
+    SHARE_CATEGORY_ORDER: tuple[tuple[ObjectType, str, str], ...] = (
+        (ObjectType.LINK, "links", "Links"),
+        (ObjectType.WEB_ARTICLE, "web_articles", "Web Article"),
+        (ObjectType.FILE, "files", "File"),
+        (ObjectType.TEXT, "text_notes", "Text Note"),
+    )
 
     def __init__(self):
         """Initialize the service."""
@@ -245,6 +259,236 @@ class SpacesService:
         finally:
             if not external:
                 await session_to_use.close()
+
+    async def export_space_share(
+        self,
+        space_id: UUID,
+        share_request: SpaceShareExportRequest,
+        session: AsyncSession | None = None,
+    ) -> SpaceShareExportResponse:
+        """
+        Build a backend-organized share payload for an entire space.
+
+        Why: the UI can choose categories in any combination, but export rules and file-size
+        validation must stay centralized and deterministic on backend.
+        """
+        session_to_use, external = self._get_session(session)
+        try:
+            space = await self.spaces_repo.get_space_by_id(space_id, session=session_to_use)
+            if space is None:
+                raise SpaceNotFoundError(f"Space not found: {space_id}")
+
+            resolved_filters = share_request.resolved()
+            objects = await self.objects_repo.get_objects_by_space(
+                space_id=space_id,
+                skip=0,
+                limit=self.MAX_SHARE_EXPORT_ITEMS,
+                sort_by="position",
+                sort_order="asc",
+                session=session_to_use,
+            )
+
+            enabled_categories = {
+                "links": resolved_filters.links,
+                "web_articles": resolved_filters.web_articles,
+                "files": resolved_filters.files,
+                "text_notes": resolved_filters.text_notes,
+            }
+
+            category_key_prefix = {
+                "links": "link",
+                "web_articles": "web_article",
+                "files": "file",
+                "text_notes": "text_note",
+            }
+
+            category_counters: Dict[str, int] = {
+                "links": 0,
+                "web_articles": 0,
+                "files": 0,
+                "text_notes": 0,
+            }
+            organized_data: Dict[str, Dict[str, Any]] = {
+                "links": {},
+                "web_articles": {},
+                "files": {},
+                "text_notes": {},
+            }
+            items: List[SpaceShareItem] = []
+            warnings: List[str] = []
+            share_parts: List[str] = []
+            summary_lines: List[str] = []
+            first_share_url: Optional[str] = None
+            seen_file_paths: set[str] = set()
+
+            for object_type, category, label in self.SHARE_CATEGORY_ORDER:
+                if not enabled_categories[category]:
+                    continue
+
+                for obj in objects.objects:
+                    if obj.type != object_type:
+                        continue
+
+                    share_item, item_warnings = self._build_share_item(obj, category)
+                    warnings.extend(item_warnings)
+                    if share_item is None:
+                        continue
+
+                    if category == "files":
+                        normalized_file_path = self._normalize_file_path_for_dedup(share_item.file_path or "")
+                        if normalized_file_path in seen_file_paths:
+                            continue
+                        seen_file_paths.add(normalized_file_path)
+
+                    items.append(share_item)
+
+                    if share_item.share_data:
+                        share_parts.append(share_item.share_data)
+                        if first_share_url is None and category in {"links", "web_articles"}:
+                            first_share_url = share_item.share_data
+
+                    category_counters[category] += 1
+                    item_key = f"{category_key_prefix[category]}_{category_counters[category]}"
+                    if category == "files":
+                        organized_data[category][item_key] = {
+                            "title": share_item.title,
+                            "file_path": share_item.file_path,
+                            "file_size_bytes": share_item.file_size_bytes,
+                            "file_exists": share_item.file_exists,
+                            "is_too_large": share_item.is_too_large,
+                        }
+                    else:
+                        organized_data[category][item_key] = share_item.share_data or ""
+
+                    details = share_item.share_data if share_item.share_data else ""
+                    suffix = f" - {details}" if details else ""
+                    summary_lines.append(f"{len(items)}. [{label}] {share_item.title}{suffix}")
+
+            share_text = "\n\n".join(share_parts)
+
+            logger.info(
+                "Built space share export payload",
+                extra={
+                    "space_id": str(space_id),
+                    "space_name": space.name,
+                    "items": len(items),
+                    "warnings": len(warnings),
+                    "filters": enabled_categories,
+                },
+            )
+
+            return SpaceShareExportResponse(
+                space_id=space.id,
+                space_name=space.name,
+                filters=resolved_filters,
+                total_items=len(items),
+                share_text=share_text,
+                summary_lines=summary_lines,
+                warnings=warnings,
+                first_share_url=first_share_url,
+                items=items,
+                organized_data=organized_data,
+            )
+        finally:
+            if not external:
+                await session_to_use.close()
+
+    def _build_share_item(
+        self,
+        obj: ObjectResponse,
+        category: str,
+    ) -> tuple[SpaceShareItem | None, List[str]]:
+        """
+        Convert object response to normalized share item plus validation warnings.
+        """
+        metadata = obj.metadata or {}
+        warnings: List[str] = []
+
+        if category in {"links", "web_articles"}:
+            url = str(metadata.get("url") or "").strip()
+            if not url:
+                warnings.append(
+                    f"{obj.type.value if hasattr(obj.type, 'value') else obj.type} '{obj.title}' skipped: missing URL."
+                )
+                return None, warnings
+
+            return SpaceShareItem(
+                object_id=obj.id,
+                type=obj.type.value if hasattr(obj.type, "value") else str(obj.type),
+                category=category,
+                title=obj.title,
+                share_data=url,
+            ), warnings
+
+        if category == "text_notes":
+            content = str(metadata.get("content") or "").strip()
+            if not content:
+                warnings.append(f"Text note '{obj.title}' skipped: missing content.")
+                return None, warnings
+
+            return SpaceShareItem(
+                object_id=obj.id,
+                type=obj.type.value if hasattr(obj.type, "value") else str(obj.type),
+                category=category,
+                title=obj.title,
+                share_data=content,
+            ), warnings
+
+        if category == "files":
+            file_path = str(metadata.get("file_path") or "").strip()
+            if not file_path:
+                warnings.append(f"File '{obj.title}' skipped: missing file path.")
+                return None, warnings
+
+            path_obj = Path(file_path)
+            file_exists = path_obj.exists()
+            file_size_bytes: Optional[int] = None
+
+            if file_exists:
+                try:
+                    file_size_bytes = path_obj.stat().st_size
+                except OSError:
+                    warnings.append(f"File '{obj.title}' could not be sized and may fail to share.")
+            else:
+                warnings.append(f"File '{obj.title}' not found on disk: {file_path}")
+
+            is_too_large = bool(
+                file_size_bytes is not None and file_size_bytes > self.MAX_SHARE_FILE_SIZE_BYTES
+            )
+            if is_too_large:
+                warnings.append(
+                    f"File '{obj.title}' is too large ({self._format_size(file_size_bytes or 0)})."
+                    f" Max allowed is {self._format_size(self.MAX_SHARE_FILE_SIZE_BYTES)}."
+                )
+
+            return SpaceShareItem(
+                object_id=obj.id,
+                type=obj.type.value if hasattr(obj.type, "value") else str(obj.type),
+                category=category,
+                title=obj.title,
+                share_data=file_path,
+                file_path=file_path,
+                file_size_bytes=file_size_bytes,
+                file_exists=file_exists,
+                is_too_large=is_too_large,
+            ), warnings
+
+        return None, warnings
+
+    @staticmethod
+    def _format_size(size_bytes: int) -> str:
+        """Convert bytes to readable GiB string for file-share warnings."""
+        gib_value = size_bytes / float(1024 * 1024 * 1024)
+        return f"{gib_value:.2f} GiB"
+
+    @staticmethod
+    def _normalize_file_path_for_dedup(file_path: str) -> str:
+        """
+        Normalize file path for share deduplication.
+
+        Why: Windows paths are case-insensitive and can use mixed separators.
+        """
+        return file_path.strip().replace("\\", "/").lower()
 
     # ========================================================================
     # Update

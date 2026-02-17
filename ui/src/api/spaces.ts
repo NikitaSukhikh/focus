@@ -1,4 +1,5 @@
 import { API_BASE } from '@/config/api';
+import { SpaceShareFilters } from '@/components/dialogs/share/types';
 
 export interface Space {
   id: string;
@@ -26,6 +27,49 @@ export interface SpaceUpdate {
   icon?: string;
   color?: string;
   position?: number;
+}
+
+export interface SpaceShareExportFilters {
+  links: boolean;
+  web_articles: boolean;
+  files: boolean;
+  text_notes: boolean;
+}
+
+export interface SpaceShareExportItem {
+  object_id: string;
+  type: 'link' | 'web_article' | 'file' | 'text';
+  category: 'links' | 'web_articles' | 'files' | 'text_notes';
+  title: string;
+  share_data?: string;
+  file_path?: string;
+  file_size_bytes?: number;
+  file_exists?: boolean;
+  is_too_large?: boolean;
+}
+
+export interface SpaceShareExportResponse {
+  space_id: string;
+  space_name: string;
+  filters: SpaceShareExportFilters;
+  total_items: number;
+  share_text: string;
+  summary_lines: string[];
+  warnings: string[];
+  first_share_url?: string;
+  items: SpaceShareExportItem[];
+  organized_data: {
+    links: Record<string, string>;
+    web_articles: Record<string, string>;
+    files: Record<string, {
+      title: string;
+      file_path: string;
+      file_size_bytes?: number;
+      file_exists?: boolean;
+      is_too_large?: boolean;
+    }>;
+    text_notes: Record<string, string>;
+  };
 }
 
 export const spacesApi = {
@@ -73,5 +117,25 @@ export const spacesApi = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete space');
+  },
+
+  async exportShare(id: string, filters: SpaceShareFilters): Promise<SpaceShareExportResponse> {
+    const res = await fetch(`${API_BASE}/spaces/${id}/share-export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        links: filters.links,
+        web_articles: filters.webArticles,
+        files: filters.files,
+        text_notes: filters.textNotes,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to export space share payload: ${res.status} ${text}`);
+    }
+
+    return res.json();
   },
 };

@@ -64,7 +64,7 @@ export const WEB_ARTICLE_EMBED = {
 // Text/Note Tiles
 // ============================================
 export const TEXT_TILE = {
-  maxHeight: 200,
+  maxHeight: 220,
   maxWidth: 600,
   charLimit: 80, // Characters per line for text wrapping
 };

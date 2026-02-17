@@ -1,5 +1,6 @@
 import { CenterPaneHandle } from '@/components/layout/centerpane/types';
 import { TagColor } from '@/components/layout/topbar/tags';
+import { SpaceShareFilters } from '@/components/dialogs/share/types';
 
 export interface TopBarProps {
   onToggleSidebar: () => void;
@@ -16,6 +17,7 @@ export interface TopBarProps {
   onZoomOut: () => void;
   zoom: number;
   onOpenQuickAdd: (position?: { x: number; y: number }) => void;
+  onOpenSpaceShareDialog?: (_filters: SpaceShareFilters) => void;
   onTagsClick?: () => void;
   isTagsOpen?: boolean;
   onTagSelect?: (color: TagColor) => void;

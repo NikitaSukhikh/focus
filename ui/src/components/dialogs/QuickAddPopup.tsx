@@ -1,6 +1,8 @@
+// QuickAddPopup renders keyboard-first quick actions and mirrors center-pane focus ring colors per action type.
 import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
-import { Clipboard, FilePlus, Plus, BookOpen } from 'lucide-react';
+import { Clipboard, FilePlus, Plus, BookOpen, Pencil } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
+import { tileRingOutline, TILE_RING } from '@/styles/tileStyles';
 
 interface QuickAddPopupProps {
   isOpen: boolean;
@@ -13,12 +15,14 @@ interface QuickAddPopupProps {
 }
 
 type ActionType = 'files' | 'link' | 'web_article' | 'paste';
+type FocusRingType = 'file' | 'link' | 'neutral';
 
 interface Action {
   type: ActionType;
   label: string;
   icon: React.ReactNode;
   handler: () => void;
+  focusRing: FocusRingType;
 }
 
 export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWebArticle, onPaste, position }: QuickAddPopupProps) {
@@ -29,10 +33,10 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
 
   const actions: Action[] = useMemo(
     () => [
-      { type: 'files', label: 'Add Local Files', icon: <FilePlus size={16} />, handler: onAddFiles },
-      { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink },
-      { type: 'web_article', label: 'Add Web Article', icon: <BookOpen size={16} />, handler: onAddWebArticle },
-      { type: 'paste', label: 'Paste', icon: <Clipboard size={16} />, handler: onPaste },
+      { type: 'files', label: 'Add File', icon: <FilePlus size={16} />, handler: onAddFiles, focusRing: 'file' },
+      { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink, focusRing: 'link' },
+      { type: 'web_article', label: 'Add Web Article', icon: <BookOpen size={16} />, handler: onAddWebArticle, focusRing: 'link' },
+      { type: 'paste', label: 'Paste', icon: <Clipboard size={16} />, handler: onPaste, focusRing: 'neutral' },
     ],
     [onAddFiles, onAddLink, onAddWebArticle, onPaste]
   );
@@ -139,10 +143,19 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
               }}
               className={`w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm rounded transition-colors focus:outline-none focus-visible:outline-none ${
                 index === selectedIndex
-                  ? 'bg-blue-500 text-white'
+                  ? 'text-slate-700'
                   : 'text-slate-700 hover:bg-slate-100'
               }`}
-              style={{ outline: 'none', boxShadow: 'none' }}
+              style={index === selectedIndex
+                ? {
+                  outline: action.focusRing === 'neutral'
+                    ? `${TILE_RING.strokeWidth}px solid var(--color-border-strong)`
+                    : tileRingOutline(action.focusRing),
+                  outlineOffset: '0px',
+                  boxShadow: 'none',
+                  background: 'transparent',
+                }
+                : { outline: 'none', boxShadow: 'none' }}
               tabIndex={-1}
               onMouseDown={(e) => e.preventDefault()}
               onFocus={(e) => e.currentTarget.blur()}
@@ -151,6 +164,12 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
               <span className="font-medium">{action.label}</span>
             </button>
           ))}
+          <div className="w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm text-slate-500">
+            <span className="w-4 h-4 flex items-center justify-center shrink-0" aria-hidden="true">
+              <Pencil size={14} />
+            </span>
+            <span className="font-medium">Double click anywhere on the center pane to add text note</span>
+          </div>
         </div>
       </div>
     </>

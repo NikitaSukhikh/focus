@@ -16,10 +16,13 @@ from app.models.space import (
     SpaceList,
     SpaceReorder,
     SpaceDeleteResponse,
+    SpaceShareExportRequest,
+    SpaceShareExportResponse,
 )
 from app.services.spaces_service import (
     spaces_service,
     SpaceNotFoundError,
+    SpaceNameConflictError,
     SpaceLimitExceededError,
     InvalidSpaceDataError,
 )
@@ -220,6 +223,63 @@ async def get_space(
             "Unable to retrieve this space right now.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_code="space_fetch_failed",
+            details={"error": str(e)},
+            log_level="error",
+        ) from e
+
+
+@router.post(
+    "/{space_id}/share-export",
+    response_model=SpaceShareExportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Export space share payload",
+    description="Build ordered and validated share payload for selected object categories in a space.",
+    tags=["Spaces"]
+)
+async def export_space_share(
+    share_request: SpaceShareExportRequest,
+    space_id: UUID = Depends(validate_uuid),
+    session: AsyncSession = Depends(get_session),
+) -> SpaceShareExportResponse:
+    """
+    Export share data for a whole space.
+
+    Rules applied by backend:
+    - Object order: links -> web articles -> files -> text notes
+    - share_text items separated by blank lines (\\n\\n)
+    - files over 1 GiB are flagged in warnings
+    """
+    try:
+        export_payload = await spaces_service.export_space_share(
+            space_id=space_id,
+            share_request=share_request,
+            session=session,
+        )
+
+        logger.info(
+            "Exported space share payload",
+            extra={
+                "space_id": str(space_id),
+                "total_items": export_payload.total_items,
+                "warnings": len(export_payload.warnings),
+            }
+        )
+        return export_payload
+
+    except SpaceNotFoundError as e:
+        logger.warning(f"Space not found for share export: {space_id}")
+        raise NotFoundError(
+            "Space not found.",
+            error_code="space_not_found",
+            details={"space_id": str(space_id), "error": str(e)},
+        )
+
+    except Exception as e:
+        logger.exception("Failed to export space share payload", extra={"space_id": str(space_id)})
+        raise AppError(
+            "Unable to export this space for sharing right now.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="space_share_export_failed",
             details={"error": str(e)},
             log_level="error",
         ) from e

@@ -6,7 +6,7 @@ import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles
 import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
-import { NON_EMBED_LINK, ICON_SIZES } from '@/constants/objectsDimensions';
+import { NON_EMBED_LINK, ICON_SIZES, GOOGLE_INTEGRATION_TILE } from '@/constants/objectsDimensions';
 
 interface LinkContentProps {
   url?: string;
@@ -69,6 +69,8 @@ export function LinkContent({
             <div
               className="line-clamp-2 text-center break-words"
               style={{
+                minWidth: `${GOOGLE_INTEGRATION_TILE.titleMinWidth}px`,
+                maxWidth: `${GOOGLE_INTEGRATION_TILE.titleMaxWidth}px`,
                 fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
                 fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
                 lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,

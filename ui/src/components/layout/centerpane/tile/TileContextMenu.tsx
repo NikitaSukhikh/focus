@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2, Pencil } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
 
@@ -38,6 +38,31 @@ export function TileContextMenu({
   onEditLink,
   onDelete,
 }: TileContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuSize, setMenuSize] = useState({ width: 0, height: 0 });
+  const VIEWPORT_MARGIN = 8;
+
+  useLayoutEffect(() => {
+    if (!show || !menuRef.current) return;
+    const { width, height } = menuRef.current.getBoundingClientRect();
+    setMenuSize({ width, height });
+  }, [show, position]);
+
+  const adjustedPosition = useMemo(() => {
+    if (!show) return position;
+
+    const clampedX = Math.min(
+      Math.max(position.x, VIEWPORT_MARGIN),
+      Math.max(VIEWPORT_MARGIN, window.innerWidth - menuSize.width - VIEWPORT_MARGIN)
+    );
+    const clampedY = Math.min(
+      Math.max(position.y, VIEWPORT_MARGIN),
+      Math.max(VIEWPORT_MARGIN, window.innerHeight - menuSize.height - VIEWPORT_MARGIN)
+    );
+
+    return { x: clampedX, y: clampedY };
+  }, [show, position, menuSize.width, menuSize.height]);
+
   if (!show) return null;
 
   return (
@@ -52,11 +77,12 @@ export function TileContextMenu({
         }}
       />
       <div
+        ref={menuRef}
         className="fixed w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1"
         style={{
           zIndex: Z_INDEX.CONTEXT_MENU,
-          left: `${position.x}px`,
-          top: `${position.y}px`
+          left: `${adjustedPosition.x}px`,
+          top: `${adjustedPosition.y}px`
         }}
       >
         {(hasFileOrUrl || hasContent) && (

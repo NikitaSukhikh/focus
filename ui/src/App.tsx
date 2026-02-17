@@ -5,8 +5,10 @@ import { CenterPane, CenterPaneHandle } from '@/components/layout/centerpane';
 import { PreviewPane } from '@/components/layout/previewpane';
 import { AssistantPane } from '@/components/layout/assistantpane';
 import { QuickAddPopup } from '@/components/dialogs/QuickAddPopup';
+import { SpaceShareDialog } from '@/components/dialogs/SpaceShareDialog';
 import { FullWindowPreview } from '@/components/layout/fullwindowpreview/FullWindowPreview';
 import { PreviewTarget } from '@/components/layout/centerpane/types';
+import { SpaceShareFilters, createDefaultSpaceShareFilters } from '@/components/dialogs/share/types';
 import { detectFileType } from '@/utils/fileTypes';
 import { previewApi } from '@/api/preview';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -57,11 +59,17 @@ export function App() {
     type?: string;
     content?: string;
   }>({});
+  const [spaceShareState, setSpaceShareState] = useState<{
+    spaceId: string;
+    spaceName: string;
+    filters: SpaceShareFilters;
+  } | null>(null);
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
   const textFilePreviewCache = useRef<Record<string, string>>({});
 
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
+  const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
   const initialize = useSpaceStore((state) => state.initialize);
 
   usePersistedSpace();
@@ -395,6 +403,17 @@ export function App() {
     setZoom((prev) => Math.max(0.5, parseFloat((prev - 0.1).toFixed(2))));
   };
 
+  const handleTopBarSpaceShareDialogOpen = (filters: SpaceShareFilters) => {
+    const spaceId = selectedSpaceId || '';
+    if (!spaceId) return;
+
+    setSpaceShareState({
+      spaceId,
+      spaceName: selectedSpace?.name || 'Current Space',
+      filters,
+    });
+  };
+
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--background-dark)' }}>
       <TopBar
@@ -413,6 +432,7 @@ export function App() {
         onZoomOut={handleZoomOut}
         zoom={zoom}
         onOpenQuickAdd={openQuickAdd}
+        onOpenSpaceShareDialog={handleTopBarSpaceShareDialogOpen}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -521,6 +541,14 @@ export function App() {
         onAddWebArticle={handleQuickAddWebArticle}
         onPaste={handleQuickAddPaste}
         position={quickAddPosition}
+      />
+
+      <SpaceShareDialog
+        isOpen={!!spaceShareState}
+        onClose={() => setSpaceShareState(null)}
+        spaceId={spaceShareState?.spaceId}
+        spaceName={spaceShareState?.spaceName || 'Current Space'}
+        filters={spaceShareState?.filters || createDefaultSpaceShareFilters()}
       />
 
       <FullWindowPreview

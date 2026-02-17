@@ -18,6 +18,7 @@ export const TOP_BAR = {
     leftGroupGap: 8,
     leftGroupMarginRight: 8,
     rightSectionGap: 8,
+    toggleButtonsGap: 4,
     windowControlsMarginRight: -8,
   },
   title: {
@@ -90,6 +91,34 @@ export const TOP_BAR = {
   },
   themeToggle: {
     gap: 2,
+  },
+  modeToggleButton: {
+    padding: 6,
+    iconSize: 18,
+    slashIconSize: 16,
+  },
+  aiAssistantButton: {
+    logoSize: 20,
+    logoBorderRadius: 4,
+    verticalOffsetY: -3,
+  },
+  aiAssistantDialog: {
+    width: 280,
+    offsetY: 8,
+    paddingX: 12,
+    paddingY: 10,
+    borderRadius: 12,
+    titleBottomMargin: 8,
+  },
+  shareMenu: {
+    width: 184,
+    offsetY: 8,
+    borderWidth: 1,
+    paddingY: 4,
+    itemPaddingX: 12,
+    itemPaddingY: 4,
+    itemGap: 8,
+    checkboxSize: 14,
   },
 };
 
@@ -189,6 +218,8 @@ export const DIMENSIONS = {
     SEARCH_INPUT_WIDTH: 256, // w-64 = 16rem = 256px
     ACCOUNT_DROPDOWN_WIDTH: 208, // w-52 = 13rem = 208px
     CONTEXT_MENU_WIDTH: 160, // w-40 = 10rem = 160px
+    SPACE_SHARE_WIDTH: 720,
+    SPACE_SHARE_LIST_MAX_HEIGHT: 220,
   },
 
   // Assistant Input
@@ -225,4 +256,3 @@ export type PanelKey = keyof typeof PANEL_DIMENSIONS;
 // Helper functions
 export const getDimensions = (key: DimensionKey) => DIMENSIONS[key];
 export const getPanelDimensions = (key: PanelKey) => PANEL_DIMENSIONS[key];
-

@@ -5,7 +5,7 @@ Data models for Space entities - workspaces that contain objects.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
@@ -336,6 +336,124 @@ class SpaceDeleteResponse(BaseModel):
                 "space_id": "550e8400-e29b-41d4-a716-446655440000",
                 "objects_deleted": 12,
                 "message": "Space 'Work Projects' and 12 objects deleted successfully"
+            }
+        }
+    )
+
+
+class SpaceShareExportRequest(BaseModel):
+    """
+    Schema for selecting which object categories to include in a space share export.
+
+    If all flags are false, backend treats it as "all enabled" for a safer default.
+    """
+
+    links: bool = Field(default=False, description="Include link objects")
+    web_articles: bool = Field(default=False, description="Include web article objects")
+    files: bool = Field(default=False, description="Include file objects")
+    text_notes: bool = Field(default=False, description="Include text note objects")
+
+    def has_any_selected(self) -> bool:
+        """Return whether at least one export category is selected."""
+        return self.links or self.web_articles or self.files or self.text_notes
+
+    def resolved(self) -> "SpaceShareExportRequest":
+        """
+        Return filters with backend default behavior applied.
+
+        Why: The top bar can send all-false before explicit selection. Treating that case as all-enabled
+        prevents accidental empty exports and mirrors current UI behavior.
+        """
+        if self.has_any_selected():
+            return self
+        return SpaceShareExportRequest(
+            links=True,
+            web_articles=True,
+            files=True,
+            text_notes=True,
+        )
+
+
+class SpaceShareItem(BaseModel):
+    """Single exported object entry in normalized share payload order."""
+
+    object_id: UUID = Field(..., description="Object identifier")
+    type: str = Field(..., description="Raw object type (link, web_article, file, text)")
+    category: str = Field(..., description="Share category key (links, web_articles, files, text_notes)")
+    title: str = Field(..., description="Object title")
+    share_data: Optional[str] = Field(
+        None,
+        description="Primary share payload: URL for links/articles, text for notes, file path for files"
+    )
+    file_path: Optional[str] = Field(None, description="File path for file objects")
+    file_size_bytes: Optional[int] = Field(None, ge=0, description="Resolved file size in bytes (if available)")
+    file_exists: Optional[bool] = Field(None, description="Whether the source file exists on disk")
+    is_too_large: Optional[bool] = Field(None, description="True when file is larger than share size limit")
+
+
+class SpaceShareExportResponse(BaseModel):
+    """
+    Schema for backend-generated space sharing payload.
+
+    This response is intentionally JSON-friendly so UI can copy/share directly
+    or persist it as a share info file.
+    """
+
+    space_id: UUID = Field(..., description="Shared space identifier")
+    space_name: str = Field(..., description="Shared space display name")
+    filters: SpaceShareExportRequest = Field(..., description="Resolved category filters applied by backend")
+    total_items: int = Field(..., ge=0, description="Total number of exported items")
+    share_text: str = Field(
+        ...,
+        description="Flat share content where each item is separated by an empty line (\\n\\n)"
+    )
+    summary_lines: List[str] = Field(default_factory=list, description="Human-readable summary rows")
+    warnings: List[str] = Field(default_factory=list, description="Warnings for oversized/missing files")
+    first_share_url: Optional[str] = Field(
+        None,
+        description="First URL in payload, useful as fallback for URL-based social share forms"
+    )
+    items: List[SpaceShareItem] = Field(default_factory=list, description="Normalized ordered share items")
+    organized_data: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Grouped JSON payload with numbered keys (link_1, file_1, text_note_1, etc.)"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "space_id": "550e8400-e29b-41d4-a716-446655440000",
+                "space_name": "Research",
+                "filters": {
+                    "links": True,
+                    "web_articles": True,
+                    "files": True,
+                    "text_notes": True
+                },
+                "total_items": 3,
+                "share_text": "https://example.com/article\\n\\nC:/docs/spec.pdf\\n\\nImportant note",
+                "summary_lines": [
+                    "1. [Link] Example",
+                    "2. [File] Spec PDF",
+                    "3. [Text Note] Important note"
+                ],
+                "warnings": [],
+                "first_share_url": "https://example.com/article",
+                "items": [
+                    {
+                        "object_id": "af4d39ce-2d31-4c77-8904-387b714b5903",
+                        "type": "link",
+                        "category": "links",
+                        "title": "Example",
+                        "share_data": "https://example.com/article"
+                    }
+                ],
+                "organized_data": {
+                    "links": {"link_1": "https://example.com/article"},
+                    "web_articles": {},
+                    "files": {},
+                    "text_notes": {}
+                }
             }
         }
     )

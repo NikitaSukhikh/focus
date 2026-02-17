@@ -119,7 +119,7 @@ export function useDragHandling(id: string, x: number, y: number) {
       startScrollTop,
     }));
 
-    const buttonElement = e.currentTarget as HTMLElement;
+    const buttonElement = (buttonRef.current ?? e.currentTarget) as HTMLElement;
     const rect = buttonElement.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;

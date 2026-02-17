@@ -1,29 +1,139 @@
-import React, { forwardRef, useImperativeHandle } from 'react';
-import { Menu, X, MessageCircle, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon } from 'lucide-react';
+/**
+ * TopBar renders global workspace controls and routes user actions to layout state.
+ * A dedicated AI assistant action is exposed in the right-side controls.
+ */
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Menu, X, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon, Share } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
 import { TOP_BAR } from '@/constants/panesDimensions';
 import { FONT_ROLES } from '@/styles/fontManager';
-import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES } from '@/styles/typographics';
+import { TOP_BAR_STYLES } from '@/styles/topBarStyles';
 import { useTopBarLogic } from '@/components/layout/topbar/useTopBarLogic';
 import { TopBarProps, TopBarHandle } from '@/components/layout/topbar/types';
 import { TopBarSearch } from '@/components/layout/topbar/TopBarSearch';
 import { TopBarTags } from '@/components/layout/topbar/TopBarTags';
 import { WindowControls } from '@/components/layout/topbar/WindowControls';
+import { AiAssistantComingSoonDialog } from '@/components/layout/topbar/AiAssistantComingSoonDialog';
+import { SpaceShareFilters, createDefaultSpaceShareFilters } from '@/components/dialogs/share/types';
 import focusLogo from '@/assets/focus.png';
-import shareSpaceIcon from '@/assets/sharespace_icon.jpg';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
 
 export type { TopBarHandle } from '@/components/layout/topbar/types';
 
+const AI_ASSISTANT_LOGO_SRC = '/logos/ai_assistant_logo_transparent.png';
+
+const SHARE_OPTIONS: Array<{ key: keyof SpaceShareFilters; label: string }> = [
+  { key: 'links', label: 'Links' },
+  { key: 'webArticles', label: 'Web Articles' },
+  { key: 'files', label: 'Files' },
+  { key: 'textNotes', label: 'Text notes' },
+];
+
 // TopBar renders the global header controls (sidebar toggle, space title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
-  const { onToggleSidebar, isSidebarOpen, onTogglePreview, isPreviewOpen, onToggleConversation, isConversationOpen, sidebarWidth, centerPaneRef, onToggleGrid, isGridMode, onZoomIn, onZoomOut, zoom, onOpenQuickAdd, onTagsClick, isTagsOpen, onTagSelect } = props;
+  const {
+    onToggleSidebar,
+    isSidebarOpen,
+    onTogglePreview,
+    isPreviewOpen,
+    onToggleConversation: _onToggleConversation,
+    isConversationOpen: _isConversationOpen,
+    sidebarWidth: _sidebarWidth,
+    centerPaneRef,
+    onToggleGrid,
+    isGridMode,
+    onZoomIn: _onZoomIn,
+    onZoomOut: _onZoomOut,
+    zoom,
+    onOpenQuickAdd,
+    onOpenSpaceShareDialog,
+    onTagsClick,
+    isTagsOpen,
+    onTagSelect,
+  } = props;
 
   const logic = useTopBarLogic(centerPaneRef);
   const { isDark, toggleTheme } = useThemeToggle();
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [isAiAssistantDialogOpen, setIsAiAssistantDialogOpen] = useState(false);
+  const [shareSelections, setShareSelections] = useState<SpaceShareFilters>(createDefaultSpaceShareFilters);
+  const shareButtonRef = useRef<HTMLButtonElement | null>(null);
+  const shareMenuRef = useRef<HTMLDivElement | null>(null);
+  const aiAssistantButtonRef = useRef<HTMLButtonElement | null>(null);
+  const aiAssistantDialogRef = useRef<HTMLDivElement | null>(null);
+
+  const toggleShareOption = (key: keyof SpaceShareFilters) => {
+    setShareSelections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleShareSymbolClick = () => {
+    onOpenSpaceShareDialog?.(shareSelections);
+    setIsShareMenuOpen(false);
+  };
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({}), []);
+
+  useEffect(() => {
+    if (!isShareMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      const clickedButton = shareButtonRef.current?.contains(target);
+      const clickedMenu = shareMenuRef.current?.contains(target);
+
+      if (clickedButton || clickedMenu) return;
+      setIsShareMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsShareMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [isShareMenuOpen]);
+
+  useEffect(() => {
+    if (!isAiAssistantDialogOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      const clickedButton = aiAssistantButtonRef.current?.contains(target);
+      const clickedDialog = aiAssistantDialogRef.current?.contains(target);
+
+      if (clickedButton || clickedDialog) return;
+      setIsAiAssistantDialogOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAiAssistantDialogOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [isAiAssistantDialogOpen]);
 
   return (
     <header
@@ -108,7 +218,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)';
             }}
-            title="Add links/files"
+            title="Add objects on the center pane (Ctrl+I)"
             aria-label="Add links/files"
           >
             <Plus size={TOP_BAR.icons.small} />
@@ -210,158 +320,262 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           </div>
         </div>
 
-        <button
-          className="rounded-lg transition-colors flex items-center justify-center"
-          style={{
-            background: 'var(--glass-bg)',
-            color: 'var(--color-text-primary)',
-            border: '1px solid var(--color-border-subtle)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            display: 'none',
-            padding: `${TOP_BAR.button.padding}px`,
-          }}
-          title="ShareSpace"
-          aria-label="ShareSpace"
-        >
-          <img
-            src={shareSpaceIcon}
-            alt="ShareSpace"
-            className="object-contain"
+        <div className="relative" style={{ zIndex: Z_INDEX.DROPDOWN_MENU }}>
+          <button
+            ref={shareButtonRef}
+            onClick={() => setIsShareMenuOpen((prev) => !prev)}
+            className="rounded-lg transition-colors flex items-center justify-center"
             style={{
-              opacity: 0.6,
-              width: `${TOP_BAR.icons.primary}px`,
-              height: `${TOP_BAR.icons.primary}px`,
+              background: isShareMenuOpen ? 'var(--glass-bg)' : 'transparent',
+              color: isShareMenuOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+              border: isShareMenuOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+              boxShadow: isShareMenuOpen ? '0 0 10px var(--shadow)' : 'none',
+              padding: `${TOP_BAR.button.padding}px`,
             }}
-          />
-        </button>
+            onMouseEnter={(e) => {
+              if (!isShareMenuOpen) {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isShareMenuOpen) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }
+            }}
+            title="Share"
+            aria-label="Share"
+            aria-haspopup="menu"
+            aria-expanded={isShareMenuOpen}
+          >
+            <Share size={TOP_BAR.icons.tiny} />
+          </button>
 
-        <button
-          onClick={toggleTheme}
-          className="rounded-lg transition-colors flex items-center justify-center"
-          style={{
-            background: 'transparent',
-            color: 'var(--color-text-secondary)',
-            border: '1px solid transparent',
-            padding: `${TOP_BAR.button.padding}px`,
-            columnGap: `${TOP_BAR.themeToggle.gap}px`,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--glass-bg)';
-            e.currentTarget.style.color = 'var(--primary-color)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-          }}
-          title="Toggle theme"
-        >
-          {isDark ? <Moon size={TOP_BAR.icons.tiny} /> : <Sun size={TOP_BAR.icons.tiny} />}
-        </button>
-
-        <button
-          onClick={onToggleGrid}
-          className="rounded-lg transition-colors relative flex items-center justify-center"
-          style={{
-            background: isGridMode ? 'var(--glass-bg)' : 'transparent',
-            color: isGridMode ? 'var(--primary-color)' : 'var(--color-text-secondary)',
-            border: isGridMode ? '1px solid var(--color-border-strong)' : '1px solid transparent',
-            boxShadow: isGridMode ? '0 0 10px var(--shadow)' : 'none',
-            padding: `${TOP_BAR.button.padding}px`,
-          }}
-          onMouseEnter={(e) => {
-            if (!isGridMode) {
-              e.currentTarget.style.background = 'var(--glass-bg)';
-              e.currentTarget.style.color = 'var(--primary-color)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isGridMode) {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
-            }
-          }}
-          title={isGridMode ? 'Grids' : 'Grid-Free'}
-        >
-          {isGridMode ? (
-            <Grid3x3 size={TOP_BAR.icons.primary} />
-          ) : (
-            <span
-              className="relative inline-block"
+          {isShareMenuOpen && (
+            <div
+              ref={shareMenuRef}
+              className="absolute right-0 rounded-lg overflow-hidden"
               style={{
-                width: `${TOP_BAR.icons.primary}px`,
-                height: `${TOP_BAR.icons.primary}px`,
+                top: `calc(100% + ${TOP_BAR.shareMenu.offsetY}px)`,
+                width: `${TOP_BAR.shareMenu.width}px`,
+                background: 'var(--glass-bg)',
+                border: `${TOP_BAR.shareMenu.borderWidth}px solid var(--color-border-subtle)`,
+                boxShadow: 'var(--shadow-strong)',
+                backdropFilter: 'var(--glass-blur)',
               }}
+              role="menu"
+              aria-label="Share options"
             >
-              <Grid3x3 size={TOP_BAR.icons.primary} className="absolute inset-0 opacity-75" />
-              <Slash size={TOP_BAR.icons.secondary} className="absolute inset-0 opacity-85" />
-            </span>
-          )}
-        </button>
+              <button
+                type="button"
+                onClick={handleShareSymbolClick}
+                className="absolute flex items-center justify-center rounded-sm transition-colors"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--color-text-primary)',
+                  right: `${TOP_BAR.shareMenu.itemPaddingX}px`,
+                  top: `${TOP_BAR.shareMenu.itemPaddingY}px`,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--primary-color)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--color-text-primary)';
+                }}
+                title="Open space share dialog"
+                aria-label="Open space share dialog"
+              >
+                <Share size={TOP_BAR.icons.tiny} />
+              </button>
 
-        <button
-          onClick={onTogglePreview}
-          className="rounded-lg transition-colors"
-          style={{
-            background: isPreviewOpen ? 'var(--glass-bg)' : 'transparent',
-            color: isPreviewOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
-            border: isPreviewOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
-            boxShadow: isPreviewOpen ? '0 0 10px var(--shadow)' : 'none',
-            padding: `${TOP_BAR.button.padding}px`,
-          }}
-          onMouseEnter={(e) => {
-            if (!isPreviewOpen) {
+              <div style={{ padding: `${TOP_BAR.shareMenu.paddingY}px 0` }}>
+                {SHARE_OPTIONS.map((option) => (
+                  <div
+                    key={option.key}
+                    style={{
+                      padding: `${TOP_BAR.shareMenu.itemPaddingY}px ${TOP_BAR.shareMenu.itemPaddingX}px`,
+                    }}
+                  >
+                    <label
+                      className="inline-flex items-center cursor-pointer"
+                      style={{
+                        ...FONT_ROLES.topbarControl,
+                        color: 'var(--color-text-primary)',
+                        columnGap: `${TOP_BAR.shareMenu.itemGap}px`,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={shareSelections[option.key]}
+                        onChange={() => toggleShareOption(option.key)}
+                        style={{
+                          width: `${TOP_BAR.shareMenu.checkboxSize}px`,
+                          height: `${TOP_BAR.shareMenu.checkboxSize}px`,
+                          accentColor: TOP_BAR_STYLES.shareMenuCheckboxAccentColor,
+                        }}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center" style={{ columnGap: `${TOP_BAR.layout.toggleButtonsGap}px` }}>
+          <button
+            onClick={toggleTheme}
+            className="rounded-lg transition-colors flex items-center justify-center"
+            style={{
+              background: 'transparent',
+              color: 'var(--color-text-secondary)',
+              border: '1px solid transparent',
+              padding: `${TOP_BAR.button.padding}px`,
+              columnGap: `${TOP_BAR.themeToggle.gap}px`,
+            }}
+            onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--glass-bg)';
               e.currentTarget.style.color = 'var(--primary-color)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isPreviewOpen) {
+            }}
+            onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
               e.currentTarget.style.color = 'var(--color-text-secondary)';
-            }
-          }}
-          title={'Toggle preview\n(Ctrl+U)'}
-        >
-          <PanelRight size={TOP_BAR.icons.primary} />
-        </button>
-        <button
-          onClick={onToggleConversation}
-          className="rounded-lg transition-colors"
-          style={{
-            background: isConversationOpen ? 'var(--glass-bg)' : 'transparent',
-            color: isConversationOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
-            border: isConversationOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
-            boxShadow: isConversationOpen ? '0 0 10px var(--shadow)' : 'none',
-            display: 'none',
-            padding: `${TOP_BAR.button.padding}px`,
-          }}
-          onMouseEnter={(e) => {
-            if (!isConversationOpen) {
-              e.currentTarget.style.background = 'var(--glass-bg)';
-              e.currentTarget.style.color = 'var(--primary-color)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isConversationOpen) {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--color-text-secondary)';
-            }
-          }}
-          title="Toggle conversation"
-        >
-          <MessageCircle size={TOP_BAR.icons.primary} />
-        </button>
+            }}
+            title="Toggle theme"
+          >
+            {isDark ? <Moon size={TOP_BAR.icons.tiny} /> : <Sun size={TOP_BAR.icons.tiny} />}
+          </button>
+
+          <button
+            onClick={onToggleGrid}
+            className="rounded-lg transition-colors relative flex items-center justify-center"
+            style={{
+              background: isGridMode ? 'var(--glass-bg)' : 'transparent',
+              color: isGridMode ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+              border: isGridMode ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+              boxShadow: isGridMode ? '0 0 10px var(--shadow)' : 'none',
+              padding: `${TOP_BAR.modeToggleButton.padding}px`,
+            }}
+            onMouseEnter={(e) => {
+              if (!isGridMode) {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isGridMode) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }
+            }}
+            title={isGridMode ? 'Grids' : 'Grid-Free'}
+          >
+            {isGridMode ? (
+              <Grid3x3 size={TOP_BAR.modeToggleButton.iconSize} />
+            ) : (
+              <span
+                className="relative inline-block"
+                style={{
+                  width: `${TOP_BAR.modeToggleButton.iconSize}px`,
+                  height: `${TOP_BAR.modeToggleButton.iconSize}px`,
+                }}
+              >
+                <Grid3x3 size={TOP_BAR.modeToggleButton.iconSize} className="absolute inset-0 opacity-75" />
+                <Slash size={TOP_BAR.modeToggleButton.slashIconSize} className="absolute inset-0 opacity-85" />
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={onTogglePreview}
+            className="rounded-lg transition-colors"
+            style={{
+              background: isPreviewOpen ? 'var(--glass-bg)' : 'transparent',
+              color: isPreviewOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+              border: isPreviewOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+              boxShadow: isPreviewOpen ? '0 0 10px var(--shadow)' : 'none',
+              padding: `${TOP_BAR.modeToggleButton.padding}px`,
+            }}
+            onMouseEnter={(e) => {
+              if (!isPreviewOpen) {
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isPreviewOpen) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }
+            }}
+            title={'Toggle preview\n(Ctrl+U)'}
+          >
+            <PanelRight size={TOP_BAR.modeToggleButton.iconSize} />
+          </button>
+          <div
+            className="relative"
+            style={{
+              zIndex: Z_INDEX.DROPDOWN_MENU,
+              marginTop: `${TOP_BAR.aiAssistantButton.verticalOffsetY}px`,
+            }}
+          >
+            <button
+              ref={aiAssistantButtonRef}
+              onClick={() => setIsAiAssistantDialogOpen((prev) => !prev)}
+              className="rounded-lg transition-colors"
+              style={{
+                background: isAiAssistantDialogOpen ? 'var(--glass-bg)' : 'transparent',
+                color: isAiAssistantDialogOpen ? 'var(--primary-color)' : 'var(--color-text-secondary)',
+                border: isAiAssistantDialogOpen ? '1px solid var(--color-border-strong)' : '1px solid transparent',
+                boxShadow: isAiAssistantDialogOpen ? '0 0 10px var(--shadow)' : 'none',
+                padding: `${TOP_BAR.button.padding}px`,
+              }}
+              onMouseEnter={(e) => {
+                if (!isAiAssistantDialogOpen) {
+                  e.currentTarget.style.background = 'var(--glass-bg)';
+                  e.currentTarget.style.color = 'var(--primary-color)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isAiAssistantDialogOpen) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--color-text-secondary)';
+                }
+              }}
+              title="Toggle AI assistant"
+              aria-label="Toggle AI assistant"
+              aria-haspopup="dialog"
+              aria-expanded={isAiAssistantDialogOpen}
+            >
+              <img
+                src={AI_ASSISTANT_LOGO_SRC}
+                alt="AI Assistant"
+                style={{
+                  width: `${TOP_BAR.aiAssistantButton.logoSize}px`,
+                  height: `${TOP_BAR.aiAssistantButton.logoSize}px`,
+                  borderRadius: `${TOP_BAR.aiAssistantButton.logoBorderRadius}px`,
+                  objectFit: 'contain',
+                  filter: isDark ? TOP_BAR_STYLES.aiAssistantLogoDarkFilter : TOP_BAR_STYLES.aiAssistantLogoLightFilter,
+                }}
+              />
+            </button>
+            <AiAssistantComingSoonDialog
+              isOpen={isAiAssistantDialogOpen}
+              containerRef={aiAssistantDialogRef}
+            />
+          </div>
+        </div>
 
         {/* Window Controls */}
         <div style={{ marginRight: `${TOP_BAR.layout.windowControlsMarginRight}px` }}>
           <WindowControls />
         </div>
       </div>
-
     </header>
   );
 };
 
 export const TopBar = forwardRef(TopBarComponent);
 TopBar.displayName = 'TopBar';
-

@@ -2,74 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { X, Share2, Copy, CheckCircle2 } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
-import { GmailIcon } from '@/components/icons/GoogleServiceIcons';
-import {
-  WhatsAppIcon,
-  TelegramShareIcon,
-  FacebookIcon,
-  TwitterIcon,
-  LinkedInIcon,
-  RedditIcon,
-  InstagramIcon
-} from '@/components/icons/SocialShareIcons';
-
-interface SharePlatform {
-  name: string;
-  icon: React.ComponentType<{ size?: number }>;
-  getShareUrl: (url: string, title: string) => string;
-  color: string;
-}
-
-const SHARE_PLATFORMS: SharePlatform[] = [
-  {
-    name: 'WhatsApp',
-    icon: WhatsAppIcon,
-    getShareUrl: (url, title) => `https://wa.me/?text=${encodeURIComponent(`${title}\n${url}`)}`,
-    color: 'hover:bg-green-50'
-  },
-  {
-    name: 'Telegram',
-    icon: TelegramShareIcon,
-    getShareUrl: (url, title) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
-    color: 'hover:bg-blue-50'
-  },
-  {
-    name: 'Facebook',
-    icon: FacebookIcon,
-    getShareUrl: (url) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-    color: 'hover:bg-blue-50'
-  },
-  {
-    name: 'Instagram',
-    icon: InstagramIcon,
-    getShareUrl: (url) => `https://www.instagram.com/`,
-    color: 'hover:bg-pink-50'
-  },
-  {
-    name: 'Twitter',
-    icon: TwitterIcon,
-    getShareUrl: (url, title) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
-    color: 'hover:bg-slate-50'
-  },
-  {
-    name: 'LinkedIn',
-    icon: LinkedInIcon,
-    getShareUrl: (url) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
-    color: 'hover:bg-blue-50'
-  },
-  {
-    name: 'Gmail',
-    icon: GmailIcon,
-    getShareUrl: (url, title) => `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`,
-    color: 'hover:bg-red-50'
-  },
-  {
-    name: 'Reddit',
-    icon: RedditIcon,
-    getShareUrl: (url, title) => `https://reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`,
-    color: 'hover:bg-orange-50'
-  }
-];
+import { SharePlatformButtons } from '@/components/dialogs/share/SharePlatformButtons';
+import { SharePlatform, SHARE_PLATFORMS } from '@/components/dialogs/share/sharePlatforms';
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -306,21 +240,7 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
             {/* Share Platforms */}
             <div className="space-y-1">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Share to</p>
-              <div className="flex items-center justify-center gap-2">
-                {SHARE_PLATFORMS.map((platform) => {
-                  const IconComponent = platform.icon;
-                  return (
-                    <button
-                      key={platform.name}
-                      onClick={() => handlePlatformClick(platform)}
-                      title={platform.name}
-                      className={`p-2.5 rounded-lg border border-slate-200 transition-all hover:scale-110 hover:shadow-md ${platform.color}`}
-                    >
-                      <IconComponent size={26} />
-                    </button>
-                  );
-                })}
-              </div>
+              <SharePlatformButtons platforms={SHARE_PLATFORMS} onPlatformClick={handlePlatformClick} />
             </div>
           </div>
         </div>
