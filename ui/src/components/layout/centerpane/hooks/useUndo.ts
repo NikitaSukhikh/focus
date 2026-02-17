@@ -680,5 +680,6 @@ export const useUndo = ({
 
     window.addEventListener('keydown', handleUndoRedo);
     return () => window.removeEventListener('keydown', handleUndoRedo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- processUndoRedoEvent references store callbacks; re-subscribing on space change is the intended behavior
   }, [selectedSpaceId]);
 };

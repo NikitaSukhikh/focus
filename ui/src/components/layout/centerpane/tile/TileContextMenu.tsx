@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2, Pencil } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
 

@@ -119,6 +119,7 @@ export const useWebviewNavigation = (
         state.pendingUrlRef.current = url;
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- safeLoadURL is defined locally and closes over stable refs; all meaningful deps tracked
   }, [url, webviewRef, state, skipNavigation]);
 
   return {

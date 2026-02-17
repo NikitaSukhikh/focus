@@ -1,7 +1,6 @@
 /**
  * Reusable share platform button strip to keep platform presentation consistent across dialogs.
  */
-import React from 'react';
 import { SharePlatform } from '@/components/dialogs/share/sharePlatforms';
 interface SharePlatformButtonsProps {
   platforms: SharePlatform[];

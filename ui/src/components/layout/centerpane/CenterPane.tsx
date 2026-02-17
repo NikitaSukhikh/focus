@@ -120,7 +120,9 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       logic.openAddWebArticleDialog(x, y);
     },
     pasteFromClipboard: logic.pasteFromClipboard,
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- individual logic.* properties tracked; logic object reference is not meaningful
   }), [
+    getCenterCanvasPos,
     logic.handleAddFiles,
     logic.iconsBySpace,
     logic.openAddLinkDialog,

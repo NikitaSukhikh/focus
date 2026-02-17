@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { Message } from '@/features/assistant/models/assistant';
 import { MessageBubble } from '@/features/assistant/components/MessageBubble';

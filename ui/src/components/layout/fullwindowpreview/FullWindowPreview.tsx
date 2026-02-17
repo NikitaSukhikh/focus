@@ -17,12 +17,6 @@ import { useImageMetadata } from '@/components/layout/previewpane/hooks/useImage
 import { useDocumentPreview } from '@/components/layout/previewpane/hooks/useDocumentPreview';
 import { MarkdownPreview } from '@/components/layout/previewpane/components/MarkdownPreview';
 import { HTMLPreview } from '@/components/layout/previewpane/components/HTMLPreview';
-import { ImagePreview } from '@/components/layout/previewpane/components/ImagePreview';
-import { DocumentPreview } from '@/components/layout/previewpane/components/DocumentPreview';
-import { TextFilePreview } from '@/components/layout/previewpane/components/TextFilePreview';
-import { VideoFilePreview } from '@/components/layout/previewpane/components/VideoFilePreview';
-import { VideoPreview } from '@/components/layout/previewpane/components/VideoPreview';
-import { WebviewPreview } from '@/components/layout/previewpane/components/WebviewPreview';
 import { GmailExternalPreview } from '@/components/layout/previewpane/components/gmail_external';
 import { useGmailDetection } from '@/components/layout/previewpane/hooks/useGmailDetection';
 import { DroppedIcon } from '@/components/layout/centerpane/types';

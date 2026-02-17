@@ -61,6 +61,7 @@ export function useVideoEmbedMetadata(videoEmbed: VideoEmbed | null, sourceUrl?:
     return () => {
       controller.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- individual videoEmbed properties tracked to avoid object reference churn
   }, [videoEmbed?.embedUrl, videoEmbed?.provider, sourceUrl]);
 
   return metadata;

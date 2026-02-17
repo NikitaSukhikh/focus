@@ -47,7 +47,7 @@ export function AddWebArticleDialog({
       setTitle('');
       setIsValidUrl(true);
     }
-  }, [isOpen, initialValues?.id, initialValues?.url, initialValues?.title]);
+  }, [isOpen, initialValues?.id, initialValues?.url, initialValues?.title]); // eslint-disable-line react-hooks/exhaustive-deps -- individual properties tracked to avoid object reference churn
 
   const fetchTitle = async (targetUrl: string) => {
     setIsFetching(true);

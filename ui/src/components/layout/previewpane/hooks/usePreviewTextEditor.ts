@@ -54,7 +54,7 @@ export const usePreviewTextEditor = ({
     setEditorState((prev) => ({ ...prev, editedContent: content }));
   }, []);
 
-  const generateTitleFromContent = (content: string): string => {
+  const generateTitleFromContent = useCallback((content: string): string => {
     const trimmed = content.trim();
     if (!trimmed) return initialTitle || 'Untitled Note';
 
@@ -62,7 +62,7 @@ export const usePreviewTextEditor = ({
     const firstLine = trimmed.split('\n')[0];
     if (firstLine.length <= 50) return firstLine;
     return firstLine.substring(0, 47) + '...';
-  };
+  }, [initialTitle]);
 
   const saveEdit = useCallback(async () => {
     if (!tileId) {
@@ -112,7 +112,7 @@ export const usePreviewTextEditor = ({
       console.error('Failed to save text note:', err);
       alert('Failed to save note. Please try again.');
     }
-  }, [tileId, editorState.editedContent, initialContent, initialTitle, onContentUpdated]);
+  }, [tileId, editorState.editedContent, initialContent, onContentUpdated, generateTitleFromContent]);
 
   const cancelEdit = useCallback(() => {
     setEditorState({ isEditing: false, editedContent: initialContent });

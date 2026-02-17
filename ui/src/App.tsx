@@ -215,7 +215,7 @@ export function App() {
 
     window.addEventListener('open:fullwindow', handleOpenFullWindow);
     return () => window.removeEventListener('open:fullwindow', handleOpenFullWindow);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally run once; functions only use stable setters
 
   useEffect(() => {
     window.desktopAPI?.setFullWindowPreviewState?.(isFullWindowOpen);
@@ -391,9 +391,6 @@ export function App() {
     void centerPaneRef.current?.pasteFromClipboard?.();
   };
 
-  const handleQuickAddTelegram = () => {
-    // Placeholder: Telegram dialog not yet implemented
-  };
 
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(2, parseFloat((prev + 0.1).toFixed(2))));

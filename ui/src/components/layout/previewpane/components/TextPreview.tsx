@@ -91,10 +91,10 @@ export const TextPreview = forwardRef<TextPreviewHandle, TextPreviewProps>(({
     },
   });
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     await editor.saveEdit();
     onStopEdit();
-  };
+  }, [editor, onStopEdit]);
 
   const handleSaveAndClose = useCallback(async () => {
     if (isClosingRef.current) return;
@@ -110,10 +110,10 @@ export const TextPreview = forwardRef<TextPreviewHandle, TextPreviewProps>(({
     }
   }, [editor, onClosePreview, onStopEdit]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     editor.cancelEdit();
     onStopEdit();
-  };
+  }, [editor, onStopEdit]);
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement | HTMLHeadingElement>) => {
     const caretPosition = getCaretPositionFromClick(e);

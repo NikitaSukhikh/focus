@@ -4,6 +4,8 @@ Thumbnail API Routes
 Provides endpoints for generating and serving file thumbnails.
 """
 
+import ipaddress
+import sys
 from fastapi import APIRouter, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -20,6 +22,59 @@ import mimetypes
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+
+# Directories that must never be served regardless of platform
+_BLOCKED_PREFIXES_WIN = [
+    "C:\\Windows",
+    "C:\\Program Files",
+    "C:\\Program Files (x86)",
+    "C:\\ProgramData",
+    "C:\\System Volume Information",
+]
+_BLOCKED_PREFIXES_UNIX = [
+    "/etc",
+    "/proc",
+    "/sys",
+    "/boot",
+    "/dev",
+    "/run",
+    "/var/run",
+    "/root",
+    "/usr/bin",
+    "/usr/sbin",
+    "/bin",
+    "/sbin",
+]
+
+
+def _validate_file_path_security(file_path: str) -> Path:
+    """
+    Resolve and validate a user-supplied file path against known system directories.
+
+    Raises HTTPException(403) if the resolved path falls inside a blocked directory.
+    Returns the resolved Path on success.
+    """
+    try:
+        resolved = Path(file_path).resolve()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file path.")
+
+    resolved_str = str(resolved)
+
+    if sys.platform == "win32":
+        resolved_upper = resolved_str.upper()
+        blocked = [p.upper() for p in _BLOCKED_PREFIXES_WIN]
+    else:
+        resolved_upper = resolved_str
+        blocked = _BLOCKED_PREFIXES_UNIX
+
+    for prefix in blocked:
+        if resolved_upper.startswith(prefix):
+            logger.warning(f"Blocked access to system path: {resolved_str}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access to this path is not allowed.")
+
+    return resolved
 
 
 def _fix_ebook_image_refs(html_content: str, cache_key: str, images_dir: Path) -> str:
@@ -112,6 +167,8 @@ async def get_image_thumbnail(
         HTTPException: If file not found or not a supported image
     """
     try:
+        _validate_file_path_security(file_path)
+
         # Check if file is an image
         if not file_thumbnail_service.is_image(file_path):
             raise HTTPException(
@@ -173,6 +230,7 @@ async def check_thumbnail(
         dict: Information about thumbnail availability
     """
     try:
+        _validate_file_path_security(file_path)
         is_image = file_thumbnail_service.is_image(file_path)
         cached_path = file_thumbnail_service.get_cached_thumbnail(file_path) if is_image else None
 
@@ -208,6 +266,8 @@ async def get_image_metadata(
         dict: Image metadata including dimensions and aspect ratio
     """
     try:
+        _validate_file_path_security(file_path)
+
         if not file_thumbnail_service.is_image(file_path):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -310,7 +370,7 @@ async def get_full_image(
         HTTPException: If file not found or not a supported image
     """
     try:
-        path = Path(file_path)
+        path = _validate_file_path_security(file_path)
 
         if not path.exists():
             raise HTTPException(
@@ -385,7 +445,7 @@ async def get_audio_file(
         HTTPException: If file not found or not a supported audio format
     """
     try:
-        path = Path(file_path)
+        path = _validate_file_path_security(file_path)
 
         if not path.exists():
             raise HTTPException(
@@ -451,6 +511,8 @@ async def get_audio_metadata_endpoint(
         HTTPException: If file not found or not a supported audio format
     """
     try:
+        _validate_file_path_security(file_path)
+
         if not is_audio_file(file_path):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -525,7 +587,7 @@ async def get_video_file(
         HTTPException: If file not found or not a supported video format
     """
     try:
-        path = Path(file_path)
+        path = _validate_file_path_security(file_path)
 
         if not path.exists():
             raise HTTPException(
@@ -591,7 +653,7 @@ async def get_pdf_file(
         HTTPException: If file not found or not a PDF
     """
     try:
-        path = Path(file_path)
+        path = _validate_file_path_security(file_path)
 
         if not path.exists():
             raise HTTPException(
@@ -657,7 +719,15 @@ async def get_ebook_image(
         settings = get_settings()
 
         images_dir = Path(settings.storage.cache_dir) / "ebook_previews" / "images"
-        image_path = images_dir / image_name
+        image_path = (images_dir / image_name).resolve()
+
+        try:
+            image_path.relative_to(images_dir.resolve())
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Image not found.",
+            )
 
         if not image_path.exists():
             raise HTTPException(
@@ -785,7 +855,7 @@ async def get_ebook_metadata(
         HTTPException: If file not found or not a supported ebook
     """
     try:
-        path = Path(file_path)
+        path = _validate_file_path_security(file_path)
 
         if not path.exists():
             raise HTTPException(
@@ -848,7 +918,7 @@ async def get_document_preview(
 
     try:
         logger.info(f"Starting document preview for: {file_path}")
-        path = Path(file_path)
+        path = _validate_file_path_security(file_path)
 
         if not path.exists():
             raise HTTPException(
@@ -867,7 +937,7 @@ async def get_document_preview(
             logger.info(f"Converting Excel file: {file_path}")
 
             # Run conversion in thread pool with timeout to prevent hanging
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             with ThreadPoolExecutor(max_workers=1) as executor:
                 try:
                     html_path = await asyncio.wait_for(
@@ -889,7 +959,7 @@ async def get_document_preview(
         elif presentation_preview_service.is_presentation(file_path):
             logger.info(f"Converting presentation file: {file_path}")
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             with ThreadPoolExecutor(max_workers=1) as executor:
                 try:
                     html_path = await asyncio.wait_for(

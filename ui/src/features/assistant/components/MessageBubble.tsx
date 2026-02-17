@@ -1,4 +1,3 @@
-import React from 'react';
 import { Message } from '@/features/assistant/models/assistant';
 
 interface MessageBubbleProps {

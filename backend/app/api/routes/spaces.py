@@ -26,7 +26,6 @@ from app.services.spaces_service import (
     SpaceLimitExceededError,
     InvalidSpaceDataError,
 )
-from app.api.deps import validate_uuid
 from app.core.exceptions import AppError, BadRequestError, ConflictError, NotFoundError
 from app.core.logging import get_logger
 from app.storage.db import get_session
@@ -183,7 +182,7 @@ async def create_space(
     tags=["Spaces"]
 )
 async def get_space(
-    space_id: UUID = Depends(validate_uuid),
+    space_id: UUID,
     session: AsyncSession = Depends(get_session)
 ) -> SpaceResponse:
     """
@@ -238,7 +237,7 @@ async def get_space(
 )
 async def export_space_share(
     share_request: SpaceShareExportRequest,
-    space_id: UUID = Depends(validate_uuid),
+    space_id: UUID,
     session: AsyncSession = Depends(get_session),
 ) -> SpaceShareExportResponse:
     """
@@ -295,7 +294,7 @@ async def export_space_share(
 )
 async def update_space(
     space_data: SpaceUpdate,
-    space_id: UUID = Depends(validate_uuid),
+    space_id: UUID,
     session: AsyncSession = Depends(get_session)
 ) -> SpaceResponse:
     """
@@ -368,7 +367,7 @@ async def update_space(
     tags=["Spaces"]
 )
 async def delete_space(
-    space_id: UUID = Depends(validate_uuid),
+    space_id: UUID,
     session: AsyncSession = Depends(get_session)
 ) -> SpaceDeleteResponse:
     """

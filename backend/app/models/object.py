@@ -734,6 +734,10 @@ class ObjectList(BaseModel):
 class ObjectReorder(BaseModel):
     """Schema for reordering objects on an space."""
 
+    space_id: UUID = Field(
+        ...,
+        description="ID of the space whose objects are being reordered"
+    )
     object_ids: List[UUID] = Field(
         ...,
         min_length=1,

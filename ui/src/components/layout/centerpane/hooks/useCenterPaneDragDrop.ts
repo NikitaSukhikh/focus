@@ -18,7 +18,6 @@ import { objectsApi, ObjectCreatePayload } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
 import { DroppedIcon, IconKind } from '@/components/layout/centerpane/types';
-import { isGmailUrl } from '@/components/layout/centerpane/utils';
 import { useDebouncedPositionUpdate } from '@/hooks/useDebouncedPositionUpdate';
 import { normalizeTag } from '@/types/tags';
 import { getVideoTilePadding } from '@/components/layout/centerpane/tileBounds';

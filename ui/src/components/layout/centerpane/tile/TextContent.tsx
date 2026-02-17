@@ -1,5 +1,4 @@
 // TextContent renders note tiles as a single continuous text surface without a separate header treatment.
-import React from 'react';
 import { TEXT_TILE } from '@/constants/objectsDimensions';
 import { TEXT_NOTE_BOX, tileRingStyle, tileBackgroundFillStyle } from '@/styles/tileStyles';
 import { formatTextWithLinksAndHighlight } from '@/utils/linkFormatter';

@@ -4,6 +4,8 @@ Preview Routes
 API endpoints for generating and serving object previews and thumbnails.
 """
 
+import ipaddress
+import socket
 from uuid import UUID
 from pathlib import Path
 from typing import Dict, Any
@@ -16,7 +18,6 @@ from pydantic import BaseModel
 from app.models.preview import PreviewResponse, PreviewError
 from app.services.preview_service import preview_service
 from app.services.objects_service import objects_service, ObjectNotFoundError
-from app.api.deps import validate_uuid
 from app.core.config import get_settings, Settings
 from app.core.exceptions import AppError, NotFoundError
 from app.core.logging import get_logger
@@ -24,6 +25,62 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+
+_PRIVATE_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),   # link-local / AWS metadata
+    ipaddress.ip_network("::1/128"),           # IPv6 loopback
+    ipaddress.ip_network("fc00::/7"),          # IPv6 ULA
+]
+
+
+def _validate_url_for_fetch(url: str) -> None:
+    """
+    Reject URLs that would cause SSRF by targeting internal/private hosts.
+
+    Raises HTTPException(400) for invalid schemes or private IP targets.
+    """
+    from fastapi import HTTPException
+
+    parsed = urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only http and https URLs are supported.",
+        )
+
+    hostname = parsed.hostname or ""
+    if not hostname:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="URL must include a valid hostname.",
+        )
+
+    # Resolve hostname to IP and check against private ranges
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+        for _family, _type, _proto, _canonname, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+                if any(ip in net for net in _PRIVATE_NETWORKS):
+                    logger.warning(f"SSRF attempt blocked: {hostname} -> {ip_str}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="URL targets a private or internal address.",
+                    )
+            except ValueError:
+                pass
+    except HTTPException:
+        raise
+    except OSError:
+        # DNS resolution failed — let the downstream HTTP client handle it
+        pass
 
 
 class UrlMetadataResponse(BaseModel):
@@ -73,6 +130,7 @@ async def fetch_url_metadata(
         500: Failed to fetch or parse URL
     """
     try:
+        _validate_url_for_fetch(url)
         # Regular URL metadata fetching
         metadata = await preview_service._fetch_url_metadata(url)
 
@@ -136,6 +194,7 @@ async def extract_article_content(
     }
 
     try:
+        _validate_url_for_fetch(url)
         async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
@@ -182,7 +241,7 @@ async def extract_article_content(
     tags=["Preview"]
 )
 async def get_object_preview(
-    object_id: UUID = Depends(validate_uuid)
+    object_id: UUID
 ) -> PreviewResponse:
     """
     Get preview data for an object.
@@ -268,7 +327,7 @@ async def get_object_preview(
     response_class=FileResponse
 )
 async def get_object_thumbnail(
-    object_id: UUID = Depends(validate_uuid),
+    object_id: UUID,
     settings: Settings = Depends(get_settings)
 ) -> FileResponse:
     """

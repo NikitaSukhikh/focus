@@ -5,6 +5,8 @@ This module provides dependency injection functions for FastAPI routes.
 Dependencies include database sessions, authentication, settings access, and more.
 """
 
+import time
+from collections import defaultdict, deque
 from typing import AsyncGenerator, Optional
 from fastapi import Depends, HTTPException, Header, Path, Request, status
 
@@ -234,40 +236,48 @@ def get_ai_config(
     }
 
 
-# Rate limiting dependency (placeholder - implement actual rate limiting when needed)
+# In-memory sliding-window rate limiter
+_rate_limit_store: dict[str, deque] = defaultdict(deque)
+
+
 class RateLimiter:
     """
-    Rate limiting dependency.
-
-    This is a placeholder for future rate limiting implementation.
-    Consider using slowapi or similar library for production use.
+    Sliding-window in-memory rate limiter keyed by client IP.
     """
 
     @staticmethod
     async def check_rate_limit(
-        request_id: Optional[str] = Depends(get_request_id),
+        request: Request,
         settings: Settings = Depends(get_settings_dependency)
     ) -> None:
         """
-        Check rate limit for the current request.
-
-        Args:
-            request_id: Request ID
-            settings: Application settings
+        Enforce per-IP request rate limit using a 60-second sliding window.
 
         Raises:
-            HTTPException: If rate limit is exceeded
-
-        Note:
-            This is a placeholder. Implement actual rate limiting logic
-            using Redis, in-memory cache, or a dedicated rate limiting library.
+            HTTPException: 429 if the client has exceeded the allowed rate.
         """
         if not settings.rate_limit.enabled:
             return
 
-        # TODO: Implement actual rate limiting logic
-        # For now, this is a no-op
-        pass
+        client_ip = (request.client.host if request.client else None) or "unknown"
+        now = time.monotonic()
+        window = 60.0
+        max_requests = settings.rate_limit.per_minute
+
+        timestamps = _rate_limit_store[client_ip]
+
+        # Drop timestamps outside the current window
+        while timestamps and now - timestamps[0] > window:
+            timestamps.popleft()
+
+        if len(timestamps) >= max_requests:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded. Please slow down.",
+                headers={"Retry-After": "60"},
+            )
+
+        timestamps.append(now)
 
 
 # Pagination dependency
@@ -326,10 +336,22 @@ class FilterParams:
                 # Use filters.search, filters.tags, etc.
                 pass
         """
+        _allowed_sort_fields = {"title", "created_at", "updated_at", "position", "type"}
+        if sort_by is not None and sort_by not in _allowed_sort_fields:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid sort_by field. Allowed: {sorted(_allowed_sort_fields)}",
+            )
+        _sort_order = (sort_order or "asc").lower()
+        if _sort_order not in ("asc", "desc"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="sort_order must be 'asc' or 'desc'.",
+            )
         self.search = search
         self.tags = tags.split(",") if tags else []
         self.sort_by = sort_by
-        self.sort_order = sort_order.lower() if sort_order else "asc"
+        self.sort_order = _sort_order
 
 
 # Validation helpers

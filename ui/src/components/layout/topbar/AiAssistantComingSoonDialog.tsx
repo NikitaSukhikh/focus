@@ -9,7 +9,7 @@ import { useThemeToggle } from '@/hooks/useThemeToggle';
 
 interface AiAssistantComingSoonDialogProps {
   isOpen: boolean;
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: React.Ref<HTMLDivElement>;
 }
 
 const AI_ASSISTANT_STUB_MESSAGE = "AI Assistant will help you handle all your content soon!";

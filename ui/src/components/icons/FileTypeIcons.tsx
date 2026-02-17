@@ -223,7 +223,9 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
 
   // Ebook files with specific extension display
   if (['epub', 'mobi', 'azw', 'azw3', 'fb2', 'cbz', 'cbr', 'pdb', 'djvu'].includes(ext)) {
-    return (props: FileIconProps) => <EbookIcon {...props} extension={ext} />;
+    const EbookIconExt = (props: FileIconProps) => <EbookIcon {...props} extension={ext} />;
+    EbookIconExt.displayName = 'EbookIconExt';
+    return EbookIconExt;
   }
 
   // Audio files with specific extension display
@@ -247,7 +249,9 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
       'mka',
     ].includes(ext)
   ) {
-    return (props: FileIconProps) => <AudioFileIcon {...props} extension={ext} />;
+    const AudioFileIconExt = (props: FileIconProps) => <AudioFileIcon {...props} extension={ext} />;
+    AudioFileIconExt.displayName = 'AudioFileIconExt';
+    return AudioFileIconExt;
   }
 
   // Code and text files with specific extension display
@@ -285,13 +289,16 @@ export function getFileTypeIcon(extension: string): React.ComponentType<FileIcon
       'markdown',
     ].includes(ext)
   ) {
-    // Return a wrapper component that passes the extension
-    return (props: FileIconProps) => <CodeFileIcon {...props} extension={ext} />;
+    const CodeFileIconExt = (props: FileIconProps) => <CodeFileIcon {...props} extension={ext} />;
+    CodeFileIconExt.displayName = 'CodeFileIconExt';
+    return CodeFileIconExt;
   }
 
   // HTML files - could be code or renderable, show extension
   if (['html', 'htm'].includes(ext)) {
-    return (props: FileIconProps) => <CodeFileIcon {...props} extension={ext} />;
+    const HtmlFileIconExt = (props: FileIconProps) => <CodeFileIcon {...props} extension={ext} />;
+    HtmlFileIconExt.displayName = 'HtmlFileIconExt';
+    return HtmlFileIconExt;
   }
 
   // Plain text files

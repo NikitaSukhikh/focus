@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function GmailIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 256 193" fill="none">

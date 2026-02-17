@@ -2,7 +2,8 @@
  * WebArticleContent renders extracted article tiles and applies search highlighting across title, URL, and body text.
  * This keeps web articles searchable in the same way as other tile types.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Loader2, AlertCircle, Globe } from 'lucide-react';
 import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
@@ -103,26 +104,15 @@ export const WebArticleContent = React.memo(function WebArticleContent({
 
   const markInteraction = (locked: boolean) => onInteractionChange?.(locked);
 
-  useEffect(() => {
-    setDisplayTitle(title);
-  }, [title]);
-
-  useEffect(() => {
-    if (articleCache.has(url)) return;
-    setState('loading');
-    setArticleHtml(null);
-    setArticleError(null);
-    fetchArticle();
-  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchArticle = async () => {
+  const fetchArticle = useCallback(async () => {
     try {
       const params = new URLSearchParams({ url });
       const resp = await fetch(`${API_BASE}/article/extract?${params}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
-      const html = data.content_html || '<p>No content found.</p>';
+      const rawHtml = data.content_html || '<p>No content found.</p>';
+      const html = DOMPurify.sanitize(rawHtml);
       articleCache.set(url, { html });
       setArticleHtml(html);
       setState('article');
@@ -137,7 +127,19 @@ export const WebArticleContent = React.memo(function WebArticleContent({
       setArticleError(error);
       setState('error');
     }
-  };
+  }, [url, id, title]);
+
+  useEffect(() => {
+    setDisplayTitle(title);
+  }, [title]);
+
+  useEffect(() => {
+    if (articleCache.has(url)) return;
+    setState('loading');
+    setArticleHtml(null);
+    setArticleError(null);
+    fetchArticle();
+  }, [url, fetchArticle]);
 
   const handleRetry = () => {
     articleCache.delete(url);

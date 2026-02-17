@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { Tag } from 'lucide-react';
 import { TOP_BAR } from '@/constants/panesDimensions';
 import { FONT_ROLES } from '@/styles/fontManager';

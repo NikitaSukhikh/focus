@@ -83,7 +83,7 @@ class InvalidObjectDataError(ObjectServiceError):
     pass
 
 
-class FileNotFoundError(ObjectServiceError):
+class ObjectFileNotFoundError(ObjectServiceError):
     """Raised when a file object's file doesn't exist."""
     pass
 
@@ -465,9 +465,9 @@ class ObjectsService:
                 if existing_obj is None:
                     raise ObjectNotFoundError(f"Object not found: {object_id}")
 
-                if object_data.title:
+                if object_data.title is not None:
                     self._validate_title(object_data.title)
-                if object_data.default_title:
+                if object_data.default_title is not None:
                     self._validate_title(object_data.default_title)
                 self._validate_custom_title(object_data.custom_title)
 
@@ -771,7 +771,7 @@ class ObjectsService:
 
         # Check if file exists
         if not file_path.exists():
-            raise FileNotFoundError(
+            raise ObjectFileNotFoundError(
                 f"File not found: {object_data.file_path}"
             )
 

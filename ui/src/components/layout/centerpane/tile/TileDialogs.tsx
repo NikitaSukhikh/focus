@@ -1,4 +1,3 @@
-import React from 'react';
 import { ShareDialog } from '@/components/dialogs/ShareDialog';
 
 interface TileDialogsProps {

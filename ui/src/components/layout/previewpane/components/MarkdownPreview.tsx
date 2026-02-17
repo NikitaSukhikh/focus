@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { useThemeContext } from '@/context/ThemeContext';
 
 interface MarkdownPreviewProps {
@@ -22,7 +23,7 @@ export function MarkdownPreview({ filePath, content, title }: MarkdownPreviewPro
       });
 
       const rendered = marked.parse(content) as string;
-      setHtml(rendered);
+      setHtml(DOMPurify.sanitize(rendered));
     }
   }, [content]);
 

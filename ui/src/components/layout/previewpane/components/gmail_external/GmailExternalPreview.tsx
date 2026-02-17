@@ -22,7 +22,7 @@ interface GmailExternalPreviewProps {
   gmailEmail?: string; // Email subject/snippet when available
 }
 
-export function GmailExternalPreview({ url, title, gmailEmail }: GmailExternalPreviewProps) {
+export function GmailExternalPreview({ url, title: _title, gmailEmail }: GmailExternalPreviewProps) {
   const handleOpenInBrowser = () => {
     if (url) {
       openExternalUrl(url);

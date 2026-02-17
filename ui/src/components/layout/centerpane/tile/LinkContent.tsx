@@ -1,4 +1,3 @@
-import React from 'react';
 import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { truncateDisplayUrl } from '@/utils/text';
 import { isGoogleService } from '@/components/layout/centerpane/tile/iconHelpers';

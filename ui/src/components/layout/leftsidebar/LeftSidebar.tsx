@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, Plus, Settings } from 'lucide-react';
 import { useSpaceStore } from '@/stores/spaceStore';
@@ -133,6 +133,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleCloseDeleteDialog/handleConfirmDeleteSpace reference pendingDeleteId/isDeleting already in deps
   }, [pendingDeleteId, isDeleting]);
 
   useEffect(() => {
@@ -267,7 +268,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
         <div className="flex-1 overflow-y-auto sidebar-scroll p-3">
           {spaces.length === 0 ? (
             <div className="text-center py-4" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>
-              No spaces yet. Click '+' or press 'Ctrl+Y' to create one
+              No spaces yet. Click &apos;+&apos; or press &apos;Ctrl+Y&apos; to create one
             </div>
           ) : (
             <div className="space-y-2">

@@ -39,7 +39,7 @@ export function formatTextWithLinksAndHighlight(text: string, query: string, cla
             if (window.desktopAPI?.openExternal) {
               window.desktopAPI.openExternal(url);
             } else {
-              window.open(url, '_blank');
+              window.open(url, '_blank', 'noopener,noreferrer');
             }
           }}
         >
@@ -72,7 +72,7 @@ export function formatTextWithLinks(text: string, className?: string) {
             if (window.desktopAPI?.openExternal) {
               window.desktopAPI.openExternal(url);
             } else {
-              window.open(url, '_blank');
+              window.open(url, '_blank', 'noopener,noreferrer');
             }
           }}
         >

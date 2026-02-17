@@ -519,11 +519,11 @@ class DevelopmentSettings(BaseSettings):
     """Development and testing configuration settings."""
 
     enable_api_docs: bool = Field(
-        default=True,
+        default=False,
         description="Enable API documentation (Swagger UI)"
     )
     enable_openapi_schema: bool = Field(
-        default=True,
+        default=False,
         description="Enable OpenAPI schema endpoint"
     )
     mock_external_apis: bool = Field(

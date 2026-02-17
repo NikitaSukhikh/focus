@@ -26,6 +26,7 @@ from app.services.objects_service import (
     ObjectNotFoundError,
     ObjectLimitExceededError,
     InvalidObjectDataError,
+    ObjectFileNotFoundError,
 )
 from app.api.deps import validate_uuid
 from app.core.exceptions import AppError, BadRequestError, NotFoundError
@@ -183,7 +184,7 @@ async def create_object(
             details={"error": str(e)},
         )
 
-    except FileNotFoundError as e:
+    except ObjectFileNotFoundError as e:
         logger.warning(f"File not found: {e}")
         raise NotFoundError(
             "The referenced file could not be found.",
@@ -473,7 +474,7 @@ async def reorder_objects(
         500: Internal server error
     """
     try:
-        objects = await objects_service.reorder_objects(reorder_data.object_ids, session=session)
+        objects = await objects_service.reorder_objects(reorder_data.space_id, reorder_data.object_ids, session=session)
 
         logger.info(
             f"Reordered {len(objects)} objects",

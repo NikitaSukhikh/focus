@@ -1,4 +1,3 @@
-import React from 'react';
 import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';

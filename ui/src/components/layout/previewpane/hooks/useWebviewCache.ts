@@ -30,7 +30,7 @@ const DEFAULT_CONFIG: CacheConfig = {
 const CACHE_STORAGE_KEY = 'focus_webview_cache';
 
 // useWebviewCache keeps lightweight load statistics in localStorage to inform caching and preloading decisions for the preview webview.
-export function useWebviewCache(webviewRef: React.RefObject<HTMLWebViewElement | null>) {
+export function useWebviewCache(_webviewRef: React.RefObject<HTMLWebViewElement | null>) {
   const cacheMapRef = useRef<Map<string, CacheEntry>>(new Map());
   const loadStartTimeRef = useRef<number | null>(null);
 
@@ -81,7 +81,7 @@ export function useWebviewCache(webviewRef: React.RefObject<HTMLWebViewElement |
     }
   };
 
-  const recordLoadStart = useCallback((url: string) => {
+  const recordLoadStart = useCallback((_url: string) => {
     loadStartTimeRef.current = Date.now();
   }, []);
 

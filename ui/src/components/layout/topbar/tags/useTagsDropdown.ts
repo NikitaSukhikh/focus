@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseTagsDropdownOptions {
   isOpenProp?: boolean;
@@ -27,13 +27,13 @@ export const useTagsDropdown = ({ isOpenProp, onToggle }: UseTagsDropdownOptions
     }
   };
 
-  const close = () => {
+  const close = useCallback(() => {
     if (isControlled) {
       if (isOpen) onToggle?.();
     } else {
       setIsOpenInternal(false);
     }
-  };
+  }, [isControlled, isOpen, onToggle]);
 
   // Close on outside click
   useEffect(() => {
@@ -49,7 +49,7 @@ export const useTagsDropdown = ({ isOpenProp, onToggle }: UseTagsDropdownOptions
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   // Close on Escape
   useEffect(() => {
@@ -63,7 +63,7 @@ export const useTagsDropdown = ({ isOpenProp, onToggle }: UseTagsDropdownOptions
 
     window.addEventListener('keydown', handleKey, true);
     return () => window.removeEventListener('keydown', handleKey, true);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   return {
     isOpen,

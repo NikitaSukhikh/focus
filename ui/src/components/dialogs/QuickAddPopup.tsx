@@ -108,7 +108,7 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
       }
       return { left: nextLeft, top: nextTop, transform: 'none' };
     });
-  }, [isOpen, hasPosition, position?.x, position?.y]);
+  }, [isOpen, hasPosition, position?.x, position?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- position.x/y already tracked individually
 
   if (!isOpen) return null;
 

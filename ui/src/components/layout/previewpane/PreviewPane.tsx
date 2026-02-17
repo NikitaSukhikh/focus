@@ -55,8 +55,6 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
   const [localContent, setLocalContent] = useState(content);
   const [contentWasUpdated, setContentWasUpdated] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const handleOpenFullWindow = () => {
     const event = new CustomEvent('open:fullwindow', {
       detail: {

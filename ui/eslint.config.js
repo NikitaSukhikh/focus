@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
 import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 import globals from 'globals';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -49,16 +50,23 @@ export default [
   },
   {
     files: ['**/*.{ts,tsx}'],
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
     rules: {
       // Typescript handles undefined variables, and DOM globals/types should not trigger this rule.
       'no-undef': 'off',
-      'no-unused-vars': [
+      // Use TypeScript-aware rule that ignores type-only parameters and declarations.
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
         'warn',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
+      'jsx-a11y/media-has-caption': 'off',
       'jsx-a11y/no-static-element-interactions': 'off',
       'jsx-a11y/click-events-have-key-events': 'off',
       'jsx-a11y/mouse-events-have-key-events': 'off',
