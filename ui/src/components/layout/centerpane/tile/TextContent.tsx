@@ -39,8 +39,8 @@ export function TextContent({ content, hoverScaleClass }: TextContentProps) {
         className="whitespace-pre-wrap article-scroll"
         style={{
           fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
-          fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
-          lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
+          fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+          lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
           color: 'var(--color-text-primary)',
           fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
           maxHeight: `${textViewportMaxHeight}px`,

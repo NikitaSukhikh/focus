@@ -30,6 +30,7 @@ interface TileMetricsSnapshot {
 }
 
 const FOCUS_RING_DOTS_PER_EDGE = 3;
+const ARROW_ENDPOINT_DOT_OPACITY = 0;
 type TileRingType = keyof typeof TILE_RING_COLORS;
 const LINK_LIKE_TYPES = new Set<DroppedIcon['type']>(['link', 'web_article', 'gmail', 'google_drive']);
 const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -814,7 +815,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                             fill={isDraggingStart ? '#38BDF8' : arrowStartColor}
                             stroke="#0f172a"
                             strokeWidth={1}
-                            style={{ pointerEvents: 'none' }}
+                            style={{ pointerEvents: 'none', opacity: ARROW_ENDPOINT_DOT_OPACITY }}
                           />
                           <circle
                             cx={segment.end.x}
@@ -831,7 +832,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                             fill={isDraggingEnd ? '#38BDF8' : arrowEndColor}
                             stroke="#0f172a"
                             strokeWidth={1}
-                            style={{ pointerEvents: 'none' }}
+                            style={{ pointerEvents: 'none', opacity: ARROW_ENDPOINT_DOT_OPACITY }}
                           />
                         </>
                       )}

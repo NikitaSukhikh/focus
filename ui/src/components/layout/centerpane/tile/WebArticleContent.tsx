@@ -193,8 +193,8 @@ export const WebArticleContent = React.memo(function WebArticleContent({
             <span
               className="truncate"
               style={{
-                fontSize: 10,
-                lineHeight: 1.3,
+                fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
+                lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
                 opacity: 0.45,
                 color: 'var(--color-text-primary)',
               }}

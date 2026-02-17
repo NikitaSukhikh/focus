@@ -23,6 +23,7 @@ const FOCUS_RING_DOTS_PER_EDGE = 3;
 const FOCUS_RING_ANCHOR_DIAMETER = 8;
 const FOCUS_RING_CENTER_OFFSET = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
 const FOCUS_RING_INTERACTION_WIDTH = Math.max(12, (TILE_RING.margin * 2) + TILE_RING.strokeWidth);
+const FOCUS_RING_ANCHOR_OPACITY = 0;
 
 const buildFocusRingAnchors = (tileWidth: number, tileHeight: number, contentInset: number): FocusRingAnchor[] => {
   const safeContentWidth = Math.max(1, tileWidth - (contentInset * 2));
@@ -133,6 +134,7 @@ export function FocusRing({
             background: 'rgba(56, 189, 248, 0.95)',
             boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.65), 0 0 8px rgba(56, 189, 248, 0.85)',
             pointerEvents: 'none',
+            opacity: FOCUS_RING_ANCHOR_OPACITY,
           }}
         />
       ))}

@@ -15,9 +15,9 @@ interface InlineTextEditorProps {
 
 const SHARED_TEXT_STYLE = {
   fontFamily: 'inherit',
-  fontSize: TYPOGRAPHY_SIZES.TEXT_TILE.fontSize,
+  fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
   fontWeight: TYPOGRAPHY_WEIGHTS.TILE_TITLE,
-  lineHeight: TYPOGRAPHY_SIZES.TEXT_TILE.lineHeight,
+  lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
   whiteSpace: 'pre',
   padding: `${INLINE_EDITOR.padding.y}px ${INLINE_EDITOR.padding.x}px`,
 } as const;
