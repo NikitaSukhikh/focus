@@ -27,6 +27,10 @@ type EmbedState = 'loading' | 'article' | 'error';
 
 const articleCache = new Map<string, { html: string } | { error: string }>();
 const SEARCH_MARK_STYLE = 'background:rgba(250,204,21,0.65);color:inherit;border-radius:2px;padding:0 1px;';
+const ARTICLE_SANITIZE_OPTIONS = {
+  ADD_TAGS: ['figure', 'figcaption', 'picture', 'source'],
+  ADD_ATTR: ['srcset', 'sizes', 'loading', 'decoding', 'fetchpriority', 'referrerpolicy'],
+};
 
 const escapeForRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -112,7 +116,7 @@ export const WebArticleContent = React.memo(function WebArticleContent({
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
       const rawHtml = data.content_html || '<p>No content found.</p>';
-      const html = DOMPurify.sanitize(rawHtml);
+      const html = DOMPurify.sanitize(rawHtml, ARTICLE_SANITIZE_OPTIONS);
       articleCache.set(url, { html });
       setArticleHtml(html);
       setState('article');
@@ -218,7 +222,7 @@ export const WebArticleContent = React.memo(function WebArticleContent({
 
         {state === 'article' && articleHtml && (
           <div
-            className="article-scroll"
+            className="article-scroll web-article-scroll"
             style={{
               width: '100%',
               height: '100%',

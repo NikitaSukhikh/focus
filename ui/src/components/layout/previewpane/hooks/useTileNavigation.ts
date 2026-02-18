@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { DroppedIcon } from '@/components/layout/centerpane/types';
 import { sortTilesSpatially } from '@/utils/spatialSort';
+import { isPreviewPaneTargetAllowed } from '@/utils/previewTargets';
 
 export interface UseTileNavigationParams {
   tiles: DroppedIcon[];
@@ -32,8 +33,8 @@ export interface UseTileNavigationReturn {
 export function useTileNavigation(params: UseTileNavigationParams): UseTileNavigationReturn {
   const { tiles, currentTileId, onNavigate } = params;
 
-  // Memoize sorted tiles - expensive operation, only recalculate when tiles array changes
-  const sortedTiles = useMemo(() => sortTilesSpatially(tiles), [tiles]);
+  // Keep navigation in sync with preview eligibility so disabled targets are skipped.
+  const sortedTiles = useMemo(() => sortTilesSpatially(tiles.filter((tile) => isPreviewPaneTargetAllowed(tile))), [tiles]);
 
   // Find current tile index in sorted array
   const currentIndex = useMemo(() => {

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
-import { truncateLinkTitle } from '@/utils/text';
+import { resolveLinkTitle } from '@/utils/text';
 import { DroppedIcon } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
 import { API_BASE } from '@/config/api';
@@ -81,7 +81,7 @@ export const useCenterPaneLinkCreation = ({
     setEditingLink({
       id: link.id,
       url: link.url,
-      defaultTitle: link.defaultTitle || link.title,
+      defaultTitle: resolveLinkTitle(link.defaultTitle || link.title, link.url),
       defaultDescription: link.defaultDescription ?? link.description ?? '',
       customTitle: link.customTitle ?? null,
       customDescription: link.customDescription ?? null,
@@ -120,7 +120,8 @@ export const useCenterPaneLinkCreation = ({
           customDescription ?? null
         );
 
-        const displayTitle = updated.custom_title || updated.title || defaultTitle;
+        const safeDefaultTitle = resolveLinkTitle(updated.default_title || updated.title || defaultTitle, url);
+        const displayTitle = updated.custom_title || safeDefaultTitle;
         const displayDescription = updated.custom_description ?? updated.default_description ?? defaultDescription;
         const updatedMetaFavicon = (updated.metadata as any)?.favicon_url;
         const nextFavicon =
@@ -139,7 +140,7 @@ export const useCenterPaneLinkCreation = ({
                     title: displayTitle,
                     url,
                     description: displayDescription,
-                    defaultTitle: updated.default_title || defaultTitle,
+                    defaultTitle: safeDefaultTitle,
                     defaultDescription: updated.default_description ?? defaultDescription ?? '',
                     customTitle: updated.custom_title ?? customTitle ?? null,
                     customDescription: updated.custom_description ?? customDescription ?? null,
@@ -159,7 +160,10 @@ export const useCenterPaneLinkCreation = ({
               if (!response.ok) return;
               const metadata = await response.json();
               const resolvedUrl = metadata.resolved_url || url;
-              const refreshedTitle = truncateLinkTitle(metadata.title || metadata.og_title || defaultTitle);
+              const refreshedTitle = resolveLinkTitle(
+                metadata.title || metadata.og_title || defaultTitle,
+                resolvedUrl
+              );
               const refreshedDescription = metadata.description || metadata.og_description || defaultDescription;
               const refreshedChannelName = metadata.channel_name;
               const refreshedFavicon = pickFavicon(metadata, resolvedUrl, url) || nextFavicon;
@@ -237,7 +241,8 @@ export const useCenterPaneLinkCreation = ({
 
       // Add to canvas immediately
       const displayDescription = customDescription ?? created.description ?? defaultDescription;
-      const displayTitle = created.custom_title || created.title || defaultTitle;
+      const safeDefaultTitle = resolveLinkTitle(created.default_title || created.title || defaultTitle, url);
+      const displayTitle = created.custom_title || safeDefaultTitle;
       const newIcon: DroppedIcon = {
         id: created.id,
         type: 'link',
@@ -247,7 +252,7 @@ export const useCenterPaneLinkCreation = ({
         tag: normalizeTag(created.tag),
         url,
         description: displayDescription,
-        defaultTitle: created.default_title || defaultTitle,
+        defaultTitle: safeDefaultTitle,
         defaultDescription: created.default_description ?? defaultDescription ?? '',
         customTitle: created.custom_title ?? customTitle ?? null,
         customDescription: created.custom_description ?? customDescription ?? null,
@@ -269,7 +274,7 @@ export const useCenterPaneLinkCreation = ({
                   type: 'link',
                   title: displayTitle,
                   tag: normalizeTag(created.tag),
-                  defaultTitle: created.default_title,
+                  defaultTitle: safeDefaultTitle,
               defaultDescription: created.default_description,
               customTitle: created.custom_title ?? customTitle ?? null,
               customDescription: created.custom_description ?? customDescription ?? null,
@@ -295,7 +300,10 @@ export const useCenterPaneLinkCreation = ({
             const metadata = await response.json();
             console.log('[AUTO-REFRESH] Received metadata:', metadata);
             const resolvedUrl = metadata.resolved_url || url;
-            const updatedTitle = truncateLinkTitle(metadata.title || metadata.og_title || created.title);
+            const updatedTitle = resolveLinkTitle(
+              metadata.title || metadata.og_title || created.title,
+              resolvedUrl
+            );
             const updatedDescription = metadata.description || metadata.og_description || created.description;
             const updatedChannelName = metadata.channel_name;
             const updatedFavicon = pickFavicon(metadata, resolvedUrl, url) || favicon_url;

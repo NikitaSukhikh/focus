@@ -74,11 +74,11 @@ export interface CenterPaneProps {
 }
 
 export interface CenterPaneHandle {
-  addFiles: () => Promise<void>;
+  addFiles: (position?: { x: number; y: number }) => Promise<void>;
   getTilesForSpace: (spaceId: string) => DroppedIcon[];
-  openAddLinkDialog: () => void;
-  openAddWebArticleDialog: () => void;
-  pasteFromClipboard: () => Promise<void>;
+  openAddLinkDialog: (position?: { x: number; y: number }) => void;
+  openAddWebArticleDialog: (position?: { x: number; y: number }) => void;
+  pasteFromClipboard: (position?: { x: number; y: number }) => Promise<void>;
 }
 
 export interface TileProps {

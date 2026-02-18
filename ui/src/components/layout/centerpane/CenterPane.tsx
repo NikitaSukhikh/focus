@@ -1,11 +1,11 @@
-import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Tile } from '@/components/layout/centerpane/tile/Tile';
 import { ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon } from '@/components/layout/centerpane/types';
 import { useCenterPaneLogic } from '@/components/layout/centerpane/useCenterPaneLogic';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { getVideoEmbed } from '@/utils/videoEmbeds';
-import { detectFileType, isHtmlCodeFile } from '@/utils/fileTypes';
 import { Z_INDEX } from '@/constants/zIndex';
 import { AddLinkDialog } from '@/components/dialogs/AddLinkDialog';
 import { AddTextDialog } from '@/components/dialogs/AddTextDialog';
@@ -18,7 +18,9 @@ import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchF
 import { useSearchStore } from '@/stores/searchStore';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
+import { isPreviewPaneTargetAllowed } from '@/utils/previewTargets';
 import { buildArrowPath } from '@/components/layout/centerpane/arrowGeometry';
+import type { ArrowPathObstacle } from '@/components/layout/centerpane/arrowGeometry';
 import { TILE_RING } from '@/constants/objectsDimensions';
 import { TILE_RING_COLORS } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
@@ -32,9 +34,14 @@ interface TileMetricsSnapshot {
 
 const FOCUS_RING_DOTS_PER_EDGE = 3;
 const ARROW_ENDPOINT_DOT_OPACITY = 0;
+const ARROW_ROUTE_OBSTACLE_PADDING = 8;
 type TileRingType = keyof typeof TILE_RING_COLORS;
 const LINK_LIKE_TYPES = new Set<DroppedIcon['type']>(['link', 'web_article', 'gmail', 'google_drive']);
 const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+interface ArrowTileObstacle extends ArrowPathObstacle {
+  tileId: string;
+}
 
 const toTileRingType = (iconType: DroppedIcon['type']): TileRingType => {
   if (iconType === 'text') return 'text';
@@ -50,8 +57,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const paneRef = useRef<HTMLDivElement | null>(null);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const FILE_PREVIEW_DELAY_MS = 300;
-  const TEXT_PREVIEW_DELAY_MS = 180;
-  const PLAIN_TEXT_FILE_PREVIEW_ENABLED = false;
 
   const logic = useCenterPaneLogic(paneRef, zoom);
   const selectedSpaceId = logic.selectedSpace?.id;
@@ -91,20 +96,42 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     };
   };
 
+  const getCanvasPosFromClient = (position: { x: number; y: number }) => {
+    if (!paneRef.current) return getCenterCanvasPos();
+    const rect = paneRef.current.getBoundingClientRect();
+    const scrollLeft = paneRef.current.scrollLeft;
+    const scrollTop = paneRef.current.scrollTop;
+    const paneStyle = window.getComputedStyle(paneRef.current);
+    const paddingLeft = Number.parseFloat(paneStyle.paddingLeft) || 0;
+    const paddingTop = Number.parseFloat(paneStyle.paddingTop) || 0;
+    const safeZoom = Math.max(zoom, 0.01);
+    return {
+      x: (position.x - rect.left - paddingLeft + scrollLeft) / safeZoom,
+      y: (position.y - rect.top - paddingTop + scrollTop) / safeZoom,
+    };
+  };
+
   useImperativeHandle(ref, () => ({
-    addFiles: logic.handleAddFiles,
+    addFiles: async (position?: { x: number; y: number }) => {
+      const target = position ? getCanvasPosFromClient(position) : getCenterCanvasPos();
+      await logic.handleAddFiles(target);
+    },
     getTilesForSpace: (spaceId: string) => logic.iconsBySpace[spaceId] || [],
-    openAddLinkDialog: () => {
-      const { x, y } = getCenterCanvasPos();
+    openAddLinkDialog: (position?: { x: number; y: number }) => {
+      const { x, y } = position ? getCanvasPosFromClient(position) : getCenterCanvasPos();
       logic.openAddLinkDialog(x, y);
     },
-    openAddWebArticleDialog: () => {
-      const { x, y } = getCenterCanvasPos();
+    openAddWebArticleDialog: (position?: { x: number; y: number }) => {
+      const { x, y } = position ? getCanvasPosFromClient(position) : getCenterCanvasPos();
       logic.openAddWebArticleDialog(x, y);
     },
-    pasteFromClipboard: logic.pasteFromClipboard,
+    pasteFromClipboard: async (position?: { x: number; y: number }) => {
+      const target = position ? getCanvasPosFromClient(position) : undefined;
+      await logic.pasteFromClipboard(target);
+    },
   // eslint-disable-next-line react-hooks/exhaustive-deps -- individual logic.* properties tracked; logic object reference is not meaningful
   }), [
+    getCanvasPosFromClient,
     getCenterCanvasPos,
     logic.handleAddFiles,
     logic.iconsBySpace,
@@ -137,6 +164,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number; canvasX: number; canvasY: number } | null>(null);
   const [arrowContextMenu, setArrowContextMenu] = useState<{ x: number; y: number; arrowId: string } | null>(null);
+  const arrowMenuRef = useRef<HTMLDivElement | null>(null);
+  const canvasMenuRef = useRef<HTMLDivElement | null>(null);
+  const [arrowMenuSize, setArrowMenuSize] = useState({ width: 0, height: 0 });
+  const [canvasMenuSize, setCanvasMenuSize] = useState({ width: 0, height: 0 });
+  const VIEWPORT_MENU_MARGIN = 8;
   useEffect(() => {
     const handleKeyZoom = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
@@ -171,16 +203,39 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     };
   }, [zoom]);
 
-  const toPaneCoords = useCallback((clientX: number, clientY: number) => {
-    if (!paneRef.current) return { x: clientX, y: clientY };
-    const rect = paneRef.current.getBoundingClientRect();
-    const scrollLeft = paneRef.current.scrollLeft;
-    const scrollTop = paneRef.current.scrollTop;
-    return {
-      x: clientX - rect.left + scrollLeft,
-      y: clientY - rect.top + scrollTop,
-    };
+  const clampMenuToViewport = useCallback((x: number, y: number, width: number, height: number) => {
+    const clampedX = Math.min(
+      Math.max(x, VIEWPORT_MENU_MARGIN),
+      Math.max(VIEWPORT_MENU_MARGIN, window.innerWidth - width - VIEWPORT_MENU_MARGIN)
+    );
+    const clampedY = Math.min(
+      Math.max(y, VIEWPORT_MENU_MARGIN),
+      Math.max(VIEWPORT_MENU_MARGIN, window.innerHeight - height - VIEWPORT_MENU_MARGIN)
+    );
+    return { x: clampedX, y: clampedY };
   }, []);
+
+  useLayoutEffect(() => {
+    if (!arrowContextMenu || !arrowMenuRef.current) return;
+    const { width, height } = arrowMenuRef.current.getBoundingClientRect();
+    setArrowMenuSize({ width, height });
+  }, [arrowContextMenu]);
+
+  useLayoutEffect(() => {
+    if (!contextMenu || !canvasMenuRef.current) return;
+    const { width, height } = canvasMenuRef.current.getBoundingClientRect();
+    setCanvasMenuSize({ width, height });
+  }, [contextMenu]);
+
+  const arrowMenuPosition = useMemo(() => {
+    if (!arrowContextMenu) return null;
+    return clampMenuToViewport(arrowContextMenu.x, arrowContextMenu.y, arrowMenuSize.width, arrowMenuSize.height);
+  }, [arrowContextMenu, arrowMenuSize.height, arrowMenuSize.width, clampMenuToViewport]);
+
+  const canvasMenuPosition = useMemo(() => {
+    if (!contextMenu) return null;
+    return clampMenuToViewport(contextMenu.x, contextMenu.y, canvasMenuSize.width, canvasMenuSize.height);
+  }, [contextMenu, canvasMenuSize.height, canvasMenuSize.width, clampMenuToViewport]);
 
   const {
     selectedArrowId,
@@ -287,6 +342,26 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     [allArrowSegments, resolveAnchorFromTileState]
   );
 
+  const arrowTileObstacles: ArrowTileObstacle[] = useMemo(
+    () => currentSpaceIcons
+      .map((icon) => {
+        const metrics = tileMetricsById[icon.id];
+        if (!metrics || metrics.width <= 0 || metrics.height <= 0) return null;
+
+        const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
+        const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
+        return {
+          tileId: icon.id,
+          left: originLeft - ARROW_ROUTE_OBSTACLE_PADDING,
+          top: originTop - ARROW_ROUTE_OBSTACLE_PADDING,
+          right: originLeft + metrics.width + ARROW_ROUTE_OBSTACLE_PADDING,
+          bottom: originTop + metrics.height + ARROW_ROUTE_OBSTACLE_PADDING,
+        };
+      })
+      .filter((obstacle): obstacle is ArrowTileObstacle => Boolean(obstacle)),
+    [currentSpaceIcons, tileMetricsById]
+  );
+
   const menuItems = useMemo(() => [
     {
       label: 'Add local files',
@@ -359,8 +434,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     e.preventDefault();
     e.stopPropagation();
     // Right-click on arrow opens a focused delete-only context menu
-    const pos = toPaneCoords(e.clientX, e.clientY);
-    setArrowContextMenu({ ...pos, arrowId });
+    setArrowContextMenu({ x: e.clientX, y: e.clientY, arrowId });
     setSelectedArrowId(arrowId);
     setContextMenu(null);
     logic.setSelectedIconIds([]);
@@ -421,22 +495,17 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     }, delayMs);
   };
 
-  const isPlainTextFileTarget = (filePath?: string): boolean => {
-    if (!filePath) return false;
-    const isMarkdown = /\.(md|markdown)$/i.test(filePath);
-    const isHtmlExtension = /\.(html|htm)$/i.test(filePath);
-    const isRenderedHtml = isHtmlExtension && !isHtmlCodeFile(filePath);
-    return detectFileType(filePath).category === 'text' && !isRenderedHtml && !isMarkdown;
-  };
-
   const queuePreviewForIcon = (icon: DroppedIcon) => {
-    if (icon.type === 'text') {
-      schedulePreviewForIcon(icon, TEXT_PREVIEW_DELAY_MS);
+    if (!isPreviewPaneTargetAllowed(icon)) {
+      onObjectClick?.({
+        tileId: icon.id,
+        type: icon.type,
+        filePath: icon.filePath,
+      });
       return;
     }
 
     if (icon.type === 'file') {
-      if (!PLAIN_TEXT_FILE_PREVIEW_ENABLED && isPlainTextFileTarget(icon.filePath)) return;
       schedulePreviewForIcon(icon, FILE_PREVIEW_DELAY_MS);
       return;
     }
@@ -580,9 +649,17 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   const gradientId = `center-pane-arrow-gradient-${svgSafeId}`;
                   const markerId = `center-pane-arrowhead-${svgSafeId}`;
                   const visibleStroke = hasSplitGradient ? `url(#${gradientId})` : arrowStartColor;
+                  const routingObstacles = arrowTileObstacles
+                    .filter(
+                      (obstacle) =>
+                        obstacle.tileId !== segment.startAnchor?.tileId
+                        && obstacle.tileId !== segment.endAnchor?.tileId
+                    )
+                    .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
                   const pathData = buildArrowPath(segment.start, segment.end, {
                     startEdge: segment.startAnchor?.edge,
                     endEdge: segment.endAnchor?.edge,
+                    obstacles: routingObstacles,
                   });
                   return (
                     <g key={segment.id} style={{ opacity: arrowOpacity }}>
@@ -779,10 +856,10 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
             ))}
           </div>
 
-          {arrowContextMenu && (
+          {arrowContextMenu && arrowMenuPosition && ReactDOM.createPortal(
             <>
               <div
-                className="absolute inset-0"
+                className="fixed inset-0"
                 style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
                 onClick={() => setArrowContextMenu(null)}
                 onContextMenu={(e) => {
@@ -791,11 +868,12 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                 }}
               />
               <div
-                className="absolute w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
+                ref={arrowMenuRef}
+                className="fixed w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
                 style={{
                   zIndex: Z_INDEX.CONTEXT_MENU,
-                  left: arrowContextMenu.x,
-                  top: arrowContextMenu.y,
+                  left: arrowMenuPosition.x,
+                  top: arrowMenuPosition.y,
                 }}
               >
                 <button
@@ -810,13 +888,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   Delete
                 </button>
               </div>
-            </>
+            </>,
+            document.body
           )}
 
-          {contextMenu && (
+          {contextMenu && canvasMenuPosition && ReactDOM.createPortal(
             <>
               <div
-                className="absolute inset-0"
+                className="fixed inset-0"
                 style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
                 onClick={() => setContextMenu(null)}
                 onContextMenu={(e) => {
@@ -825,11 +904,12 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                 }}
               />
               <div
-                className="absolute w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
+                ref={canvasMenuRef}
+                className="fixed w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
                 style={{
                   zIndex: Z_INDEX.CONTEXT_MENU,
-                  left: contextMenu.x,
-                  top: contextMenu.y,
+                  left: canvasMenuPosition.x,
+                  top: canvasMenuPosition.y,
                 }}
               >
                 {menuItems.map((item, idx) => (
@@ -849,7 +929,8 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   </button>
                 ))}
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
 

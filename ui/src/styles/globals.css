@@ -54,6 +54,39 @@ body {
   word-break: break-word;
 }
 
+/* Keep extracted source links visually obvious inside web-article embeds. */
+.web-article-scroll a {
+  color: #2563eb !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.web-article-scroll a:visited {
+  color: #1d4ed8 !important;
+}
+
+.web-article-scroll a:hover {
+  color: #1e40af !important;
+}
+
+.web-article-scroll figure {
+  margin: 0.85rem 0;
+}
+
+.web-article-scroll img {
+  display: block;
+  margin: 0.5rem auto;
+  border-radius: 10px;
+}
+
+.web-article-scroll figcaption {
+  margin-top: 0.35rem;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
 .custom-scroll::-webkit-scrollbar,
 .preview-description-scroll::-webkit-scrollbar,
 .sidebar-scroll::-webkit-scrollbar,

@@ -1,5 +1,6 @@
 // QuickAddPopup renders keyboard-first quick actions and mirrors center-pane focus ring colors per action type.
 import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Clipboard, FilePlus, Plus, BookOpen, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -29,6 +30,7 @@ interface Action {
 export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWebArticle, onPaste, position }: QuickAddPopupProps) {
   const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties | null>(null);
   const hasPosition = Boolean(position && Number.isFinite(position.x) && Number.isFinite(position.y));
@@ -114,13 +116,52 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
 
   if (!isOpen) return null;
 
+  const closeAndForwardContextMenu = (e: ReactMouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { clientX, clientY } = e;
+    const popupElement = popupRef.current;
+    const backdropElement = backdropRef.current;
+    const forwardTarget = document
+      .elementsFromPoint(clientX, clientY)
+      .find((element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        if (popupElement?.contains(element)) return false;
+        if (backdropElement && element === backdropElement) return false;
+        return true;
+      });
+
+    onClose();
+
+    if (!(forwardTarget instanceof HTMLElement)) return;
+
+    // Re-dispatch after close so the next context action targets the real element under the cursor.
+    window.requestAnimationFrame(() => {
+      forwardTarget.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        button: 2,
+        buttons: 2,
+        view: window,
+      }));
+    });
+  };
+
   return (
     <>
       {/* Backdrop */}
       <div
+        ref={backdropRef}
         className="fixed inset-0 bg-black/20"
         style={{ zIndex: Z_INDEX.OVERLAY_BACKDROP }}
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        onContextMenu={closeAndForwardContextMenu}
       />
 
       {/* Popup */}
@@ -134,6 +175,7 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
             ? { left: position.x + 8, top: position.y + 8, transform: 'none' }
             : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' })),
         }}
+        onContextMenu={closeAndForwardContextMenu}
       >
         <div className="p-2">
           {actions.map((action, index) => (

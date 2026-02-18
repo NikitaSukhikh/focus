@@ -31,7 +31,7 @@ export const useCenterPaneFileHandling = ({
   clampToBoundaries,
 }: FileHandlingParams) => {
 
-  const handleAddFiles = useCallback(async () => {
+  const handleAddFiles = useCallback(async (anchorPosition?: { x: number; y: number }) => {
     if (!selectedSpace || !paneRef.current) return;
 
     try {
@@ -46,16 +46,17 @@ export const useCenterPaneFileHandling = ({
       console.log('[FILE PICKER] Selected files:', filePaths);
 
       const rect = paneRef.current.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
+      const basePosition = anchorPosition
+        ? clampToBoundaries(anchorPosition.x, anchorPosition.y)
+        : clampToBoundaries(rect.width / 2, rect.height / 2);
 
       filePaths.forEach((filePath, index) => {
         const filename = filePath.split(/[\\/]/).pop() || 'Unknown File';
 
         const offsetX = (index % 3) * 80;
         const offsetY = Math.floor(index / 3) * 80;
-        const targetX = centerX + offsetX;
-        const targetY = centerY + offsetY;
+        const targetX = basePosition.x + offsetX;
+        const targetY = basePosition.y + offsetY;
 
         const { x, y } = clampToBoundaries(targetX, targetY);
 

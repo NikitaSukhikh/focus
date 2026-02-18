@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { TOP_BAR } from '@/constants/panesDimensions';
 import { FONT_ROLES } from '@/styles/fontManager';
 
@@ -9,6 +10,8 @@ interface TopBarSearchProps {
 }
 
 export const TopBarSearch: React.FC<TopBarSearchProps> = ({ searchQuery, setSearchQuery }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="relative">
       <div
@@ -21,7 +24,7 @@ export const TopBarSearch: React.FC<TopBarSearchProps> = ({ searchQuery, setSear
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search..."
+        placeholder={t('topBar.searchPlaceholder')}
         className="focus:outline-none"
         style={{
           ...FONT_ROLES.topbarControl,

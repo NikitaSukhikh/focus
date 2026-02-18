@@ -264,6 +264,7 @@ export function Tile({
           isSelected={!!isSelected}
           hoverScaleClass={hoverScaleClass}
           onInteractionChange={setIsInteractionLocked}
+          onContextMenu={handleContextMenu}
         />
       );
     }

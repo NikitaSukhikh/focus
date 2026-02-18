@@ -70,6 +70,7 @@
   "topBar.shareFiles": "文件",
   "topBar.shareTextNotes": "文本笔记",
   "topBar.shareOptions": "分享选项",
+  "topBar.searchPlaceholder": "搜索...",
   "leftSidebar.spaces": "空间",
   "leftSidebar.newSpace": "新建空间",
   "leftSidebar.closeSidebar": "关闭侧边栏",

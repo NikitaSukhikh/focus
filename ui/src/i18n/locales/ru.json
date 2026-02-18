@@ -70,6 +70,7 @@
   "topBar.shareFiles": "Файлы",
   "topBar.shareTextNotes": "Текстовые заметки",
   "topBar.shareOptions": "Параметры публикации",
+  "topBar.searchPlaceholder": "Поиск...",
   "leftSidebar.spaces": "Пространства",
   "leftSidebar.newSpace": "Новое пространство",
   "leftSidebar.closeSidebar": "Закрыть боковую панель",

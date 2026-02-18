@@ -112,6 +112,14 @@ const buildStraightPath = (start: { x: number; y: number }, end: { x: number; y:
 interface BuildArrowPathOptions {
   startEdge?: FocusRingEdge;
   endEdge?: FocusRingEdge;
+  obstacles?: ArrowPathObstacle[];
+}
+
+export interface ArrowPathObstacle {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
 const edgeOutwardVector = (edge: FocusRingEdge): { x: number; y: number } => {
@@ -137,6 +145,129 @@ const appendPoint = (
   if (!last || distanceBetween(last, point) > STRAIGHT_EPSILON) {
     points.push(point);
   }
+};
+
+const isHorizontalSegment = (start: { x: number; y: number }, end: { x: number; y: number }) =>
+  Math.abs(start.y - end.y) < STRAIGHT_EPSILON;
+
+const isVerticalSegment = (start: { x: number; y: number }, end: { x: number; y: number }) =>
+  Math.abs(start.x - end.x) < STRAIGHT_EPSILON;
+
+const rangesOverlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) =>
+  Math.min(aEnd, bEnd) - Math.max(aStart, bStart) > STRAIGHT_EPSILON;
+
+const segmentIntersectsObstacle = (
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  obstacle: ArrowPathObstacle
+) => {
+  if (isHorizontalSegment(start, end)) {
+    const y = start.y;
+    if (y <= obstacle.top + STRAIGHT_EPSILON || y >= obstacle.bottom - STRAIGHT_EPSILON) return false;
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(start.x, end.x);
+    return rangesOverlap(minX, maxX, obstacle.left, obstacle.right);
+  }
+
+  if (isVerticalSegment(start, end)) {
+    const x = start.x;
+    if (x <= obstacle.left + STRAIGHT_EPSILON || x >= obstacle.right - STRAIGHT_EPSILON) return false;
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(start.y, end.y);
+    return rangesOverlap(minY, maxY, obstacle.top, obstacle.bottom);
+  }
+
+  return false;
+};
+
+const segmentCrossesAnyObstacle = (
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  obstacles: ArrowPathObstacle[]
+) => obstacles.some((obstacle) => segmentIntersectsObstacle(start, end, obstacle));
+
+const buildSegmentDetour = (
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  obstacle: ArrowPathObstacle
+): Array<{ x: number; y: number }> | null => {
+  if (isHorizontalSegment(start, end)) {
+    const upY = obstacle.top - STRAIGHT_EPSILON;
+    const downY = obstacle.bottom + STRAIGHT_EPSILON;
+    const candidates = [
+      [start, { x: start.x, y: upY }, { x: end.x, y: upY }, end],
+      [start, { x: start.x, y: downY }, { x: end.x, y: downY }, end],
+    ];
+
+    const valid = candidates
+      .filter((candidate) => !segmentCrossesAnyObstacle(candidate[0], candidate[1], [obstacle])
+        && !segmentCrossesAnyObstacle(candidate[1], candidate[2], [obstacle])
+        && !segmentCrossesAnyObstacle(candidate[2], candidate[3], [obstacle]))
+      .sort((a, b) => (
+        (Math.abs(a[0].y - a[1].y) + Math.abs(a[2].y - a[3].y))
+        - (Math.abs(b[0].y - b[1].y) + Math.abs(b[2].y - b[3].y))
+      ));
+    return valid[0] ?? null;
+  }
+
+  if (isVerticalSegment(start, end)) {
+    const leftX = obstacle.left - STRAIGHT_EPSILON;
+    const rightX = obstacle.right + STRAIGHT_EPSILON;
+    const candidates = [
+      [start, { x: leftX, y: start.y }, { x: leftX, y: end.y }, end],
+      [start, { x: rightX, y: start.y }, { x: rightX, y: end.y }, end],
+    ];
+
+    const valid = candidates
+      .filter((candidate) => !segmentCrossesAnyObstacle(candidate[0], candidate[1], [obstacle])
+        && !segmentCrossesAnyObstacle(candidate[1], candidate[2], [obstacle])
+        && !segmentCrossesAnyObstacle(candidate[2], candidate[3], [obstacle]))
+      .sort((a, b) => (
+        (Math.abs(a[0].x - a[1].x) + Math.abs(a[2].x - a[3].x))
+        - (Math.abs(b[0].x - b[1].x) + Math.abs(b[2].x - b[3].x))
+      ));
+    return valid[0] ?? null;
+  }
+
+  return null;
+};
+
+const rerouteAroundObstacles = (
+  rawPoints: Array<{ x: number; y: number }>,
+  obstacles: ArrowPathObstacle[]
+): Array<{ x: number; y: number }> => {
+  if (rawPoints.length < 2 || obstacles.length === 0) return rawPoints;
+
+  let points = rawPoints.slice();
+  const maxIterations = Math.max(obstacles.length * 8, 24);
+
+  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    let didInsertDetour = false;
+
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const start = points[index];
+      const end = points[index + 1];
+      const blocking = obstacles.find((obstacle) => segmentIntersectsObstacle(start, end, obstacle));
+      if (!blocking) continue;
+
+      const detour = buildSegmentDetour(start, end, blocking);
+      if (!detour) continue;
+
+      points = simplifyOrthogonalPoints([
+        ...points.slice(0, index),
+        ...detour,
+        ...points.slice(index + 2),
+      ]);
+      didInsertDetour = true;
+      break;
+    }
+
+    if (!didInsertDetour) {
+      return points;
+    }
+  }
+
+  return points;
 };
 
 const simplifyOrthogonalPoints = (rawPoints: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> => {
@@ -281,7 +412,7 @@ const buildEdgeAwarePoints = (
   appendPoint(points, endGuide);
   appendPoint(points, end);
 
-  return points;
+  return rerouteAroundObstacles(points, options.obstacles ?? []);
 };
 
 export const countArrowSegments = (

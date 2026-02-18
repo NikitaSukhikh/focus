@@ -82,6 +82,7 @@
   "topBar.shareFiles": "Archivos",
   "topBar.shareTextNotes": "Notas de texto",
   "topBar.shareOptions": "Opciones de compartir",
+  "topBar.searchPlaceholder": "Buscar...",
 
   "leftSidebar.spaces": "Espacios",
   "leftSidebar.newSpace": "Nuevo espacio",

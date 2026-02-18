@@ -9,14 +9,14 @@ import socket
 from uuid import UUID
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, parse_qs
-import re
+from urllib.parse import urlparse
 from fastapi import APIRouter, status, Depends, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.models.preview import PreviewResponse, PreviewError
 from app.services.preview_service import preview_service
+from app.services.article_extractor_service import article_extractor_service, ArticleExtractionError
 from app.services.objects_service import objects_service, ObjectNotFoundError
 from app.core.config import get_settings, Settings
 from app.core.exceptions import AppError, NotFoundError
@@ -162,6 +162,11 @@ class ArticleContentResponse(BaseModel):
     """Response model for extracted article content."""
     title: str | None = None
     content_html: str | None = None
+    content_text: str | None = None
+    render_mode: str | None = None
+    source_url: str | None = None
+    attribution: str | None = None
+    license: str | None = None
     error: str | None = None
 
 
@@ -177,59 +182,38 @@ async def extract_article_content(
     url: str = Query(..., description="URL to extract article from")
 ) -> ArticleContentResponse:
     """
-    Extract clean article content from a URL using BeautifulSoup.
-    Strips navigation, ads and boilerplate; returns main article body as HTML.
+    Extract clean article content from a URL.
+
+    Uses a robust extraction chain:
+    - Wikipedia adapter via MediaWiki REST HTML
+    - Generic readability extraction fallback for other domains
     """
-    import httpx
-    from bs4 import BeautifulSoup
-
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
-
     try:
         _validate_url_for_fetch(url)
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            resp = await client.get(url, headers=headers)
-            resp.raise_for_status()
-            html = resp.text
+        extracted = await article_extractor_service.extract(url)
+        return ArticleContentResponse(
+            title=extracted.title,
+            content_html=extracted.content_html,
+            content_text=extracted.content_text,
+            render_mode=extracted.render_mode,
+            source_url=extracted.source_url,
+            attribution=extracted.attribution,
+            license=extracted.license,
+        )
+    except ArticleExtractionError as exc:
+        logger.warning(f"[article/extract] Parse failed: {exc}")
+        return ArticleContentResponse(
+            error=str(exc),
+            source_url=url,
+            render_mode="external_only",
+        )
     except Exception as exc:
         logger.warning(f"[article/extract] Failed to fetch URL: {exc}")
-        return ArticleContentResponse(error=f"Could not fetch URL: {exc}")
-
-    try:
-        soup = BeautifulSoup(html, "lxml")
-
-        for tag in soup(["script", "style", "noscript", "nav", "header",
-                          "footer", "aside", "form", "iframe", "svg",
-                          "button", "input", "select", "textarea"]):
-            tag.decompose()
-
-        title_tag = soup.find("title")
-        title = title_tag.get_text(strip=True) if title_tag else None
-
-        article = None
-        for selector in ["article", '[role="main"]', "main",
-                          ".article-body", ".post-content",
-                          ".entry-content", ".content"]:
-            article = soup.select_one(selector)
-            if article:
-                break
-        if not article:
-            article = soup.find("body")
-
-        content_html = str(article) if article else "<p>No content found.</p>"
-        return ArticleContentResponse(title=title, content_html=content_html)
-
-    except Exception as exc:
-        logger.warning(f"[article/extract] Parse failed: {exc}")
-        return ArticleContentResponse(error=f"Could not parse article: {exc}")
+        return ArticleContentResponse(
+            error=f"Could not fetch URL: {exc}",
+            source_url=url,
+            render_mode="external_only",
+        )
 
 
 @router.get(

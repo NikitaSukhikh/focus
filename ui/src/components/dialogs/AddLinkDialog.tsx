@@ -4,7 +4,7 @@ import { X, Link2, ExternalLink, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '@/utils/url';
-import { truncateLinkTitle } from '@/utils/text';
+import { deriveLinkTitleFromUrl, resolveLinkTitle, truncateLinkTitle } from '@/utils/text';
 import { API_BASE } from '@/config/api';
 
 interface AddLinkDialogProps {
@@ -155,7 +155,10 @@ export function AddLinkDialog({ isOpen, onClose, onAdd, submitLabel, initialValu
         const metadata = await response.json();
         console.log('[ADD LINK] Fetched metadata:', metadata);
 
-        const incomingTitle = truncateLinkTitle(metadata.title || metadata.og_title || '');
+        const incomingTitle = resolveLinkTitle(
+          metadata.title || metadata.og_title || '',
+          metadata.resolved_url || urlToFetch
+        );
         const incomingDescription = metadata.description || metadata.og_description || '';
 
         if (incomingTitle) {
@@ -185,7 +188,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd, submitLabel, initialValu
       setIsValidUrl(isLikelyHttpUrl(normalized, { allowEmpty: true }));
 
       if (!defaultTitle && normalized) {
-        const fallback = truncateLinkTitle(normalized);
+        const fallback = deriveLinkTitleFromUrl(normalized);
         setDefaultTitle(fallback);
         if (!hasEditedTitle) {
           setCustomTitle(null);
@@ -213,7 +216,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd, submitLabel, initialValu
     if (!isValid) return;
 
     const safeDefaultTitle = truncateLinkTitle(
-      (defaultTitle || truncateLinkTitle(normalizedUrl) || '').trim()
+      (defaultTitle || deriveLinkTitleFromUrl(normalizedUrl) || '').trim()
     );
     const trimmedCustomDescription = customDescription?.trim() ?? '';
     const safeCustomTitle =
@@ -229,7 +232,7 @@ export function AddLinkDialog({ isOpen, onClose, onAdd, submitLabel, initialValu
 
     onAdd(
       normalizedUrl,
-      safeDefaultTitle || truncateLinkTitle(normalizedUrl),
+      safeDefaultTitle || deriveLinkTitleFromUrl(normalizedUrl),
       safeDefaultDescription,
       customTitlePayload,
       customDescriptionPayload

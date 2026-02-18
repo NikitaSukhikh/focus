@@ -11,7 +11,7 @@
 import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
-import { truncateLinkTitle } from '@/utils/text';
+import { resolveLinkTitle } from '@/utils/text';
 import { ArrowSegment, DroppedIcon } from '@/components/layout/centerpane/types';
 import { API_BASE } from '@/config/api';
 
@@ -133,8 +133,7 @@ export const useCenterPaneIconActions = ({ selectedSpace, setIconsBySpace, arrow
         console.log('[CENTER PANE] Fetched metadata for refresh:', metadata);
 
         const resolvedUrl = metadata.resolved_url || url;
-        const rawTitle = metadata.title || metadata.og_title || resolvedUrl;
-        const newTitle = truncateLinkTitle(rawTitle);
+        const newTitle = resolveLinkTitle(metadata.title || metadata.og_title, resolvedUrl);
         const newDescription = metadata.description || metadata.og_description || '';
         const newFaviconUrl = pickFavicon(metadata, resolvedUrl, url);
         const newChannelName = metadata.channel_name;

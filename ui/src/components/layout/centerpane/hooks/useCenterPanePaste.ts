@@ -14,6 +14,7 @@ import { useEffect, useCallback } from 'react';
 import { objectsApi, ObjectCreatePayload } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
+import { deriveLinkTitleFromUrl, resolveLinkTitle } from '@/utils/text';
 import { DroppedIcon, IconKind } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
 import { getVideoTilePadding } from '@/components/layout/centerpane/tileBounds';
@@ -158,10 +159,13 @@ export const useCenterPanePaste = ({
     }
   }, []);
 
-  const createFileTiles = useCallback((files: ClipboardFileEntry[]) => {
+  const createFileTiles = useCallback((files: ClipboardFileEntry[], anchorPosition?: { x: number; y: number }) => {
     if (!selectedSpace || !paneRef.current || files.length === 0) return;
 
-    const { x, y } = getPasteAnchorPosition();
+    const anchor = anchorPosition
+      ? clampToBoundaries(anchorPosition.x, anchorPosition.y)
+      : getPasteAnchorPosition();
+    const { x, y } = anchor;
     console.log('[PASTE] Processing file entries:', files);
 
     files.forEach((file, index) => {
@@ -229,18 +233,21 @@ export const useCenterPanePaste = ({
           }));
         });
     });
-  }, [selectedSpace, paneRef, getPasteAnchorPosition, clampToTileBounds, setIconsBySpace, logTileCreate]);
+  }, [selectedSpace, paneRef, getPasteAnchorPosition, clampToBoundaries, clampToTileBounds, setIconsBySpace, logTileCreate]);
 
-  const createLinkTile = useCallback((url: string) => {
+  const createLinkTile = useCallback((url: string, anchorPosition?: { x: number; y: number }) => {
     if (!selectedSpace || !paneRef.current) return;
 
-    const anchor = getPasteAnchorPosition();
+    const anchor = anchorPosition
+      ? clampToBoundaries(anchorPosition.x, anchorPosition.y)
+      : getPasteAnchorPosition();
     const { x, y } = clampToTileBounds(anchor.x, anchor.y, 'link', url);
     const faviconUrl = buildFaviconUrl(url);
+    const initialTitle = deriveLinkTitleFromUrl(url);
 
     const payload: ObjectCreatePayload = {
       type: 'link',
-      title: url,
+      title: initialTitle,
       url,
       favicon_url: faviconUrl,
       x,
@@ -251,7 +258,7 @@ export const useCenterPanePaste = ({
     const optimisticIcon: DroppedIcon = {
       id: tempId,
       type: 'link',
-      title: url,
+      title: initialTitle,
       x,
       y,
       tag: '',
@@ -273,6 +280,7 @@ export const useCenterPanePaste = ({
         const finalUrl = meta.url as string;
         const finalDescription = created.description;
         const finalFavicon = (meta.favicon_url as string | undefined) || buildFaviconUrl(finalUrl);
+        const finalTitle = resolveLinkTitle(created.title, finalUrl);
         const tag = normalizeTag((created as any).tag ?? meta.tag);
 
         setIconsBySpace((prev) => ({
@@ -282,7 +290,7 @@ export const useCenterPanePaste = ({
               ? {
                   ...i,
                   id: created.id,
-                  title: created.title,
+                  title: finalTitle,
                   x: finalX,
                   y: finalY,
                   url: finalUrl,
@@ -297,7 +305,7 @@ export const useCenterPanePaste = ({
         logTileCreate({
           id: created.id,
           type: 'link',
-          title: created.title,
+          title: finalTitle,
           x: finalX,
           y: finalY,
           url: finalUrl,
@@ -315,9 +323,9 @@ export const useCenterPanePaste = ({
           [selectedSpace.id]: (prev[selectedSpace.id] || []).filter((i) => i.id !== tempId),
         }));
       });
-  }, [selectedSpace, paneRef, getPasteAnchorPosition, clampToTileBounds, setIconsBySpace, logTileCreate]);
+  }, [selectedSpace, paneRef, getPasteAnchorPosition, clampToBoundaries, clampToTileBounds, setIconsBySpace, logTileCreate]);
 
-  const handleClipboardText = useCallback((text: string): boolean => {
+  const handleClipboardText = useCallback((text: string, anchorPosition?: { x: number; y: number }): boolean => {
     const lines = parseClipboardLines(text);
     if (lines.length === 0) return false;
 
@@ -338,13 +346,13 @@ export const useCenterPanePaste = ({
         filePath,
         filename: filePath.split(/[\\/]/).pop() || 'Unknown File',
       }));
-      createFileTiles(entries);
+      createFileTiles(entries, anchorPosition);
       return true;
     }
 
     const url = lines.find((line) => isValidUrl(line));
     if (url) {
-      createLinkTile(url);
+      createLinkTile(url, anchorPosition);
       return true;
     }
 
@@ -381,7 +389,7 @@ export const useCenterPanePaste = ({
     }
   }, [selectedSpace, paneRef, createFileTiles, handleClipboardText, getFilePathForClipboardFile]);
 
-  const pasteFromClipboard = useCallback(async () => {
+  const pasteFromClipboard = useCallback(async (anchorPosition?: { x: number; y: number }) => {
     if (!selectedSpace || !paneRef.current) return;
     const clipboard = navigator.clipboard;
     if (!clipboard) return;
@@ -394,7 +402,7 @@ export const useCenterPanePaste = ({
         for (const item of items) {
           if (!item.types.includes('text/uri-list')) continue;
           const blob = await item.getType('text/uri-list');
-          if (handleClipboardText(await blob.text())) {
+          if (handleClipboardText(await blob.text(), anchorPosition)) {
             handled = true;
             break;
           }
@@ -404,7 +412,7 @@ export const useCenterPanePaste = ({
           for (const item of items) {
             if (!item.types.includes('text/plain')) continue;
             const blob = await item.getType('text/plain');
-            if (handleClipboardText(await blob.text())) {
+            if (handleClipboardText(await blob.text(), anchorPosition)) {
               handled = true;
               break;
             }
@@ -420,7 +428,7 @@ export const useCenterPanePaste = ({
     try {
       const text = await clipboard.readText();
       if (text) {
-        handleClipboardText(text);
+        handleClipboardText(text, anchorPosition);
       }
     } catch (err) {
       console.error('[PASTE] Failed to read clipboard text:', err);

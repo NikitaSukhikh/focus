@@ -17,6 +17,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import { objectsApi, ObjectCreatePayload } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
+import { deriveLinkTitleFromUrl, resolveLinkTitle } from '@/utils/text';
 import { DroppedIcon, IconKind } from '@/components/layout/centerpane/types';
 import { useDebouncedPositionUpdate } from '@/hooks/useDebouncedPositionUpdate';
 import { normalizeTag } from '@/types/tags';
@@ -525,7 +526,7 @@ export const useCenterPaneDragDrop = ({
             const favicon_url = buildFaviconUrl(payload.url);
             return {
               type: 'link',
-              title: label || payload.url,
+              title: resolveLinkTitle(label, payload.url),
               url: payload.url,
               description: payload.description,
               favicon_url,
@@ -549,7 +550,7 @@ export const useCenterPaneDragDrop = ({
         const url = uriFallback.trim();
         if (url.startsWith('http')) {
           const favicon_url = buildFaviconUrl(url);
-          return { type: 'link', title: url, url, x: position.x, y: position.y, favicon_url };
+          return { type: 'link', title: deriveLinkTitleFromUrl(url), url, x: position.x, y: position.y, favicon_url };
         }
         return { type: 'text', title: url, content: url, x: position.x, y: position.y };
       }
@@ -642,6 +643,10 @@ export const useCenterPaneDragDrop = ({
         const finalFavicon = created.type === 'link'
           ? (meta.favicon_url as string | undefined) || (finalUrl ? buildFaviconUrl(finalUrl) : undefined)
           : undefined;
+        const finalTitle =
+          created.type === 'link'
+            ? resolveLinkTitle(created.title, finalUrl)
+            : created.title;
         const finalService = (meta.service as string | undefined) || payload.service;
         const finalServiceKey = created.description;
         const tag = normalizeTag((created as any).tag ?? meta.tag);
@@ -655,7 +660,7 @@ export const useCenterPaneDragDrop = ({
               {
                 id: created.id,
                 type: iconType,
-                title: created.title,
+                title: finalTitle,
                 x: finalX,
                 y: finalY,
                 tag,
@@ -671,7 +676,7 @@ export const useCenterPaneDragDrop = ({
         logTileCreate({
           id: created.id,
           type: iconType,
-          title: created.title,
+          title: finalTitle,
           x: finalX,
           y: finalY,
           url: finalUrl,

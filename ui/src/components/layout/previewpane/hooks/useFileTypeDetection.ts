@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { API_BASE } from '@/config/api';
-import { detectFileType, isHtmlCodeFile } from '@/utils/fileTypes';
+import { PLAIN_TEXT_FILE_PREVIEW_ENABLED } from '@/constants/previewFlags';
+import { isHtmlCodeFile } from '@/utils/fileTypes';
+import { isPlainTextFileTarget } from '@/utils/previewTargets';
 
 interface FileTypeDetection {
   isImageFile: boolean;
@@ -18,8 +20,6 @@ interface FileTypeDetection {
   ebookPreviewUrl: string | null;
   htmlPreviewUrl: string | null;
 }
-
-const PLAIN_TEXT_FILE_PREVIEW_ENABLED = false;
 
 // useFileTypeDetection derives preview flags and API URLs from the incoming type/path so the PreviewPane can pick the right renderer.
 export function useFileTypeDetection(
@@ -41,7 +41,7 @@ export function useFileTypeDetection(
     const isHtmlFile = isHtmlExtension && !shouldShowHtmlAsCode;
 
     const isTextFile = PLAIN_TEXT_FILE_PREVIEW_ENABLED && type === 'file' && filePath
-      ? (detectFileType(filePath).category === 'text' && !isHtmlFile && !isMarkdownFile) || shouldShowHtmlAsCode
+      ? isPlainTextFileTarget(filePath) || shouldShowHtmlAsCode
       : false;
 
     const imagePreviewUrl = isImageFile && filePath

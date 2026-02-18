@@ -10,6 +10,7 @@ import { FullWindowPreview } from '@/components/layout/fullwindowpreview/FullWin
 import { PreviewTarget } from '@/components/layout/centerpane/types';
 import { SpaceShareFilters, createDefaultSpaceShareFilters } from '@/components/dialogs/share/types';
 import { detectFileType } from '@/utils/fileTypes';
+import { isPreviewPaneTargetAllowed } from '@/utils/previewTargets';
 import { previewApi } from '@/api/preview';
 import { Z_INDEX } from '@/constants/zIndex';
 import { PANEL_DIMENSIONS } from '@/constants/panesDimensions';
@@ -234,6 +235,8 @@ export function App() {
   const isTextFileTarget = (target: PreviewTarget) =>
     target.type === 'file' && target.filePath && detectFileType(target.filePath).category === 'text';
 
+  const canOpenPreviewPane = (target: PreviewTarget): boolean => isPreviewPaneTargetAllowed(target);
+
   const normalizePreviewTarget = (target: PreviewTarget): PreviewTarget => {
     const normalized: PreviewTarget = { ...target };
 
@@ -354,6 +357,11 @@ export function App() {
       content: tile.content,
     });
 
+    if (!canOpenPreviewPane(tileData)) {
+      setIsPreviewOpen(false);
+      return;
+    }
+
     setPreviewData(tileData);
     setIsPreviewOpen(true);
 
@@ -376,19 +384,19 @@ export function App() {
   };
 
   const handleQuickAddFiles = () => {
-    centerPaneRef.current?.addFiles();
+    centerPaneRef.current?.addFiles(quickAddPosition ?? undefined);
   };
 
   const handleQuickAddLink = () => {
-    centerPaneRef.current?.openAddLinkDialog();
+    centerPaneRef.current?.openAddLinkDialog(quickAddPosition ?? undefined);
   };
 
   const handleQuickAddWebArticle = () => {
-    centerPaneRef.current?.openAddWebArticleDialog();
+    centerPaneRef.current?.openAddWebArticleDialog(quickAddPosition ?? undefined);
   };
 
   const handleQuickAddPaste = () => {
-    void centerPaneRef.current?.pasteFromClipboard?.();
+    void centerPaneRef.current?.pasteFromClipboard?.(quickAddPosition ?? undefined);
   };
 
 
@@ -459,6 +467,10 @@ export function App() {
                 onOpenQuickAdd={openQuickAdd}
                 onObjectClick={(target: PreviewTarget) => {
                   const normalized = normalizePreviewTarget(target || {});
+                  if (!canOpenPreviewPane(normalized)) {
+                    setIsPreviewOpen(false);
+                    return;
+                  }
                   setPreviewData(normalized);
                   setIsPreviewOpen(true);
 

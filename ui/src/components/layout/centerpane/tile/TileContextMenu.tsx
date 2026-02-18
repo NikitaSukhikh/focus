@@ -1,4 +1,7 @@
+// TileContextMenu owns tile-scoped context actions and re-routes backdrop right-clicks so users can switch targets in one step.
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import ReactDOM from 'react-dom';
 import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -40,6 +43,7 @@ export function TileContextMenu({
   onDelete,
 }: TileContextMenuProps) {
   const { t } = useTranslation();
+  const backdropRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState({ width: 0, height: 0 });
   const VIEWPORT_MARGIN = 8;
@@ -67,16 +71,51 @@ export function TileContextMenu({
 
   if (!show) return null;
 
-  return (
+  const closeAndForwardContextMenu = (e: ReactMouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { clientX, clientY } = e;
+    const menuElement = menuRef.current;
+    const backdropElement = backdropRef.current;
+    const forwardTarget = document
+      .elementsFromPoint(clientX, clientY)
+      .find((element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        if (menuElement?.contains(element)) return false;
+        if (backdropElement && element === backdropElement) return false;
+        return true;
+      });
+
+    onClose();
+
+    if (!(forwardTarget instanceof HTMLElement)) return;
+
+    // Re-dispatch after close so the next context menu opens on the real underlying target.
+    window.requestAnimationFrame(() => {
+      forwardTarget.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        button: 2,
+        buttons: 2,
+        view: window,
+      }));
+    });
+  };
+
+  return ReactDOM.createPortal(
     <>
       <div
+        ref={backdropRef}
         className="fixed inset-0"
         style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
-        onClick={onClose}
-        onContextMenu={(e) => {
-          e.preventDefault();
+        onClick={(e) => {
+          e.stopPropagation();
           onClose();
         }}
+        onContextMenu={closeAndForwardContextMenu}
       />
       <div
         ref={menuRef}
@@ -86,6 +125,7 @@ export function TileContextMenu({
           left: `${adjustedPosition.x}px`,
           top: `${adjustedPosition.y}px`
         }}
+        onContextMenu={closeAndForwardContextMenu}
       >
         {(hasFileOrUrl || hasContent) && (
           <button
@@ -125,7 +165,7 @@ export function TileContextMenu({
             {t('tileContextMenu.openExternal')}
           </button>
         )}
-        {type === 'link' && url && (
+        {(type === 'link' || type === 'web_article') && url && (
           <button
             onClick={onRefreshMetadata}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
@@ -169,6 +209,7 @@ export function TileContextMenu({
           {t('tileContextMenu.delete')}
         </button>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

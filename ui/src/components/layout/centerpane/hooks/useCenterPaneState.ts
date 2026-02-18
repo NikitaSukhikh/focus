@@ -17,7 +17,7 @@ import { useUndoHistoryStore } from '@/stores/undoHistoryStore';
 import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
-import { truncateLinkTitle } from '@/utils/text';
+import { resolveLinkTitle } from '@/utils/text';
 import { DroppedIcon, IconKind, ArrowSegment } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
 import { isGmailUrl } from '@/components/layout/centerpane/utils';
@@ -108,6 +108,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
             const description = obj.type !== 'google_drive' ? (customDescription ?? obj.description ?? defaultDescription) : undefined;
             const url = (obj.type === 'link' || obj.type === 'gmail' || obj.type === 'web_article') ? (meta.url as string) : undefined;
+            const effectiveDefaultTitle =
+              obj.type === 'link' ? resolveLinkTitle(defaultTitle || obj.title, url) : defaultTitle;
             const service = meta.service as string | undefined;
             const faviconUrl = (meta.favicon_url as string | undefined) || (url ? buildFaviconUrl(url) : undefined);
             const filePath = obj.type === 'file' ? (meta.file_path as string) : undefined;
@@ -117,7 +119,10 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const gmailEmail = meta.gmail_email as string | undefined;
 
             const tag = normalizeTag((obj as any).tag ?? meta.tag);
-            const displayTitle = customTitle || obj.title || defaultTitle || '';
+            const displayTitle =
+              obj.type === 'link'
+                ? (customTitle || resolveLinkTitle(obj.title || defaultTitle, url))
+                : customTitle || obj.title || defaultTitle || '';
 
             // Check if this is a Gmail URL (for showing Gmail icon on pasted Gmail links)
             const isGmail = url && isGmailUrl(url);
@@ -158,7 +163,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               service,
               description,
               channelName,
-              defaultTitle,
+              defaultTitle: effectiveDefaultTitle,
               defaultDescription,
               customTitle,
               customDescription,
@@ -240,8 +245,9 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
 
           const metadata = await response.json();
           const resolvedUrl = metadata.resolved_url || icon.url || '';
-          const updatedTitle = truncateLinkTitle(
-            metadata.title || metadata.og_title || icon.defaultTitle || icon.title
+          const updatedTitle = resolveLinkTitle(
+            metadata.title || metadata.og_title || icon.defaultTitle || icon.title,
+            resolvedUrl
           );
           const updatedDescription =
             metadata.description || metadata.og_description || icon.defaultDescription || icon.description || '';
