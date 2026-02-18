@@ -29,9 +29,16 @@ class PreferencesRepository:
             await self._session.refresh(row)
         return row
 
-    async def update_language(self, language: str) -> UserPreferences:
+    async def update(
+        self,
+        language: str | None = None,
+        intro_seen: bool | None = None,
+    ) -> UserPreferences:
         row = await self.get()
-        row.language = language
+        if language is not None:
+            row.language = language
+        if intro_seen is not None:
+            row.intro_seen = intro_seen
         await self._session.commit()
         await self._session.refresh(row)
         return row

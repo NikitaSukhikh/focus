@@ -421,6 +421,8 @@ class SpacesService:
             ), warnings
 
         if category == "text_notes":
+            if metadata.get("arrow"):
+                return None, warnings
             content = str(metadata.get("content") or "").strip()
             if not content:
                 warnings.append(f"Text note '{obj.title}' skipped: missing content.")

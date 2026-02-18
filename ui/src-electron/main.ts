@@ -389,6 +389,7 @@ async function createMainWindow() {
     minWidth: 800,
     minHeight: 600,
     show: false, // Hidden until ready
+    backgroundColor: '#f5f5f0', // Default theme bg — prevents white flash before React mounts
     title: 'Focus',
     icon: getIconPath(),
     frame: false, // Remove default title bar for custom implementation
@@ -1020,6 +1021,20 @@ ipcMain.handle('window:close', () => {
 
 ipcMain.handle('window:is-maximized', () => {
   return mainWindow?.isMaximized() ?? false;
+});
+
+ipcMain.handle('app:get-initial-language', () => {
+  try {
+    const filePath = path.join(app.getPath('userData'), 'initial-language');
+    if (fs.existsSync(filePath)) {
+      const lang = fs.readFileSync(filePath, 'utf-8').trim();
+      fs.unlinkSync(filePath);
+      return lang || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 });
 
 // TODO: Implement preview overlay in Electron (either <webview> or frameless child window) once renderer wiring is ready.

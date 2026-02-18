@@ -109,6 +109,7 @@
   "settings.title": "Einstellungen",
   "settings.languageLabel": "Oberflächensprache",
   "settings.done": "Fertig",
+  "settings.viewTutorial": "Schnell-Tutorial anzeigen",
 
   "shortcuts.createSpace": "Drücken Sie 'Strg+Y', um einen neuen Space zu erstellen",
   "shortcuts.addLink": "'Strg+I' oder Rechtsklick - Link/Dateien hinzufügen",

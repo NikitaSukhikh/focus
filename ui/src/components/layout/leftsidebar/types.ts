@@ -8,6 +8,7 @@ export interface LeftSidebarProps {
   renameRequestTimestamp?: number;
   deleteRequestedSpaceId?: string | null;
   deleteRequestTimestamp?: number;
+  onViewTutorial: () => void;
 }
 
 export interface SpaceItemProps {

@@ -36,26 +36,10 @@ Core UX is a three-pane layout:
 - Limited support: MOBI/AZW/AZW3, CBZ/CBR, PDB, DJVU.
 - Ebook metadata extraction (title/author), TOC navigation, embedded images, reader-style layout.
 
-### 6. Use Google Integrations
-- Connect Google via OAuth.
-- Add Gmail and Google Drive entry points as objects.
-- Authenticated link opening for Google services (Gmail/Drive/Docs/Sheets/Slides) with token refresh and account selection.
-- Infrastructure is documented for more providers (Microsoft, Dropbox, Box, GitHub, Notion, Atlassian), mostly planned.
 
-### 7. (Near Future) Use AI Assistant Capabilities
+### 6. (Near Future) Use AI Assistant Capabilities
 
 
 ## Current Gaps and In-Progress Areas (Documented)
-- Packaging notes mention unresolved/needs-validation issues for some metadata refresh and local preview cases.
 - Web-only and macOS support docs are scaffold-level plans, not fully completed implementations.
-- Assistant docs include a broader "Alfy" architecture (including Tauri plans) that appears to be a parallel or future-oriented subsystem; Focus desktop shell remains Electron-based in current core docs.
-
-## Suggested First-Open Presentation Flow
-1. Show three-pane layout and explain Spaces.
-2. Create a new Space and rename it.
-3. Add a file, a link, and a quick note; draw arrows between them.
-4. Click through preview behaviors (document/media/ebook if available).
-5. Show Google connect flow and authenticated link behavior.
-6. Open assistant pane and demonstrate one practical tool-assisted task (for example read a doc or process a Drive link).
-7. Close with local-first architecture, broad format support, and release/security posture.
 

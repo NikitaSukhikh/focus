@@ -109,6 +109,7 @@
   "settings.title": "Settings",
   "settings.languageLabel": "Interface Language",
   "settings.done": "Done",
+  "settings.viewTutorial": "View quick tutorial",
 
   "shortcuts.createSpace": "Press 'Ctrl+Y' to create new space",
   "shortcuts.addLink": "'Ctrl+I' or right click - add link/files",

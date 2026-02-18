@@ -17,12 +17,25 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const { loadLanguage, saveLanguage } = useSettingsSync();
 
   useEffect(() => {
-    loadLanguage().then((code) => {
+    const init = async () => {
+      // On first install, the installer writes the chosen language to a file
+      // which the main process reads and returns once, then deletes.
+      const installerLang = await window.desktopAPI?.getInitialLanguage?.();
+      if (installerLang && !localStorage.getItem(LANGUAGE_STORAGE_KEY)) {
+        setLanguageState(installerLang as LanguageCode);
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, installerLang);
+        void i18n.changeLanguage(installerLang);
+        void saveLanguage(installerLang as LanguageCode);
+        return;
+      }
+      // Otherwise sync from backend DB
+      const code = await loadLanguage();
       if (!code || code === language) return;
       setLanguageState(code);
       localStorage.setItem(LANGUAGE_STORAGE_KEY, code);
       void i18n.changeLanguage(code);
-    });
+    };
+    void init();
     // Run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

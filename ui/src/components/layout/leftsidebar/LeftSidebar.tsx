@@ -24,7 +24,7 @@ const SHORTCUT_HINT_KEYS = [
 ] as const;
 
 // LeftSidebar lists available spaces and handles basic space CRUD/duplication.
-export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId, renameRequestedSpaceId, renameRequestTimestamp, deleteRequestedSpaceId, deleteRequestTimestamp }: LeftSidebarProps) {
+export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId, renameRequestedSpaceId, renameRequestTimestamp, deleteRequestedSpaceId, deleteRequestTimestamp, onViewTutorial }: LeftSidebarProps) {
   const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -375,7 +375,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
           document.body
         )}
 
-      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} anchorRef={settingsButtonRef} sidebarWidth={width} />
+      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} anchorRef={settingsButtonRef} sidebarWidth={width} onViewTutorial={onViewTutorial} />
     </>
   );
 }

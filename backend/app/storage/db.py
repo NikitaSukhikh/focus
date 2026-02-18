@@ -103,6 +103,7 @@ class UserPreferences(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     language: Mapped[str] = mapped_column(String(10), default="en", server_default="en")
+    intro_seen: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
@@ -217,6 +218,17 @@ async def ensure_object_name_columns() -> None:
             """)
 
 
+async def ensure_preferences_columns() -> None:
+    """Ensure user_preferences table has all current columns."""
+    async with engine.begin() as conn:
+        result = await conn.exec_driver_sql("PRAGMA table_info(user_preferences);")
+        existing_columns = {row[1] for row in result}
+        if "intro_seen" not in existing_columns:
+            await conn.exec_driver_sql(
+                "ALTER TABLE user_preferences ADD COLUMN intro_seen INTEGER NOT NULL DEFAULT 0"
+            )
+
+
 async def init_db() -> None:
     """Initialize database and create tables."""
     from app.utils.app_logger import get_app_logger
@@ -232,6 +244,7 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         await ensure_object_name_columns()
+        await ensure_preferences_columns()
 
         app_logger.log_database_init("success", database_path=str(settings.database._resolve_db_path()))
     except Exception as e:

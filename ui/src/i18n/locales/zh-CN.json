@@ -93,6 +93,7 @@
   "settings.title": "设置",
   "settings.languageLabel": "界面语言",
   "settings.done": "完成",
+  "settings.viewTutorial": "查看快速教程",
   "shortcuts.createSpace": "按 'Ctrl+Y' 创建新空间",
   "shortcuts.addLink": "'Ctrl+I' 或右键 - 添加链接/文件",
   "shortcuts.toggleSidebar": "'Ctrl+左/右' - 打开/关闭侧边栏",

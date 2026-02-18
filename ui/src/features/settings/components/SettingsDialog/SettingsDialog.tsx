@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { Settings } from 'lucide-react';
+import { Settings, PlayCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { FONT_ROLES } from '@/styles/fontManager';
@@ -12,9 +12,10 @@ interface SettingsDialogProps {
   onClose: () => void;
   anchorRef: React.RefObject<HTMLButtonElement | null>;
   sidebarWidth: number;
+  onViewTutorial: () => void;
 }
 
-export function SettingsDialog({ isOpen, onClose, anchorRef, sidebarWidth }: SettingsDialogProps) {
+export function SettingsDialog({ isOpen, onClose, anchorRef, sidebarWidth, onViewTutorial }: SettingsDialogProps) {
   const { t } = useTranslation();
   const { language, setLanguage, supportedLanguages } = useLanguage();
   const [bottomOffset, setBottomOffset] = useState(0);
@@ -88,6 +89,26 @@ export function SettingsDialog({ isOpen, onClose, anchorRef, sidebarWidth }: Set
               </option>
             ))}
           </select>
+        </div>
+
+        <div
+          className="px-4 pb-3"
+          style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: '10px' }}
+        >
+          <button
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg transition-colors text-left"
+            style={{
+              ...FONT_ROLES.sidebarHint,
+              color: 'var(--color-text-secondary)',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--glass-bg)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            onClick={() => { onViewTutorial(); onClose(); }}
+          >
+            <PlayCircle size={14} style={{ opacity: 0.7, flexShrink: 0 }} />
+            {t('settings.viewTutorial')}
+          </button>
         </div>
       </div>
     </>,

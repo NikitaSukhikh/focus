@@ -19,6 +19,7 @@ declare global {
     queueMetadataWrite: (_objectId: string, _metadata: Record<string, unknown>) => Promise<unknown>;
     queueObjectPatch: (_objectId: string, _patch: Record<string, unknown>) => Promise<unknown>;
     flushMetadataWrites: (_timeoutMs?: number) => Promise<{ drained: boolean; pending: number }>;
+    getInitialLanguage: () => Promise<string | null>;
     // Window controls
     minimizeWindow: () => Promise<void>;
     maximizeWindow: () => Promise<void>;

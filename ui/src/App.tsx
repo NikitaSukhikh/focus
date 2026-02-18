@@ -16,7 +16,9 @@ import { Z_INDEX } from '@/constants/zIndex';
 import { PANEL_DIMENSIONS } from '@/constants/panesDimensions';
 import { useSpaceStore } from '@/stores/spaceStore';
 import { AppLoadingScreen } from '@/components/AppLoadingScreen';
+import { IntroSlideshow } from '@/components/IntroSlideshow';
 import { usePersistedSpace } from '@/stores/hooks/usePersistedSpace';
+import { useIntroSeen } from '@/hooks/useIntroSeen';
 import { useAppShortcuts } from '@/hooks/useAppShortcuts';
 import { useSpaceNavigationShortcut } from '@/hooks/useSpaceNavigationShortcut';
 import { useTelegramEventListener } from '@/hooks/useTelegramEventListener';
@@ -76,6 +78,19 @@ export function App() {
   const spacesLoaded = useSpaceStore((state) => state.spacesLoaded);
 
   usePersistedSpace();
+
+  const { introSeen, markIntroSeen } = useIntroSeen();
+  const [showIntro, setShowIntro] = useState(false);
+
+  // Show intro on first launch once settings are loaded
+  useEffect(() => {
+    if (spacesLoaded && introSeen === false) setShowIntro(true);
+  }, [spacesLoaded, introSeen]);
+
+  const handleCloseIntro = () => {
+    setShowIntro(false);
+    void markIntroSeen();
+  };
 
   // Initialize space store on mount to load persisted selected space
   useEffect(() => {
@@ -424,6 +439,7 @@ export function App() {
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--background-dark)' }}>
       <AppLoadingScreen visible={!spacesLoaded} />
+      {showIntro && <IntroSlideshow onDone={handleCloseIntro} />}
       <TopBar
         ref={topBarRef}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -454,6 +470,7 @@ export function App() {
           renameRequestTimestamp={renameRequestTimestamp}
           deleteRequestedSpaceId={deleteRequestedSpaceId}
           deleteRequestTimestamp={deleteRequestTimestamp}
+          onViewTutorial={() => setShowIntro(true)}
         />
 
         <main

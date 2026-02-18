@@ -93,6 +93,7 @@
   "settings.title": "Настройки",
   "settings.languageLabel": "Язык интерфейса",
   "settings.done": "Готово",
+  "settings.viewTutorial": "Быстрый обзор",
   "shortcuts.createSpace": "Нажмите 'Ctrl+Y' для создания нового пространства",
   "shortcuts.addLink": "'Ctrl+I' или правый клик — добавить ссылку/файлы",
   "shortcuts.toggleSidebar": "'Ctrl+Влево/Вправо' — открыть/закрыть боковую панель",

@@ -40,6 +40,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.invoke('object:patch', { objectId, patch }),
   flushMetadataWrites: (timeoutMs?: number) =>
     ipcRenderer.invoke('metadata:flush', { timeoutMs }),
+  getInitialLanguage: (): Promise<string | null> =>
+    ipcRenderer.invoke('app:get-initial-language'),
   // Window controls
   minimizeWindow: () =>
     ipcRenderer.invoke('window:minimize'),

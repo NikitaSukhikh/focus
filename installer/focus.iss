@@ -53,3 +53,47 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startu
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+var
+  LanguagePage: TInputOptionWizardPage;
+
+procedure InitializeWizard;
+begin
+  LanguagePage := CreateInputOptionPage(
+    wpWelcome,
+    'Choose Language', 'Select the language for Focus',
+    'Which language would you like to use?',
+    True, False
+  );
+  LanguagePage.Add('English');
+  LanguagePage.Add('Español');
+  LanguagePage.Add('Français');
+  LanguagePage.Add('Deutsch');
+  LanguagePage.Add('中文 (简体)');
+  LanguagePage.Add('Русский');
+  LanguagePage.Values[0] := True;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  LangCodes: array of String;
+  LangFile: String;
+  LangDir: String;
+begin
+  if CurStep = ssInstall then
+  begin
+    SetArrayLength(LangCodes, 6);
+    LangCodes[0] := 'en';
+    LangCodes[1] := 'es';
+    LangCodes[2] := 'fr';
+    LangCodes[3] := 'de';
+    LangCodes[4] := 'zh-CN';
+    LangCodes[5] := 'ru';
+
+    LangDir := ExpandConstant('{userappdata}\Focus');
+    LangFile := LangDir + '\initial-language';
+    ForceDirectories(LangDir);
+    SaveStringToFile(LangFile, LangCodes[LanguagePage.SelectedValueIndex], False);
+  end;
+end;

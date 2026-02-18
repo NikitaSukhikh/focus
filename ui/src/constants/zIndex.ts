@@ -50,6 +50,9 @@ export const Z_INDEX = {
 
   // Assistant pane - above everything
   ASSISTANT_PANE: 2000,
+
+  // Intro slideshow - above loading screen
+  INTRO_SLIDESHOW: 9000,
 } as const;
 
 // Type for z-index keys

@@ -2,6 +2,7 @@ import { API_BASE } from '@/config/api';
 
 export interface UserSettings {
   language: string;
+  intro_seen: boolean;
 }
 
 export const settingsApi = {
