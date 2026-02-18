@@ -19,6 +19,7 @@ const __dirname = dirname(__filename);
 
 const isMac = process.platform === 'darwin';
 
+
 const backendExecutableByPlatform: Record<NodeJS.Platform, string> = {
   win32: 'Focus.exe',
   darwin: 'Focus',
@@ -697,6 +698,7 @@ ipcMain.handle('metadata:flush', async (_event, payload?: { timeoutMs?: unknown 
     pending: metadataWriteQueue.size + (metadataQueueWorker ? 1 : 0),
   };
 });
+
 
 ipcMain.handle('desktop:open-dialog', async (_event, options) => {
   const browserWindow = BrowserWindow.getFocusedWindow() || mainWindow;

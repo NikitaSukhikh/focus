@@ -1,2 +1,0 @@
-# Service helpers package initializer.
-

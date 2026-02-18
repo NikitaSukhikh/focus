@@ -1,6 +1,10 @@
-Focus software allows to store, view and read most of all existing file types like images, videos, text files, documents, ebooks (more than 320 in total) and web links without any external software or web browsers. It helps stay focused operating with various types of data instantly within the same window. 
+Welcome to Focus! 
 
-Users can also: 
-- type text notes anywhere on the main pane 
-- draw arrows between objects (links, web articles, files and notes), making them visually connected graphs.
+Focus software allows to organize, view and read web links, quick text notes and most of the existing file types like images, videos, audio, documents, ebooks (more than 320 extentions in total) inside one single workspace. No external software or web browser needed. 
+
+You can also: 
+- Draw arrows between objects (links, web articles, files and notes), so they appear like connected graphs.
 - Share all objects instantly via all popular platforms
+
+Files supported:
+see FILES_SUPPORTED.md

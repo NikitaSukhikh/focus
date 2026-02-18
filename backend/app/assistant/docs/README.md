@@ -1,3 +1,0 @@
-﻿# Alfy Docs
-
-Documentation placeholder.
