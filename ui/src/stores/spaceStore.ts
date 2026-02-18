@@ -6,6 +6,7 @@ interface SpaceStore {
   spaces: Space[];
   selectedSpaceId: string | null;
   initialized: boolean;
+  spacesLoaded: boolean;
   isDuplicating: boolean;
 
   initialize: () => Promise<void>;
@@ -58,6 +59,7 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
   spaces: [],
   selectedSpaceId: null,
   initialized: false,
+  spacesLoaded: false,
   isDuplicating: false,
 
   initialize: async () => {
@@ -98,13 +100,14 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
       // If no spaces exist, create a default space on first launch
       if (data.spaces.length === 0) {
         console.log('[SPACE_STORE] No spaces found, creating default space');
+        const minDisplayDelay = new Promise<void>(resolve => setTimeout(resolve, 3000));
         try {
           // Generate UUID on frontend for consistency
           const defaultSpaceId = crypto.randomUUID();
-          const defaultSpace = await spacesApi.create({
-            id: defaultSpaceId,
-            name: 'My Space'
-          });
+          const [defaultSpace] = await Promise.all([
+            spacesApi.create({ id: defaultSpaceId, name: 'My Space' }),
+            minDisplayDelay,
+          ]);
           console.log('[SPACE_STORE] Default space created:', defaultSpace);
 
           // Increment fetch version to invalidate any in-flight requests
@@ -112,14 +115,16 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
           set({
             spaces: [defaultSpace],
             selectedSpaceId: defaultSpace.id,
-            _fetchVersion: newVersion
+            _fetchVersion: newVersion,
+            spacesLoaded: true,
           });
           persistSelectedSpace(defaultSpace.id);
           resetLoadRetry();
           return;
         } catch (error) {
           console.error('[SPACE_STORE] Failed to create default space:', error);
-          set({ spaces: [] });
+          await minDisplayDelay;
+          set({ spaces: [], spacesLoaded: true });
           return;
         }
       }
@@ -134,7 +139,8 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
 
       set({
         spaces: data.spaces,
-        selectedSpaceId: nextSelected
+        selectedSpaceId: nextSelected,
+        spacesLoaded: true,
       });
       persistSelectedSpace(nextSelected);
       resetLoadRetry();

@@ -15,6 +15,7 @@ import { previewApi } from '@/api/preview';
 import { Z_INDEX } from '@/constants/zIndex';
 import { PANEL_DIMENSIONS } from '@/constants/panesDimensions';
 import { useSpaceStore } from '@/stores/spaceStore';
+import { AppLoadingScreen } from '@/components/AppLoadingScreen';
 import { usePersistedSpace } from '@/stores/hooks/usePersistedSpace';
 import { useAppShortcuts } from '@/hooks/useAppShortcuts';
 import { useSpaceNavigationShortcut } from '@/hooks/useSpaceNavigationShortcut';
@@ -72,6 +73,7 @@ export function App() {
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
   const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
   const initialize = useSpaceStore((state) => state.initialize);
+  const spacesLoaded = useSpaceStore((state) => state.spacesLoaded);
 
   usePersistedSpace();
 
@@ -421,6 +423,7 @@ export function App() {
 
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--background-dark)' }}>
+      <AppLoadingScreen visible={!spacesLoaded} />
       <TopBar
         ref={topBarRef}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}

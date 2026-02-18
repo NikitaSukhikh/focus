@@ -5,14 +5,14 @@
 export const TILE_RING_COLORS = {
   link: '#3b82f6',   // blue-500
   text: '#a855f7',   // purple-500
-  file: '#eab308',   // yellow-500
+  file: '#facc15',   // yellow-400
 } as const;
 
 // RGB components for each ring color — used to compose rgba() with CSS-var opacity.
 const TILE_RING_RGB = {
   link: '59, 130, 246',
   text: '168, 85, 247',
-  file: '234, 179, 8',
+  file: '250, 204, 21',
 } as const;
 
 // Ring applied to all tile types.

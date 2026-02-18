@@ -206,7 +206,7 @@ async def root():
 
 
 # Import routers
-from app.api.routes import health, spaces, objects, preview, internal_storage, thumbnails, undo
+from app.api.routes import health, spaces, objects, preview, internal_storage, thumbnails, undo, settings as settings_router
 
 # Register routers
 # Health endpoints (no /api prefix for health checks)
@@ -229,6 +229,9 @@ app.include_router(internal_storage.router, prefix="/api/internal-storage", tags
 
 # Undo/Redo endpoints
 app.include_router(undo.router, prefix="/api", tags=["Undo"])
+
+# Settings endpoints
+app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
 
 # TODO: Add AI Assistant router when implemented
 # from app.api.routes import assistant

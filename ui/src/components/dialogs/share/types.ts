@@ -9,10 +9,10 @@ export interface SpaceShareFilters {
 }
 
 export const createDefaultSpaceShareFilters = (): SpaceShareFilters => ({
-  links: false,
-  webArticles: false,
-  files: false,
-  textNotes: false,
+  links: true,
+  webArticles: true,
+  files: true,
+  textNotes: true,
 });
 
 export const hasAnySpaceShareFilterSelected = (filters: SpaceShareFilters): boolean =>

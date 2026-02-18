@@ -96,6 +96,16 @@ class AssistantToken(Base):
     requires_reauth: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
+class UserPreferences(Base):
+    """User preferences table (single-row, id=1)."""
+
+    __tablename__ = "user_preferences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    language: Mapped[str] = mapped_column(String(10), default="en", server_default="en")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class UndoEvent(Base):
     """Undo events table for undo/redo functionality."""
 

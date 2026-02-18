@@ -30,6 +30,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
   const [topBarHeight, setTopBarHeight] = useState<number>(TOP_BAR.height);
@@ -306,6 +307,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
               e.currentTarget.style.boxShadow = 'none';
             }}
             title={t('leftSidebar.settings')}
+            ref={settingsButtonRef}
             onClick={() => setIsSettingsOpen(true)}
           >
             <Settings size={20} />
@@ -373,7 +375,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
           document.body
         )}
 
-      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} anchorRef={settingsButtonRef} sidebarWidth={width} />
     </>
   );
 }
