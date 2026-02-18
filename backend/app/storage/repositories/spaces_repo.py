@@ -7,7 +7,6 @@ against the configured database (see app/storage/db.py for engine/session setup)
 """
 
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import select, func, update, delete, asc, desc
@@ -90,7 +89,7 @@ class SpacesRepository:
     # Read
     # ========================================================================
 
-    async def get_space_by_id(self, space_id: UUID, session: AsyncSession | None = None) -> Optional[SpaceResponse]:
+    async def get_space_by_id(self, space_id: UUID, session: AsyncSession | None = None) -> SpaceResponse | None:
         """
         Get an space by ID.
 
@@ -119,7 +118,7 @@ class SpacesRepository:
         self,
         skip: int = 0,
         limit: int = 100,
-        sort_by: Optional[str] = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
         session: AsyncSession | None = None,
     ) -> SpaceList:
@@ -167,7 +166,7 @@ class SpacesRepository:
             if not external:
                 await session_to_use.close()
 
-    async def get_spaces_by_ids(self, space_ids: List[UUID], session: AsyncSession | None = None) -> List[SpaceResponse]:
+    async def get_spaces_by_ids(self, space_ids: list[UUID], session: AsyncSession | None = None) -> list[SpaceResponse]:
         """
         Get multiple spaces by their IDs.
 
@@ -175,7 +174,7 @@ class SpacesRepository:
             space_ids: List of space UUIDs
 
         Returns:
-            List[SpaceResponse]: List of found spaces
+            list[SpaceResponse]: List of found spaces
 
         """
         session_to_use, external = self._get_session(session)
@@ -218,7 +217,7 @@ class SpacesRepository:
         space_id: UUID,
         space_data: SpaceUpdate,
         session: AsyncSession | None = None
-    ) -> Optional[SpaceResponse]:
+    ) -> SpaceResponse | None:
         """
         Update an existing space.
 
@@ -271,7 +270,7 @@ class SpacesRepository:
         space_id: UUID,
         delta: int = 1,
         session: AsyncSession | None = None
-    ) -> Optional[SpaceResponse]:
+    ) -> SpaceResponse | None:
         """
         Update the object count for an space.
 
@@ -389,7 +388,7 @@ class SpacesRepository:
     # Reorder
     # ========================================================================
 
-    async def reorder_spaces(self, space_ids: List[UUID], session: AsyncSession | None = None) -> List[SpaceResponse]:
+    async def reorder_spaces(self, space_ids: list[UUID], session: AsyncSession | None = None) -> list[SpaceResponse]:
         """
         Reorder spaces by providing a new ordered list of IDs.
 
@@ -397,7 +396,7 @@ class SpacesRepository:
             space_ids: Ordered list of space UUIDs
 
         Returns:
-            List[SpaceResponse]: Reordered spaces
+            list[SpaceResponse]: Reordered spaces
 
         Raises:
             ValueError: If space IDs don't match existing spaces
@@ -496,7 +495,7 @@ class SpacesRepository:
 
     async def search_spaces(
         self,
-        search_query: Optional[str] = None,
+        search_query: str | None = None,
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None

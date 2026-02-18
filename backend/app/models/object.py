@@ -31,7 +31,7 @@ Both TEXT and FILE(.txt) can contain text, but storage is fundamentally differen
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, TypeAlias
 from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl, field_validator, ConfigDict, model_validator
 
@@ -62,36 +62,36 @@ class ObjectBase(BaseModel):
         max_length=400,
         description="Object title/name"
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None,
         max_length=1000,
         description="Optional description"
     )
-    custom_title: Optional[str] = Field(
+    custom_title: str | None = Field(
         None,
         min_length=2,
         max_length=400,
         description="Custom title set by user (overrides default title when present)"
     )
-    custom_description: Optional[str] = Field(
+    custom_description: str | None = Field(
         None,
         max_length=1000,
         description="Custom description set by user (overrides default description when present)"
     )
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         default_factory=list,
         description="Tags for categorization and search"
     )
-    position: Optional[int] = Field(
+    position: int | None = Field(
         None,
         ge=0,
         description="Position on the space canvas"
     )
-    x: Optional[float] = Field(
+    x: float | None = Field(
         None,
         description="X coordinate on canvas for flexible positioning"
     )
-    y: Optional[float] = Field(
+    y: float | None = Field(
         None,
         description="Y coordinate on canvas for flexible positioning"
     )
@@ -107,7 +107,7 @@ class ObjectBase(BaseModel):
 
     @field_validator("custom_title")
     @classmethod
-    def validate_custom_title(cls, v: Optional[str]) -> Optional[str]:
+    def validate_custom_title(cls, v: str | None) -> str | None:
         """Validate and normalize custom title (allows clearing when None)."""
         if v is None:
             return v
@@ -120,7 +120,7 @@ class ObjectBase(BaseModel):
 
     @field_validator("custom_description")
     @classmethod
-    def validate_custom_description(cls, v: Optional[str]) -> Optional[str]:
+    def validate_custom_description(cls, v: str | None) -> str | None:
         """Normalize custom description (allows clearing when blank)."""
         if v is None:
             return v
@@ -129,7 +129,7 @@ class ObjectBase(BaseModel):
 
     @field_validator("tags")
     @classmethod
-    def validate_tags(cls, v: List[str]) -> List[str]:
+    def validate_tags(cls, v: list[str]) -> list[str]:
         """Validate and normalize tags."""
         # Remove duplicates, strip whitespace, filter empty strings
         cleaned_tags = []
@@ -153,11 +153,11 @@ class LinkObjectData(BaseModel):
         ...,
         description="URL of the link"
     )
-    favicon_url: Optional[HttpUrl] = Field(
+    favicon_url: HttpUrl | None = Field(
         None,
         description="URL of the site's favicon"
     )
-    thumbnail_url: Optional[HttpUrl] = Field(
+    thumbnail_url: HttpUrl | None = Field(
         None,
         description="URL of a preview thumbnail"
     )
@@ -184,8 +184,8 @@ class LinkObjectCreate(ObjectBase):
         ...,
         description="URL of the link"
     )
-    favicon_url: Optional[HttpUrl] = None
-    thumbnail_url: Optional[HttpUrl] = None
+    favicon_url: HttpUrl | None = None
+    thumbnail_url: HttpUrl | None = None
 
     @field_validator("type")
     @classmethod
@@ -213,16 +213,16 @@ class FileObjectData(BaseModel):
         ...,
         description="Absolute or relative path to the file (can be .txt, .pdf, .jpg, etc.)"
     )
-    file_size: Optional[int] = Field(
+    file_size: int | None = Field(
         None,
         ge=0,
         description="File size in bytes"
     )
-    mime_type: Optional[str] = Field(
+    mime_type: str | None = Field(
         None,
         description="MIME type of the file"
     )
-    thumbnail_path: Optional[str] = Field(
+    thumbnail_path: str | None = Field(
         None,
         description="Path to cached thumbnail (if generated)"
     )
@@ -258,8 +258,8 @@ class FileObjectCreate(ObjectBase):
         ...,
         description="Path to the file"
     )
-    mime_type: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = Field(
+    mime_type: str | None = None
+    metadata: dict[str, Any] | None = Field(
         default_factory=dict,
         description="Additional metadata (e.g., audio duration, image dimensions)"
     )
@@ -296,19 +296,19 @@ class GoogleDriveObjectData(BaseModel):
         ...,
         description="File name in Google Drive"
     )
-    mime_type: Optional[str] = Field(
+    mime_type: str | None = Field(
         None,
         description="MIME type of the Drive file"
     )
-    web_view_link: Optional[HttpUrl] = Field(
+    web_view_link: HttpUrl | None = Field(
         None,
         description="Link to view the file in Google Drive"
     )
-    thumbnail_link: Optional[HttpUrl] = Field(
+    thumbnail_link: HttpUrl | None = Field(
         None,
         description="Link to the file's thumbnail"
     )
-    modified_time: Optional[datetime] = Field(
+    modified_time: datetime | None = Field(
         None,
         description="Last modified time in Drive"
     )
@@ -342,8 +342,8 @@ class GoogleDriveObjectCreate(ObjectBase):
         ...,
         description="File name in Google Drive"
     )
-    mime_type: Optional[str] = None
-    web_view_link: Optional[HttpUrl] = None
+    mime_type: str | None = None
+    web_view_link: HttpUrl | None = None
 
     @field_validator("type")
     @classmethod
@@ -377,15 +377,15 @@ class GmailObjectData(BaseModel):
         ...,
         description="Email sender"
     )
-    snippet: Optional[str] = Field(
+    snippet: str | None = Field(
         None,
         description="Email snippet/preview"
     )
-    received_date: Optional[datetime] = Field(
+    received_date: datetime | None = Field(
         None,
         description="Date the email was received"
     )
-    labels: List[str] = Field(
+    labels: list[str] = Field(
         default_factory=list,
         description="Gmail labels"
     )
@@ -428,8 +428,8 @@ class GmailObjectCreate(ObjectBase):
         ...,
         description="Email sender"
     )
-    snippet: Optional[str] = None
-    received_date: Optional[datetime] = None
+    snippet: str | None = None
+    received_date: datetime | None = None
 
     @field_validator("type")
     @classmethod
@@ -480,7 +480,7 @@ class TextObjectCreate(ObjectBase):
         max_length=10000,
         description="Text content"
     )
-    service: Optional[str] = Field(
+    service: str | None = Field(
         None,
         max_length=50,
         description="Optional service identifier (e.g., telegram)"
@@ -503,7 +503,7 @@ class WebArticleObjectCreate(ObjectBase):
         description="Object type"
     )
     url: HttpUrl = Field(..., description="URL of the article")
-    favicon_url: Optional[HttpUrl] = None
+    favicon_url: HttpUrl | None = None
 
     @field_validator("type")
     @classmethod
@@ -518,14 +518,14 @@ class WebArticleObjectCreate(ObjectBase):
 # ============================================================================
 
 # Union type for object creation
-ObjectCreate = Union[
-    LinkObjectCreate,
-    FileObjectCreate,
-    GoogleDriveObjectCreate,
-    GmailObjectCreate,
-    TextObjectCreate,
-    WebArticleObjectCreate
-]
+ObjectCreate: TypeAlias = (
+    LinkObjectCreate
+    | FileObjectCreate
+    | GoogleDriveObjectCreate
+    | GmailObjectCreate
+    | TextObjectCreate
+    | WebArticleObjectCreate
+)
 
 
 # ============================================================================
@@ -540,56 +540,56 @@ class ObjectUpdate(BaseModel):
     Type-specific fields are stored in metadata dict.
     """
 
-    default_title: Optional[str] = Field(
+    default_title: str | None = Field(
         None,
         min_length=1,
         max_length=400,
         description="Default title (metadata-derived)"
     )
-    default_description: Optional[str] = Field(
+    default_description: str | None = Field(
         None,
         max_length=1000,
         description="Default description (metadata-derived)"
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None,
         min_length=1,
         max_length=400,
         description="Object title"
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None,
         max_length=1000,
         description="Object description"
     )
-    custom_title: Optional[str] = Field(
+    custom_title: str | None = Field(
         None,
         min_length=2,
         max_length=400,
         description="Custom title override"
     )
-    custom_description: Optional[str] = Field(
+    custom_description: str | None = Field(
         None,
         max_length=1000,
         description="Custom description override"
     )
-    tags: Optional[List[str]] = Field(
+    tags: list[str] | None = Field(
         None,
         description="Object tags"
     )
-    position: Optional[int] = Field(
+    position: int | None = Field(
         None,
         ge=0,
         description="Position on canvas"
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         None,
         description="Type-specific metadata to update"
     )
 
     @field_validator("title")
     @classmethod
-    def validate_title(cls, v: Optional[str]) -> Optional[str]:
+    def validate_title(cls, v: str | None) -> str | None:
         """Validate and normalize title."""
         if v is not None:
             v = v.strip()
@@ -599,7 +599,7 @@ class ObjectUpdate(BaseModel):
 
     @field_validator("default_title")
     @classmethod
-    def validate_default_title(cls, v: Optional[str]) -> Optional[str]:
+    def validate_default_title(cls, v: str | None) -> str | None:
         """Validate default title when provided."""
         if v is not None:
             v = v.strip()
@@ -609,7 +609,7 @@ class ObjectUpdate(BaseModel):
 
     @field_validator("custom_title")
     @classmethod
-    def validate_custom_title(cls, v: Optional[str]) -> Optional[str]:
+    def validate_custom_title(cls, v: str | None) -> str | None:
         """Validate custom title when provided."""
         if v is not None:
             v = v.strip()
@@ -621,7 +621,7 @@ class ObjectUpdate(BaseModel):
 
     @field_validator("custom_description")
     @classmethod
-    def validate_custom_description(cls, v: Optional[str]) -> Optional[str]:
+    def validate_custom_description(cls, v: str | None) -> str | None:
         """Normalize custom description when provided."""
         if v is not None:
             v = v.strip()
@@ -631,7 +631,7 @@ class ObjectUpdate(BaseModel):
 
     @field_validator("tags")
     @classmethod
-    def validate_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+    def validate_tags(cls, v: list[str] | None) -> list[str] | None:
         """Validate and normalize tags."""
         if v is not None:
             cleaned_tags = []
@@ -660,15 +660,15 @@ class ObjectResponse(ObjectBase):
     space_id: UUID = Field(..., description="ID of the space this object belongs to")
     type: ObjectType = Field(..., description="Object type")
     default_title: str = Field(..., description="Original/default title from metadata or system")
-    default_description: Optional[str] = Field(
+    default_description: str | None = Field(
         None,
         description="Original/default description from metadata or system"
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Type-specific metadata (url, file_path, etc.)"
     )
-    thumbnail_url: Optional[str] = Field(
+    thumbnail_url: str | None = Field(
         None,
         description="URL/path to cached thumbnail"
     )
@@ -701,7 +701,7 @@ class ObjectResponse(ObjectBase):
 class ObjectList(BaseModel):
     """Schema for paginated list of Objects."""
 
-    objects: List[ObjectResponse] = Field(
+    objects: list[ObjectResponse] = Field(
         default_factory=list,
         description="List of objects"
     )
@@ -738,7 +738,7 @@ class ObjectReorder(BaseModel):
         ...,
         description="ID of the space whose objects are being reordered"
     )
-    object_ids: List[UUID] = Field(
+    object_ids: list[UUID] = Field(
         ...,
         min_length=1,
         description="Ordered list of object IDs"
@@ -746,7 +746,7 @@ class ObjectReorder(BaseModel):
 
     @field_validator("object_ids")
     @classmethod
-    def validate_unique_ids(cls, v: List[UUID]) -> List[UUID]:
+    def validate_unique_ids(cls, v: list[UUID]) -> list[UUID]:
         """Ensure all object IDs are unique."""
         if len(v) != len(set(v)):
             raise ValueError("Duplicate object IDs are not allowed")

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { X, BookOpen, Loader2, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { isLikelyHttpUrl, normalizeUrl, validateUrlOnSubmit } from '@/utils/url';
 import { truncateLinkTitle } from '@/utils/text';
@@ -18,9 +19,10 @@ export function AddWebArticleDialog({
   isOpen,
   onClose,
   onAdd,
-  submitLabel = 'Add Web Article',
+  submitLabel,
   initialValues,
 }: AddWebArticleDialogProps) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [isValidUrl, setIsValidUrl] = useState(true);
@@ -111,7 +113,7 @@ export function AddWebArticleDialog({
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <BookOpen size={20} className="text-indigo-600" />
-              <h2 className="text-lg font-semibold text-slate-900">Add Web Article</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{t('addWebArticleDialog.title')}</h2>
             </div>
             <button
               onClick={onClose}
@@ -125,7 +127,7 @@ export function AddWebArticleDialog({
           <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
             <div>
               <label htmlFor="article-url" className="block text-sm font-medium text-slate-700 mb-1.5">
-                URL *
+                {t('addWebArticleDialog.urlLabel')}
               </label>
               <div className="relative">
                 <input
@@ -138,7 +140,7 @@ export function AddWebArticleDialog({
                     setIsValidUrl(isLikelyHttpUrl(e.target.value, { allowEmpty: true }));
                   }}
                   onBlur={handleUrlBlur}
-                  placeholder="example.com/article"
+                  placeholder={t('addWebArticleDialog.urlPlaceholder')}
                   className={`w-full py-2 ${showHttpsPrefix ? 'pl-20 pr-3' : 'px-3'} border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
                     !isValidUrl
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
@@ -162,20 +164,20 @@ export function AddWebArticleDialog({
                 ) : null}
               </div>
               {!isValidUrl && (
-                <p className="mt-1 text-xs text-red-600">Please enter a valid URL</p>
+                <p className="mt-1 text-xs text-red-600">{t('addWebArticleDialog.invalidUrl')}</p>
               )}
             </div>
 
             <div>
               <label htmlFor="article-title" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Title
+                {t('addWebArticleDialog.titleLabel')}
               </label>
               <input
                 id="article-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Optional — auto-detected from URL"
+                placeholder={t('addWebArticleDialog.titlePlaceholder')}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
               />
             </div>
@@ -186,14 +188,14 @@ export function AddWebArticleDialog({
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={!url.trim() || !isValidUrl}
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitLabel}
+                {submitLabel ?? t('addWebArticleDialog.title')}
               </button>
             </div>
           </form>

@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Trash2, Copy, RefreshCw, ExternalLink, Share2, Maximize2, Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 
 interface TileContextMenuProps {
@@ -38,6 +39,7 @@ export function TileContextMenu({
   onEditLink,
   onDelete,
 }: TileContextMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState({ width: 0, height: 0 });
   const VIEWPORT_MARGIN = 8;
@@ -91,7 +93,8 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Maximize2 size={16} />
-            Open in full window
+            {t('tileContextMenu.openFullWindow')}
+
           </button>
         )}
         {hasFileOrUrl && (
@@ -100,7 +103,7 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Share2 size={16} />
-            Share
+            {t('tileContextMenu.share')}
           </button>
         )}
         {hasFileOrUrl && (
@@ -109,17 +112,17 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Copy size={14} />
-            Copy path/URL
+            {t('tileContextMenu.copyPathUrl')}
           </button>
         )}
         {(type === 'link' || type === 'web_article') && url && (
           <button
             onClick={onOpenExternal}
-            title="Open in External Browser"
+            title={t('tileContextMenu.openExternal')}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <ExternalLink size={18} />
-            Open in external browser
+            {t('tileContextMenu.openExternal')}
           </button>
         )}
         {type === 'link' && url && (
@@ -128,7 +131,7 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <RefreshCw size={14} />
-            Refresh
+            {t('tileContextMenu.refresh')}
           </button>
         )}
         {type === 'file' && onRenameFile && (
@@ -137,7 +140,7 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Pencil size={14} />
-            Rename file
+            {t('tileContextMenu.renameFile')}
           </button>
         )}
         {type === 'link' && onEditLink && (
@@ -146,7 +149,7 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Pencil size={14} />
-            Edit URL
+            {t('tileContextMenu.editUrl')}
           </button>
         )}
         {type === 'web_article' && onEditLink && (
@@ -155,7 +158,7 @@ export function TileContextMenu({
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Pencil size={14} />
-            Edit URL
+            {t('tileContextMenu.editUrl')}
           </button>
         )}
         <button
@@ -163,7 +166,7 @@ export function TileContextMenu({
           className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
         >
           <Trash2 size={14} />
-          Delete
+          {t('tileContextMenu.delete')}
         </button>
       </div>
     </>

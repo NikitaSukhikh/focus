@@ -6,7 +6,7 @@ Handles validation, orchestration, and business rules for spaces.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.models.object import ObjectResponse, ObjectType
@@ -166,7 +166,7 @@ class SpacesService:
         self,
         skip: int = 0,
         limit: int = 100,
-        sort_by: Optional[str] = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
         session: AsyncSession | None = None,
     ) -> SpaceList:
@@ -302,23 +302,23 @@ class SpacesService:
                 "text_notes": "text_note",
             }
 
-            category_counters: Dict[str, int] = {
+            category_counters: dict[str, int] = {
                 "links": 0,
                 "web_articles": 0,
                 "files": 0,
                 "text_notes": 0,
             }
-            organized_data: Dict[str, Dict[str, Any]] = {
+            organized_data: dict[str, dict[str, Any]] = {
                 "links": {},
                 "web_articles": {},
                 "files": {},
                 "text_notes": {},
             }
-            items: List[SpaceShareItem] = []
-            warnings: List[str] = []
-            share_parts: List[str] = []
-            summary_lines: List[str] = []
-            first_share_url: Optional[str] = None
+            items: list[SpaceShareItem] = []
+            warnings: list[str] = []
+            share_parts: list[str] = []
+            summary_lines: list[str] = []
+            first_share_url: str | None = None
             seen_file_paths: set[str] = set()
 
             for object_type, category, label in self.SHARE_CATEGORY_ORDER:
@@ -397,12 +397,12 @@ class SpacesService:
         self,
         obj: ObjectResponse,
         category: str,
-    ) -> tuple[SpaceShareItem | None, List[str]]:
+    ) -> tuple[SpaceShareItem | None, list[str]]:
         """
         Convert object response to normalized share item plus validation warnings.
         """
         metadata = obj.metadata or {}
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         if category in {"links", "web_articles"}:
             url = str(metadata.get("url") or "").strip()
@@ -442,7 +442,7 @@ class SpacesService:
 
             path_obj = Path(file_path)
             file_exists = path_obj.exists()
-            file_size_bytes: Optional[int] = None
+            file_size_bytes: int | None = None
 
             if file_exists:
                 try:
@@ -537,7 +537,7 @@ class SpacesService:
             if not external:
                 await session_to_use.close()
 
-    async def reorder_spaces(self, space_ids: List[UUID], session: AsyncSession | None = None) -> List[SpaceResponse]:
+    async def reorder_spaces(self, space_ids: list[UUID], session: AsyncSession | None = None) -> list[SpaceResponse]:
         """
         Reorder spaces.
 
@@ -545,7 +545,7 @@ class SpacesService:
             space_ids: Ordered list of space UUIDs
 
         Returns:
-            List[SpaceResponse]: Reordered spaces
+            list[SpaceResponse]: Reordered spaces
 
         Raises:
             InvalidSpaceDataError: If space IDs are invalid
@@ -643,7 +643,7 @@ class SpacesService:
     async def _check_name_uniqueness(
         self,
         name: str,
-        exclude_id: Optional[UUID] = None
+        exclude_id: UUID | None = None
     ) -> None:
         """
         Name uniqueness is intentionally not enforced (duplicate names allowed).

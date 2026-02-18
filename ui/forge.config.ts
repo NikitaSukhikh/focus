@@ -56,6 +56,8 @@ if (platform === 'win32') {
       name: 'Focus',
       authors: 'Nikita Sukhikh',
       description: 'Focus desktop application',
+      setupExe: 'FocusSetup.exe',
+      setupIcon: path.join(__dirname, 'src', 'assets', 'focus.ico'),
     }),
     new MakerZIP({}, ['win32'])
   );

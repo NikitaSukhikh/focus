@@ -4,6 +4,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { X, Share2, Copy, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { DIMENSIONS } from '@/constants/panesDimensions';
 import { SharePlatformButtons } from '@/components/dialogs/share/SharePlatformButtons';
@@ -35,47 +36,8 @@ interface SummarySection {
   rows: Array<{ row: SummaryRow; index: number }>;
 }
 
-const PLURAL_TYPE_LABELS: Record<string, string> = {
-  link: 'Links',
-  links: 'Links',
-  'web article': 'Web Articles',
-  'web articles': 'Web Articles',
-  file: 'Files',
-  files: 'Files',
-  'text note': 'Text Notes',
-  'text notes': 'Text Notes',
-};
-
-const getDisplayTypeLabel = (typeLabel: string): string => {
-  const normalized = typeLabel.trim().toLowerCase();
-  return PLURAL_TYPE_LABELS[normalized] || typeLabel;
-};
-
 const getSectionRowPrefix = (sectionSize: number, rowIndexInSection: number): string =>
   sectionSize > 1 ? `${rowIndexInSection + 1}.` : '';
-
-const FILTER_LABELS: Record<'links' | 'web_articles' | 'files' | 'text_notes', string> = {
-  links: 'Links',
-  web_articles: 'Web Articles',
-  files: 'Files',
-  text_notes: 'Text notes',
-};
-
-const getFallbackFilterLabels = (filters: SpaceShareFilters): string[] => {
-  const labels: string[] = [];
-  if (filters.links) labels.push(FILTER_LABELS.links);
-  if (filters.webArticles) labels.push(FILTER_LABELS.web_articles);
-  if (filters.files) labels.push(FILTER_LABELS.files);
-  if (filters.textNotes) labels.push(FILTER_LABELS.text_notes);
-
-  if (labels.length > 0) return labels;
-  return [
-    FILTER_LABELS.links,
-    FILTER_LABELS.web_articles,
-    FILTER_LABELS.files,
-    FILTER_LABELS.text_notes,
-  ];
-};
 
 const buildPlatformShareText = (shareText: string, firstShareUrl?: string): string => {
   if (!shareText || !firstShareUrl) return shareText;
@@ -98,7 +60,7 @@ const buildPlatformShareText = (shareText: string, firstShareUrl?: string): stri
   return shareText;
 };
 
-const splitSummaryLine = (line: string): SummaryRow => {
+const splitSummaryLine = (line: string, fallbackTypeLabel: string): SummaryRow => {
   const extractPathFromText = (text: string): string | undefined => {
     const separatorIndex = text.lastIndexOf(' - ');
     if (separatorIndex < 0) return undefined;
@@ -108,10 +70,10 @@ const splitSummaryLine = (line: string): SummaryRow => {
 
   const match = line.match(/^(?:(\d+\.)\s+)?\[([^\]]+)\]\s*(.*)$/);
   if (!match) {
-    return { typeLabel: 'Items', value: line, isFile: false };
+    return { typeLabel: fallbackTypeLabel, value: line, isFile: false };
   }
 
-  const typeLabel = match[2] || 'Items';
+  const typeLabel = match[2] || fallbackTypeLabel;
   const value = match[3] || '';
   const isFile = typeLabel.toLowerCase().startsWith('file');
   const filePath = isFile ? extractPathFromText(value) : undefined;
@@ -127,9 +89,10 @@ const splitSummaryLine = (line: string): SummaryRow => {
 
 const parseSummaryLineWithItem = (
   line: string,
-  item?: SpaceShareExportResponse['items'][number]
+  item?: SpaceShareExportResponse['items'][number],
+  fallbackTypeLabel: string = 'Items'
 ): SummaryRow => {
-  const parsed = splitSummaryLine(line);
+  const parsed = splitSummaryLine(line, fallbackTypeLabel);
   if (!item) return parsed;
 
   if (item.category === 'files') {
@@ -155,6 +118,7 @@ const buildImageThumbnailUrl = (filePath: string): string => {
 };
 
 export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters }: SpaceShareDialogProps) {
+  const { t } = useTranslation();
   const [isSummaryCopied, setIsSummaryCopied] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -174,13 +138,35 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
     [filters.links, filters.webArticles, filters.files, filters.textNotes]
   );
 
+  const getDisplayTypeLabel = React.useCallback(
+    (typeLabel: string): string => {
+      const normalized = typeLabel.trim().toLowerCase();
+      if (normalized === 'link' || normalized === 'links') return t('spaceShareDialog.links');
+      if (normalized === 'web article' || normalized === 'web articles') return t('spaceShareDialog.webArticles');
+      if (normalized === 'file' || normalized === 'files') return t('spaceShareDialog.files');
+      if (normalized === 'text note' || normalized === 'text notes') return t('spaceShareDialog.textNotes');
+      return typeLabel;
+    },
+    [t]
+  );
+
+  const getFilterLabel = React.useCallback(
+    (key: keyof SpaceShareExportResponse['filters']): string => {
+      if (key === 'links') return t('spaceShareDialog.links');
+      if (key === 'web_articles') return t('spaceShareDialog.webArticles');
+      if (key === 'files') return t('spaceShareDialog.files');
+      return t('spaceShareDialog.textNotes');
+    },
+    [t]
+  );
+
   React.useEffect(() => {
     let isCancelled = false;
 
     const loadSharePayload = async () => {
       if (!isOpen) return;
       if (!spaceId) {
-        setErrorMessage('No space selected.');
+        setErrorMessage(t('spaceShareDialog.noSpaceSelected'));
         setSharePayload(null);
         return;
       }
@@ -195,7 +181,7 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
         if (isCancelled) return;
         console.error('[SPACE SHARE DIALOG] Failed to export share payload:', err);
         setSharePayload(null);
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to export space share payload.');
+        setErrorMessage(err instanceof Error ? err.message : t('spaceShareDialog.failedExport'));
       } finally {
         if (!isCancelled) {
           setIsLoading(false);
@@ -208,21 +194,36 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, spaceId, requestFilters]);
+  }, [isOpen, spaceId, requestFilters, t]);
 
   const selectedFilterLabels = React.useMemo(() => {
-    if (!sharePayload) return getFallbackFilterLabels(filters);
+    const labels: string[] = [];
 
-    return (Object.keys(sharePayload.filters) as Array<keyof SpaceShareExportResponse['filters']>)
-      .filter((key) => sharePayload.filters[key])
-      .map((key) => FILTER_LABELS[key]);
-  }, [sharePayload, filters]);
+    if (sharePayload) {
+      (Object.keys(sharePayload.filters) as Array<keyof SpaceShareExportResponse['filters']>)
+        .filter((key) => sharePayload.filters[key])
+        .forEach((key) => labels.push(getFilterLabel(key)));
+    } else {
+      if (filters.links) labels.push(getFilterLabel('links'));
+      if (filters.webArticles) labels.push(getFilterLabel('web_articles'));
+      if (filters.files) labels.push(getFilterLabel('files'));
+      if (filters.textNotes) labels.push(getFilterLabel('text_notes'));
+    }
+
+    if (labels.length > 0) return labels;
+    return [
+      getFilterLabel('links'),
+      getFilterLabel('web_articles'),
+      getFilterLabel('files'),
+      getFilterLabel('text_notes'),
+    ];
+  }, [sharePayload, filters, getFilterLabel]);
 
   const summaryText = sharePayload?.share_text || '';
   const warnings = sharePayload?.warnings || [];
   const totalItems = sharePayload?.total_items || 0;
   const selectedItemsCount = summaryRows.length > 0 ? summaryRows.length : totalItems;
-  const shareTitle = `${spaceName} (${selectedItemsCount} items)`;
+  const shareTitle = t('spaceShareDialog.platformShareTitle', { spaceName, count: selectedItemsCount });
   const summarySections = React.useMemo<SummarySection[]>(() => {
     const sections: SummarySection[] = [];
     summaryRows.forEach((row, index) => {
@@ -263,8 +264,9 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
   React.useEffect(() => {
     if (!isOpen) return;
     const summaryLines = sharePayload?.summary_lines || [];
+    const fallbackTypeLabel = t('spaceShareDialog.items');
     if (summaryLines.length > 0) {
-      setSummaryRows(summaryLines.map((line, index) => parseSummaryLineWithItem(line, sharePayload?.items?.[index])));
+      setSummaryRows(summaryLines.map((line, index) => parseSummaryLineWithItem(line, sharePayload?.items?.[index], fallbackTypeLabel)));
       setEditableShareText('');
     } else {
       setSummaryRows([]);
@@ -272,7 +274,7 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
     }
     setFailedImageThumbnails({});
     setIsSummaryCopied(false);
-  }, [isOpen, summaryText, sharePayload]);
+  }, [isOpen, summaryText, sharePayload, t]);
 
   React.useEffect(() => {
     Object.values(rowTextareaRefs.current).forEach((textarea) => autoResizeTextarea(textarea));
@@ -326,14 +328,16 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2">
               <Share2 size={20} className="text-indigo-600" />
-              <h2 className="text-lg font-semibold text-slate-900 truncate">Share &apos;{spaceName}&apos;</h2>
+              <h2 className="text-lg font-semibold text-slate-900 truncate">{t('spaceShareDialog.title', { spaceName })}</h2>
             </div>
             <div className="space-y-0.5">
               <p className="text-xs text-slate-500">
-                {selectedItemsCount} item(s) selected for sharing
+                {t('spaceShareDialog.itemsSelected', { count: selectedItemsCount })}
               </p>
               <p className="text-xs text-slate-500">
-                Scope: {selectedFilterLabels.join(', ') || 'All'} (edit/delete if needed)
+                {t('spaceShareDialog.scope', {
+                  labels: selectedFilterLabels.join(', ') || t('spaceShareDialog.scopeAll'),
+                })}
               </p>
             </div>
           </div>
@@ -348,7 +352,7 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
         <div className="px-6 py-4 space-y-4 overflow-y-auto">
           <div className="rounded-lg border border-slate-200 bg-slate-50">
             {isLoading ? (
-              <div className="px-4 py-3 text-sm text-slate-500">Preparing share payload...</div>
+              <div className="px-4 py-3 text-sm text-slate-500">{t('spaceShareDialog.preparing')}</div>
             ) : errorMessage ? (
               <div className="px-4 py-3 text-sm text-red-600">{errorMessage}</div>
             ) : summaryRows.length > 0 ? (
@@ -388,8 +392,8 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
                                 type="button"
                                 onClick={() => handleRemoveRowFromScope(index)}
                                 className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 transition-colors flex items-center justify-center"
-                                title="Remove from scope"
-                                aria-label="Remove file from share scope"
+                                title={t('spaceShareDialog.removeFromScope')}
+                                aria-label={t('spaceShareDialog.removeFileFromScope')}
                               >
                                 <X size={12} />
                               </button>
@@ -434,7 +438,7 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
                 }}
                 value={editableShareText}
                 onChange={(event) => setEditableShareText(event.target.value)}
-                placeholder="No objects match the selected filters."
+                placeholder={t('spaceShareDialog.noItems')}
                 className="w-full px-4 py-3 text-sm text-slate-700 bg-transparent resize-none outline-none overflow-hidden"
                 style={{ minHeight: `${DIMENSIONS.DIALOG.SPACE_SHARE_LIST_MAX_HEIGHT}px` }}
               />
@@ -452,14 +456,14 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
           )}
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Share to</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('spaceShareDialog.shareTo')}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCopySummary}
                 disabled={!composedShareText.trim() || isLoading}
                 className="p-2.5 rounded-lg border border-slate-200 bg-slate-100 hover:bg-slate-200 transition-all hover:scale-110 hover:shadow-md disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
-                title="Copy"
-                aria-label="Copy"
+                title={t('spaceShareDialog.copy')}
+                aria-label={t('spaceShareDialog.copy')}
               >
                 {isSummaryCopied ? (
                   <CheckCircle2 size={26} className="text-green-600" />

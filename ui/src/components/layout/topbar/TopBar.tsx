@@ -4,6 +4,7 @@
  */
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Menu, X, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon, Share } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { TOP_BAR } from '@/constants/panesDimensions';
 import { FONT_ROLES } from '@/styles/fontManager';
@@ -21,13 +22,6 @@ import { useThemeToggle } from '@/hooks/useThemeToggle';
 export type { TopBarHandle } from '@/components/layout/topbar/types';
 
 const AI_ASSISTANT_LOGO_SRC = '/logos/ai_assistant_logo_transparent.png';
-
-const SHARE_OPTIONS: Array<{ key: keyof SpaceShareFilters; label: string }> = [
-  { key: 'links', label: 'Links' },
-  { key: 'webArticles', label: 'Web Articles' },
-  { key: 'files', label: 'Files' },
-  { key: 'textNotes', label: 'Text notes' },
-];
 
 // TopBar renders the global header controls (sidebar toggle, space title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
@@ -52,6 +46,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     onTagSelect,
   } = props;
 
+  const { t } = useTranslation();
   const logic = useTopBarLogic(centerPaneRef);
   const { isDark, toggleTheme } = useThemeToggle();
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
@@ -61,6 +56,12 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
   const aiAssistantButtonRef = useRef<HTMLButtonElement | null>(null);
   const aiAssistantDialogRef = useRef<HTMLDivElement | null>(null);
+  const shareOptions: Array<{ key: keyof SpaceShareFilters; label: string }> = [
+    { key: 'links', label: t('topBar.shareLinks') },
+    { key: 'webArticles', label: t('topBar.shareWebArticles') },
+    { key: 'files', label: t('topBar.shareFiles') },
+    { key: 'textNotes', label: t('topBar.shareTextNotes') },
+  ];
 
   const toggleShareOption = (key: keyof SpaceShareFilters) => {
     setShareSelections((prev) => ({
@@ -178,7 +179,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             e.currentTarget.style.color = 'var(--color-text-secondary)';
             e.currentTarget.style.boxShadow = 'none';
           }}
-          title={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          title={isSidebarOpen ? t('topBar.closeSidebar') : t('topBar.openSidebar')}
         >
           {isSidebarOpen ? <X size={TOP_BAR.icons.primary} /> : <Menu size={TOP_BAR.icons.primary} />}
         </button>
@@ -218,8 +219,8 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)';
             }}
-            title="Add objects on the center pane (Ctrl+I)"
-            aria-label="Add links/files"
+            title={t('topBar.addObjects')}
+            aria-label={t('topBar.addLinks')}
           >
             <Plus size={TOP_BAR.icons.small} />
           </button>
@@ -255,13 +256,13 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                   onMouseLeave={(e) => {
                     e.currentTarget.style.textShadow = 'none';
                   }}
-                  title="Double-click to rename"
+                  title={t('topBar.doubleClickToRename')}
                 >
                   {logic.selectedSpace.name}
                 </h1>
               )
             ) : (
-              <span style={{ ...FONT_ROLES.topbarTitle, color: 'var(--color-text-muted)' }}>No Space Selected</span>
+              <span style={{ ...FONT_ROLES.topbarTitle, color: 'var(--color-text-muted)' }}>{t('topBar.noSpaceSelected')}</span>
             )}
           </div>
         </div>
@@ -302,7 +303,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               padding: `${TOP_BAR.zoomControl.buttonPaddingY}px ${TOP_BAR.zoomControl.buttonPaddingX}px`,
               transform: `translateX(${TOP_BAR.zoomControl.buttonTranslateX}px)`,
             }}
-            title="Zoom control"
+            title={t('topBar.zoomControl')}
           >
             <ZoomOut size={TOP_BAR.icons.secondary} className="opacity-75" />
           </button>
@@ -344,8 +345,8 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 e.currentTarget.style.color = 'var(--color-text-secondary)';
               }
             }}
-            title="Share"
-            aria-label="Share"
+            title={t('topBar.share')}
+            aria-label={t('topBar.share')}
             aria-haspopup="menu"
             aria-expanded={isShareMenuOpen}
           >
@@ -365,7 +366,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 backdropFilter: 'var(--glass-blur)',
               }}
               role="menu"
-              aria-label="Share options"
+              aria-label={t('topBar.shareOptions')}
             >
               <button
                 type="button"
@@ -383,14 +384,14 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 onMouseLeave={(e) => {
                   e.currentTarget.style.color = 'var(--color-text-primary)';
                 }}
-                title="Open space share dialog"
-                aria-label="Open space share dialog"
+                title={t('topBar.openShareDialog')}
+                aria-label={t('topBar.openShareDialog')}
               >
                 <Share size={TOP_BAR.icons.tiny} />
               </button>
 
               <div style={{ padding: `${TOP_BAR.shareMenu.paddingY}px 0` }}>
-                {SHARE_OPTIONS.map((option) => (
+                {shareOptions.map((option) => (
                   <div
                     key={option.key}
                     style={{
@@ -443,7 +444,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               e.currentTarget.style.background = 'transparent';
               e.currentTarget.style.color = 'var(--color-text-secondary)';
             }}
-            title="Toggle theme"
+            title={t('topBar.toggleTheme')}
           >
             {isDark ? <Moon size={TOP_BAR.icons.tiny} /> : <Sun size={TOP_BAR.icons.tiny} />}
           </button>
@@ -470,7 +471,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 e.currentTarget.style.color = 'var(--color-text-secondary)';
               }
             }}
-            title={isGridMode ? 'Grids' : 'Grid-Free'}
+            title={isGridMode ? t('topBar.grids') : t('topBar.gridFree')}
           >
             {isGridMode ? (
               <Grid3x3 size={TOP_BAR.modeToggleButton.iconSize} />
@@ -510,7 +511,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                 e.currentTarget.style.color = 'var(--color-text-secondary)';
               }
             }}
-            title={'Toggle preview\n(Ctrl+U)'}
+            title={t('topBar.togglePreview')}
           >
             <PanelRight size={TOP_BAR.modeToggleButton.iconSize} />
           </button>
@@ -544,8 +545,8 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                   e.currentTarget.style.color = 'var(--color-text-secondary)';
                 }
               }}
-              title="Toggle AI assistant"
-              aria-label="Toggle AI assistant"
+              title={t('topBar.toggleAiAssistant')}
+              aria-label={t('topBar.toggleAiAssistant')}
               aria-haspopup="dialog"
               aria-expanded={isAiAssistantDialogOpen}
             >

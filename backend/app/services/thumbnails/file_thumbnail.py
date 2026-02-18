@@ -6,7 +6,6 @@ Uses Pillow for image processing with quality preservation.
 """
 
 from pathlib import Path
-from typing import Optional, Tuple
 import hashlib
 from PIL import Image, ImageOps
 import mimetypes
@@ -49,8 +48,8 @@ class FileThumbnailService:
     def generate_image_thumbnail(
         self,
         file_path: str,
-        max_width: Optional[int] = None,
-        max_height: Optional[int] = None,
+        max_width: int | None = None,
+        max_height: int | None = None,
         quality: int = 95,
         force_regenerate: bool = False
     ) -> str:
@@ -218,7 +217,7 @@ class FileThumbnailService:
 
         return str(output_path)
 
-    def get_image_dimensions(self, file_path: str) -> Tuple[int, int]:
+    def get_image_dimensions(self, file_path: str) -> tuple[int, int]:
         """
         Get the dimensions of an image file.
 
@@ -226,7 +225,7 @@ class FileThumbnailService:
             file_path: Path to the image file
 
         Returns:
-            Tuple[int, int]: (width, height)
+            tuple[int, int]: (width, height)
 
         Raises:
             FileNotFoundError: If file doesn't exist
@@ -269,7 +268,7 @@ class FileThumbnailService:
         path = Path(file_path)
         return path.suffix.lower() == '.pdf'
 
-    def get_cached_thumbnail(self, file_path: str) -> Optional[str]:
+    def get_cached_thumbnail(self, file_path: str) -> str | None:
         """
         Get cached thumbnail path if it exists.
 
@@ -277,7 +276,7 @@ class FileThumbnailService:
             file_path: Path to the original file
 
         Returns:
-            Optional[str]: Path to cached thumbnail, or None if not cached
+            str | None: Path to cached thumbnail, or None if not cached
         """
         cache_key = self._generate_cache_key(
             file_path,
@@ -291,7 +290,7 @@ class FileThumbnailService:
             return str(thumbnail_path)
         return None
 
-    def clear_cache(self, file_path: Optional[str] = None) -> int:
+    def clear_cache(self, file_path: str | None = None) -> int:
         """
         Clear thumbnail cache.
 

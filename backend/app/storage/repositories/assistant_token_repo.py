@@ -6,7 +6,7 @@ Uses SQLAlchemy async with encryption for sensitive fields.
 """
 
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Any
 import json
 import base64
 from cryptography.fernet import Fernet
@@ -65,12 +65,12 @@ class AssistantTokenRepository:
         self,
         user_email: str,
         access_token: str,
-        refresh_token: Optional[str] = None,
-        token_uri: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        scopes: Optional[list] = None,
-        expires_at: Optional[datetime] = None,
+        refresh_token: str | None = None,
+        token_uri: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        scopes: list | None = None,
+        expires_at: datetime | None = None,
     ) -> bool:
         try:
             encrypted_access_token = self._encryption.encrypt(access_token)
@@ -113,7 +113,7 @@ class AssistantTokenRepository:
             logger.error(f"Failed to save assistant tokens for {user_email}: {e}", exc_info=True)
             return False
 
-    async def get_tokens(self, user_email: str) -> Optional[Dict[str, Any]]:
+    async def get_tokens(self, user_email: str) -> dict[str, Any] | None:
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(AssistantToken).where(AssistantToken.user_id == user_email)
@@ -182,7 +182,7 @@ class AssistantTokenRepository:
                 return False
             return expires_at <= datetime.utcnow() + timedelta(minutes=15)
 
-    async def get_scopes(self, user_email: str) -> Optional[list]:
+    async def get_scopes(self, user_email: str) -> list | None:
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(AssistantToken.scopes).where(AssistantToken.user_id == user_email)
@@ -197,7 +197,7 @@ class AssistantTokenRepository:
         self,
         user_email: str,
         access_token: str,
-        expires_at: Optional[datetime] = None
+        expires_at: datetime | None = None
     ) -> bool:
         try:
             encrypted_access_token = self._encryption.encrypt(access_token)
@@ -249,7 +249,7 @@ class AssistantTokenRepository:
             logger.error(f"Failed to mark assistant requires_reauth for {user_email}: {e}", exc_info=True)
             return False
 
-    async def get_all_accounts(self) -> list[Dict[str, Any]]:
+    async def get_all_accounts(self) -> list[dict[str, Any]]:
         """Get all connected assistant Google accounts."""
         async with AsyncSessionLocal() as session:
             result = await session.execute(select(AssistantToken))

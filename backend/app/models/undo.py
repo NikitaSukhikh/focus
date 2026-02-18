@@ -7,7 +7,7 @@ Stores complete object state snapshots for reversible operations.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, Optional, List
+from typing import Any
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -33,7 +33,7 @@ class UndoEventBase(BaseModel):
         ...,
         description="Type of event that occurred"
     )
-    event_data: Dict[str, Any] = Field(
+    event_data: dict[str, Any] = Field(
         ...,
         description="Complete state snapshot of the affected object"
     )
@@ -68,7 +68,7 @@ class UndoEventResponse(UndoEventBase):
 class UndoEventList(BaseModel):
     """Model for paginated undo event lists."""
 
-    events: List[UndoEventResponse]
+    events: list[UndoEventResponse]
     total: int
     skip: int
     limit: int
@@ -78,5 +78,5 @@ class UndoRedoResponse(BaseModel):
     """Response after undo/redo operation."""
 
     success: bool
-    event: Optional[UndoEventResponse] = None
+    event: UndoEventResponse | None = None
     message: str

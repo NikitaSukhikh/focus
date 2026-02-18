@@ -19,6 +19,8 @@ interface FileTypeDetection {
   htmlPreviewUrl: string | null;
 }
 
+const PLAIN_TEXT_FILE_PREVIEW_ENABLED = false;
+
 // useFileTypeDetection derives preview flags and API URLs from the incoming type/path so the PreviewPane can pick the right renderer.
 export function useFileTypeDetection(
   type?: string,
@@ -38,7 +40,7 @@ export function useFileTypeDetection(
     const shouldShowHtmlAsCode = !!(isHtmlExtension && filePath && isHtmlCodeFile(filePath));
     const isHtmlFile = isHtmlExtension && !shouldShowHtmlAsCode;
 
-    const isTextFile = type === 'file' && filePath
+    const isTextFile = PLAIN_TEXT_FILE_PREVIEW_ENABLED && type === 'file' && filePath
       ? (detectFileType(filePath).category === 'text' && !isHtmlFile && !isMarkdownFile) || shouldShowHtmlAsCode
       : false;
 

@@ -5,7 +5,6 @@ Business logic layer for undo/redo operations.
 Handles validation, orchestration, and business rules for undo events.
 """
 
-from typing import Optional
 from uuid import UUID
 
 from app.models.undo import (

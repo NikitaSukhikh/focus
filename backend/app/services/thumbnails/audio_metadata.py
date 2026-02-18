@@ -5,7 +5,7 @@ Audio metadata extraction service
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def is_audio_file(file_path: str | Path) -> bool:
     return ext in AUDIO_EXTENSIONS
 
 
-def get_audio_metadata(file_path: str | Path) -> Dict[str, Any]:
+def get_audio_metadata(file_path: str | Path) -> dict[str, Any]:
     """
     Extract metadata from an audio file
 

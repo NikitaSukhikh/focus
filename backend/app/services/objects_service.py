@@ -27,7 +27,6 @@ When user adds .txt file → Create FILE object (happens to be text/plain MIME t
 Both types can display text content, but storage and handling differ.
 """
 
-from typing import List, Optional, Union
 from uuid import UUID
 from pathlib import Path
 import mimetypes
@@ -133,14 +132,7 @@ class ObjectsService:
     async def create_object(
         self,
         space_id: UUID,
-        object_data: Union[
-            LinkObjectCreate,
-            FileObjectCreate,
-            GoogleDriveObjectCreate,
-            GmailObjectCreate,
-            TextObjectCreate,
-            WebArticleObjectCreate
-        ],
+        object_data: ObjectCreate,
         session: AsyncSession | None = None
     ) -> ObjectResponse:
         """
@@ -229,10 +221,10 @@ class ObjectsService:
         space_id: UUID,
         skip: int = 0,
         limit: int = 100,
-        object_type: Optional[ObjectType] = None,
-        tags: Optional[List[str]] = None,
-        search_query: Optional[str] = None,
-        sort_by: Optional[str] = None,
+        object_type: ObjectType | None = None,
+        tags: list[str] | None = None,
+        search_query: str | None = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
         session: AsyncSession | None = None,
     ) -> ObjectList:
@@ -292,9 +284,9 @@ class ObjectsService:
     async def search_objects(
         self,
         search_query: str,
-        tags: Optional[List[str]] = None,
-        object_type: Optional[ObjectType] = None,
-        space_id: Optional[UUID] = None,
+        tags: list[str] | None = None,
+        object_type: ObjectType | None = None,
+        space_id: UUID | None = None,
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None
@@ -410,7 +402,7 @@ class ObjectsService:
 
     async def get_objects_by_tags(
         self,
-        tags: List[str],
+        tags: list[str],
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None
@@ -492,9 +484,9 @@ class ObjectsService:
     async def reorder_objects(
         self,
         space_id: UUID,
-        object_ids: List[UUID],
+        object_ids: list[UUID],
         session: AsyncSession | None = None
-    ) -> List[ObjectResponse]:
+    ) -> list[ObjectResponse]:
         """
         Reorder objects on an space.
 
@@ -503,7 +495,7 @@ class ObjectsService:
             object_ids: Ordered list of object UUIDs
 
         Returns:
-            List[ObjectResponse]: Reordered objects
+            list[ObjectResponse]: Reordered objects
 
         Raises:
             SpaceNotFoundError: If space doesn't exist
@@ -619,14 +611,7 @@ class ObjectsService:
 
     async def _validate_object_data(
         self,
-        object_data: Union[
-            LinkObjectCreate,
-            FileObjectCreate,
-            GoogleDriveObjectCreate,
-            GmailObjectCreate,
-            TextObjectCreate,
-            WebArticleObjectCreate
-        ]
+        object_data: ObjectCreate
     ) -> None:
         """
         Validate object creation data with type-specific checks.
@@ -680,7 +665,7 @@ class ObjectsService:
                 f"Object title must not exceed {self.MAX_TITLE_LENGTH} characters"
             )
 
-    def _validate_custom_title(self, title: Optional[str]) -> None:
+    def _validate_custom_title(self, title: str | None) -> None:
         """
         Validate custom title when provided.
 
@@ -703,7 +688,7 @@ class ObjectsService:
                 f"Custom title must not exceed {self.MAX_TITLE_LENGTH} characters"
             )
 
-    def _validate_tags(self, tags: List[str]) -> None:
+    def _validate_tags(self, tags: list[str]) -> None:
         """
         Validate object tags.
 

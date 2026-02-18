@@ -5,7 +5,6 @@ API endpoints for Object CRUD operations.
 Supports polymorphic objects: Link, File, Text, GoogleDrive, Gmail.
 """
 
-from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, status, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +53,7 @@ async def list_objects_on_space(
     space_id: str,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
-    type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
+    type_filter: ObjectType | None = Query(None, description="Filter by object type"),
     session: AsyncSession = Depends(get_session)
 ) -> ObjectList:
     """
@@ -511,10 +510,10 @@ async def reorder_objects(
     tags=["Objects"]
 )
 async def search_objects(
-    q: Optional[str] = Query(None, description="Search query (title, description, metadata)"),
-    tags: Optional[List[str]] = Query(None, description="Filter by tags (AND logic)"),
-    type_filter: Optional[ObjectType] = Query(None, description="Filter by object type"),
-    space_id: Optional[UUID] = Query(None, description="Filter by space"),
+    q: str | None = Query(None, description="Search query (title, description, metadata)"),
+    tags: list[str] | None = Query(None, description="Filter by tags (AND logic)"),
+    type_filter: ObjectType | None = Query(None, description="Filter by object type"),
+    space_id: UUID | None = Query(None, description="Filter by space"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     session: AsyncSession = Depends(get_session)
@@ -709,7 +708,7 @@ async def rename_file(
     tags=["Objects"]
 )
 async def get_objects_by_tags(
-    tags: List[str] = Query(..., description="Tags to filter by (AND logic)"),
+    tags: list[str] = Query(..., description="Tags to filter by (AND logic)"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     session: AsyncSession = Depends(get_session)

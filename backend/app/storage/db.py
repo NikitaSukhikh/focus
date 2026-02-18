@@ -6,10 +6,10 @@ core tables for spaces, objects, and Google tokens.
 """
 
 import uuid
-from typing import AsyncGenerator, Optional
+from datetime import datetime
+from typing import Any, AsyncGenerator
 
 from sqlalchemy import (
-    Column,
     Integer,
     String,
     Text,
@@ -22,13 +22,13 @@ from sqlalchemy import (
     event,
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core.config import get_settings
 
 
-# Base declarative class
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 # Models
@@ -38,17 +38,17 @@ class Space(Base):
 
     __tablename__ = "spaces"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String(100), nullable=False, index=True)
-    description = Column(Text, nullable=True)
-    icon = Column(String(50), nullable=True)
-    color = Column(String(7), nullable=True)
-    position = Column(Integer, nullable=False, default=0, server_default="0")
-    object_count = Column(Integer, nullable=False, default=0, server_default="0")
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(100), index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    icon: Mapped[str | None] = mapped_column(String(50))
+    color: Mapped[str | None] = mapped_column(String(7))
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    object_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    objects = relationship("Object", back_populates="space", cascade="all, delete-orphan")
+    objects: Mapped[list["Object"]] = relationship("Object", back_populates="space", cascade="all, delete-orphan")
 
 
 class Object(Base):
@@ -56,22 +56,22 @@ class Object(Base):
 
     __tablename__ = "objects"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    space_id = Column(String, ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True)
-    type = Column(String(50), nullable=False)
-    title = Column(String(400), nullable=False)
-    description = Column(Text, nullable=True)
-    default_title = Column(String(400), nullable=False, server_default="")
-    default_description = Column(Text, nullable=True)
-    custom_title = Column(String(400), nullable=True)
-    custom_description = Column(Text, nullable=True)
-    tags = Column(JSON, nullable=False, default=list, server_default="[]")
-    metadata_json = Column("metadata", JSON, nullable=False, default=dict, server_default="{}")
-    position = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    space_id: Mapped[str] = mapped_column(String, ForeignKey("spaces.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(50))
+    title: Mapped[str] = mapped_column(String(400))
+    description: Mapped[str | None] = mapped_column(Text)
+    default_title: Mapped[str] = mapped_column(String(400), server_default="")
+    default_description: Mapped[str | None] = mapped_column(Text)
+    custom_title: Mapped[str | None] = mapped_column(String(400))
+    custom_description: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[Any] = mapped_column(JSON, default=list, server_default="[]")
+    metadata_json: Mapped[Any] = mapped_column("metadata", JSON, default=dict, server_default="{}")
+    position: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    space = relationship("Space", back_populates="objects")
+    space: Mapped["Space"] = relationship("Space", back_populates="objects")
 
     __table_args__ = (
         Index("idx_objects_space_type", "space_id", "type"),
@@ -83,17 +83,17 @@ class AssistantToken(Base):
 
     __tablename__ = "assistant_tokens"
 
-    user_id = Column(String(100), primary_key=True)
-    access_token = Column(Text, nullable=False)
-    refresh_token = Column(Text, nullable=True)
-    token_uri = Column(String(255), nullable=True)
-    client_id = Column(String(255), nullable=True)
-    client_secret = Column(Text, nullable=True)
-    scopes = Column(JSON, nullable=False, default=list, server_default="[]")
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
-    requires_reauth = Column(Boolean, nullable=False, default=False, server_default="0")
+    user_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    access_token: Mapped[str] = mapped_column(Text)
+    refresh_token: Mapped[str | None] = mapped_column(Text)
+    token_uri: Mapped[str | None] = mapped_column(String(255))
+    client_id: Mapped[str | None] = mapped_column(String(255))
+    client_secret: Mapped[str | None] = mapped_column(Text)
+    scopes: Mapped[Any] = mapped_column(JSON, default=list, server_default="[]")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    requires_reauth: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class UndoEvent(Base):
@@ -102,16 +102,16 @@ class UndoEvent(Base):
     __tablename__ = "undo_events"
     __mapper_args__ = {"confirm_deleted_rows": False}
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    space_id = Column(String, ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    space_id: Mapped[str] = mapped_column(String, ForeignKey("spaces.id", ondelete="CASCADE"), index=True)
     # Monotonic per-space order; redo/undo uses sequence to step backward/forward.
-    sequence = Column(Integer, nullable=False, default=0, server_default="0")
+    sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # event_type covers nine event kinds: tile_create/tile_move/tile_delete,
     # text_create/text_move/text_delete, arrow_create/arrow_move/arrow_delete.
-    event_type = Column(String(50), nullable=False)
-    event_data = Column(JSON, nullable=False)  # Complete object state snapshot
-    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
-    is_undone = Column(Boolean, nullable=False, default=False, server_default="0", index=True)
+    event_type: Mapped[str] = mapped_column(String(50))
+    event_data: Mapped[Any] = mapped_column(JSON)  # Complete object state snapshot
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    is_undone: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", index=True)
 
     __table_args__ = (
         Index("idx_undo_events_space_undone", "space_id", "is_undone", "sequence"),
@@ -141,7 +141,7 @@ engine: AsyncEngine = create_async_engine(
 
 # Improve SQLite concurrency: WAL mode + busy timeout
 @event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):  # type: ignore[unused-argument]
+def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.execute("PRAGMA busy_timeout=5000;")

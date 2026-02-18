@@ -10,7 +10,7 @@ storage with actual SQLAlchemy async queries.
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Union
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select, func, update, delete, asc, desc
@@ -59,7 +59,7 @@ class ObjectsRepository:
             return session, True
         return AsyncSessionLocal(), False
 
-    def _apply_tag_filter(self, stmt, tags: Optional[List[str]]):
+    def _apply_tag_filter(self, stmt, tags: list[str] | None):
         """
         Apply AND tag filtering using SQLite json_each on the tags array.
         """
@@ -82,14 +82,7 @@ class ObjectsRepository:
     async def create_object(
         self,
         space_id: UUID,
-        object_data: Union[
-            LinkObjectCreate,
-            FileObjectCreate,
-            GoogleDriveObjectCreate,
-            GmailObjectCreate,
-            TextObjectCreate,
-            WebArticleObjectCreate
-        ],
+        object_data: ObjectCreate,
         session: AsyncSession | None = None
     ) -> ObjectResponse:
         """
@@ -156,7 +149,7 @@ class ObjectsRepository:
             if not external:
                 await session_to_use.close()
 
-    def _extract_metadata(self, object_data: ObjectCreate) -> Dict[str, Any]:
+    def _extract_metadata(self, object_data: ObjectCreate) -> dict[str, Any]:
         """
         Extract type-specific metadata from object creation data.
 
@@ -164,7 +157,7 @@ class ObjectsRepository:
             object_data: Object creation data
 
         Returns:
-            Dict[str, Any]: Metadata dictionary
+            dict[str, Any]: Metadata dictionary
         """
         metadata = {}
 
@@ -224,7 +217,7 @@ class ObjectsRepository:
     # Read
     # ========================================================================
 
-    async def get_object_by_id(self, object_id: UUID, session: AsyncSession | None = None) -> Optional[ObjectResponse]:
+    async def get_object_by_id(self, object_id: UUID, session: AsyncSession | None = None) -> ObjectResponse | None:
         """
         Get an object by ID.
 
@@ -254,10 +247,10 @@ class ObjectsRepository:
         space_id: UUID,
         skip: int = 0,
         limit: int = 100,
-        object_type: Optional[ObjectType] = None,
-        tags: Optional[List[str]] = None,
-        search_query: Optional[str] = None,
-        sort_by: Optional[str] = None,
+        object_type: ObjectType | None = None,
+        tags: list[str] | None = None,
+        search_query: str | None = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
         session: AsyncSession | None = None,
     ) -> ObjectList:
@@ -325,7 +318,7 @@ class ObjectsRepository:
             if not external:
                 await session_to_use.close()
 
-    async def get_objects_by_ids(self, object_ids: List[UUID], session: AsyncSession | None = None) -> List[ObjectResponse]:
+    async def get_objects_by_ids(self, object_ids: list[UUID], session: AsyncSession | None = None) -> list[ObjectResponse]:
         """
         Get multiple objects by their IDs.
 
@@ -333,7 +326,7 @@ class ObjectsRepository:
             object_ids: List of object UUIDs
 
         Returns:
-            List[ObjectResponse]: List of found objects
+            list[ObjectResponse]: List of found objects
 
         """
         session_to_use, external = self._get_session(session)
@@ -435,9 +428,9 @@ class ObjectsRepository:
     async def search_objects(
         self,
         search_query: str,
-        tags: Optional[List[str]] = None,
-        object_type: Optional[ObjectType] = None,
-        space_id: Optional[UUID] = None,
+        tags: list[str] | None = None,
+        object_type: ObjectType | None = None,
+        space_id: UUID | None = None,
         skip: int = 0,
         limit: int = 100,
         session: AsyncSession | None = None
@@ -494,7 +487,7 @@ class ObjectsRepository:
         object_id: UUID,
         object_data: ObjectUpdate,
         session: AsyncSession | None = None
-    ) -> Optional[ObjectResponse]:
+    ) -> ObjectResponse | None:
         """
         Update an existing object.
 
@@ -596,7 +589,7 @@ class ObjectsRepository:
         object_id: UUID,
         thumbnail_url: str,
         session: AsyncSession | None = None
-    ) -> Optional[ObjectResponse]:
+    ) -> ObjectResponse | None:
         """
         Update the thumbnail URL for an object.
 
@@ -737,9 +730,9 @@ class ObjectsRepository:
     async def reorder_objects(
         self,
         space_id: UUID,
-        object_ids: List[UUID],
+        object_ids: list[UUID],
         session: AsyncSession | None = None
-    ) -> List[ObjectResponse]:
+    ) -> list[ObjectResponse]:
         """
         Reorder objects on an space.
 
@@ -748,7 +741,7 @@ class ObjectsRepository:
             object_ids: Ordered list of object UUIDs
 
         Returns:
-            List[ObjectResponse]: Reordered objects
+            list[ObjectResponse]: Reordered objects
 
         Raises:
             ValueError: If object IDs don't match space's objects
@@ -891,11 +884,11 @@ class ObjectsRepository:
     def _compute_display_fields(
         self,
         default_title: str,
-        custom_title: Optional[str],
-        default_description: Optional[str],
-        custom_description: Optional[str],
-        fallback_title: Optional[str] = None,
-    ) -> tuple[str, Optional[str]]:
+        custom_title: str | None,
+        default_description: str | None,
+        custom_description: str | None,
+        fallback_title: str | None = None,
+    ) -> tuple[str, str | None]:
         """
         Resolve display title/description using custom overrides when present,
         always returning a non-empty title.

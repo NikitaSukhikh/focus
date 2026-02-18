@@ -4,7 +4,6 @@ Undo Event Repository
 Handles database operations for undo/redo events.
 """
 
-from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import select, and_, desc, asc, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,7 +44,7 @@ class UndoEventRepository:
         await self.session.refresh(event)
         return event
 
-    async def get_last_undoable_event(self, space_id: str) -> Optional[UndoEvent]:
+    async def get_last_undoable_event(self, space_id: str) -> UndoEvent | None:
         """Get the last event that can be undone (is_undone=False)."""
         stmt = (
             select(UndoEvent)
@@ -57,7 +56,7 @@ class UndoEventRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_last_redoable_event(self, space_id: str) -> Optional[UndoEvent]:
+    async def get_last_redoable_event(self, space_id: str) -> UndoEvent | None:
         """Get the last event that can be redone (is_undone=True)."""
         stmt = (
             select(UndoEvent)
@@ -69,7 +68,7 @@ class UndoEventRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def mark_as_undone(self, event_id: str) -> Optional[UndoEvent]:
+    async def mark_as_undone(self, event_id: str) -> UndoEvent | None:
         """Mark an event as undone."""
         stmt = select(UndoEvent).where(UndoEvent.id == event_id)
         result = await self.session.execute(stmt)
@@ -82,7 +81,7 @@ class UndoEventRepository:
 
         return event
 
-    async def mark_as_not_undone(self, event_id: str) -> Optional[UndoEvent]:
+    async def mark_as_not_undone(self, event_id: str) -> UndoEvent | None:
         """Mark an event as not undone (for redo)."""
         stmt = select(UndoEvent).where(UndoEvent.id == event_id)
         result = await self.session.execute(stmt)
@@ -110,7 +109,7 @@ class UndoEventRepository:
         space_id: str,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[UndoEvent]:
+    ) -> list[UndoEvent]:
         """Get undo events for an space with pagination."""
         stmt = (
             select(UndoEvent)

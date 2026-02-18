@@ -6,7 +6,7 @@ global handlers can produce structured responses and log with the right
 severity. Helper functions at the bottom register those handlers on the app.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -24,8 +24,8 @@ class AppError(Exception):
         *,
         status_code: int = 400,
         error_code: str = "app_error",
-        details: Optional[Any] = None,
-        headers: Optional[Dict[str, str]] = None,
+        details: Any | None = None,
+        headers: dict[str, str] | None = None,
         log_level: str = "warning",
     ) -> None:
         super().__init__(message)
@@ -40,28 +40,28 @@ class AppError(Exception):
 class BadRequestError(AppError):
     """Raised for malformed or invalid client input."""
 
-    def __init__(self, message: str, *, error_code: str = "bad_request", details: Optional[Any] = None):
+    def __init__(self, message: str, *, error_code: str = "bad_request", details: Any | None = None):
         super().__init__(message, status_code=400, error_code=error_code, details=details, log_level="warning")
 
 
 class ValidationAppError(AppError):
     """Raised for validation failures."""
 
-    def __init__(self, message: str, *, details: Optional[Any] = None):
+    def __init__(self, message: str, *, details: Any | None = None):
         super().__init__(message, status_code=422, error_code="validation_error", details=details, log_level="warning")
 
 
 class NotFoundError(AppError):
     """Raised when a resource cannot be found."""
 
-    def __init__(self, message: str, *, error_code: str = "not_found", details: Optional[Any] = None):
+    def __init__(self, message: str, *, error_code: str = "not_found", details: Any | None = None):
         super().__init__(message, status_code=404, error_code=error_code, details=details, log_level="warning")
 
 
 class ConflictError(AppError):
     """Raised when a request conflicts with the current state."""
 
-    def __init__(self, message: str, *, error_code: str = "conflict", details: Optional[Any] = None):
+    def __init__(self, message: str, *, error_code: str = "conflict", details: Any | None = None):
         super().__init__(message, status_code=409, error_code=error_code, details=details, log_level="warning")
 
 
@@ -87,7 +87,7 @@ class ServiceUnavailableError(AppError):
         message: str = "Service temporarily unavailable. Please try again later.",
         *,
         error_code: str = "service_unavailable",
-        details: Optional[Any] = None,
+        details: Any | None = None,
     ):
         super().__init__(
             message,

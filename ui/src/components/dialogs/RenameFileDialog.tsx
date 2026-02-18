@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 
 interface RenameFileDialogProps {
@@ -18,6 +19,7 @@ export function RenameFileDialog({
   onClose,
   onRename,
 }: RenameFileDialogProps) {
+  const { t } = useTranslation();
   const [newName, setNewName] = useState(currentName);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -79,7 +81,7 @@ export function RenameFileDialog({
               <Pencil className="w-5 h-5 text-blue-600" />
             </div>
             <h2 className="text-xl font-semibold text-slate-800">
-              Rename File
+              {t('renameFileDialog.title')}
             </h2>
           </div>
           <button
@@ -94,7 +96,7 @@ export function RenameFileDialog({
         <form onSubmit={handleSubmit}>
           <div className="p-6">
             <label htmlFor="rename-input" className="block text-sm font-medium text-slate-700 mb-2">
-              New filename
+              {t('renameFileDialog.newFilenameLabel')}
             </label>
             <input
               id="rename-input"
@@ -102,7 +104,7 @@ export function RenameFileDialog({
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Enter new filename..."
+              placeholder={t('renameFileDialog.placeholder')}
               maxLength={255}
               disabled={isLoading}
               className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
@@ -116,14 +118,14 @@ export function RenameFileDialog({
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={!isValid || !hasChanged || isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Renaming...' : 'Rename'}
+              {isLoading ? t('renameFileDialog.renaming') : t('common.rename')}
             </button>
           </div>
         </form>

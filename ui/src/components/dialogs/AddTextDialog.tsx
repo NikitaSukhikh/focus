@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { X, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 
 interface AddTextDialogProps {
@@ -10,6 +11,7 @@ interface AddTextDialogProps {
 }
 
 export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +94,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <h2 className="text-xl font-semibold text-slate-800">
-              Add Note
+              {t('addTextDialog.title')}
             </h2>
           </div>
           <button
@@ -109,7 +111,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
             {/* Title Input */}
             <div>
               <label htmlFor="add-text-title" className="block text-sm font-medium text-slate-700 mb-2">
-                Title <span className="text-red-500">*</span>
+                {t('addTextDialog.titleLabel')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="add-text-title"
@@ -118,7 +120,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={handleTitleKeyDown}
-                placeholder="Enter note title..."
+                placeholder={t('addTextDialog.titlePlaceholder')}
                 maxLength={400}
                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
@@ -129,7 +131,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
             <div className="flex-1">
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="add-text-content" className="block text-sm font-medium text-slate-700">
-                  Content <span className="text-red-500">*</span>
+                  {t('addTextDialog.contentLabel')} <span className="text-red-500">*</span>
                 </label>
                 <span className={`text-xs ${isOverLimit ? 'text-red-500 font-semibold' : 'text-slate-500'}`}>
                   {charCount.toLocaleString()} / {maxChars.toLocaleString()}
@@ -141,7 +143,7 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={handleContentKeyDown}
-                placeholder="Write your note here... (Ctrl+Enter to save)"
+                placeholder={t('addTextDialog.contentPlaceholder')}
                 rows={12}
                 className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 resize-none font-mono text-sm ${
                   isOverLimit
@@ -160,14 +162,14 @@ export function AddTextDialog({ isOpen, onClose, onAdd }: AddTextDialogProps) {
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || isOverLimit}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Note
+              {t('addTextDialog.createNote')}
             </button>
           </div>
         </form>

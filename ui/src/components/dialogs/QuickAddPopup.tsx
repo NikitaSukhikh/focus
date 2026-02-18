@@ -1,6 +1,7 @@
 // QuickAddPopup renders keyboard-first quick actions and mirrors center-pane focus ring colors per action type.
 import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { Clipboard, FilePlus, Plus, BookOpen, Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { tileRingOutline, TILE_RING } from '@/styles/tileStyles';
 
@@ -26,6 +27,7 @@ interface Action {
 }
 
 export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWebArticle, onPaste, position }: QuickAddPopupProps) {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties | null>(null);
@@ -33,12 +35,12 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
 
   const actions: Action[] = useMemo(
     () => [
-      { type: 'files', label: 'Add File', icon: <FilePlus size={16} />, handler: onAddFiles, focusRing: 'file' },
-      { type: 'link', label: 'Add Link', icon: <Plus size={16} />, handler: onAddLink, focusRing: 'link' },
-      { type: 'web_article', label: 'Add Web Article', icon: <BookOpen size={16} />, handler: onAddWebArticle, focusRing: 'link' },
-      { type: 'paste', label: 'Paste', icon: <Clipboard size={16} />, handler: onPaste, focusRing: 'neutral' },
+      { type: 'files', label: t('quickAddPopup.addFile'), icon: <FilePlus size={16} />, handler: onAddFiles, focusRing: 'file' },
+      { type: 'link', label: t('quickAddPopup.addLink'), icon: <Plus size={16} />, handler: onAddLink, focusRing: 'link' },
+      { type: 'web_article', label: t('quickAddPopup.addWebArticle'), icon: <BookOpen size={16} />, handler: onAddWebArticle, focusRing: 'link' },
+      { type: 'paste', label: t('quickAddPopup.paste'), icon: <Clipboard size={16} />, handler: onPaste, focusRing: 'neutral' },
     ],
-    [onAddFiles, onAddLink, onAddWebArticle, onPaste]
+    [onAddFiles, onAddLink, onAddWebArticle, onPaste, t]
   );
 
   useEffect(() => {
@@ -168,7 +170,7 @@ export function QuickAddPopup({ isOpen, onClose, onAddFiles, onAddLink, onAddWeb
             <span className="w-4 h-4 flex items-center justify-center shrink-0" aria-hidden="true">
               <Pencil size={14} />
             </span>
-            <span className="font-medium">Double click anywhere on the center pane to add text note</span>
+            <span className="font-medium">{t('quickAddPopup.doubleClickHint')}</span>
           </div>
         </div>
       </div>

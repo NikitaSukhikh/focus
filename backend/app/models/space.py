@@ -5,7 +5,7 @@ Data models for Space entities - workspaces that contain objects.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
@@ -20,18 +20,18 @@ class SpaceBase(BaseModel):
         description="Space name",
         examples=["Work Projects", "Personal", "Research"]
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None,
         max_length=500,
         description="Optional space description"
     )
-    icon: Optional[str] = Field(
+    icon: str | None = Field(
         None,
         max_length=50,
         description="Optional icon identifier or emoji",
         examples=["🏝️", "work", "folder"]
     )
-    color: Optional[str] = Field(
+    color: str | None = Field(
         None,
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="Optional color in hex format",
@@ -53,7 +53,7 @@ class SpaceBase(BaseModel):
 
     @field_validator("description")
     @classmethod
-    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+    def validate_description(cls, v: str | None) -> str | None:
         """Validate and normalize description."""
         if v is not None:
             v = v.strip()
@@ -72,7 +72,7 @@ class SpaceCreate(SpaceBase):
 
     # Optional client-provided ID (UUID v4 format)
     # If not provided, backend will generate one
-    id: Optional[UUID] = None
+    id: UUID | None = None
 
     # All other fields inherited from SpaceBase
     # position is handled server-side (append to end)
@@ -97,28 +97,28 @@ class SpaceUpdate(BaseModel):
     All fields are optional to allow partial updates.
     """
 
-    name: Optional[str] = Field(
+    name: str | None = Field(
         None,
         min_length=1,
         max_length=100,
         description="Space name"
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None,
         max_length=500,
         description="Space description"
     )
-    icon: Optional[str] = Field(
+    icon: str | None = Field(
         None,
         max_length=50,
         description="Icon identifier or emoji"
     )
-    color: Optional[str] = Field(
+    color: str | None = Field(
         None,
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="Color in hex format"
     )
-    position: Optional[int] = Field(
+    position: int | None = Field(
         None,
         ge=0,
         description="Position in the spaces list (0-based)"
@@ -126,7 +126,7 @@ class SpaceUpdate(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+    def validate_name(cls, v: str | None) -> str | None:
         """Validate and normalize space name."""
         if v is not None:
             v = v.strip()
@@ -136,7 +136,7 @@ class SpaceUpdate(BaseModel):
 
     @field_validator("description")
     @classmethod
-    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+    def validate_description(cls, v: str | None) -> str | None:
         """Validate and normalize description."""
         if v is not None:
             v = v.strip()
@@ -211,8 +211,8 @@ class SpaceSummary(BaseModel):
 
     id: UUID = Field(..., description="Unique space identifier")
     name: str = Field(..., description="Space name")
-    icon: Optional[str] = Field(None, description="Icon identifier or emoji")
-    color: Optional[str] = Field(None, description="Color in hex format")
+    icon: str | None = Field(None, description="Icon identifier or emoji")
+    color: str | None = Field(None, description="Color in hex format")
     object_count: int = Field(default=0, ge=0, description="Number of objects")
 
     model_config = ConfigDict(
@@ -236,7 +236,7 @@ class SpaceList(BaseModel):
     Used in GET /api/spaces endpoint.
     """
 
-    spaces: List[SpaceResponse] = Field(
+    spaces: list[SpaceResponse] = Field(
         default_factory=list,
         description="List of spaces"
     )
@@ -286,7 +286,7 @@ class SpaceReorder(BaseModel):
     Used in POST /api/spaces/reorder endpoint.
     """
 
-    space_ids: List[UUID] = Field(
+    space_ids: list[UUID] = Field(
         ...,
         min_length=1,
         description="Ordered list of space IDs in desired sequence"
@@ -294,7 +294,7 @@ class SpaceReorder(BaseModel):
 
     @field_validator("space_ids")
     @classmethod
-    def validate_unique_ids(cls, v: List[UUID]) -> List[UUID]:
+    def validate_unique_ids(cls, v: list[UUID]) -> list[UUID]:
         """Ensure all space IDs are unique."""
         if len(v) != len(set(v)):
             raise ValueError("Duplicate space IDs are not allowed")
@@ -381,14 +381,14 @@ class SpaceShareItem(BaseModel):
     type: str = Field(..., description="Raw object type (link, web_article, file, text)")
     category: str = Field(..., description="Share category key (links, web_articles, files, text_notes)")
     title: str = Field(..., description="Object title")
-    share_data: Optional[str] = Field(
+    share_data: str | None = Field(
         None,
         description="Primary share payload: URL for links/articles, text for notes, file path for files"
     )
-    file_path: Optional[str] = Field(None, description="File path for file objects")
-    file_size_bytes: Optional[int] = Field(None, ge=0, description="Resolved file size in bytes (if available)")
-    file_exists: Optional[bool] = Field(None, description="Whether the source file exists on disk")
-    is_too_large: Optional[bool] = Field(None, description="True when file is larger than share size limit")
+    file_path: str | None = Field(None, description="File path for file objects")
+    file_size_bytes: int | None = Field(None, ge=0, description="Resolved file size in bytes (if available)")
+    file_exists: bool | None = Field(None, description="Whether the source file exists on disk")
+    is_too_large: bool | None = Field(None, description="True when file is larger than share size limit")
 
 
 class SpaceShareExportResponse(BaseModel):
@@ -407,14 +407,14 @@ class SpaceShareExportResponse(BaseModel):
         ...,
         description="Flat share content where each item is separated by an empty line (\\n\\n)"
     )
-    summary_lines: List[str] = Field(default_factory=list, description="Human-readable summary rows")
-    warnings: List[str] = Field(default_factory=list, description="Warnings for oversized/missing files")
-    first_share_url: Optional[str] = Field(
+    summary_lines: list[str] = Field(default_factory=list, description="Human-readable summary rows")
+    warnings: list[str] = Field(default_factory=list, description="Warnings for oversized/missing files")
+    first_share_url: str | None = Field(
         None,
         description="First URL in payload, useful as fallback for URL-based social share forms"
     )
-    items: List[SpaceShareItem] = Field(default_factory=list, description="Normalized ordered share items")
-    organized_data: Dict[str, Dict[str, Any]] = Field(
+    items: list[SpaceShareItem] = Field(default_factory=list, description="Normalized ordered share items")
+    organized_data: dict[str, dict[str, Any]] = Field(
         default_factory=dict,
         description="Grouped JSON payload with numbered keys (link_1, file_1, text_note_1, etc.)"
     )

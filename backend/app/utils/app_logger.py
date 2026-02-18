@@ -7,7 +7,7 @@ installation, startup, runtime events, and errors in production.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 from datetime import datetime
 import sys
 
@@ -67,8 +67,8 @@ class AppLogger:
     def log_space_operation(
         self,
         operation: str,
-        space_id: Optional[str] = None,
-        space_name: Optional[str] = None,
+        space_id: str | None = None,
+        space_name: str | None = None,
         status: str = "success",
         **kwargs: Any
     ) -> None:
@@ -92,8 +92,8 @@ class AppLogger:
     def log_object_operation(
         self,
         operation: str,
-        object_id: Optional[str] = None,
-        object_type: Optional[str] = None,
+        object_id: str | None = None,
+        object_type: str | None = None,
         status: str = "success",
         **kwargs: Any
     ) -> None:
@@ -117,7 +117,7 @@ class AppLogger:
     def log_storage_operation(
         self,
         operation: str,
-        path: Optional[str] = None,
+        path: str | None = None,
         status: str = "success",
         **kwargs: Any
     ) -> None:
@@ -179,7 +179,7 @@ class AppLogger:
 
 
 # Global app logger instance
-_app_logger: Optional[AppLogger] = None
+_app_logger: AppLogger | None = None
 
 
 def get_app_logger(name: str = "app") -> AppLogger:

@@ -6,7 +6,6 @@ Extracts text content from files for preview display.
 """
 
 from pathlib import Path
-from typing import Optional, Tuple
 import chardet
 
 from app.core.config import get_settings
@@ -36,9 +35,9 @@ class TextPreviewService:
     def get_text_preview(
         self,
         file_path: str,
-        max_lines: Optional[int] = None,
+        max_lines: int | None = None,
         offset: int = 0
-    ) -> Tuple[str, bool]:
+    ) -> tuple[str, bool]:
         """
         Get text preview from a file with lazy loading support.
 
@@ -48,7 +47,7 @@ class TextPreviewService:
             offset: Line offset for pagination
 
         Returns:
-            Tuple[str, bool]: (preview_text, has_more)
+            tuple[str, bool]: (preview_text, has_more)
                 - preview_text: The extracted text
                 - has_more: Whether there are more lines available
 
@@ -80,9 +79,9 @@ class TextPreviewService:
         self,
         path: Path,
         encoding: str,
-        max_lines: Optional[int],
+        max_lines: int | None,
         offset: int
-    ) -> Tuple[str, bool]:
+    ) -> tuple[str, bool]:
         """
         Load entire file and return preview.
 
@@ -93,7 +92,7 @@ class TextPreviewService:
             offset: Line offset
 
         Returns:
-            Tuple[str, bool]: (preview_text, has_more)
+            tuple[str, bool]: (preview_text, has_more)
         """
         try:
             # Read entire file
@@ -133,9 +132,9 @@ class TextPreviewService:
         self,
         path: Path,
         encoding: str,
-        max_lines: Optional[int],
+        max_lines: int | None,
         offset: int
-    ) -> Tuple[str, bool]:
+    ) -> tuple[str, bool]:
         """
         Load file in chunks for large files (lazy loading).
 
@@ -146,7 +145,7 @@ class TextPreviewService:
             offset: Line offset
 
         Returns:
-            Tuple[str, bool]: (preview_text, has_more)
+            tuple[str, bool]: (preview_text, has_more)
         """
         try:
             lines = []

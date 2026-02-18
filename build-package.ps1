@@ -198,8 +198,36 @@ if (-not $SkipFrontend) {
     Write-Log ""
 }
 
-# Step 4: Create distributable package
-Write-Log "[4/4] Finalizing package..." -Color Yellow
+# Step 4: Build Inno Setup installer
+Write-Log "[4/5] Building installer with Inno Setup..." -Color Yellow
+
+$isccPaths = @(
+    "C:\Program Files (x86)\Inno Setup 6\iscc.exe",
+    "C:\Program Files\Inno Setup 6\iscc.exe"
+)
+$iscc = $isccPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $iscc) {
+    Write-Log "  WARNING: Inno Setup not found. Skipping installer build." -Color Yellow
+    Write-Log "  Install from: https://jrsoftware.org/isdl.php" -Color Yellow
+} else {
+    # Ensure dist output dir exists
+    if (-not (Test-Path "dist")) {
+        New-Item -ItemType Directory -Path "dist" -Force | Out-Null
+    }
+    Write-Log "  - Running iscc.exe..." -Color Gray
+    Run-Command $iscc @("installer\focus.iss")
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "  WARNING: Inno Setup build failed (exit $LASTEXITCODE)" -Color Red
+    } else {
+        Write-Log "  Installer built successfully!" -Color Green
+    }
+}
+Write-Log ""
+
+# Step 5: Create distributable package
+Write-Log "[5/5] Finalizing package..." -Color Yellow
 
 # Check outputs
 $packageDir = "ui\out\Focus-win32-x64"
@@ -227,6 +255,14 @@ Write-Log "============================================" -Color Green
 Write-Log ""
 Write-Log "Output:" -Color Cyan
 Write-Log "  Portable: ui\out\Focus-win32-x64\" -Color White
+
+$innoInstaller = Get-ChildItem -Path "dist" -Filter "FocusSetup-*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($innoInstaller) {
+    $innoSize = [math]::Round($innoInstaller.Length / 1MB, 2)
+    Write-Log "  Installer: $($innoInstaller.FullName) ($innoSize MB)" -Color Green
+} else {
+    Write-Log "  Installer: NOT FOUND in dist\ (Inno Setup may have failed)" -Color Red
+}
 Write-Log ""
 
 # Packaging complete - portable version available in ui\out\Focus-win32-x64

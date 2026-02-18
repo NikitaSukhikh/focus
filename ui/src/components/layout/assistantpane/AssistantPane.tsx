@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { Message } from '@/features/assistant/models/assistant';
 import { MessageList } from '@/features/assistant/components/MessageList';
@@ -14,6 +15,7 @@ interface AssistantPaneProps {
 
 // AssistantPane renders the right-side assistant chat column with message history and input when the assistant panel is open.
 export function AssistantPane({ isOpen, onClose, onResizeStart }: AssistantPaneProps) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
 
@@ -55,7 +57,7 @@ export function AssistantPane({ isOpen, onClose, onResizeStart }: AssistantPaneP
                 textShadow: '0 0 10px var(--glow)',
               }}
             >
-              Assistant
+              {t('assistantPane.title')}
             </h2>
           </div>
           <button
@@ -75,7 +77,7 @@ export function AssistantPane({ isOpen, onClose, onResizeStart }: AssistantPaneP
               e.currentTarget.style.color = 'var(--color-text-secondary)';
               e.currentTarget.style.boxShadow = 'none';
             }}
-            title="Close assistant"
+            title={t('assistantPane.close')}
           >
             <X size={18} />
           </button>
@@ -90,7 +92,7 @@ export function AssistantPane({ isOpen, onClose, onResizeStart }: AssistantPaneP
       <AssistantInput
         onSendMessage={handleSendMessage}
         disabled={isSending}
-        placeholder="Ask me anything..."
+        placeholder={t('assistantPane.inputPlaceholder')}
       />
       </aside>
     </div>

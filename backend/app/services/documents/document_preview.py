@@ -6,7 +6,6 @@ Supports: .docx, .doc, .odt
 """
 
 from pathlib import Path
-from typing import Optional
 import hashlib
 import zipfile
 
@@ -407,7 +406,7 @@ class DocumentPreviewService:
         path = Path(file_path)
         return path.suffix.lower() in self.SUPPORTED_DOC_FORMATS
 
-    def get_cached_preview(self, file_path: str) -> Optional[str]:
+    def get_cached_preview(self, file_path: str) -> str | None:
         """
         Get cached preview path if it exists.
 
@@ -415,7 +414,7 @@ class DocumentPreviewService:
             file_path: Path to the original file
 
         Returns:
-            Optional[str]: Path to cached preview, or None if not cached
+            str | None: Path to cached preview, or None if not cached
         """
         cache_key = self._generate_cache_key(file_path)
         html_path = self.cache_dir / f"{cache_key}.html"
@@ -424,7 +423,7 @@ class DocumentPreviewService:
             return str(html_path)
         return None
 
-    def clear_cache(self, file_path: Optional[str] = None) -> int:
+    def clear_cache(self, file_path: str | None = None) -> int:
         """
         Clear document preview cache.
 

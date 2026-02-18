@@ -6,7 +6,7 @@ Different object types have different preview data structures.
 """
 
 from datetime import datetime
-from typing import List, Optional, Union, Dict, Any
+from typing import Any, TypeAlias
 from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl, ConfigDict
 
@@ -19,8 +19,8 @@ class PreviewBase(BaseModel):
     object_id: UUID = Field(..., description="ID of the object being previewed")
     object_type: ObjectType = Field(..., description="Type of the object")
     title: str = Field(..., description="Object title")
-    description: Optional[str] = Field(None, description="Object description")
-    tags: List[str] = Field(default_factory=list, description="Object tags")
+    description: str | None = Field(None, description="Object description")
+    tags: list[str] = Field(default_factory=list, description="Object tags")
 
 
 # ============================================================================
@@ -32,14 +32,14 @@ class LinkPreview(PreviewBase):
 
     object_type: ObjectType = Field(default=ObjectType.LINK, description="Object type")
     url: str = Field(..., description="Link URL")
-    favicon_url: Optional[str] = Field(None, description="Favicon URL")
-    thumbnail_url: Optional[str] = Field(None, description="Thumbnail/preview image URL")
-    site_name: Optional[str] = Field(None, description="Website name")
+    favicon_url: str | None = Field(None, description="Favicon URL")
+    thumbnail_url: str | None = Field(None, description="Thumbnail/preview image URL")
+    site_name: str | None = Field(None, description="Website name")
 
     # Open Graph metadata (if fetched)
-    og_title: Optional[str] = Field(None, description="Open Graph title")
-    og_description: Optional[str] = Field(None, description="Open Graph description")
-    og_image: Optional[str] = Field(None, description="Open Graph image URL")
+    og_title: str | None = Field(None, description="Open Graph title")
+    og_description: str | None = Field(None, description="Open Graph description")
+    og_image: str | None = Field(None, description="Open Graph image URL")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -71,21 +71,21 @@ class FilePreview(PreviewBase):
     object_type: ObjectType = Field(default=ObjectType.FILE, description="Object type")
     file_path: str = Field(..., description="File path")
     file_name: str = Field(..., description="File name")
-    file_extension: Optional[str] = Field(None, description="File extension")
-    file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
-    file_size_human: Optional[str] = Field(None, description="Human-readable file size")
-    mime_type: Optional[str] = Field(None, description="MIME type")
+    file_extension: str | None = Field(None, description="File extension")
+    file_size: int | None = Field(None, ge=0, description="File size in bytes")
+    file_size_human: str | None = Field(None, description="Human-readable file size")
+    mime_type: str | None = Field(None, description="MIME type")
 
     # Preview data
-    thumbnail_url: Optional[str] = Field(None, description="Cached thumbnail URL/path")
-    text_preview: Optional[str] = Field(
+    thumbnail_url: str | None = Field(None, description="Cached thumbnail URL/path")
+    text_preview: str | None = Field(
         None,
         description="Text preview (first N lines for text files)"
     )
 
     # File metadata
-    created_date: Optional[datetime] = Field(None, description="File creation date")
-    modified_date: Optional[datetime] = Field(None, description="File modification date")
+    created_date: datetime | None = Field(None, description="File creation date")
+    modified_date: datetime | None = Field(None, description="File modification date")
     is_accessible: bool = Field(
         default=True,
         description="Whether the file is accessible"
@@ -128,29 +128,29 @@ class GoogleDrivePreview(PreviewBase):
     )
     drive_file_id: str = Field(..., description="Google Drive file ID")
     drive_file_name: str = Field(..., description="File name in Drive")
-    mime_type: Optional[str] = Field(None, description="MIME type")
-    file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
-    file_size_human: Optional[str] = Field(None, description="Human-readable file size")
+    mime_type: str | None = Field(None, description="MIME type")
+    file_size: int | None = Field(None, ge=0, description="File size in bytes")
+    file_size_human: str | None = Field(None, description="Human-readable file size")
 
     # Drive-specific URLs
-    web_view_link: Optional[str] = Field(
+    web_view_link: str | None = Field(
         None,
         description="URL to view file in Google Drive"
     )
-    web_content_link: Optional[str] = Field(
+    web_content_link: str | None = Field(
         None,
         description="URL to download file content"
     )
-    thumbnail_link: Optional[str] = Field(
+    thumbnail_link: str | None = Field(
         None,
         description="Drive-provided thumbnail URL"
     )
-    icon_link: Optional[str] = Field(None, description="File type icon URL")
+    icon_link: str | None = Field(None, description="File type icon URL")
 
     # Metadata
-    created_time: Optional[datetime] = Field(None, description="Creation time in Drive")
-    modified_time: Optional[datetime] = Field(None, description="Last modified time")
-    owners: List[str] = Field(default_factory=list, description="File owners")
+    created_time: datetime | None = Field(None, description="Creation time in Drive")
+    modified_time: datetime | None = Field(None, description="Last modified time")
+    owners: list[str] = Field(default_factory=list, description="File owners")
     shared: bool = Field(default=False, description="Whether the file is shared")
 
     # Connection status
@@ -197,20 +197,20 @@ class GmailPreview(PreviewBase):
     message_id: str = Field(..., description="Gmail message ID")
     subject: str = Field(..., description="Email subject")
     sender: str = Field(..., description="Sender email address")
-    sender_name: Optional[str] = Field(None, description="Sender display name")
-    recipients: List[str] = Field(default_factory=list, description="Recipient emails")
+    sender_name: str | None = Field(None, description="Sender display name")
+    recipients: list[str] = Field(default_factory=list, description="Recipient emails")
 
     # Email content
-    snippet: Optional[str] = Field(None, description="Email snippet/preview")
-    body_preview: Optional[str] = Field(
+    snippet: str | None = Field(None, description="Email snippet/preview")
+    body_preview: str | None = Field(
         None,
         max_length=500,
         description="Preview of email body (first N characters)"
     )
 
     # Metadata
-    received_date: Optional[datetime] = Field(None, description="Date received")
-    labels: List[str] = Field(default_factory=list, description="Gmail labels")
+    received_date: datetime | None = Field(None, description="Date received")
+    labels: list[str] = Field(default_factory=list, description="Gmail labels")
     has_attachments: bool = Field(default=False, description="Whether email has attachments")
     is_unread: bool = Field(default=False, description="Whether email is unread")
     is_starred: bool = Field(default=False, description="Whether email is starred")
@@ -287,13 +287,13 @@ class TextPreview(PreviewBase):
 # ============================================================================
 
 # Union type for preview responses
-PreviewResponse = Union[
-    LinkPreview,
-    FilePreview,
-    GoogleDrivePreview,
-    GmailPreview,
-    TextPreview
-]
+PreviewResponse: TypeAlias = (
+    LinkPreview
+    | FilePreview
+    | GoogleDrivePreview
+    | GmailPreview
+    | TextPreview
+)
 
 
 # ============================================================================
@@ -331,19 +331,19 @@ class ThumbnailRequest(BaseModel):
     """Request schema for generating thumbnails."""
 
     object_id: UUID = Field(..., description="ID of the object")
-    width: Optional[int] = Field(
+    width: int | None = Field(
         None,
         ge=50,
         le=1000,
         description="Desired thumbnail width"
     )
-    height: Optional[int] = Field(
+    height: int | None = Field(
         None,
         ge=50,
         le=1000,
         description="Desired thumbnail height"
     )
-    quality: Optional[int] = Field(
+    quality: int | None = Field(
         None,
         ge=1,
         le=100,

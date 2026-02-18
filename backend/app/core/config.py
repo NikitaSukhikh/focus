@@ -5,7 +5,7 @@ This module provides centralized configuration management for the Focus backend,
 loading settings from environment variables with validation and type checking.
 """
 
-from typing import List, Literal, Optional
+from typing import Any, Literal
 from pathlib import Path
 from pydantic import Field, field_validator, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -31,7 +31,7 @@ class ServerSettings(BaseSettings):
 class CORSSettings(BaseSettings):
     """CORS configuration settings."""
 
-    origins: List[str] = Field(
+    origins: list[str] = Field(
         default=["*"],
         description="Allowed CORS origins (use * for Electron apps with file:// origin)"
     )
@@ -39,11 +39,11 @@ class CORSSettings(BaseSettings):
         default=False,
         description="Allow credentials in CORS requests (must be False when origins is *)"
     )
-    allow_methods: List[str] = Field(
+    allow_methods: list[str] = Field(
         default=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         description="Allowed HTTP methods"
     )
-    allow_headers: List[str] = Field(
+    allow_headers: list[str] = Field(
         default=["*"],
         description="Allowed HTTP headers"
     )
@@ -55,7 +55,7 @@ class CORSSettings(BaseSettings):
 
     @field_validator("origins", mode="before")
     @classmethod
-    def parse_origins(cls, v):
+    def parse_origins(cls, v: Any) -> list[str]:
         """Parse comma-separated origins string into list."""
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
@@ -143,7 +143,7 @@ class GoogleOAuthSettings(BaseSettings):
         default="http://localhost:8000/api/google/auth/callback",
         description="OAuth redirect URI"
     )
-    scopes: List[str] = Field(
+    scopes: list[str] = Field(
         default=[
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/drive.readonly",
@@ -159,7 +159,7 @@ class GoogleOAuthSettings(BaseSettings):
 
     @field_validator("scopes", mode="before")
     @classmethod
-    def parse_scopes(cls, v):
+    def parse_scopes(cls, v: Any) -> list[str]:
         """Parse space-separated or comma-separated scopes string into list."""
         if isinstance(v, str):
             # Try space-separated first (OAuth standard)
@@ -363,7 +363,7 @@ class SecuritySettings(BaseSettings):
 
     @field_validator("secret_key")
     @classmethod
-    def validate_secret_key(cls, v):
+    def validate_secret_key(cls, v: str) -> str:
         """Validate secret key is not the default value in production."""
         if v == "change-this-to-a-random-secret-key-in-production":
             # This will be checked in the main Settings class
@@ -372,7 +372,7 @@ class SecuritySettings(BaseSettings):
 
     @field_validator("encryption_key")
     @classmethod
-    def validate_encryption_key(cls, v):
+    def validate_encryption_key(cls, v: str) -> str:
         """
         Ensure encryption key is sufficiently strong.
         Accepts either a Fernet urlsafe base64 key (44 chars ending with '=') or a raw string >=32 chars (derives).
@@ -605,7 +605,7 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:

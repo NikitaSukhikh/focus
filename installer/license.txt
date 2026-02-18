@@ -1,0 +1,5 @@
+Focus Desktop Application
+Copyright (c) 2024 Nikita Sukhikh. All rights reserved.
+
+By installing this software you agree to the Terms of Service available at
+https://focus.app/terms and the Privacy Policy at https://focus.app/privacy.

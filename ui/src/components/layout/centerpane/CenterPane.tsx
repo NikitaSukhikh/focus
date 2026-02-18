@@ -1,10 +1,11 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tile } from '@/components/layout/centerpane/tile/Tile';
-import { ArrowAnchorRef, ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon, FocusRingEdge } from '@/components/layout/centerpane/types';
+import { ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon } from '@/components/layout/centerpane/types';
 import { useCenterPaneLogic } from '@/components/layout/centerpane/useCenterPaneLogic';
-import { objectsApi } from '@/api/objects';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { getVideoEmbed } from '@/utils/videoEmbeds';
+import { detectFileType, isHtmlCodeFile } from '@/utils/fileTypes';
 import { Z_INDEX } from '@/constants/zIndex';
 import { AddLinkDialog } from '@/components/dialogs/AddLinkDialog';
 import { AddTextDialog } from '@/components/dialogs/AddTextDialog';
@@ -17,7 +18,7 @@ import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchF
 import { useSearchStore } from '@/stores/searchStore';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
-import { buildArrowPath, countArrowSegments } from '@/components/layout/centerpane/arrowGeometry';
+import { buildArrowPath } from '@/components/layout/centerpane/arrowGeometry';
 import { TILE_RING } from '@/constants/objectsDimensions';
 import { TILE_RING_COLORS } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
@@ -41,34 +42,16 @@ const toTileRingType = (iconType: DroppedIcon['type']): TileRingType => {
   return 'file';
 };
 
-const isSameAnchorRef = (a?: ArrowAnchorRef, b?: ArrowAnchorRef) => {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  return a.tileId === b.tileId && a.edge === b.edge && a.edgeIndex === b.edgeIndex;
-};
-
-const toArrowMetadata = (arrow: ArrowSegment) => ({
-  arrow: true,
-  start_x: arrow.start.x,
-  start_y: arrow.start.y,
-  end_x: arrow.end.x,
-  end_y: arrow.end.y,
-  start_tile_id: arrow.startAnchor?.tileId ?? null,
-  start_anchor_edge: arrow.startAnchor?.edge ?? null,
-  start_anchor_index: arrow.startAnchor?.edgeIndex ?? null,
-  end_tile_id: arrow.endAnchor?.tileId ?? null,
-  end_anchor_edge: arrow.endAnchor?.edge ?? null,
-  end_anchor_index: arrow.endAnchor?.edgeIndex ?? null,
-});
-
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
+  const { t } = useTranslation();
   const zoom = zoomProp ?? 1;
   const paneRef = useRef<HTMLDivElement | null>(null);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const FILE_PREVIEW_DELAY_MS = 300;
   const TEXT_PREVIEW_DELAY_MS = 180;
+  const PLAIN_TEXT_FILE_PREVIEW_ENABLED = false;
 
   const logic = useCenterPaneLogic(paneRef, zoom);
   const selectedSpaceId = logic.selectedSpace?.id;
@@ -290,162 +273,19 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     [iconsById, tileMetricsById]
   );
 
-  const getTileAnchorCandidates = useCallback(
-    (tileId: string): Array<{ anchor: ArrowAnchorRef; point: { x: number; y: number } }> => {
-      const icon = iconsById.get(tileId);
-      const metrics = tileMetricsById[tileId];
-      if (!icon || !metrics) return [];
-      if (metrics.width <= 0 || metrics.height <= 0) return [];
-
-      const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
-      const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
-      const ringOffset = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
-      const safeContentWidth = Math.max(1, metrics.width - (metrics.contentInset * 2));
-      const safeContentHeight = Math.max(1, metrics.height - (metrics.contentInset * 2));
-      const ringLeft = originLeft + metrics.contentInset - ringOffset;
-      const ringTop = originTop + metrics.contentInset - ringOffset;
-      const ringWidth = safeContentWidth + (ringOffset * 2);
-      const ringHeight = safeContentHeight + (ringOffset * 2);
-
-      const candidates: Array<{ anchor: ArrowAnchorRef; point: { x: number; y: number } }> = [];
-      for (let edgeIndex = 0; edgeIndex < FOCUS_RING_DOTS_PER_EDGE; edgeIndex += 1) {
-        const fraction = (edgeIndex + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1);
-        const edgeX = ringLeft + (ringWidth * fraction);
-        const edgeY = ringTop + (ringHeight * fraction);
-        const push = (edge: FocusRingEdge, x: number, y: number) => {
-          candidates.push({
-            anchor: { tileId, edge, edgeIndex },
-            point: { x, y },
-          });
-        };
-        push('top', edgeX, ringTop);
-        push('right', ringLeft + ringWidth, edgeY);
-        push('bottom', edgeX, ringTop + ringHeight);
-        push('left', ringLeft, edgeY);
-      }
-      return candidates;
-    },
-    [iconsById, tileMetricsById]
-  );
-
   const renderArrowSegments: ArrowSegment[] = useMemo(
     () =>
       allArrowSegments.map((segment) => {
         const resolvedStart = resolveAnchorFromTileState(segment.startAnchor, segment.start);
         const resolvedEnd = resolveAnchorFromTileState(segment.endAnchor, segment.end);
-
-        if (!segment.endAnchor) {
-          return {
-            ...segment,
-            start: resolvedStart,
-            end: resolvedEnd,
-          };
-        }
-
-        const currentSegments = countArrowSegments(resolvedStart, resolvedEnd, {
-          startEdge: segment.startAnchor?.edge,
-          endEdge: segment.endAnchor.edge,
-        });
-
-        if (currentSegments <= 3) {
-          return {
-            ...segment,
-            start: resolvedStart,
-            end: resolvedEnd,
-          };
-        }
-
-        const endAnchorCandidates = getTileAnchorCandidates(segment.endAnchor.tileId);
-        const rankedCandidates = endAnchorCandidates
-          .map((candidate) => ({
-            ...candidate,
-            segmentCount: countArrowSegments(resolvedStart, candidate.point, {
-              startEdge: segment.startAnchor?.edge,
-              endEdge: candidate.anchor.edge,
-            }),
-            distanceToStart: Math.hypot(candidate.point.x - resolvedStart.x, candidate.point.y - resolvedStart.y),
-            distanceToCurrentEnd: Math.hypot(candidate.point.x - resolvedEnd.x, candidate.point.y - resolvedEnd.y),
-          }))
-          .filter((candidate) => !isSameAnchorRef(candidate.anchor, segment.endAnchor));
-
-        if (!rankedCandidates.length) {
-          return {
-            ...segment,
-            start: resolvedStart,
-            end: resolvedEnd,
-          };
-        }
-
-        rankedCandidates.sort((a, b) => {
-          if (a.segmentCount !== b.segmentCount) return a.segmentCount - b.segmentCount;
-          if (Math.abs(a.distanceToStart - b.distanceToStart) > 0.001) {
-            return a.distanceToStart - b.distanceToStart;
-          }
-          return a.distanceToCurrentEnd - b.distanceToCurrentEnd;
-        });
-        const nearest = rankedCandidates[0];
-
         return {
           ...segment,
           start: resolvedStart,
-          end: nearest.point,
-          endAnchor: nearest.anchor,
+          end: resolvedEnd,
         };
       }),
-    [allArrowSegments, getTileAnchorCandidates, resolveAnchorFromTileState]
+    [allArrowSegments, resolveAnchorFromTileState]
   );
-
-  useEffect(() => {
-    if (!selectedSpaceId) return;
-    if (isDrawingArrow || draggingEndpoint) return;
-
-    const persistedArrows = arrowsBySpace[selectedSpaceId] || [];
-    if (!persistedArrows.length) return;
-
-    const persistedById = new Map(persistedArrows.map((arrow) => [arrow.id, arrow]));
-    const remapped = renderArrowSegments.filter((segment) => {
-      if (segment.id === 'arrow-draft') return false;
-      const persisted = persistedById.get(segment.id);
-      if (!persisted) return false;
-      return !isSameAnchorRef(persisted.endAnchor, segment.endAnchor);
-    });
-
-    if (!remapped.length) return;
-
-    setArrowsBySpace((prev) => {
-      const current = prev[selectedSpaceId] || [];
-      const remappedById = new Map(remapped.map((segment) => [segment.id, segment]));
-      return {
-        ...prev,
-        [selectedSpaceId]: current.map((segment) => {
-          const corrected = remappedById.get(segment.id);
-          return corrected
-            ? { ...segment, end: corrected.end, endAnchor: corrected.endAnchor }
-            : segment;
-        }),
-      };
-    });
-
-    remapped.forEach((segment) => {
-      const persisted = persistedById.get(segment.id);
-      if (!persisted) return;
-      const corrected: ArrowSegment = {
-        ...persisted,
-        end: segment.end,
-        endAnchor: segment.endAnchor,
-      };
-      objectsApi.updateMetadata(segment.id, toArrowMetadata(corrected)).catch((err) => {
-        console.error('[ARROW] Failed to persist automatic end-anchor remap:', err);
-      });
-    });
-  }, [
-    arrowsBySpace,
-    draggingEndpoint,
-    isDrawingArrow,
-    renderArrowSegments,
-    selectedSpaceId,
-    setArrowsBySpace,
-  ]);
 
   const menuItems = useMemo(() => [
     {
@@ -581,6 +421,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     }, delayMs);
   };
 
+  const isPlainTextFileTarget = (filePath?: string): boolean => {
+    if (!filePath) return false;
+    const isMarkdown = /\.(md|markdown)$/i.test(filePath);
+    const isHtmlExtension = /\.(html|htm)$/i.test(filePath);
+    const isRenderedHtml = isHtmlExtension && !isHtmlCodeFile(filePath);
+    return detectFileType(filePath).category === 'text' && !isRenderedHtml && !isMarkdown;
+  };
+
   const queuePreviewForIcon = (icon: DroppedIcon) => {
     if (icon.type === 'text') {
       schedulePreviewForIcon(icon, TEXT_PREVIEW_DELAY_MS);
@@ -588,6 +436,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     }
 
     if (icon.type === 'file') {
+      if (!PLAIN_TEXT_FILE_PREVIEW_ENABLED && isPlainTextFileTarget(icon.filePath)) return;
       schedulePreviewForIcon(icon, FILE_PREVIEW_DELAY_MS);
       return;
     }
@@ -793,7 +642,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                       <path
                         d={pathData}
                         stroke={visibleStroke}
-                        strokeWidth={isSelectedArrow ? ARROW_SETTINGS.strokeWidth + 0.8 : ARROW_SETTINGS.strokeWidth}
+                        strokeWidth={ARROW_SETTINGS.strokeWidth}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         fill="none"
@@ -1093,7 +942,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         isOpen={logic.isAddLinkDialogOpen}
         onClose={logic.closeAddLinkDialog}
         onAdd={logic.handleAddLink}
-        submitLabel={logic.editingLink ? 'Save Link' : 'Add Link'}
+        submitLabel={logic.editingLink ? t('common.save') : t('addLinkDialog.title')}
         initialValues={logic.editingLink ? {
           id: logic.editingLink.id,
           url: logic.editingLink.url,
@@ -1116,7 +965,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         isOpen={logic.isAddWebArticleDialogOpen}
         onClose={logic.closeAddWebArticleDialog}
         onAdd={logic.handleAddWebArticle}
-        submitLabel={logic.editingArticle ? 'Save Article' : 'Add Web Article'}
+        submitLabel={logic.editingArticle ? t('common.save') : t('addWebArticleDialog.title')}
         initialValues={logic.editingArticle ? {
           id: logic.editingArticle.id,
           url: logic.editingArticle.url,

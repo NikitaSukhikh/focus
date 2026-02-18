@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, Plus, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useSpaceStore } from '@/stores/spaceStore';
 import { objectsApi } from '@/api/objects';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -9,13 +10,26 @@ import { FONT_ROLES } from '@/styles/fontManager';
 import { SpaceItem } from '@/components/layout/leftsidebar/SpaceItem';
 import { LeftSidebarProps } from '@/components/layout/leftsidebar/types';
 import { mapObjectToPayload, generateUniqueName } from '@/components/layout/leftsidebar/utils';
-import { SHORTCUT_HINT_LINES } from '@/constants/shortcutHints';
+import { SettingsDialog } from '@/features/settings/components/SettingsDialog/SettingsDialog';
+
+const SHORTCUT_HINT_KEYS = [
+  'shortcuts.createSpace',
+  'shortcuts.addLink',
+  'shortcuts.toggleSidebar',
+  'shortcuts.navigateSpaces',
+  'shortcuts.loadSpace',
+  'shortcuts.renameSpace',
+  'shortcuts.deleteSpace',
+  'shortcuts.togglePreview',
+] as const;
 
 // LeftSidebar lists available spaces and handles basic space CRUD/duplication.
 export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlightedSpaceId, renameRequestedSpaceId, renameRequestTimestamp, deleteRequestedSpaceId, deleteRequestTimestamp }: LeftSidebarProps) {
+  const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const yesButtonRef = useRef<HTMLButtonElement>(null);
   const [topBarHeight, setTopBarHeight] = useState<number>(TOP_BAR.height);
@@ -34,19 +48,16 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
   const setDuplicating = useSpaceStore((state) => state.setDuplicating);
 
   useEffect(() => {
-    // Initialize in background - don't block render if backend is slow
     void initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle rename request from keyboard shortcut
   useEffect(() => {
     if (renameRequestedSpaceId && renameRequestTimestamp) {
       setEditingId(renameRequestedSpaceId);
     }
   }, [renameRequestedSpaceId, renameRequestTimestamp]);
 
-  // Handle delete request from keyboard shortcut
   useEffect(() => {
     if (deleteRequestedSpaceId && deleteRequestTimestamp) {
       handleDeleteSpace(deleteRequestedSpaceId);
@@ -57,23 +68,19 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
     const updateTopBarHeight = () => {
       const topBarElement = document.getElementById('top-bar');
       if (!topBarElement) return;
-
       const measuredHeight = topBarElement.getBoundingClientRect().height;
       setTopBarHeight(measuredHeight);
     };
-
     updateTopBarHeight();
     window.addEventListener('resize', updateTopBarHeight);
     return () => window.removeEventListener('resize', updateTopBarHeight);
   }, []);
 
   const handleAddSpace = async () => {
-    const defaultName = 'My First Space';
+    const defaultName = t('leftSidebar.defaultSpaceName');
     const spaceId = addLocalSpace(defaultName);
     setEditingId(spaceId);
     selectSpace(spaceId);
-
-    // Immediately commit to backend with the UUID
     await commitSpace(spaceId, defaultName);
   };
 
@@ -89,7 +96,6 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
 
   const handleConfirmDeleteSpace = async () => {
     if (!pendingDeleteId) return;
-
     setIsDeleting(true);
     try {
       await deleteSpace(pendingDeleteId);
@@ -110,12 +116,9 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
 
   useEffect(() => {
     if (!pendingDeleteId) return;
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!['Escape', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(event.key)) return;
-
       event.preventDefault();
-
       if (event.key === 'Escape') {
         handleCloseDeleteDialog();
       } else if (event.key === 'ArrowLeft') {
@@ -130,7 +133,6 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleCloseDeleteDialog/handleConfirmDeleteSpace reference pendingDeleteId/isDeleting already in deps
@@ -144,24 +146,15 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
   const handleDuplicateSpace = async (id: string) => {
     const source = spaces.find((i) => i.id === id);
     if (!source) return;
-
     const existingNames = new Set(spaces.map((i) => i.name.toLowerCase()));
     const base = `${source.name} Copy`;
     const newName = generateUniqueName(base, existingNames);
-
     const newSpace = await createSpace(newName);
     if (!newSpace) return;
-
-    // Set duplicating state to show loading spinner
     setDuplicating(true);
-
-    // Preserve the current selection before duplication
     const currentSelection = selectedSpaceId;
-
     try {
       const objects = await objectsApi.list(id);
-
-      // Create all objects in parallel for faster duplication
       const createPromises = objects.map(async (obj) => {
         const payload = mapObjectToPayload(obj);
         if (!payload) return null;
@@ -172,16 +165,12 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
           return null;
         }
       });
-
       await Promise.all(createPromises);
     } catch (err) {
       console.error('Failed to duplicate space objects', err);
     } finally {
-      // Clear duplicating state
       setDuplicating(false);
     }
-
-    // Reload spaces list to show the new duplicated space, maintaining the original selection
     if (currentSelection) {
       await loadSpaces(currentSelection);
     } else {
@@ -217,15 +206,12 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>Spaces</h2>
+          <h2 style={{ ...FONT_ROLES.sidebarTitle, color: 'var(--color-text-secondary)', opacity: 0.5 }}>{t('leftSidebar.spaces')}</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={handleAddSpace}
               className="p-1.5 rounded-lg transition-colors"
-              style={{
-                color: 'var(--color-text-muted)',
-                transition: 'all var(--transition-base)',
-              }}
+              style={{ color: 'var(--color-text-muted)', transition: 'all var(--transition-base)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--glass-bg)';
                 e.currentTarget.style.color = 'var(--color-text-secondary)';
@@ -236,17 +222,14 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
                 e.currentTarget.style.color = 'var(--color-text-muted)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
-              title="New Space"
+              title={t('leftSidebar.newSpace')}
             >
               <Plus size={18} />
             </button>
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg transition-colors"
-              style={{
-                color: 'var(--color-text-muted)',
-                transition: 'all var(--transition-base)',
-              }}
+              style={{ color: 'var(--color-text-muted)', transition: 'all var(--transition-base)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--glass-bg)';
                 e.currentTarget.style.color = 'var(--color-text-secondary)';
@@ -257,7 +240,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
                 e.currentTarget.style.color = 'var(--color-text-muted)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
-              title="Close sidebar"
+              title={t('leftSidebar.closeSidebar')}
             >
               <ChevronLeft size={18} />
             </button>
@@ -268,15 +251,13 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
         <div className="flex-1 overflow-y-auto sidebar-scroll p-3">
           {spaces.length === 0 ? (
             <div className="text-center py-4" style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)' }}>
-              No spaces yet. Click &apos;+&apos; or press &apos;Ctrl+Y&apos; to create one
+              {t('leftSidebar.noSpaces')}
             </div>
           ) : (
             <div className="space-y-2">
               {spaces.map((space) => {
                 const isSelected = space.id === selectedSpaceId;
-                // Show as highlighted if explicitly highlighted, OR if it's the selected space and no other space is highlighted
                 const isHighlighted = space.id === highlightedSpaceId || (isSelected && !highlightedSpaceId);
-
                 return (
                   <SpaceItem
                     key={space.id}
@@ -307,16 +288,13 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
             className="text-sm"
             style={{ ...FONT_ROLES.sidebarHint, color: 'var(--color-text-muted)', textAlign: 'left' }}
           >
-            {SHORTCUT_HINT_LINES.map((line) => (
-              <div key={line}>{line}</div>
+            {SHORTCUT_HINT_KEYS.map((key) => (
+              <div key={key}>{t(key)}</div>
             ))}
           </div>
           <button
             className="p-2 rounded-lg transition-colors"
-            style={{
-              color: 'var(--color-text-secondary)',
-              transition: 'all var(--transition-base)',
-            }}
+            style={{ color: 'var(--color-text-secondary)', transition: 'all var(--transition-base)' }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--glass-bg)';
               e.currentTarget.style.color = 'var(--primary-color)';
@@ -327,7 +305,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
               e.currentTarget.style.color = 'var(--color-text-secondary)';
               e.currentTarget.style.boxShadow = 'none';
             }}
-            title="Settings"
+            title={t('leftSidebar.settings')}
+            onClick={() => setIsSettingsOpen(true)}
           >
             <Settings size={20} />
           </button>
@@ -357,7 +336,6 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
               style={{ zIndex: Z_INDEX.MODAL_BACKDROP }}
               onClick={handleCloseDeleteDialog}
             />
-
             <div
               className="fixed inset-0 flex items-center justify-center p-4"
               style={{ zIndex: Z_INDEX.MODAL_DIALOG }}
@@ -367,9 +345,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
                 className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Space</h3>
-                <p className="text-sm text-slate-700 mb-6">Are you sure you wnat to delete this space with all data?</p>
-
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{t('leftSidebar.deleteSpace')}</h3>
+                <p className="text-sm text-slate-700 mb-6">{t('leftSidebar.deleteConfirm')}</p>
                 <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
@@ -378,7 +355,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
                     disabled={isDeleting}
                     ref={noButtonRef}
                   >
-                    No
+                    {t('common.no')}
                   </button>
                   <button
                     type="button"
@@ -387,7 +364,7 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
                     disabled={isDeleting}
                     ref={yesButtonRef}
                   >
-                    Yes
+                    {t('common.yes')}
                   </button>
                 </div>
               </div>
@@ -395,7 +372,8 @@ export function LeftSidebar({ isOpen, onClose, width, onResizeStart, highlighted
           </>,
           document.body
         )}
+
+      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </>
   );
 }
-

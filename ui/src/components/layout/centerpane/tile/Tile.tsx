@@ -160,7 +160,7 @@ export function Tile({
     window.dispatchEvent(event);
   };
 
-  const hoverScaleClass = isSelected ? 'scale-[1.02]' : 'group-hover:scale-[1.02]';
+  const hoverScaleClass = '';
   const videoEmbed = type === 'link' ? getVideoEmbed(url) : null;
   const effectiveVideoEmbed = embedFailed ? null : videoEmbed;
   const fileCategory = type === 'file' && filePath ? detectFileType(filePath).category : null;

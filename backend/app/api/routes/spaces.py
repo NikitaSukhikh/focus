@@ -4,7 +4,6 @@ Spaces Routes
 API endpoints for Space (workspace) CRUD operations.
 """
 
-from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, status, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,7 +49,7 @@ router = APIRouter()
 async def list_spaces(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
-    sort_by: Optional[str] = Query(None, description="Field to sort by (e.g., 'name', 'created_at', 'position')"),
+    sort_by: str | None = Query(None, description="Field to sort by (e.g., 'name', 'created_at', 'position')"),
     sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order (asc or desc)"),
     session: AsyncSession = Depends(get_session)
 ) -> SpaceList:

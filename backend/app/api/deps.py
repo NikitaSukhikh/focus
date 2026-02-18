@@ -7,7 +7,7 @@ Dependencies include database sessions, authentication, settings access, and mor
 
 import time
 from collections import defaultdict, deque
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 from fastapi import Depends, HTTPException, Header, Path, Request, status
 
 from app.core.config import Settings, get_settings
@@ -61,7 +61,7 @@ def get_settings_dependency() -> Settings:
 
 
 # Request ID dependency
-async def get_request_id(x_request_id: Optional[str] = Header(None)) -> Optional[str]:
+async def get_request_id(x_request_id: str | None = Header(None)) -> str | None:
     """
     Dependency to extract request ID from headers.
 
@@ -69,7 +69,7 @@ async def get_request_id(x_request_id: Optional[str] = Header(None)) -> Optional
         x_request_id: Request ID from X-Request-ID header
 
     Returns:
-        Optional[str]: Request ID if present
+        str | None: Request ID if present
 
     Example:
         @app.get("/data")
@@ -316,10 +316,10 @@ class FilterParams:
 
     def __init__(
         self,
-        search: Optional[str] = None,
-        tags: Optional[str] = None,
-        sort_by: Optional[str] = None,
-        sort_order: Optional[str] = "asc",
+        search: str | None = None,
+        tags: str | None = None,
+        sort_by: str | None = None,
+        sort_order: str | None = "asc",
     ):
         """
         Initialize filter parameters.
@@ -376,7 +376,7 @@ def validate_uuid(request: Request) -> str:
     import uuid
 
     # Prefer path params, but allow query fallback for flexibility.
-    candidate: Optional[str] = None
+    candidate: str | None = None
     if request.path_params:
         candidate = next(iter(request.path_params.values()))
     elif request.query_params.get("value"):

@@ -2,8 +2,9 @@
 import { ArrowAnchorRef, FocusRingEdge } from '@/components/layout/centerpane/types';
 
 const STRAIGHT_EPSILON = 0.5;
-const MAX_CORNER_RADIUS = 22;
+const ARROW_CORNER_RADIUS = 14;
 const EDGE_STUB_DISTANCE = 26;
+const MIN_EDGE_STUB_DISTANCE = ARROW_CORNER_RADIUS + 2;
 
 interface AnchorCandidate {
   anchor: ArrowAnchorRef;
@@ -163,8 +164,11 @@ const simplifyOrthogonalPoints = (rawPoints: Array<{ x: number; y: number }>): A
   return points;
 };
 
-const buildRoundedPath = (rawPoints: Array<{ x: number; y: number }>): string => {
-  const points = simplifyOrthogonalPoints(rawPoints);
+const buildRoundedPath = (
+  rawPoints: Array<{ x: number; y: number }>,
+  options: { simplify?: boolean } = {}
+): string => {
+  const points = options.simplify === false ? rawPoints : simplifyOrthogonalPoints(rawPoints);
   if (points.length < 2) return `M ${points[0]?.x ?? 0} ${points[0]?.y ?? 0}`;
 
   const commands: string[] = [`M ${points[0].x} ${points[0].y}`];
@@ -194,14 +198,21 @@ const buildRoundedPath = (rawPoints: Array<{ x: number; y: number }>): string =>
       continue;
     }
 
-    const radius = Math.min(MAX_CORNER_RADIUS, inLength / 2, outLength / 2);
+    const inRadius = Math.max(0, Math.min(ARROW_CORNER_RADIUS, (inLength / 2) - STRAIGHT_EPSILON));
+    const outRadius = Math.max(0, Math.min(ARROW_CORNER_RADIUS, (outLength / 2) - STRAIGHT_EPSILON));
+
+    if (inRadius <= STRAIGHT_EPSILON && outRadius <= STRAIGHT_EPSILON) {
+      commands.push(`L ${current.x} ${current.y}`);
+      continue;
+    }
+
     const beforeCorner = {
-      x: current.x - (inUnit.x * radius),
-      y: current.y - (inUnit.y * radius),
+      x: current.x - (inUnit.x * inRadius),
+      y: current.y - (inUnit.y * inRadius),
     };
     const afterCorner = {
-      x: current.x + (outUnit.x * radius),
-      y: current.y + (outUnit.y * radius),
+      x: current.x + (outUnit.x * outRadius),
+      y: current.y + (outUnit.y * outRadius),
     };
 
     commands.push(`L ${beforeCorner.x} ${beforeCorner.y}`);
@@ -219,7 +230,8 @@ const buildEdgeAwarePath = (
   options: BuildArrowPathOptions
 ): string => {
   const points = buildEdgeAwarePoints(start, end, options);
-  return buildRoundedPath(points);
+  // Keep start/end guide legs intact while allowing every corner to round.
+  return buildRoundedPath(points, { simplify: false });
 };
 
 const buildEdgeAwarePoints = (
@@ -230,10 +242,9 @@ const buildEdgeAwarePoints = (
   const startOutward = options.startEdge ? edgeOutwardVector(options.startEdge) : null;
   const endOutward = options.endEdge ? edgeOutwardVector(options.endEdge) : null;
   const distance = distanceBetween(start, end);
-  const stubDistance = Math.min(
-    EDGE_STUB_DISTANCE,
-    Math.max(4, distance / 3),
-    distance / 2
+  const stubDistance = Math.max(
+    MIN_EDGE_STUB_DISTANCE,
+    Math.min(EDGE_STUB_DISTANCE, Math.max(4, distance / 3))
   );
 
   const startGuide = startOutward
@@ -279,7 +290,8 @@ export const countArrowSegments = (
   options: BuildArrowPathOptions = {}
 ): number => {
   if (options.startEdge || options.endEdge) {
-    const points = simplifyOrthogonalPoints(buildEdgeAwarePoints(start, end, options));
+    // Mirror edge-aware rendering behavior and preserve guide legs in segment counting.
+    const points = buildEdgeAwarePoints(start, end, options);
     return Math.max(points.length - 1, 1);
   }
 

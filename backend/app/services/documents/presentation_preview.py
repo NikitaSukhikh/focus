@@ -6,7 +6,6 @@ Supports: .ppt, .pptx, .odp
 """
 
 from pathlib import Path
-from typing import Optional, List
 import hashlib
 import os
 import re
@@ -40,7 +39,7 @@ class PresentationPreviewService:
         self.settings = settings
         self.cache_dir = Path(settings.storage.cache_dir) / "presentation_previews"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self._soffice_path: Optional[str] = None
+        self._soffice_path: str | None = None
 
     def convert_presentation_to_html(
         self,
@@ -123,7 +122,7 @@ class PresentationPreviewService:
             )
             raise ValueError(f"Failed to convert presentation: {e}")
 
-    def _resolve_soffice_path(self) -> Optional[str]:
+    def _resolve_soffice_path(self) -> str | None:
         """Locate the LibreOffice soffice executable."""
         if self._soffice_path and Path(self._soffice_path).exists():
             return self._soffice_path
@@ -184,7 +183,7 @@ class PresentationPreviewService:
             error_output = (result.stderr or result.stdout or "").strip()
             raise ValueError(f"LibreOffice conversion failed: {error_output or 'unknown error'}")
 
-    def _collect_slide_images(self, images_dir: Path, base_name: str) -> List[str]:
+    def _collect_slide_images(self, images_dir: Path, base_name: str) -> list[str]:
         """Collect and sort slide images by slide index."""
         images = [
             path for path in images_dir.iterdir()
@@ -208,7 +207,7 @@ class PresentationPreviewService:
         images_sorted = sorted(images, key=sort_key)
         return [image.name for image in images_sorted]
 
-    def _build_html(self, filename: str, image_names: List[str], cache_key: str) -> str:
+    def _build_html(self, filename: str, image_names: list[str], cache_key: str) -> str:
         """Generate HTML that renders slide images."""
         placeholder_src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
         html_parts = [
@@ -305,7 +304,7 @@ class PresentationPreviewService:
         path = Path(file_path)
         return path.suffix.lower() in self.SUPPORTED_PRESENTATION_FORMATS
 
-    def get_cached_preview(self, file_path: str) -> Optional[str]:
+    def get_cached_preview(self, file_path: str) -> str | None:
         """
         Get cached preview path if it exists.
 
@@ -313,7 +312,7 @@ class PresentationPreviewService:
             file_path: Path to the original file
 
         Returns:
-            Optional[str]: Path to cached preview, or None if not cached
+            str | None: Path to cached preview, or None if not cached
         """
         cache_key = self._generate_cache_key(file_path)
         html_path = self.cache_dir / cache_key / "index.html"
@@ -321,7 +320,7 @@ class PresentationPreviewService:
             return str(html_path)
         return None
 
-    def clear_cache(self, file_path: Optional[str] = None) -> int:
+    def clear_cache(self, file_path: str | None = None) -> int:
         """
         Clear presentation preview cache.
 

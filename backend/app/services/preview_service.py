@@ -26,7 +26,7 @@ When generating previews, this service handles two distinct text-related scenari
 Both can display text content, but handling is completely different!
 """
 
-from typing import Optional, Union, Dict, Any
+from typing import Any
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import urlparse, urljoin, parse_qs
@@ -86,7 +86,7 @@ class PreviewService:
     async def generate_preview(
         self,
         obj: ObjectResponse
-    ) -> Union[PreviewResponse, PreviewError]:
+    ) -> PreviewResponse | PreviewError:
         """
         Generate preview for an object based on its type.
 
@@ -94,7 +94,7 @@ class PreviewService:
             obj: Object to generate preview for
 
         Returns:
-            Union[PreviewResponse, PreviewError]: Preview data or error
+            PreviewResponse | PreviewError: Preview data or error
         """
         try:
             if obj.type == ObjectType.LINK:
@@ -184,7 +184,7 @@ class PreviewService:
             og_image=metadata.get("og_image"),
         )
 
-    async def _fetch_url_metadata(self, url: str) -> Dict[str, Any]:
+    async def _fetch_url_metadata(self, url: str) -> dict[str, Any]:
         """
         Fetch metadata from a URL (title, description, favicon, Open Graph).
 
@@ -192,7 +192,7 @@ class PreviewService:
             url: URL to fetch metadata from
 
         Returns:
-            Dict[str, Any]: Metadata dictionary
+            dict[str, Any]: Metadata dictionary
         """
         metadata = {}
 
@@ -342,7 +342,7 @@ class PreviewService:
 
         return metadata
 
-    async def _fetch_youtube_oembed(self, url: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_youtube_oembed(self, url: str) -> dict[str, Any] | None:
         """
         Fetch metadata for YouTube URLs via the public oEmbed endpoint.
 
@@ -379,7 +379,7 @@ class PreviewService:
             logger.debug(f"Failed to fetch YouTube oEmbed metadata for {url}: {e}")
             return None
 
-    async def _fetch_youtube_metadata(self, url: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_youtube_metadata(self, url: str) -> dict[str, Any] | None:
         """
         Fetch YouTube metadata, using oEmbed for title/thumbnail and HTML parsing for description.
         """
@@ -410,7 +410,7 @@ class PreviewService:
 
         return metadata
 
-    def _get_youtube_video_id(self, url: str) -> Optional[str]:
+    def _get_youtube_video_id(self, url: str) -> str | None:
         try:
             parsed = urlparse(url)
         except Exception:
@@ -437,19 +437,19 @@ class PreviewService:
 
         return None
 
-    def _get_youtube_watch_url(self, url: str) -> Optional[str]:
+    def _get_youtube_watch_url(self, url: str) -> str | None:
         video_id = self._get_youtube_video_id(url)
         if not video_id:
             return None
         return f"https://www.youtube.com/watch?v={video_id}"
 
-    def _extract_youtube_player_response(self, html: str) -> Optional[Dict[str, Any]]:
+    def _extract_youtube_player_response(self, html: str) -> dict[str, Any] | None:
         return self._extract_json_from_marker(html, "ytInitialPlayerResponse")
 
-    def _extract_youtube_initial_data(self, html: str) -> Optional[Dict[str, Any]]:
+    def _extract_youtube_initial_data(self, html: str) -> dict[str, Any] | None:
         return self._extract_json_from_marker(html, "ytInitialData")
 
-    def _extract_json_from_marker(self, html: str, marker: str) -> Optional[Dict[str, Any]]:
+    def _extract_json_from_marker(self, html: str, marker: str) -> dict[str, Any] | None:
         marker_index = html.find(marker)
         if marker_index == -1:
             return None
@@ -487,7 +487,7 @@ class PreviewService:
 
         return None
 
-    def _find_first_key(self, obj: Any, key: str) -> Optional[Any]:
+    def _find_first_key(self, obj: Any, key: str) -> Any | None:
         if isinstance(obj, dict):
             if key in obj and obj[key] is not None:
                 return obj[key]
@@ -502,7 +502,7 @@ class PreviewService:
                     return found
         return None
 
-    def _pick_thumbnail_url(self, thumbnails: Any) -> Optional[str]:
+    def _pick_thumbnail_url(self, thumbnails: Any) -> str | None:
         if not isinstance(thumbnails, list):
             return None
         candidates = [
@@ -514,7 +514,7 @@ class PreviewService:
         best = max(candidates, key=lambda t: (t.get("width") or 0, t.get("height") or 0))
         return best.get("url")
 
-    def _extract_channel_icon_from_initial_data(self, initial_data: Dict[str, Any]) -> Optional[str]:
+    def _extract_channel_icon_from_initial_data(self, initial_data: dict[str, Any]) -> str | None:
         owner_renderer = self._find_first_key(initial_data, "videoOwnerRenderer")
         if isinstance(owner_renderer, dict):
             thumbnails = None
@@ -545,9 +545,9 @@ class PreviewService:
 
         return None
 
-    async def _fetch_youtube_watch_info(self, url: str) -> Dict[str, Any]:
+    async def _fetch_youtube_watch_info(self, url: str) -> dict[str, Any]:
         watch_url = self._get_youtube_watch_url(url) or url
-        info: Dict[str, Any] = {}
+        info: dict[str, Any] = {}
 
         try:
             async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
@@ -596,7 +596,7 @@ class PreviewService:
 
         return info
 
-    async def _fetch_youtube_channel_icon(self, channel_id: Optional[str], channel_url: Optional[str]) -> Optional[str]:
+    async def _fetch_youtube_channel_icon(self, channel_id: str | None, channel_url: str | None) -> str | None:
         if not channel_id and not channel_url:
             return None
 
@@ -681,7 +681,7 @@ class PreviewService:
         'application/x-php',
     }
 
-    def _is_text_previewable(self, file_path: str, mime_type: Optional[str]) -> bool:
+    def _is_text_previewable(self, file_path: str, mime_type: str | None) -> bool:
         """
         Check if a file should be treated as text for preview purposes.
 

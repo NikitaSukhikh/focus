@@ -10,7 +10,7 @@ import sys
 import json
 import traceback
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 from pathlib import Path
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
@@ -20,9 +20,9 @@ from .config import get_settings
 
 
 # Context variables for request tracking
-request_id_ctx: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-user_id_ctx: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
-correlation_id_ctx: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
+request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
+user_id_ctx: ContextVar[str | None] = ContextVar("user_id", default=None)
+correlation_id_ctx: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 
 class ContextFilter(logging.Filter):
@@ -51,9 +51,9 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
 
     def add_fields(
         self,
-        log_record: Dict[str, Any],
+        log_record: dict[str, Any],
         record: logging.LogRecord,
-        message_dict: Dict[str, Any]
+        message_dict: dict[str, Any]
     ) -> None:
         """
         Add custom fields to the JSON log record.
@@ -255,9 +255,9 @@ class LogContext:
 
     def __init__(
         self,
-        request_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        request_id: str | None = None,
+        user_id: str | None = None,
+        correlation_id: str | None = None,
     ):
         """
         Initialize the log context.
@@ -272,9 +272,9 @@ class LogContext:
         self.correlation_id = correlation_id
 
         # Store previous values for restoration
-        self.prev_request_id: Optional[str] = None
-        self.prev_user_id: Optional[str] = None
-        self.prev_correlation_id: Optional[str] = None
+        self.prev_request_id: str | None = None
+        self.prev_user_id: str | None = None
+        self.prev_correlation_id: str | None = None
 
     def __enter__(self):
         """Enter the context and set context variables."""
@@ -291,7 +291,7 @@ class LogContext:
 
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object) -> None:
         """Exit the context and restore previous context variables."""
         request_id_ctx.set(self.prev_request_id)
         user_id_ctx.set(self.prev_user_id)
@@ -299,9 +299,9 @@ class LogContext:
 
 
 def set_request_context(
-    request_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    correlation_id: Optional[str] = None,
+    request_id: str | None = None,
+    user_id: str | None = None,
+    correlation_id: str | None = None,
 ) -> None:
     """
     Set request context variables for logging.

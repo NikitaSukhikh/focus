@@ -5,7 +5,7 @@ Provides health status endpoints for monitoring and diagnostics.
 """
 
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 from fastapi import APIRouter, status, Depends
 from pydantic import BaseModel
 
@@ -49,7 +49,7 @@ class DetailedHealthResponse(BaseModel):
     environment: str
     timestamp: datetime
     uptime_seconds: float
-    subsystems: Dict[str, Any]
+    subsystems: dict[str, Any]
 
 
 # ============================================================================
@@ -190,7 +190,7 @@ async def detailed_health_check(
     description="Checks if the application is ready to serve requests (used by container orchestrators).",
     tags=["Health"]
 )
-async def readiness_check() -> Dict[str, str]:
+async def readiness_check() -> dict[str, str]:
     """
     Readiness probe endpoint.
 
@@ -216,7 +216,7 @@ async def readiness_check() -> Dict[str, str]:
     description="Checks if the application is alive (used by container orchestrators).",
     tags=["Health"]
 )
-async def liveness_check() -> Dict[str, str]:
+async def liveness_check() -> dict[str, str]:
     """
     Liveness probe endpoint.
 
