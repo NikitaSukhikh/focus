@@ -1,8 +1,9 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { objectsApi } from '@/api/objects';
 import { Tile } from '@/components/layout/centerpane/tile/Tile';
-import { ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon } from '@/components/layout/centerpane/types';
+import { ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon, FocusRingEdge } from '@/components/layout/centerpane/types';
 import { useCenterPaneLogic } from '@/components/layout/centerpane/useCenterPaneLogic';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { getVideoEmbed } from '@/utils/videoEmbeds';
@@ -19,8 +20,8 @@ import { useSearchStore } from '@/stores/searchStore';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
 import { isPreviewPaneTargetAllowed } from '@/utils/previewTargets';
-import { buildArrowPath } from '@/components/layout/centerpane/arrowGeometry';
-import type { ArrowPathObstacle } from '@/components/layout/centerpane/arrowGeometry';
+import { buildArrowPath, getBestAnchorPairForRoute } from '@/components/layout/centerpane/arrowGeometry';
+import type { ArrowPathObstacle, RouteAnchorCandidate } from '@/components/layout/centerpane/arrowGeometry';
 import { TILE_RING } from '@/constants/objectsDimensions';
 import { TILE_RING_COLORS } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
@@ -42,6 +43,35 @@ const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
 interface ArrowTileObstacle extends ArrowPathObstacle {
   tileId: string;
 }
+
+const isSameAnchorRef = (a?: ArrowSegment['startAnchor'], b?: ArrowSegment['startAnchor']) => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.tileId === b.tileId && a.edge === b.edge && a.edgeIndex === b.edgeIndex;
+};
+
+const didArrowEndpointChange = (before: ArrowSegment, after: ArrowSegment) => {
+  const moved =
+    Math.abs(before.start.x - after.start.x) > 0.5
+    || Math.abs(before.start.y - after.start.y) > 0.5
+    || Math.abs(before.end.x - after.end.x) > 0.5
+    || Math.abs(before.end.y - after.end.y) > 0.5;
+  return moved || !isSameAnchorRef(before.startAnchor, after.startAnchor) || !isSameAnchorRef(before.endAnchor, after.endAnchor);
+};
+
+const toArrowMetadata = (arrow: ArrowSegment) => ({
+  arrow: true,
+  start_x: arrow.start.x,
+  start_y: arrow.start.y,
+  end_x: arrow.end.x,
+  end_y: arrow.end.y,
+  start_tile_id: arrow.startAnchor?.tileId ?? null,
+  start_anchor_edge: arrow.startAnchor?.edge ?? null,
+  start_anchor_index: arrow.startAnchor?.edgeIndex ?? null,
+  end_tile_id: arrow.endAnchor?.tileId ?? null,
+  end_anchor_edge: arrow.endAnchor?.edge ?? null,
+  end_anchor_index: arrow.endAnchor?.edgeIndex ?? null,
+});
 
 const toTileRingType = (iconType: DroppedIcon['type']): TileRingType => {
   if (iconType === 'text') return 'text';
@@ -164,8 +194,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number; canvasX: number; canvasY: number } | null>(null);
   const [arrowContextMenu, setArrowContextMenu] = useState<{ x: number; y: number; arrowId: string } | null>(null);
+  const arrowMenuBackdropRef = useRef<HTMLDivElement | null>(null);
   const arrowMenuRef = useRef<HTMLDivElement | null>(null);
   const canvasMenuRef = useRef<HTMLDivElement | null>(null);
+  const persistedArrowSignatureRef = useRef<Map<string, string>>(new Map());
+  const tileDragSeenRef = useRef(false);
   const [arrowMenuSize, setArrowMenuSize] = useState({ width: 0, height: 0 });
   const [canvasMenuSize, setCanvasMenuSize] = useState({ width: 0, height: 0 });
   const VIEWPORT_MENU_MARGIN = 8;
@@ -294,18 +327,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     });
   }, [currentSpaceIcons]);
 
-  const resolveAnchorFromTileState = useCallback(
-    (
-      anchorRef: ArrowSegment['startAnchor'],
-      fallback: { x: number; y: number }
-    ): { x: number; y: number } => {
-      if (!anchorRef) return fallback;
-
-      const icon = iconsById.get(anchorRef.tileId);
-      const metrics = tileMetricsById[anchorRef.tileId];
-      if (!icon || !metrics) return fallback;
-      if (metrics.width <= 0 || metrics.height <= 0) return fallback;
-      if (anchorRef.edgeIndex < 0 || anchorRef.edgeIndex >= FOCUS_RING_DOTS_PER_EDGE) return fallback;
+  const resolveAnchorPointForTile = useCallback(
+    (tileId: string, edge: FocusRingEdge, edgeIndex: number): { x: number; y: number } | null => {
+      const icon = iconsById.get(tileId);
+      const metrics = tileMetricsById[tileId];
+      if (!icon || !metrics) return null;
+      if (metrics.width <= 0 || metrics.height <= 0) return null;
+      if (edgeIndex < 0 || edgeIndex >= FOCUS_RING_DOTS_PER_EDGE) return null;
 
       const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
       const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
@@ -316,30 +344,48 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       const ringTop = originTop + metrics.contentInset - ringOffset;
       const ringWidth = safeContentWidth + (ringOffset * 2);
       const ringHeight = safeContentHeight + (ringOffset * 2);
-      const fraction = (anchorRef.edgeIndex + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1);
+      const fraction = (edgeIndex + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1);
       const edgeX = ringLeft + (ringWidth * fraction);
       const edgeY = ringTop + (ringHeight * fraction);
 
-      if (anchorRef.edge === 'top') return { x: edgeX, y: ringTop };
-      if (anchorRef.edge === 'right') return { x: ringLeft + ringWidth, y: edgeY };
-      if (anchorRef.edge === 'bottom') return { x: edgeX, y: ringTop + ringHeight };
+      if (edge === 'top') return { x: edgeX, y: ringTop };
+      if (edge === 'right') return { x: ringLeft + ringWidth, y: edgeY };
+      if (edge === 'bottom') return { x: edgeX, y: ringTop + ringHeight };
       return { x: ringLeft, y: edgeY };
     },
     [iconsById, tileMetricsById]
   );
 
-  const renderArrowSegments: ArrowSegment[] = useMemo(
-    () =>
-      allArrowSegments.map((segment) => {
-        const resolvedStart = resolveAnchorFromTileState(segment.startAnchor, segment.start);
-        const resolvedEnd = resolveAnchorFromTileState(segment.endAnchor, segment.end);
-        return {
-          ...segment,
-          start: resolvedStart,
-          end: resolvedEnd,
-        };
-      }),
-    [allArrowSegments, resolveAnchorFromTileState]
+  const resolveAnchorFromTileState = useCallback(
+    (
+      anchorRef: ArrowSegment['startAnchor'],
+      fallback: { x: number; y: number }
+    ): { x: number; y: number } => {
+      if (!anchorRef) return fallback;
+      return resolveAnchorPointForTile(anchorRef.tileId, anchorRef.edge, anchorRef.edgeIndex) ?? fallback;
+    },
+    [resolveAnchorPointForTile]
+  );
+
+  const buildTileAnchorCandidates = useCallback(
+    (tileId: string): RouteAnchorCandidate[] => {
+      const edges: FocusRingEdge[] = ['top', 'right', 'bottom', 'left'];
+      const candidates: RouteAnchorCandidate[] = [];
+
+      edges.forEach((edge) => {
+        for (let edgeIndex = 0; edgeIndex < FOCUS_RING_DOTS_PER_EDGE; edgeIndex += 1) {
+          const point = resolveAnchorPointForTile(tileId, edge, edgeIndex);
+          if (!point) continue;
+          candidates.push({
+            anchor: { tileId, edge, edgeIndex },
+            point,
+          });
+        }
+      });
+
+      return candidates;
+    },
+    [resolveAnchorPointForTile]
   );
 
   const arrowTileObstacles: ArrowTileObstacle[] = useMemo(
@@ -361,6 +407,139 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       .filter((obstacle): obstacle is ArrowTileObstacle => Boolean(obstacle)),
     [currentSpaceIcons, tileMetricsById]
   );
+
+  const renderArrowSegments: ArrowSegment[] = useMemo(
+    () =>
+      allArrowSegments.map((segment) => {
+        const resolvedStart = resolveAnchorFromTileState(segment.startAnchor, segment.start);
+        const resolvedEnd = resolveAnchorFromTileState(segment.endAnchor, segment.end);
+        if (!segment.startAnchor || !segment.endAnchor) {
+          return {
+            ...segment,
+            start: resolvedStart,
+            end: resolvedEnd,
+          };
+        }
+
+        const startCandidates = buildTileAnchorCandidates(segment.startAnchor.tileId)
+          .map((candidate) => ({
+            ...candidate,
+            scoreOffset:
+              (Math.hypot(candidate.point.x - resolvedStart.x, candidate.point.y - resolvedStart.y) * 8)
+              + (candidate.anchor.edge === segment.startAnchor?.edge
+                && candidate.anchor.edgeIndex === segment.startAnchor?.edgeIndex
+                ? 0
+                : 40),
+          }));
+        const endCandidates = buildTileAnchorCandidates(segment.endAnchor.tileId)
+          .map((candidate) => ({
+            ...candidate,
+            scoreOffset:
+              (Math.hypot(candidate.point.x - resolvedEnd.x, candidate.point.y - resolvedEnd.y) * 8)
+              + (candidate.anchor.edge === segment.endAnchor?.edge
+                && candidate.anchor.edgeIndex === segment.endAnchor?.edgeIndex
+                ? 0
+                : 40),
+          }));
+        if (!startCandidates.length || !endCandidates.length) {
+          return {
+            ...segment,
+            start: resolvedStart,
+            end: resolvedEnd,
+          };
+        }
+
+        const routingObstacles = arrowTileObstacles
+          .filter(
+            (obstacle) =>
+              obstacle.tileId !== segment.startAnchor?.tileId
+              && obstacle.tileId !== segment.endAnchor?.tileId
+          )
+          .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
+        const bestPair = getBestAnchorPairForRoute(startCandidates, endCandidates, {
+          obstacles: routingObstacles,
+        });
+        if (!bestPair) {
+          return {
+            ...segment,
+            start: resolvedStart,
+            end: resolvedEnd,
+          };
+        }
+
+        return {
+          ...segment,
+          start: bestPair.start.point,
+          end: bestPair.end.point,
+          startAnchor: bestPair.start.anchor,
+          endAnchor: bestPair.end.anchor,
+        };
+      }),
+    [allArrowSegments, arrowTileObstacles, buildTileAnchorCandidates, resolveAnchorFromTileState]
+  );
+
+  useEffect(() => {
+    if (logic.dragGhost) {
+      tileDragSeenRef.current = true;
+    }
+  }, [logic.dragGhost]);
+
+  useEffect(() => {
+    tileDragSeenRef.current = false;
+    persistedArrowSignatureRef.current.clear();
+  }, [selectedSpaceId]);
+
+  useEffect(() => {
+    if (!selectedSpaceId) return;
+    if (isDrawingArrow || draggingEndpoint || logic.dragGhost) return;
+    if (!tileDragSeenRef.current) return;
+    tileDragSeenRef.current = false;
+
+    const segmentById = new Map(allArrowSegments.map((segment) => [segment.id, segment]));
+    const changedSegments = renderArrowSegments
+      .filter((segment) => segment.id !== 'arrow-draft')
+      .map((segment) => ({ previous: segmentById.get(segment.id), next: segment }))
+      .filter((pair): pair is { previous: ArrowSegment; next: ArrowSegment } => Boolean(pair.previous))
+      .filter(({ previous, next }) => didArrowEndpointChange(previous, next));
+    if (!changedSegments.length) return;
+
+    const changedById = new Map(changedSegments.map(({ next }) => [next.id, next]));
+    setArrowsBySpace((prev) => {
+      const current = prev[selectedSpaceId] || [];
+      const nextArrows = current.map((segment) => changedById.get(segment.id) ?? segment);
+      return { ...prev, [selectedSpaceId]: nextArrows };
+    });
+
+    changedSegments.forEach(({ next }) => {
+      const signature = [
+        Math.round(next.start.x * 10),
+        Math.round(next.start.y * 10),
+        Math.round(next.end.x * 10),
+        Math.round(next.end.y * 10),
+        next.startAnchor?.tileId ?? '',
+        next.startAnchor?.edge ?? '',
+        next.startAnchor?.edgeIndex ?? -1,
+        next.endAnchor?.tileId ?? '',
+        next.endAnchor?.edge ?? '',
+        next.endAnchor?.edgeIndex ?? -1,
+      ].join('|');
+      if (persistedArrowSignatureRef.current.get(next.id) === signature) {
+        return;
+      }
+      persistedArrowSignatureRef.current.set(next.id, signature);
+      objectsApi.updateMetadata(next.id, toArrowMetadata(next)).catch((err) => {
+        console.error('[ARROW] Failed to persist re-anchored geometry:', err);
+      });
+    });
+  }, [
+    allArrowSegments,
+    draggingEndpoint,
+    isDrawingArrow,
+    logic.dragGhost,
+    renderArrowSegments,
+    selectedSpaceId,
+    setArrowsBySpace,
+  ]);
 
   const menuItems = useMemo(() => [
     {
@@ -438,6 +617,40 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     setSelectedArrowId(arrowId);
     setContextMenu(null);
     logic.setSelectedIconIds([]);
+  };
+
+  const closeArrowMenuAndForwardContextMenu = (e: React.MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { clientX, clientY } = e;
+    const menuElement = arrowMenuRef.current;
+    const backdropElement = arrowMenuBackdropRef.current;
+    const forwardTarget = document
+      .elementsFromPoint(clientX, clientY)
+      .find((element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        if (menuElement?.contains(element)) return false;
+        if (backdropElement && element === backdropElement) return false;
+        return true;
+      });
+
+    setArrowContextMenu(null);
+
+    if (!(forwardTarget instanceof HTMLElement)) return;
+
+    // Re-dispatch after close so follow-up right-click targets the real element under the cursor.
+    window.requestAnimationFrame(() => {
+      forwardTarget.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        button: 2,
+        buttons: 2,
+        view: window,
+      }));
+    });
   };
 
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -859,13 +1072,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
           {arrowContextMenu && arrowMenuPosition && ReactDOM.createPortal(
             <>
               <div
+                ref={arrowMenuBackdropRef}
                 className="fixed inset-0"
                 style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
-                onClick={() => setArrowContextMenu(null)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
+                onClick={(e) => {
+                  e.stopPropagation();
                   setArrowContextMenu(null);
                 }}
+                onContextMenu={closeArrowMenuAndForwardContextMenu}
               />
               <div
                 ref={arrowMenuRef}
@@ -875,6 +1089,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   left: arrowMenuPosition.x,
                   top: arrowMenuPosition.y,
                 }}
+                onContextMenu={closeArrowMenuAndForwardContextMenu}
               >
                 <button
                   onClick={(e) => {

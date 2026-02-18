@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { API_BASE } from '@/config/api';
+import { objectsApi } from '@/api/objects';
 
 interface PreviewTextEditorParams {
   tileId?: string;
@@ -80,18 +80,10 @@ export const usePreviewTextEditor = ({
     const title = generateTitleFromContent(trimmedContent);
 
     try {
-      const response = await fetch(`${API_BASE}/objects/${tileId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          metadata: { content: trimmedContent },
-        }),
+      await objectsApi.patchObject(tileId, {
+        title,
+        metadata: { content: trimmedContent },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update text note');
-      }
 
       setEditorState({ isEditing: false, editedContent: trimmedContent });
 

@@ -61,12 +61,24 @@ body {
   text-underline-offset: 2px;
 }
 
+.web-article-scroll.web-article-scroll-dark a {
+  color: #93c5fd !important;
+}
+
 .web-article-scroll a:visited {
   color: #1d4ed8 !important;
 }
 
+.web-article-scroll.web-article-scroll-dark a:visited {
+  color: #bfdbfe !important;
+}
+
 .web-article-scroll a:hover {
   color: #1e40af !important;
+}
+
+.web-article-scroll.web-article-scroll-dark a:hover {
+  color: #dbeafe !important;
 }
 
 .web-article-scroll figure {

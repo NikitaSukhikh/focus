@@ -222,7 +222,7 @@ export const WebArticleContent = React.memo(function WebArticleContent({
 
         {state === 'article' && articleHtml && (
           <div
-            className="article-scroll web-article-scroll"
+            className={`article-scroll web-article-scroll${isDark ? ' web-article-scroll-dark' : ''}`}
             style={{
               width: '100%',
               height: '100%',

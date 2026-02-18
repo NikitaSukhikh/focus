@@ -6,6 +6,7 @@ import { undoApi } from '@/api/undo';
 import { ArrowAnchorRef, ArrowSegment } from '@/components/layout/centerpane/types';
 import {
   findFocusRingTileIdAtClientPoint,
+  getBestAnchorPairForTiles,
   getNearestAnchorForTile,
 } from '@/components/layout/centerpane/arrowGeometry';
 
@@ -38,6 +39,7 @@ interface ArrowUndoFrame {
 interface DrawState {
   pointerId: number;
   startTileId: string;
+  startClientPoint: { x: number; y: number };
   startAnchor: ArrowAnchorRef;
   startPoint: { x: number; y: number };
 }
@@ -217,15 +219,42 @@ export const useArrowDrawing = ({
   );
 
   const computeDraftEndpoint = useCallback(
-    (startTileId: string, clientX: number, clientY: number) => {
+    (drawState: DrawState, clientX: number, clientY: number) => {
       const anchorHit = getAnchorAtPointer(clientX, clientY);
       const pointerPoint = getPointerCanvasPoint(clientX, clientY);
-      if (!anchorHit || anchorHit.anchor.tileId === startTileId) {
-        return { point: pointerPoint, anchor: null as ArrowAnchorRef | null };
+      if (!anchorHit || anchorHit.anchor.tileId === drawState.startTileId) {
+        return {
+          startPoint: drawState.startPoint,
+          startAnchor: drawState.startAnchor,
+          endPoint: pointerPoint,
+          endAnchor: null as ArrowAnchorRef | null,
+        };
       }
-      return { point: anchorHit.point, anchor: anchorHit.anchor };
+
+      const bestAnchorPair = getBestAnchorPairForTiles(
+        drawState.startTileId,
+        anchorHit.anchor.tileId,
+        drawState.startClientPoint,
+        { x: clientX, y: clientY },
+        toCanvasCoords
+      );
+      if (bestAnchorPair) {
+        return {
+          startPoint: bestAnchorPair.start.point,
+          startAnchor: bestAnchorPair.start.anchor,
+          endPoint: bestAnchorPair.end.point,
+          endAnchor: bestAnchorPair.end.anchor,
+        };
+      }
+
+      return {
+        startPoint: drawState.startPoint,
+        startAnchor: drawState.startAnchor,
+        endPoint: anchorHit.point,
+        endAnchor: anchorHit.anchor,
+      };
     },
-    [getAnchorAtPointer, getPointerCanvasPoint]
+    [getAnchorAtPointer, getPointerCanvasPoint, toCanvasCoords]
   );
 
   const handleFocusRingPointerDown = useCallback(
@@ -242,6 +271,7 @@ export const useArrowDrawing = ({
       drawStateRef.current = {
         pointerId: event.pointerId,
         startTileId: tileId,
+        startClientPoint: { x: event.clientX, y: event.clientY },
         startAnchor: startAnchor.anchor,
         startPoint: startAnchor.point,
       };
@@ -293,14 +323,14 @@ export const useArrowDrawing = ({
       if (!drawState) return;
       if (e.pointerId !== drawState.pointerId) return;
 
-      const next = computeDraftEndpoint(drawState.startTileId, e.clientX, e.clientY);
+      const next = computeDraftEndpoint(drawState, e.clientX, e.clientY);
 
       setDraftArrow({
         id: 'arrow-draft',
-        start: drawState.startPoint,
-        end: next.point,
-        startAnchor: drawState.startAnchor,
-        endAnchor: next.anchor ?? undefined,
+        start: next.startPoint,
+        end: next.endPoint,
+        startAnchor: next.startAnchor,
+        endAnchor: next.endAnchor ?? undefined,
       });
     };
 
@@ -309,22 +339,22 @@ export const useArrowDrawing = ({
       if (!drawState) return;
       if (e.pointerId !== drawState.pointerId) return;
 
-      const next = computeDraftEndpoint(drawState.startTileId, e.clientX, e.clientY);
+      const next = computeDraftEndpoint(drawState, e.clientX, e.clientY);
 
       setIsDrawingArrow(false);
       setDraftArrow(null);
       drawStateRef.current = null;
 
-      if (!selectedSpaceId || !next.anchor || next.anchor.tileId === drawState.startTileId) {
+      if (!selectedSpaceId || !next.endAnchor || next.endAnchor.tileId === drawState.startTileId) {
         return;
       }
 
       const newArrow: ArrowSegment = {
         id: crypto.randomUUID ? crypto.randomUUID() : `arrow-${Date.now()}`,
-        start: drawState.startPoint,
-        end: next.point,
-        startAnchor: drawState.startAnchor,
-        endAnchor: next.anchor,
+        start: next.startPoint,
+        end: next.endPoint,
+        startAnchor: next.startAnchor,
+        endAnchor: next.endAnchor,
       };
 
       const spaceId = selectedSpaceId;

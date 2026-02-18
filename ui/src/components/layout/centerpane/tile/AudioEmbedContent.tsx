@@ -1,3 +1,4 @@
+// AudioEmbedContent renders compact audio controls and keeps colors token-based so dark mode stays readable.
 import React, { useEffect } from 'react';
 import { tileRingStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
@@ -75,20 +76,50 @@ export function AudioEmbedContent({
   const displayArtist = metadata?.artist;
   const displayAlbum = metadata?.album;
   const displayDuration = metadata?.duration_formatted || formatTime(duration);
+  const rangeTrackColor = 'var(--color-border-strong)';
+  const rangeActiveColor = 'rgba(124, 58, 237, 0.7)';
 
   return (
-    <div className={`w-full h-full flex flex-col transition-transform duration-150 ${hoverScaleClass}`} style={tileRingStyle('file')}>
-      <div className="w-full h-full rounded-xl border border-slate-200 shadow-[0_12px_30px_rgba(15,23,42,0.14)] text-slate-900 flex flex-col overflow-hidden" style={{ background: TILE_BACKGROUND }}>
-        <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex items-start gap-3">
+    <div
+      className={`w-full h-full flex flex-col transition-transform duration-150 ${hoverScaleClass}`}
+      style={tileRingStyle('file')}
+    >
+      <div
+        className="w-full h-full rounded-xl flex flex-col overflow-hidden"
+        style={{
+          background: TILE_BACKGROUND,
+          border: '1px solid var(--color-border-subtle)',
+          color: 'var(--color-text-primary)',
+          boxShadow: 'var(--shadow-strong)',
+        }}
+      >
+        <div
+          className="px-4 pt-3 pb-2 flex items-start gap-3"
+          style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
+        >
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold leading-tight truncate text-slate-900">{displayTitle}</div>
+            <div
+              className="text-sm font-semibold leading-tight truncate"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              {displayTitle}
+            </div>
             {displayArtist && (
-              <div className="text-xs text-slate-600 truncate">{displayArtist}</div>
+              <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                {displayArtist}
+              </div>
             )}
             {displayAlbum && (
-              <div className="text-xs text-slate-500 truncate">{displayAlbum}</div>
+              <div className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>
+                {displayAlbum}
+              </div>
             )}
-            <div className="text-[11px] text-slate-500 truncate mt-0.5">{filePath}</div>
+            <div
+              className="text-[11px] truncate mt-0.5"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {filePath}
+            </div>
           </div>
         </div>
 
@@ -116,12 +147,15 @@ export function AudioEmbedContent({
                 markInteraction(false);
               }}
               onPointerLeave={() => markInteraction(false)}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${timelinePercent}%, #e2e8f0 ${timelinePercent}%, #e2e8f0 100%)`
+                background: `linear-gradient(to right, ${rangeActiveColor} 0%, ${rangeActiveColor} ${timelinePercent}%, ${rangeTrackColor} ${timelinePercent}%, ${rangeTrackColor} 100%)`,
               }}
             />
-            <div className="flex justify-between text-[11px] text-slate-600 mt-1">
+            <div
+              className="flex justify-between text-[11px] mt-1"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
               <span>{formatTime(currentTime)}</span>
               <span>{displayDuration}</span>
             </div>
@@ -159,7 +193,8 @@ export function AudioEmbedContent({
                   markInteraction(false);
                 }}
                 onPointerLeave={() => markInteraction(false)}
-                className="p-2 text-slate-600 hover:text-purple-600 transition-colors"
+                className="p-2 hover:text-purple-600 transition-colors"
+                style={{ color: 'var(--color-text-secondary)' }}
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -180,14 +215,13 @@ export function AudioEmbedContent({
                   markInteraction(false);
                 }}
                 onPointerLeave={() => markInteraction(false)}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${volumePercent}%, #e2e8f0 ${volumePercent}%, #e2e8f0 100%)`
+                  background: `linear-gradient(to right, ${rangeActiveColor} 0%, ${rangeActiveColor} ${volumePercent}%, ${rangeTrackColor} ${volumePercent}%, ${rangeTrackColor} 100%)`,
                 }}
               />
             </div>
           </div>
-
         </div>
       </div>
     </div>

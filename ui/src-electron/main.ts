@@ -34,6 +34,113 @@ let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let backendProcess: ChildProcess | null = null;
 let isFullWindowPreviewOpen = false;
+let bypassMetadataCloseGuard = false;
+let closeFlushPromise: Promise<void> | null = null;
+let bypassQuitFlushGuard = false;
+
+const METADATA_API_BASE = process.env.FOCUS_API_BASE?.trim() || 'http://localhost:8000/api';
+
+interface MetadataQueueEntry {
+  payload: Record<string, unknown>;
+  resolvers: Array<(value: unknown) => void>;
+  rejecters: Array<(reason?: unknown) => void>;
+}
+
+const metadataWriteQueue = new Map<string, MetadataQueueEntry>();
+let metadataQueueWorker: Promise<void> | null = null;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const writeObjectPatch = async (objectId: string, payload: Record<string, unknown>) => {
+  const res = await fetch(`${METADATA_API_BASE}/objects/${objectId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update metadata (${res.status}): ${text}`);
+  }
+
+  return res.json();
+};
+
+const processMetadataQueue = async () => {
+  while (metadataWriteQueue.size > 0) {
+    const batch = Array.from(metadataWriteQueue.entries());
+    metadataWriteQueue.clear();
+
+    await Promise.all(batch.map(async ([objectId, entry]) => {
+      try {
+        const result = await writeObjectPatch(objectId, entry.payload);
+        entry.resolvers.forEach((resolve) => resolve(result));
+      } catch (err) {
+        entry.rejecters.forEach((reject) => reject(err));
+      }
+    }));
+  }
+};
+
+const ensureMetadataQueueWorker = () => {
+  if (metadataQueueWorker) {
+    return;
+  }
+
+  metadataQueueWorker = processMetadataQueue()
+    .catch((err) => {
+      console.error('[Electron] Metadata queue worker failed:', err);
+    })
+    .finally(() => {
+      metadataQueueWorker = null;
+      if (metadataWriteQueue.size > 0) {
+        ensureMetadataQueueWorker();
+      }
+    });
+};
+
+const enqueueObjectPatch = (objectId: string, payload: Record<string, unknown>): Promise<unknown> => {
+  return new Promise((resolve, reject) => {
+    const existing = metadataWriteQueue.get(objectId);
+    if (existing) {
+      existing.payload = payload;
+      existing.resolvers.push(resolve);
+      existing.rejecters.push(reject);
+    } else {
+      metadataWriteQueue.set(objectId, {
+        payload,
+        resolvers: [resolve],
+        rejecters: [reject],
+      });
+    }
+
+    ensureMetadataQueueWorker();
+  });
+};
+
+const enqueueMetadataWrite = (objectId: string, metadata: Record<string, unknown>): Promise<unknown> =>
+  enqueueObjectPatch(objectId, { metadata });
+
+const flushMetadataQueue = async (timeoutMs: number = 3000): Promise<boolean> => {
+  const deadline = Date.now() + timeoutMs;
+
+  while ((metadataWriteQueue.size > 0 || metadataQueueWorker) && Date.now() < deadline) {
+    if (!metadataQueueWorker && metadataWriteQueue.size > 0) {
+      ensureMetadataQueueWorker();
+    }
+
+    const remaining = Math.max(0, deadline - Date.now());
+    if (remaining === 0) break;
+
+    await Promise.race([
+      metadataQueueWorker,
+      new Promise<void>((resolve) => setTimeout(resolve, Math.min(remaining, 100))),
+    ]);
+  }
+
+  return metadataWriteQueue.size === 0 && !metadataQueueWorker;
+};
 
 const getIconPath = () => {
   const devCandidates = [
@@ -363,6 +470,40 @@ async function createMainWindow() {
     dialog.showErrorBox('Failed to Load', `The app failed to load: ${errorDescription}`);
   });
 
+  mainWindow.on('close', (event) => {
+    if (bypassMetadataCloseGuard) {
+      bypassMetadataCloseGuard = false;
+      return;
+    }
+
+    const hasPendingMetadataWrites = metadataWriteQueue.size > 0 || metadataQueueWorker !== null;
+    if (!hasPendingMetadataWrites) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!closeFlushPromise) {
+      closeFlushPromise = (async () => {
+        const drained = await flushMetadataQueue(3000);
+        if (!drained) {
+          console.warn('[Electron] Metadata queue not fully drained before close timeout');
+        }
+      })()
+        .catch((err) => {
+          console.error('[Electron] Failed to flush metadata queue on close:', err);
+        })
+        .finally(() => {
+          closeFlushPromise = null;
+          if (!mainWindow || mainWindow.isDestroyed()) {
+            return;
+          }
+          bypassMetadataCloseGuard = true;
+          mainWindow.close();
+        });
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
     isFullWindowPreviewOpen = false;
@@ -483,17 +624,76 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (!isMac) {
-    stopBackend();
     app.quit();
   }
 });
 
-app.on('before-quit', () => {
-  stopBackend();
+app.on('before-quit', (event) => {
+  if (bypassQuitFlushGuard) {
+    stopBackend();
+    return;
+  }
+
+  const hasPendingMetadataWrites = metadataWriteQueue.size > 0 || metadataQueueWorker !== null;
+  if (!hasPendingMetadataWrites) {
+    stopBackend();
+    return;
+  }
+
+  event.preventDefault();
+  void flushMetadataQueue(3000)
+    .catch((err) => {
+      console.error('[Electron] Failed to flush metadata queue before quit:', err);
+    })
+    .finally(() => {
+      stopBackend();
+      bypassQuitFlushGuard = true;
+      app.quit();
+    });
 });
 
 ipcMain.on('fullwindow-preview:state', (_event, isOpen: boolean) => {
   isFullWindowPreviewOpen = !!isOpen;
+});
+
+ipcMain.handle('metadata:write', async (_event, payload: { objectId?: unknown; metadata?: unknown }) => {
+  const objectId = payload?.objectId;
+  const metadata = payload?.metadata;
+
+  if (typeof objectId !== 'string' || !objectId.trim()) {
+    throw new Error('metadata:write requires a valid objectId');
+  }
+  if (!isPlainRecord(metadata)) {
+    throw new Error('metadata:write requires metadata object');
+  }
+
+  return enqueueMetadataWrite(objectId, metadata);
+});
+
+ipcMain.handle('object:patch', async (_event, payload: { objectId?: unknown; patch?: unknown }) => {
+  const objectId = payload?.objectId;
+  const patch = payload?.patch;
+
+  if (typeof objectId !== 'string' || !objectId.trim()) {
+    throw new Error('object:patch requires a valid objectId');
+  }
+  if (!isPlainRecord(patch)) {
+    throw new Error('object:patch requires patch object');
+  }
+
+  return enqueueObjectPatch(objectId, patch);
+});
+
+ipcMain.handle('metadata:flush', async (_event, payload?: { timeoutMs?: unknown }) => {
+  const rawTimeout = payload?.timeoutMs;
+  const timeoutMs = typeof rawTimeout === 'number' && Number.isFinite(rawTimeout)
+    ? Math.max(0, Math.floor(rawTimeout))
+    : 3000;
+  const drained = await flushMetadataQueue(timeoutMs);
+  return {
+    drained,
+    pending: metadataWriteQueue.size + (metadataQueueWorker ? 1 : 0),
+  };
 });
 
 ipcMain.handle('desktop:open-dialog', async (_event, options) => {

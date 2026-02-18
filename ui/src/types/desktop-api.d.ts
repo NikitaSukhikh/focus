@@ -16,6 +16,9 @@ declare global {
     // Full window preview coordination
     setFullWindowPreviewState: (_isOpen: boolean) => void;
     onCloseFullWindowPreviewRequest: (_handler: () => void) => (() => void) | void;
+    queueMetadataWrite: (_objectId: string, _metadata: Record<string, unknown>) => Promise<unknown>;
+    queueObjectPatch: (_objectId: string, _patch: Record<string, unknown>) => Promise<unknown>;
+    flushMetadataWrites: (_timeoutMs?: number) => Promise<{ drained: boolean; pending: number }>;
     // Window controls
     minimizeWindow: () => Promise<void>;
     maximizeWindow: () => Promise<void>;

@@ -1,3 +1,4 @@
+// AudioPlayer renders the full audio-file preview and maps visual colors to theme tokens for contrast in both themes.
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useAudioMetadata } from '@/components/media/useAudioMetadata';
 import { useSharedAudioController } from '@/components/media/useSharedAudioController';
@@ -50,20 +51,28 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
   const displayTitle = metadata?.title || title || 'Audio File';
   const displayArtist = metadata?.artist;
   const displayAlbum = metadata?.album;
+  const timelinePercent = duration ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const volumePercent = (isMuted ? 0 : volume) * 100;
+  const rangeTrackColor = 'var(--color-border-strong)';
+  const rangeActiveColor = 'rgba(124, 58, 237, 0.7)';
 
   return (
     <div className="flex-1 overflow-auto article-scroll">
       <div className="p-8 max-w-4xl mx-auto">
         {/* Title Section */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2 text-slate-800">
+          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
             {displayTitle}
           </h1>
           {displayArtist && (
-            <p className="text-xl text-slate-600 mb-1">{displayArtist}</p>
+            <p className="text-xl mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+              {displayArtist}
+            </p>
           )}
           {displayAlbum && (
-            <p className="text-lg text-slate-500">{displayAlbum}</p>
+            <p className="text-lg" style={{ color: 'var(--color-text-muted)' }}>
+              {displayAlbum}
+            </p>
           )}
         </div>
 
@@ -75,7 +84,14 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
         )}
 
         {/* Player Controls */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div
+          className="rounded-lg p-6 mb-6"
+          style={{
+            background: 'var(--background-light)',
+            border: '1px solid var(--color-border-subtle)',
+            boxShadow: 'var(--shadow-strong)',
+          }}
+        >
           {/* Progress Bar */}
           <div className="mb-4">
             <input
@@ -84,12 +100,15 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
               max={duration || 0}
               value={currentTime}
               onChange={handleTimeChange}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)`
+                background: `linear-gradient(to right, ${rangeActiveColor} 0%, ${rangeActiveColor} ${timelinePercent}%, ${rangeTrackColor} ${timelinePercent}%, ${rangeTrackColor} 100%)`,
               }}
             />
-            <div className="flex justify-between text-sm text-slate-600 mt-2">
+            <div
+              className="flex justify-between text-sm mt-2"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -110,7 +129,8 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleMute}
-                className="p-2 text-slate-600 hover:text-purple-600 transition-colors"
+                className="p-2 hover:text-purple-600 transition-colors"
+                style={{ color: 'var(--color-text-secondary)' }}
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -122,9 +142,9 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
                 step="0.01"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                className="w-24 h-1.5 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, rgba(124, 58, 237, 0.7) 0%, rgba(124, 58, 237, 0.7) ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 ${(isMuted ? 0 : volume) * 100}%, #e2e8f0 100%)`
+                  background: `linear-gradient(to right, ${rangeActiveColor} 0%, ${rangeActiveColor} ${volumePercent}%, ${rangeTrackColor} ${volumePercent}%, ${rangeTrackColor} 100%)`,
                 }}
               />
             </div>
@@ -133,37 +153,86 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
 
         {/* Metadata Section */}
         {metadata && !metadataError && (
-          <div className="bg-white rounded-lg shadow-md p-6 border border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">File Information</h3>
+          <div
+            className="rounded-lg p-6"
+            style={{
+              background: 'var(--background-light)',
+              border: '1px solid var(--color-border-subtle)',
+              boxShadow: 'var(--shadow-soft)',
+            }}
+          >
+            <h3
+              className="text-lg font-semibold mb-4"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              File Information
+            </h3>
             <div className="space-y-2 text-sm">
               <div className="flex">
-                <span className="font-semibold text-slate-700 w-32">Location:</span>
-                <span className="text-slate-600 break-all flex-1">{filePath}</span>
+                <span className="font-semibold w-32" style={{ color: 'var(--color-text-primary)' }}>
+                  Location:
+                </span>
+                <span className="break-all flex-1" style={{ color: 'var(--color-text-secondary)' }}>
+                  {filePath}
+                </span>
               </div>
               <div className="flex">
-                <span className="font-semibold text-slate-700 w-32">Size:</span>
-                <span className="text-slate-600">{metadata.file_size_human}</span>
+                <span className="font-semibold w-32" style={{ color: 'var(--color-text-primary)' }}>
+                  Size:
+                </span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>
+                  {metadata.file_size_human}
+                </span>
               </div>
               <div className="flex">
-                <span className="font-semibold text-slate-700 w-32">Duration:</span>
-                <span className="text-slate-600">{metadata.duration_formatted}</span>
+                <span className="font-semibold w-32" style={{ color: 'var(--color-text-primary)' }}>
+                  Duration:
+                </span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>
+                  {metadata.duration_formatted}
+                </span>
               </div>
               {metadata.bitrate > 0 && (
                 <div className="flex">
-                  <span className="font-semibold text-slate-700 w-32">Bitrate:</span>
-                  <span className="text-slate-600">{metadata.bitrate} kbps</span>
+                  <span
+                    className="font-semibold w-32"
+                    style={{ color: 'var(--color-text-primary)' }}
+                  >
+                    Bitrate:
+                  </span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {metadata.bitrate} kbps
+                  </span>
                 </div>
               )}
               {metadata.sample_rate > 0 && (
                 <div className="flex">
-                  <span className="font-semibold text-slate-700 w-32">Sample Rate:</span>
-                  <span className="text-slate-600">{metadata.sample_rate} Hz</span>
+                  <span
+                    className="font-semibold w-32"
+                    style={{ color: 'var(--color-text-primary)' }}
+                  >
+                    Sample Rate:
+                  </span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {metadata.sample_rate} Hz
+                  </span>
                 </div>
               )}
               {metadata.channels > 0 && (
                 <div className="flex">
-                  <span className="font-semibold text-slate-700 w-32">Channels:</span>
-                  <span className="text-slate-600">{metadata.channels === 1 ? 'Mono' : metadata.channels === 2 ? 'Stereo' : `${metadata.channels} channels`}</span>
+                  <span
+                    className="font-semibold w-32"
+                    style={{ color: 'var(--color-text-primary)' }}
+                  >
+                    Channels:
+                  </span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {metadata.channels === 1
+                      ? 'Mono'
+                      : metadata.channels === 2
+                        ? 'Stereo'
+                        : `${metadata.channels} channels`}
+                  </span>
                 </div>
               )}
             </div>

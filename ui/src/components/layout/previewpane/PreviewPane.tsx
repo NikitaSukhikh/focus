@@ -26,7 +26,7 @@ import { VideoFilePreview } from '@/components/layout/previewpane/components/Vid
 import { GmailExternalPreview } from '@/components/layout/previewpane/components/gmail_external';
 import { useGmailDetection } from '@/components/layout/previewpane/hooks/useGmailDetection';
 import { DroppedIcon } from '@/components/layout/centerpane/types';
-import { API_BASE } from '@/config/api';
+import { objectsApi } from '@/api/objects';
 
 /* eslint-disable react/no-unknown-property */
 
@@ -198,13 +198,9 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
       if (hasUnsavedChanges && tileId && localContent) {
         // Fire async save without waiting
         const title = localTitle || 'Untitled Note';
-        fetch(`${API_BASE}/objects/${tileId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title,
-            metadata: { content: localContent },
-          }),
+        objectsApi.patchObject(tileId, {
+          title,
+          metadata: { content: localContent },
         }).catch(err => console.error('Failed to auto-save on close:', err));
       }
     };

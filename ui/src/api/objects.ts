@@ -52,6 +52,37 @@ export interface ObjectResponse {
 }
 
 export const objectsApi = {
+  async patchObject(objectId: string, patch: Record<string, unknown>): Promise<ObjectResponse> {
+    const desktopApi = (window as any).desktopAPI as {
+      queueObjectPatch?: (_objectId: string, _patch: Record<string, unknown>) => Promise<unknown>;
+    } | undefined;
+
+    if (desktopApi?.queueObjectPatch) {
+      const promise = (async () => {
+        const result = await desktopApi.queueObjectPatch(objectId, patch);
+        return result as ObjectResponse;
+      })();
+      return requestTracker.track(promise);
+    }
+
+    const promise = (async () => {
+      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        // keepalive helps persist patch updates during window close
+        keepalive: true,
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to patch object: ${res.status} ${text}`);
+      }
+      return res.json();
+    })();
+
+    return requestTracker.track(promise);
+  },
+
   async list(spaceId: string): Promise<ObjectResponse[]> {
     const res = await fetch(`${API_BASE}/spaces/${spaceId}/objects`);
     if (!res.ok) {
@@ -200,20 +231,7 @@ export const objectsApi = {
   },
 
   async updateMetadata(objectId: string, metadata: Record<string, unknown>): Promise<ObjectResponse> {
-    const promise = (async () => {
-      const res = await fetch(`${API_BASE}/objects/${objectId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metadata }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to update metadata: ${res.status} ${text}`);
-      }
-      return res.json();
-    })();
-
-    return requestTracker.track(promise);
+    return objectsApi.patchObject(objectId, { metadata });
   },
 
   /**

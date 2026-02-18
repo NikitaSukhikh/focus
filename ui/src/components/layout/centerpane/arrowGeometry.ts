@@ -4,7 +4,6 @@ import { ArrowAnchorRef, FocusRingEdge } from '@/components/layout/centerpane/ty
 const STRAIGHT_EPSILON = 0.5;
 const ARROW_CORNER_RADIUS = 14;
 const EDGE_STUB_DISTANCE = 26;
-const MIN_EDGE_STUB_DISTANCE = ARROW_CORNER_RADIUS + 2;
 
 interface AnchorCandidate {
   anchor: ArrowAnchorRef;
@@ -38,6 +37,11 @@ const toAnchorCandidate = (anchorEl: HTMLElement): AnchorCandidate | null => {
   };
 };
 
+const getTileAnchorCandidates = (tileId: string): AnchorCandidate[] =>
+  getTileAnchorElements(tileId)
+    .map((anchorEl) => toAnchorCandidate(anchorEl))
+    .filter((candidate): candidate is AnchorCandidate => Boolean(candidate));
+
 export const findFocusRingTileIdAtClientPoint = (clientX: number, clientY: number): string | null => {
   const hits = document.elementsFromPoint(clientX, clientY);
   for (const element of hits) {
@@ -59,9 +63,7 @@ export const getNearestAnchorForTile = (
   clientY: number,
   toCanvasCoords: (_clientX: number, _clientY: number) => { x: number; y: number }
 ): { anchor: ArrowAnchorRef; point: { x: number; y: number } } | null => {
-  const candidates = getTileAnchorElements(tileId)
-    .map((anchorEl) => toAnchorCandidate(anchorEl))
-    .filter((candidate): candidate is AnchorCandidate => Boolean(candidate));
+  const candidates = getTileAnchorCandidates(tileId);
   if (!candidates.length) return null;
 
   let nearest = candidates[0];
@@ -81,6 +83,84 @@ export const getNearestAnchorForTile = (
     anchor: nearest.anchor,
     point: toCanvasCoords(nearest.clientX, nearest.clientY),
   };
+};
+
+interface AnchorPairSelectionResult {
+  start: { anchor: ArrowAnchorRef; point: { x: number; y: number } };
+  end: { anchor: ArrowAnchorRef; point: { x: number; y: number } };
+}
+
+export interface RouteAnchorCandidate {
+  anchor: ArrowAnchorRef;
+  point: { x: number; y: number };
+  scoreOffset?: number;
+}
+
+export const getBestAnchorPairForRoute = (
+  startCandidates: RouteAnchorCandidate[],
+  endCandidates: RouteAnchorCandidate[],
+  options: { obstacles?: ArrowPathObstacle[] } = {}
+): AnchorPairSelectionResult | null => {
+  if (!startCandidates.length || !endCandidates.length) return null;
+
+  const obstacles = options.obstacles ?? [];
+  let best: AnchorPairSelectionResult | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  startCandidates.forEach((startCandidate) => {
+    endCandidates.forEach((endCandidate) => {
+      const routePoints = buildEdgeAwarePoints(startCandidate.point, endCandidate.point, {
+        startEdge: startCandidate.anchor.edge,
+        endEdge: endCandidate.anchor.edge,
+        obstacles,
+      });
+      const routeScore = scoreEdgeRoute(routePoints, obstacles);
+      const score = routeScore.score + (startCandidate.scoreOffset ?? 0) + (endCandidate.scoreOffset ?? 0);
+
+      if (score < bestScore) {
+        bestScore = score;
+        best = {
+          start: { anchor: startCandidate.anchor, point: startCandidate.point },
+          end: { anchor: endCandidate.anchor, point: endCandidate.point },
+        };
+      }
+    });
+  });
+
+  return best;
+};
+
+export const getBestAnchorPairForTiles = (
+  startTileId: string,
+  endTileId: string,
+  startClientPoint: { x: number; y: number },
+  endClientPoint: { x: number; y: number },
+  toCanvasCoords: (_clientX: number, _clientY: number) => { x: number; y: number }
+): AnchorPairSelectionResult | null => {
+  if (startTileId === endTileId) return null;
+
+  const startCandidates = getTileAnchorCandidates(startTileId);
+  const endCandidates = getTileAnchorCandidates(endTileId);
+  if (!startCandidates.length || !endCandidates.length) return null;
+
+  const startRouteCandidates: RouteAnchorCandidate[] = startCandidates.map((startCandidate) => ({
+    anchor: startCandidate.anchor,
+    point: toCanvasCoords(startCandidate.clientX, startCandidate.clientY),
+    scoreOffset: Math.hypot(
+      startCandidate.clientX - startClientPoint.x,
+      startCandidate.clientY - startClientPoint.y
+    ) * 25,
+  }));
+  const endRouteCandidates: RouteAnchorCandidate[] = endCandidates.map((endCandidate) => ({
+    anchor: endCandidate.anchor,
+    point: toCanvasCoords(endCandidate.clientX, endCandidate.clientY),
+    scoreOffset: Math.hypot(
+      endCandidate.clientX - endClientPoint.x,
+      endCandidate.clientY - endClientPoint.y
+    ) * 25,
+  }));
+
+  return getBestAnchorPairForRoute(startRouteCandidates, endRouteCandidates);
 };
 
 export const resolveAnchorCanvasPoint = (
@@ -355,6 +435,191 @@ const buildRoundedPath = (
   return commands.join(' ');
 };
 
+type CardinalDirection = 'left' | 'right' | 'up' | 'down';
+
+const segmentDirection = (
+  start: { x: number; y: number },
+  end: { x: number; y: number }
+): CardinalDirection | null => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const horizontal = Math.abs(dx) >= STRAIGHT_EPSILON;
+  const vertical = Math.abs(dy) >= STRAIGHT_EPSILON;
+
+  if (horizontal && vertical) return null;
+  if (!horizontal && !vertical) return null;
+  if (horizontal) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'down' : 'up';
+};
+
+const isOppositeDirection = (first: CardinalDirection, second: CardinalDirection): boolean => {
+  return (first === 'left' && second === 'right')
+    || (first === 'right' && second === 'left')
+    || (first === 'up' && second === 'down')
+    || (first === 'down' && second === 'up');
+};
+
+const buildEdgeCandidatePoints = (
+  start: { x: number; y: number },
+  startGuide: { x: number; y: number },
+  endGuide: { x: number; y: number },
+  end: { x: number; y: number },
+  bridgePoints: Array<{ x: number; y: number }>
+): Array<{ x: number; y: number }> => {
+  const points: Array<{ x: number; y: number }> = [];
+  appendPoint(points, start);
+  appendPoint(points, startGuide);
+  bridgePoints.forEach((point) => appendPoint(points, point));
+  appendPoint(points, endGuide);
+  appendPoint(points, end);
+  return points;
+};
+
+const buildGuideRouteCandidates = (
+  startGuide: { x: number; y: number },
+  endGuide: { x: number; y: number },
+  stubDistance: number,
+  includeDetours: boolean
+): Array<Array<{ x: number; y: number }>> => {
+  const candidates: Array<Array<{ x: number; y: number }>> = [];
+  const dx = endGuide.x - startGuide.x;
+  const dy = endGuide.y - startGuide.y;
+  const alignedX = Math.abs(dx) < STRAIGHT_EPSILON;
+  const alignedY = Math.abs(dy) < STRAIGHT_EPSILON;
+
+  if (alignedX || alignedY) {
+    candidates.push([]);
+  } else {
+    candidates.push([{ x: endGuide.x, y: startGuide.y }]);
+    candidates.push([{ x: startGuide.x, y: endGuide.y }]);
+  }
+
+  if (!includeDetours) {
+    return candidates;
+  }
+
+  const guideDistance = distanceBetween(startGuide, endGuide);
+  const laneOffset = Math.max(
+    ARROW_CORNER_RADIUS + 2,
+    Math.min(EDGE_STUB_DISTANCE, Math.max(stubDistance, guideDistance / 2))
+  );
+  const minX = Math.min(startGuide.x, endGuide.x) - laneOffset;
+  const maxX = Math.max(startGuide.x, endGuide.x) + laneOffset;
+  const minY = Math.min(startGuide.y, endGuide.y) - laneOffset;
+  const maxY = Math.max(startGuide.y, endGuide.y) + laneOffset;
+
+  candidates.push(
+    [{ x: minX, y: startGuide.y }, { x: minX, y: endGuide.y }],
+    [{ x: maxX, y: startGuide.y }, { x: maxX, y: endGuide.y }],
+    [{ x: startGuide.x, y: minY }, { x: endGuide.x, y: minY }],
+    [{ x: startGuide.x, y: maxY }, { x: endGuide.x, y: maxY }]
+  );
+
+  return candidates;
+};
+
+const countPocketLoops = (directions: CardinalDirection[]): number => {
+  let loops = 0;
+  for (let index = 0; index <= directions.length - 3; index += 1) {
+    if (isOppositeDirection(directions[index], directions[index + 2])) {
+      loops += 1;
+    }
+  }
+  return loops;
+};
+
+interface EdgeRouteScore {
+  score: number;
+  reversals: number;
+  pocketLoops: number;
+  guidePocketLoops: number;
+  nonOrthogonal: number;
+  obstacleCrossings: number;
+}
+
+const scoreEdgeRoute = (
+  points: Array<{ x: number; y: number }>,
+  obstacles: ArrowPathObstacle[]
+): EdgeRouteScore => {
+  let length = 0;
+  let turns = 0;
+  let reversals = 0;
+  let nonOrthogonal = 0;
+  let obstacleCrossings = 0;
+  let repeatedVertices = 0;
+  let previousDirection: CardinalDirection | null = null;
+  const directions: CardinalDirection[] = [];
+  const visitedPointIndex = new Map<string, number>();
+
+  points.forEach((point, index) => {
+    const key = `${Math.round(point.x / STRAIGHT_EPSILON)}:${Math.round(point.y / STRAIGHT_EPSILON)}`;
+    const previousVisit = visitedPointIndex.get(key);
+    if (previousVisit !== undefined && Math.abs(index - previousVisit) > 1) {
+      repeatedVertices += 1;
+    }
+    if (previousVisit === undefined) {
+      visitedPointIndex.set(key, index);
+    }
+  });
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index];
+    const end = points[index + 1];
+    const direction = segmentDirection(start, end);
+
+    if (!direction) {
+      nonOrthogonal += 1;
+      continue;
+    }
+
+    directions.push(direction);
+    length += Math.abs(end.x - start.x) + Math.abs(end.y - start.y);
+    if (previousDirection) {
+      if (isOppositeDirection(previousDirection, direction)) {
+        reversals += 1;
+      } else if (previousDirection !== direction) {
+        turns += 1;
+      }
+    }
+    previousDirection = direction;
+
+    if (obstacles.length > 0 && segmentCrossesAnyObstacle(start, end, obstacles)) {
+      obstacleCrossings += 1;
+    }
+  }
+
+  const pocketLoops = countPocketLoops(directions);
+  const guidePocketLoops = (() => {
+    if (directions.length < 3) return 0;
+    let loops = 0;
+    if (isOppositeDirection(directions[0], directions[2])) {
+      loops += 1;
+    }
+    const last = directions.length - 1;
+    if (isOppositeDirection(directions[last], directions[last - 2])) {
+      loops += 1;
+    }
+    return loops;
+  })();
+  const score = (nonOrthogonal * 5_000_000)
+    + (reversals * 1_000_000)
+    + (repeatedVertices * 400_000)
+    + (pocketLoops * 250_000)
+    + (guidePocketLoops * 1_500_000)
+    + (obstacleCrossings * 100_000)
+    + (turns * 1_000)
+    + length;
+
+  return {
+    score,
+    reversals,
+    pocketLoops,
+    guidePocketLoops,
+    nonOrthogonal,
+    obstacleCrossings,
+  };
+};
+
 const buildEdgeAwarePath = (
   start: { x: number; y: number },
   end: { x: number; y: number },
@@ -373,10 +638,7 @@ const buildEdgeAwarePoints = (
   const startOutward = options.startEdge ? edgeOutwardVector(options.startEdge) : null;
   const endOutward = options.endEdge ? edgeOutwardVector(options.endEdge) : null;
   const distance = distanceBetween(start, end);
-  const stubDistance = Math.max(
-    MIN_EDGE_STUB_DISTANCE,
-    Math.min(EDGE_STUB_DISTANCE, Math.max(4, distance / 3))
-  );
+  const stubDistance = Math.min(EDGE_STUB_DISTANCE, Math.max(4, distance / 3));
 
   const startGuide = startOutward
     ? {
@@ -393,26 +655,39 @@ const buildEdgeAwarePoints = (
       }
     : end;
 
-  const points: Array<{ x: number; y: number }> = [];
-  appendPoint(points, start);
-  appendPoint(points, startGuide);
+  const obstacles = options.obstacles ?? [];
 
-  const midDx = endGuide.x - startGuide.x;
-  const midDy = endGuide.y - startGuide.y;
-  if (Math.abs(midDx) >= STRAIGHT_EPSILON && Math.abs(midDy) >= STRAIGHT_EPSILON) {
-    const horizontalFirst = Math.abs(midDx) >= Math.abs(midDy);
-    appendPoint(
-      points,
-      horizontalFirst
-        ? { x: endGuide.x, y: startGuide.y }
-        : { x: startGuide.x, y: endGuide.y }
-    );
+  const pickBestRoute = (candidates: Array<Array<{ x: number; y: number }>>) => {
+    let bestPoints = buildEdgeCandidatePoints(start, startGuide, endGuide, end, candidates[0] ?? []);
+    let bestEvaluation = scoreEdgeRoute(bestPoints, obstacles);
+
+    candidates.forEach((candidateBridge) => {
+      const rawPoints = buildEdgeCandidatePoints(start, startGuide, endGuide, end, candidateBridge);
+      const routedPoints = rerouteAroundObstacles(rawPoints, obstacles);
+      const evaluation = scoreEdgeRoute(routedPoints, obstacles);
+      if (evaluation.score < bestEvaluation.score) {
+        bestEvaluation = evaluation;
+        bestPoints = routedPoints;
+      }
+    });
+
+    return { points: bestPoints, evaluation: bestEvaluation };
+  };
+
+  const primaryCandidates = buildGuideRouteCandidates(startGuide, endGuide, stubDistance, false);
+  const primaryBest = pickBestRoute(primaryCandidates);
+  if (
+    primaryBest.evaluation.reversals === 0
+    && primaryBest.evaluation.pocketLoops === 0
+    && primaryBest.evaluation.guidePocketLoops === 0
+    && primaryBest.evaluation.nonOrthogonal === 0
+    && primaryBest.evaluation.obstacleCrossings === 0
+  ) {
+    return primaryBest.points;
   }
 
-  appendPoint(points, endGuide);
-  appendPoint(points, end);
-
-  return rerouteAroundObstacles(points, options.obstacles ?? []);
+  const allCandidates = buildGuideRouteCandidates(startGuide, endGuide, stubDistance, true);
+  return pickBestRoute(allCandidates).points;
 };
 
 export const countArrowSegments = (

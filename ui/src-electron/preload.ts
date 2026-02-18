@@ -33,6 +33,13 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   },
+  // Main-process metadata write queue (durable across fast window close)
+  queueMetadataWrite: (objectId: string, metadata: Record<string, unknown>) =>
+    ipcRenderer.invoke('metadata:write', { objectId, metadata }),
+  queueObjectPatch: (objectId: string, patch: Record<string, unknown>) =>
+    ipcRenderer.invoke('object:patch', { objectId, patch }),
+  flushMetadataWrites: (timeoutMs?: number) =>
+    ipcRenderer.invoke('metadata:flush', { timeoutMs }),
   // Window controls
   minimizeWindow: () =>
     ipcRenderer.invoke('window:minimize'),

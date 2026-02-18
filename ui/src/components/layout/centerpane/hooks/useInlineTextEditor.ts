@@ -15,7 +15,6 @@ import { undoApi } from '@/api/undo';
 import { DroppedIcon } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
 import { autoWrapText } from '@/components/layout/centerpane/utils';
-import { API_BASE } from '@/config/api';
 import { TEXT_TILE } from '@/constants/objectsDimensions';
 
 interface InlineEditorParams {
@@ -82,18 +81,10 @@ export const useInlineTextEditor = ({
     try {
       if (editingId) {
         // Update existing note - update both title and content in metadata
-        const response = await fetch(`${API_BASE}/objects/${editingId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title,
-            metadata: { content: formattedContent },
-          }),
+        await objectsApi.patchObject(editingId, {
+          title,
+          metadata: { content: formattedContent },
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to update text note');
-        }
 
         setIconsBySpace((prev) => {
           const current = prev[selectedSpace.id] || [];
