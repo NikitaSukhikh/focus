@@ -341,6 +341,8 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 // In both dev and production, preload.cjs is built to the same directory as main.js
 const PRELOAD_PATH = path.join(__dirname, 'preload.cjs');
 
+const splashScreenIsActive = false;
+
 function createSplashWindow() {
   console.log('[Electron] Creating splash window...');
 
@@ -514,7 +516,7 @@ app.whenReady().then(() => {
   logStartup();
 
   startBackend();
-  createSplashWindow();
+  if (splashScreenIsActive) createSplashWindow();
 
   createMainWindow().catch((err) => {
     console.error('[Electron] Failed to create main window:', err);

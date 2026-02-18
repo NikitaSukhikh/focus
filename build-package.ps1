@@ -207,7 +207,9 @@ $isccPaths = @(
 )
 $iscc = $isccPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
 
+$global:InnoSkipped = $false
 if (-not $iscc) {
+    $global:InnoSkipped = $true
     Write-Log "  WARNING: Inno Setup not found. Skipping installer build." -Color Yellow
     Write-Log "  Install from: https://jrsoftware.org/isdl.php" -Color Yellow
 } else {
@@ -260,6 +262,8 @@ $innoInstaller = Get-ChildItem -Path "dist" -Filter "FocusSetup-*.exe" -ErrorAct
 if ($innoInstaller) {
     $innoSize = [math]::Round($innoInstaller.Length / 1MB, 2)
     Write-Log "  Installer: $($innoInstaller.FullName) ($innoSize MB)" -Color Green
+} elseif ($global:InnoSkipped) {
+    Write-Log "  Installer: skipped (Inno Setup not installed)" -Color Yellow
 } else {
     Write-Log "  Installer: NOT FOUND in dist\ (Inno Setup may have failed)" -Color Red
 }

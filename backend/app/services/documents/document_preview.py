@@ -60,7 +60,7 @@ class DocumentPreviewService:
     def __init__(self):
         """Initialize the document preview service."""
         self.settings = settings
-        self.cache_dir = Path(settings.storage.cache_dir) / "document_previews"
+        self.cache_dir = settings.storage.cache_path / "document_previews"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def convert_docx_to_html(

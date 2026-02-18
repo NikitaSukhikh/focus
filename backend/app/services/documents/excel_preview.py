@@ -53,7 +53,7 @@ class ExcelPreviewService:
     def __init__(self):
         """Initialize the Excel preview service."""
         self.settings = settings
-        self.cache_dir = Path(settings.storage.cache_dir) / "excel_previews"
+        self.cache_dir = settings.storage.cache_path / "excel_previews"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def convert_excel_to_html(

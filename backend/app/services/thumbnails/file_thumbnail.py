@@ -42,7 +42,7 @@ class FileThumbnailService:
     def __init__(self):
         """Initialize the thumbnail service."""
         self.settings = settings
-        self.cache_dir = Path(settings.storage.cache_dir) / "thumbnails"
+        self.cache_dir = settings.storage.thumbnails_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_image_thumbnail(

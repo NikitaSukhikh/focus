@@ -4,6 +4,20 @@
 
 import React from 'react';
 import { FileText, File, FileType, Music, BookOpen } from 'lucide-react';
+import pdfLogo from '@/assets/pdf_logo.png';
+import excelLogo from '@/assets/excel_type.jfif';
+
+const codeIconModules = import.meta.glob('../../assets/code-icons/*.svg', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+const CODE_ICON_URLS: Record<string, string> = {};
+for (const [path, url] of Object.entries(codeIconModules)) {
+  const filename = path.split('/').pop()!;
+  CODE_ICON_URLS[filename] = url;
+}
 
 interface FileIconProps {
   size?: number;
@@ -16,7 +30,7 @@ const iconStyle = { opacity: 'var(--icon-opacity, 1)' };
 export function PdfIcon({ size = 48, className = '' }: FileIconProps) {
   return (
     <img
-      src="/logos/pdf_logo.png"
+      src={pdfLogo}
       alt="PDF"
       className={`object-contain ${className}`}
       style={{ width: size, height: size, ...iconStyle }}
@@ -59,7 +73,7 @@ export function OdtIcon({ size = 48, className = '' }: FileIconProps) {
 export function ExcelIcon({ size = 48, className = '' }: FileIconProps) {
   return (
     <img
-      src="/logos/excel_type.jfif"
+      src={excelLogo}
       alt="Excel"
       className={`object-contain ${className}`}
       style={{ width: size, height: size, ...iconStyle }}
@@ -148,7 +162,7 @@ export function CodeFileIcon({ size = 48, className = '', extension = '' }: File
   if (vscodeIcon) {
     return (
       <img
-        src={`/logos/code-icons/${vscodeIcon}`}
+        src={CODE_ICON_URLS[vscodeIcon] ?? ''}
         alt={extension}
         className={`object-contain ${className}`}
         style={{ width: size, height: size, ...iconStyle }}

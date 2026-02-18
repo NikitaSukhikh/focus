@@ -53,7 +53,7 @@ class EbookPreviewService:
     def __init__(self):
         """Initialize the ebook preview service."""
         self.settings = settings
-        self.cache_dir = Path(settings.storage.cache_dir) / "ebook_previews"
+        self.cache_dir = settings.storage.cache_path / "ebook_previews"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.images_dir = self.cache_dir / "images"
         self.images_dir.mkdir(parents=True, exist_ok=True)

@@ -718,7 +718,7 @@ async def get_ebook_image(
         from app.core.config import get_settings
         settings = get_settings()
 
-        images_dir = Path(settings.storage.cache_dir) / "ebook_previews" / "images"
+        images_dir = settings.storage.cache_path / "ebook_previews" / "images"
         image_path = (images_dir / image_name).resolve()
 
         try:

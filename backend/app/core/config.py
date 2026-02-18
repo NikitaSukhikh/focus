@@ -314,16 +314,24 @@ class StorageSettings(BaseSettings):
             return (backend_root / relative_path).resolve()
 
     @property
+    def storage_path(self) -> Path:
+        """Get the resolved base storage directory path."""
+        return self._resolve_storage_path(self.base_path)
+
+    @property
+    def cache_path(self) -> Path:
+        """Get the resolved cache directory path."""
+        return self._resolve_storage_path(self.cache_dir)
+
+    @property
     def thumbnails_dir(self) -> Path:
         """Get the thumbnails directory path."""
-        cache_path = self._resolve_storage_path(self.cache_dir)
-        return cache_path / "thumbnails"
+        return self.cache_path / "thumbnails"
 
     @property
     def previews_dir(self) -> Path:
         """Get the previews directory path."""
-        cache_path = self._resolve_storage_path(self.cache_dir)
-        return cache_path / "previews"
+        return self.cache_path / "previews"
 
     def ensure_directories(self) -> None:
         """Ensure all required storage directories exist."""

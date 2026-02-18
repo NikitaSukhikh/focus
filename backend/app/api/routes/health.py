@@ -159,8 +159,8 @@ async def detailed_health_check(
     # Storage status
     subsystems["storage"] = {
         "status": "healthy",
-        "base_path": str(settings.storage.base_path),
-        "cache_dir": str(settings.storage.cache_dir)
+        "base_path": str(settings.storage.storage_path),
+        "cache_dir": str(settings.storage.cache_path)
     }
 
     # Feature flags

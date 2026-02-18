@@ -37,7 +37,7 @@ class PresentationPreviewService:
     def __init__(self):
         """Initialize the presentation preview service."""
         self.settings = settings
-        self.cache_dir = Path(settings.storage.cache_dir) / "presentation_previews"
+        self.cache_dir = settings.storage.cache_path / "presentation_previews"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._soffice_path: str | None = None
 

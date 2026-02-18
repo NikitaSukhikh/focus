@@ -17,11 +17,10 @@ import { WindowControls } from '@/components/layout/topbar/WindowControls';
 import { AiAssistantComingSoonDialog } from '@/components/layout/topbar/AiAssistantComingSoonDialog';
 import { SpaceShareFilters, createDefaultSpaceShareFilters } from '@/components/dialogs/share/types';
 import focusLogo from '@/assets/focus.png';
+import aiAssistantLogo from '@/assets/ai_assistant_logo_transparent.png';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
 
 export type { TopBarHandle } from '@/components/layout/topbar/types';
-
-const AI_ASSISTANT_LOGO_SRC = '/logos/ai_assistant_logo_transparent.png';
 
 // TopBar renders the global header controls (sidebar toggle, space title editor, search, preview toggles, zoom) and wires them to layout state.
 const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
@@ -551,7 +550,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
               aria-expanded={isAiAssistantDialogOpen}
             >
               <img
-                src={AI_ASSISTANT_LOGO_SRC}
+                src={aiAssistantLogo}
                 alt="AI Assistant"
                 style={{
                   width: `${TOP_BAR.aiAssistantButton.logoSize}px`,

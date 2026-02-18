@@ -29,7 +29,9 @@ pil_datas, pil_binaries, pil_hiddenimports = collect_all('PIL')
 openpyxl_datas, openpyxl_binaries, openpyxl_hiddenimports = collect_all('openpyxl')
 ebooklib_datas, ebooklib_binaries, ebooklib_hiddenimports = collect_all('ebooklib')
 lxml_datas, lxml_binaries, lxml_hiddenimports = collect_all('lxml')
-pandas_datas, pandas_binaries, pandas_hiddenimports = collect_all('pandas')
+pandas_datas, pandas_binaries, pandas_hiddenimports_raw = collect_all('pandas')
+_pandas_exclude_prefixes = ('pandas.tests', 'pandas.plotting', 'matplotlib')
+pandas_hiddenimports = [m for m in pandas_hiddenimports_raw if not m.startswith(_pandas_exclude_prefixes)]
 mutagen_datas, mutagen_binaries, mutagen_hiddenimports = collect_all('mutagen')
 
 a = Analysis(
@@ -75,6 +77,9 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         'pandas.tests',
+        'pandas.plotting._matplotlib',
+        'pandas.plotting',
+        'matplotlib',
         'numpy.tests',
         'pytest',
         'pytest_asyncio',

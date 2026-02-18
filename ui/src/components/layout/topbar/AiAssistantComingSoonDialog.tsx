@@ -6,6 +6,7 @@ import { TOP_BAR } from '@/constants/panesDimensions';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { TOP_BAR_STYLES } from '@/styles/topBarStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
+import aiAssistantLogo from '@/assets/ai_assistant_logo_transparent.png';
 
 interface AiAssistantComingSoonDialogProps {
   isOpen: boolean;
@@ -13,7 +14,6 @@ interface AiAssistantComingSoonDialogProps {
 }
 
 const AI_ASSISTANT_STUB_MESSAGE = "AI Assistant will help you handle all your content soon!";
-const AI_ASSISTANT_LOGO_SRC = '/logos/ai_assistant_logo_transparent.png';
 
 export function AiAssistantComingSoonDialog({ isOpen, containerRef }: AiAssistantComingSoonDialogProps) {
   const { isDark } = useThemeToggle();
@@ -39,7 +39,7 @@ export function AiAssistantComingSoonDialog({ isOpen, containerRef }: AiAssistan
       aria-label="AI assistant coming soon"
     >
       <img
-        src={AI_ASSISTANT_LOGO_SRC}
+        src={aiAssistantLogo}
         alt="AI Assistant"
         style={{
           width: `${TOP_BAR.aiAssistantButton.logoSize}px`,

@@ -53,4 +53,4 @@ class InternalStorageService:
 
 
 settings = get_settings()
-internal_storage_service = InternalStorageService(settings.storage.base_path)
+internal_storage_service = InternalStorageService(str(settings.storage.storage_path))
