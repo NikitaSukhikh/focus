@@ -27,19 +27,47 @@ const parseHttpUrl = (value: string): URL | null => {
   }
 };
 
+const looksLikeExplicitUrl = (value: string): boolean => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return false;
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  if (/^www\./i.test(trimmed)) return true;
+  return /[/?#]/.test(trimmed);
+};
+
+const extractHostPreservingCase = (value: string): string => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return '';
+  const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const match = normalized.match(/^https?:\/\/([^/?#:]+)/i);
+  const rawHost = match?.[1] ?? '';
+  return rawHost.replace(/^www\./i, '');
+};
+
+const decodeUriComponentLenient = (value: string): string => {
+  // Keep literal "%" characters while decoding valid percent-encoded bytes.
+  const normalized = value.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
+  try {
+    return decodeURIComponent(normalized);
+  } catch {
+    return value;
+  }
+};
+
 const decodeMaybeEncoded = (value: string): string => {
   let result = value;
   for (let i = 0; i < 2; i += 1) {
-    try {
-      const decoded = decodeURIComponent(result);
-      if (decoded === result) break;
-      result = decoded;
-    } catch {
-      break;
-    }
+    const decoded = decodeUriComponentLenient(result);
+    if (decoded === result) break;
+    result = decoded;
   }
   return result;
 };
+
+export const decodeLinkTitleText = (value: string | undefined | null): string =>
+  decodeMaybeEncoded((value ?? '').trim())
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const sanitizePathSegment = (segment: string): string =>
   decodeMaybeEncoded(segment)
@@ -68,7 +96,7 @@ export const deriveLinkTitleFromUrl = (url: string): string => {
     .filter(Boolean);
 
   const lastSegment = segments.at(-1) || '';
-  const host = parsed.hostname.replace(/^www\./i, '');
+  const host = extractHostPreservingCase(url) || parsed.hostname.replace(/^www\./i, '');
   const candidate =
     lastSegment && !GENERIC_PATH_SEGMENTS.has(lastSegment.toLowerCase())
       ? lastSegment
@@ -81,16 +109,20 @@ export const resolveLinkTitle = (candidateTitle: string | undefined | null, url?
   const title = (candidateTitle ?? '').trim();
 
   if (title) {
-    const asUrl = parseHttpUrl(title);
-    if (!asUrl) return truncateLinkTitle(title);
-    return deriveLinkTitleFromUrl(title);
+    const decodedTitle = decodeLinkTitleText(title);
+    const asUrl = parseHttpUrl(decodedTitle);
+    if (!asUrl) return truncateLinkTitle(decodedTitle);
+    if (!looksLikeExplicitUrl(decodedTitle)) return truncateLinkTitle(decodedTitle);
+    return deriveLinkTitleFromUrl(decodedTitle);
   }
 
   return url ? deriveLinkTitleFromUrl(url) : '';
 };
 
 export const truncateDisplayUrl = (url: string, maxLength = 30, lineLength = 20): string => {
-  const clean = (url ?? '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
+  const clean = decodeMaybeEncoded((url ?? '').trim())
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/$/, '');
   const truncated = clean.length <= maxLength ? clean : `${clean.slice(0, maxLength)}...`;
 
   if (truncated.length <= lineLength) return truncated;

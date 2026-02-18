@@ -75,7 +75,7 @@ Backend has been rebuilt and packaged. The updated app is ready for testing.
 **Built artifacts:**
 - Backend: `backend/dist/Focus.exe` (161 MB, built Jan 5 09:47)
 - Packaged app: `ui/out/Focus-win32-x64/`
-- Installer: `ui/out/make/squirrel.windows/x64/` (if you need to distribute)
+- Installer: `dist/FocusSetup-<version>.exe` (Inno Setup output)
 
 **Database location (in production):**
 - Windows: `%LOCALAPPDATA%\Focus\storage\local_files\data\focus.db`

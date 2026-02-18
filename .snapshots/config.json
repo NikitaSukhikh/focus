@@ -106,7 +106,6 @@
         "*.aab",
         "*.ipa",
         "*.pkg",
-        "*.nupkg",
         "*.snap",
         "*.whl",
         "*.gem",

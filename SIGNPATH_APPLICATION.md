@@ -82,8 +82,8 @@ git rev-parse HEAD  # Compare with release notes
 - All dependencies locked in package-lock.json and requirements.txt
 
 **Output Artifacts:**
-- Windows installer: `Setup.exe` (Squirrel)
-- Update packages: `.nupkg` files
+- Windows installer: `FocusSetup-<version>.exe` (Inno Setup)
+- Windows portable package: `.zip` file from Electron Forge
 - Checksums: `checksums.txt` with SHA256 hashes
 - Build manifest: Includes commit SHA, build date, tool versions
 
@@ -106,7 +106,7 @@ git rev-parse HEAD  # Compare with release notes
 
 We request signing for the following artifacts:
 
-1. **Windows Installer:** `Focus Setup.exe` (Squirrel installer)
+1. **Windows Installer:** `FocusSetup-<version>.exe` (Inno Setup installer)
 2. **Backend Binary:** `focus-backend.exe` (bundled inside installer)
 
 Both are generated through our automated GitHub Actions workflow from tagged commits.

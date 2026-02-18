@@ -17,7 +17,7 @@ import { useUndoHistoryStore } from '@/stores/undoHistoryStore';
 import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { buildFaviconUrl } from '@/utils/favicon';
-import { resolveLinkTitle } from '@/utils/text';
+import { decodeLinkTitleText, resolveLinkTitle } from '@/utils/text';
 import { DroppedIcon, IconKind, ArrowSegment } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
 import { isGmailUrl } from '@/components/layout/centerpane/utils';
@@ -104,6 +104,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const defaultTitle = (obj as any).default_title as string | undefined;
             const defaultDescription = (obj as any).default_description as string | undefined;
             const customTitle = ((obj as any).custom_title as string | null | undefined) ?? null;
+            const normalizedCustomTitle = customTitle ? decodeLinkTitleText(customTitle) : null;
             const customDescription = ((obj as any).custom_description as string | null | undefined) ?? null;
             const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
             const description = obj.type !== 'google_drive' ? (customDescription ?? obj.description ?? defaultDescription) : undefined;
@@ -121,7 +122,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const tag = normalizeTag((obj as any).tag ?? meta.tag);
             const displayTitle =
               obj.type === 'link'
-                ? (customTitle || resolveLinkTitle(obj.title || defaultTitle, url))
+                ? (normalizedCustomTitle || resolveLinkTitle(obj.title || defaultTitle, url))
                 : customTitle || obj.title || defaultTitle || '';
 
             // Check if this is a Gmail URL (for showing Gmail icon on pasted Gmail links)
@@ -165,7 +166,7 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               channelName,
               defaultTitle: effectiveDefaultTitle,
               defaultDescription,
-              customTitle,
+              customTitle: normalizedCustomTitle,
               customDescription,
               faviconUrl,
               filePath,
@@ -361,18 +362,48 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
           ...prev,
           [selectedSpace.id]: current.map((icon) =>
             icon.id === linkId
-              ? {
-                  ...icon,
-                  title: title ?? icon.title,
-                  description: description ?? icon.description,
-                  url: url ?? icon.url,
-                  defaultTitle: defaultTitle ?? icon.defaultTitle,
-                  defaultDescription: defaultDescription ?? icon.defaultDescription,
-                  customTitle: customTitle ?? icon.customTitle ?? null,
-                  customDescription: customDescription ?? icon.customDescription ?? null,
-                  faviconUrl: faviconUrl ?? icon.faviconUrl,
-                  channelName: channelName ?? icon.channelName,
-                }
+              ? (() => {
+                  if (icon.type !== 'link') {
+                    return {
+                      ...icon,
+                      title: title ?? icon.title,
+                      description: description ?? icon.description,
+                      url: url ?? icon.url,
+                      defaultTitle: defaultTitle ?? icon.defaultTitle,
+                      defaultDescription: defaultDescription ?? icon.defaultDescription,
+                      customTitle: customTitle ?? icon.customTitle ?? null,
+                      customDescription: customDescription ?? icon.customDescription ?? null,
+                      faviconUrl: faviconUrl ?? icon.faviconUrl,
+                      channelName: channelName ?? icon.channelName,
+                    };
+                  }
+
+                  const nextUrl = url ?? icon.url;
+                  const nextCustomTitleRaw = customTitle ?? icon.customTitle ?? null;
+                  const nextCustomTitle =
+                    typeof nextCustomTitleRaw === 'string'
+                      ? decodeLinkTitleText(nextCustomTitleRaw)
+                      : null;
+                  const nextDefaultTitle = resolveLinkTitle(
+                    defaultTitle ?? icon.defaultTitle ?? icon.title,
+                    nextUrl
+                  );
+                  const nextDisplayTitle = nextCustomTitle
+                    || resolveLinkTitle(title ?? nextDefaultTitle ?? icon.title, nextUrl);
+
+                  return {
+                    ...icon,
+                    title: nextDisplayTitle,
+                    description: description ?? icon.description,
+                    url: nextUrl,
+                    defaultTitle: nextDefaultTitle,
+                    defaultDescription: defaultDescription ?? icon.defaultDescription,
+                    customTitle: nextCustomTitle,
+                    customDescription: customDescription ?? icon.customDescription ?? null,
+                    faviconUrl: faviconUrl ?? icon.faviconUrl,
+                    channelName: channelName ?? icon.channelName,
+                  };
+                })()
               : icon
           ),
         };

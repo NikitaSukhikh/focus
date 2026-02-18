@@ -2,7 +2,9 @@
 ; Requires Inno Setup 6: https://jrsoftware.org/isdl.php
 
 #define AppName "Focus"
-#define AppVersion "1.0.0"
+#ifndef AppVersion
+  #define AppVersion "1.0.0"
+#endif
 #define AppPublisher "Nikita Sukhikh"
 #define AppExeName "focus.exe"
 #define AppSourceDir "..\ui\out\Focus-win32-x64"

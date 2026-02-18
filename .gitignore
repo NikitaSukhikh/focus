@@ -17,7 +17,6 @@ ui/.vite/
 backend/dist/
 backend/pandoc-*.msi
 *.exe
-*.nupkg
 
 # Misc
 .DS_Store

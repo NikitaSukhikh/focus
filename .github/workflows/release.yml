@@ -60,13 +60,13 @@ jobs:
 
       - name: Build backend with PyInstaller
         working-directory: backend
-        run: uv run pyinstaller focus-backend.spec
+        run: uv run pyinstaller focus.spec
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-binary-${{ needs.verify-tag.outputs.tag_name }}
-          path: backend/dist/focus-backend.exe
+          path: backend/dist/Focus
           retention-days: 7
 
   build-backend-macos:
@@ -91,13 +91,13 @@ jobs:
 
       - name: Build backend with PyInstaller
         working-directory: backend
-        run: uv run pyinstaller focus-backend.spec
+        run: uv run pyinstaller focus.spec
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-binary-macos-${{ needs.verify-tag.outputs.tag_name }}
-          path: backend/dist/focus-backend
+          path: backend/dist/Focus
           retention-days: 7
 
   build-windows:
@@ -109,6 +109,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.verify-tag.outputs.tag_name }}
+
+      - name: Derive release version
+        shell: pwsh
+        run: |
+          $version = "${{ needs.verify-tag.outputs.tag_name }}".TrimStart("v")
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -134,21 +140,47 @@ jobs:
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
           WINDOWS_SIGN_PARAMS: ${{ secrets.WINDOWS_SIGN_PARAMS }}
 
-      - name: Generate SHA256 checksums
-        working-directory: ui/out/make
+      - name: Build Inno Setup installer
         run: |
-          Get-ChildItem -Recurse -File -Include *.exe,*.nupkg | ForEach-Object {
-            $hash = Get-FileHash $_.FullName -Algorithm SHA256
-            "$($hash.Hash)  $($_.Name)" | Out-File -Append -FilePath checksums.txt
+          choco install innosetup -y
+          $isccPaths = @(
+            "C:\Program Files (x86)\Inno Setup 6\iscc.exe",
+            "C:\Program Files\Inno Setup 6\iscc.exe"
+          )
+          $iscc = $isccPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            throw "Inno Setup compiler (iscc.exe) not found"
           }
-          Get-Content checksums.txt
+          & $iscc "/DAppVersion=$env:RELEASE_VERSION" "installer\focus.iss"
+
+      - name: Generate SHA256 checksums
+        run: |
+          $artifacts = @()
+          $artifacts += Get-ChildItem -Path "dist" -File -Filter *.exe -ErrorAction SilentlyContinue
+          $artifacts += Get-ChildItem -Path "ui/out/make" -Recurse -File -Filter *.zip -ErrorAction SilentlyContinue
+
+          if ($artifacts.Count -eq 0) {
+            throw "No Windows release artifacts found for checksum generation"
+          }
+
+          $checksumFile = "ui/out/make/checksums.txt"
+          if (Test-Path $checksumFile) {
+            Remove-Item $checksumFile -Force
+          }
+
+          $artifacts | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)" | Out-File -Append -FilePath $checksumFile
+          }
+          Get-Content $checksumFile
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer-${{ needs.verify-tag.outputs.tag_name }}
           path: |
-            ui/out/make/squirrel.windows/**/*
+            dist/*.exe
+            ui/out/make/**/*.zip
             ui/out/make/checksums.txt
           retention-days: 30
 
@@ -174,7 +206,7 @@ jobs:
           path: ui/resources
 
       - name: Make backend executable
-        run: chmod +x ui/resources/focus-backend
+        run: chmod +x ui/resources/Focus/Focus
 
       - name: Install UI dependencies
         working-directory: ui

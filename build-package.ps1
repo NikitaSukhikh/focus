@@ -231,7 +231,7 @@ Write-Log "[5/5] Finalizing package..." -Color Yellow
 
 # Check outputs
 $packageDir = "ui\out\Focus-win32-x64"
-$installerDir = "ui\out\make\squirrel.windows\x64"
+$portableZipDir = "ui\out\make\zip\win32\x64"
 
 if (Test-Path $packageDir) {
     $packageSize = (Get-ChildItem -Path $packageDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
@@ -239,12 +239,12 @@ if (Test-Path $packageDir) {
     Write-Log "    Size: $([math]::Round($packageSize, 2)) MB" -Color Gray
 }
 
-if (Test-Path $installerDir) {
-    $installerPath = Get-ChildItem -Path $installerDir -Filter "Focus-*Setup.exe" | Select-Object -First 1
-    if ($installerPath) {
-        $installerSize = $installerPath.Length / 1MB
-        Write-Log "  Installer: $($installerPath.FullName)" -Color Gray
-        Write-Log "    Size: $([math]::Round($installerSize, 2)) MB" -Color Gray
+if (Test-Path $portableZipDir) {
+    $zipPath = Get-ChildItem -Path $portableZipDir -Filter "*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($zipPath) {
+        $zipSize = $zipPath.Length / 1MB
+        Write-Log "  Portable ZIP: $($zipPath.FullName)" -Color Gray
+        Write-Log "    Size: $([math]::Round($zipSize, 2)) MB" -Color Gray
     }
 }
 

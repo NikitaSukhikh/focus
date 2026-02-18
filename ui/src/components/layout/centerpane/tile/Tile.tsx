@@ -400,12 +400,8 @@ export function Tile({
           <span className={dragHandleBarClass} />
         </div>
         <div
-          draggable={!isInteractionLocked}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          className={`absolute top-1/2 z-20 flex h-4 -translate-y-1/2 items-center justify-center rounded-full px-2 ${
-            isInteractionLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
-          }`}
+          draggable={false}
+          className="pointer-events-none absolute top-1/2 z-20 flex h-4 -translate-y-1/2 items-center justify-center rounded-full px-2 cursor-default"
           style={{
             left: dragHandleHorizontalInset,
             right: dragHandleHorizontalInset,

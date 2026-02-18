@@ -1,5 +1,5 @@
 import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
-import { truncateDisplayUrl } from '@/utils/text';
+import { decodeLinkTitleText, truncateDisplayUrl } from '@/utils/text';
 import { isGoogleService } from '@/components/layout/centerpane/tile/iconHelpers';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
@@ -36,6 +36,7 @@ export function LinkContent({
   hoverScaleClass,
 }: LinkContentProps) {
   const searchQuery = useSearchStore((state) => state.searchQuery);
+  const displayTitle = decodeLinkTitleText(title);
   return (
     <div
       className={`transition-transform duration-150 flex flex-col items-center justify-center gap-2 px-1 ${hoverScaleClass}`}
@@ -52,18 +53,18 @@ export function LinkContent({
         {url && isGoogleService(url) ? (
           <>
             <div className={`flex-shrink-0 ${isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}`}>
-              <TileIcon
-                type="link"
-                url={url}
-                filePath={filePath}
-                thumbnailUrl={thumbnailUrl}
-                thumbnailWidth={thumbnailWidth}
-                thumbnailHeight={thumbnailHeight}
-                title={title}
-                faviconUrl={faviconUrl}
-                onThumbnailError={onThumbnailError}
-                size={ICON_SIZES.tileGoogleService}
-              />
+                <TileIcon
+                  type="link"
+                  url={url}
+                  filePath={filePath}
+                  thumbnailUrl={thumbnailUrl}
+                  thumbnailWidth={thumbnailWidth}
+                  thumbnailHeight={thumbnailHeight}
+                  title={displayTitle}
+                  faviconUrl={faviconUrl}
+                  onThumbnailError={onThumbnailError}
+                  size={ICON_SIZES.tileGoogleService}
+                />
             </div>
             <div
               className="line-clamp-2 text-center break-words"
@@ -77,7 +78,7 @@ export function LinkContent({
                 color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
               }}
             >
-              <HighlightText text={title} query={searchQuery} />
+              <HighlightText text={displayTitle} query={searchQuery} />
             </div>
           </>
         ) : (
@@ -91,7 +92,7 @@ export function LinkContent({
                   thumbnailUrl={thumbnailUrl}
                   thumbnailWidth={thumbnailWidth}
                   thumbnailHeight={thumbnailHeight}
-                  title={title}
+                  title={displayTitle}
                   faviconUrl={faviconUrl}
                   onThumbnailError={onThumbnailError}
                   size={ICON_SIZES.tileFavicon}
@@ -107,7 +108,7 @@ export function LinkContent({
                   color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
                 }}
               >
-                <HighlightText text={title} query={searchQuery} />
+                <HighlightText text={displayTitle} query={searchQuery} />
               </div>
             </div>
             {description && (

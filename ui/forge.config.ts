@@ -1,6 +1,6 @@
 import type { ForgeConfig, MakerBaseConfig } from '@electron-forge/shared-types';
 import { VitePlugin } from '@electron-forge/plugin-vite';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -51,16 +51,9 @@ const platformMakers: MakerBaseConfig[] = [];
 
 // Configure makers based on platform
 if (platform === 'win32') {
-  platformMakers.push(
-    new MakerSquirrel({
-      name: 'Focus',
-      authors: 'Nikita Sukhikh',
-      description: 'Focus desktop application',
-      setupExe: 'FocusSetup.exe',
-      setupIcon: path.join(__dirname, 'src', 'assets', 'focus.ico'),
-    }),
-    new MakerZIP({}, ['win32'])
-  );
+  platformMakers.push(new MakerZIP({}, ['win32']));
+} else if (platform === 'darwin') {
+  platformMakers.push(new MakerDMG({}), new MakerZIP({}, ['darwin']));
 }
 
 const config: ForgeConfig = {

@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import React, { useEffect } from 'react';
 import { VideoEmbed, getVideoEmbedRenderOptions } from '@/utils/videoEmbeds';
+import { decodeLinkTitleText } from '@/utils/text';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 
@@ -23,6 +24,7 @@ export function VideoEmbedContent({
   onEmbedError,
 }: VideoEmbedContentProps) {
   const renderOptions = getVideoEmbedRenderOptions(videoEmbed);
+  const displayTitle = decodeLinkTitleText(title);
   const webviewRef = React.useRef<HTMLWebViewElement | null>(null);
 
   useEffect(() => {
@@ -98,7 +100,7 @@ export function VideoEmbedContent({
         ) : (
           <iframe
             src={renderOptions.src}
-            title={title || 'Video'}
+            title={displayTitle || 'Video'}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             referrerPolicy="origin"
@@ -134,7 +136,7 @@ export function VideoEmbedContent({
             color: isSelected ? '#1d4ed8' : 'var(--color-text-primary)',
           }}
         >
-          {title}
+          {displayTitle}
         </div>
       </div>
     </div>
