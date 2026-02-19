@@ -18,8 +18,6 @@ Tech stack:
 ## License
 Apache-2.0
 
-### Attribution
-Application icon: [Target icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/target)
 
 ---
 
