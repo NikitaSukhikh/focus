@@ -9,7 +9,7 @@ import {
   getBestAnchorPairForTiles,
   getNearestAnchorForTile,
   getNearestPointOnTileFocusRing,
-} from '@/components/layout/centerpane/arrowGeometry';
+} from '@/components/layout/centerpane/arrows/arrowGeometry';
 
 interface UseArrowDrawingProps {
   zoom: number;
@@ -434,21 +434,22 @@ export const useArrowDrawing = ({
       if (!selectedSpaceId) return;
 
       const hoveredTileId = findFocusRingTileIdAtClientPoint(e.clientX, e.clientY);
-      if (!hoveredTileId) return;
-
-      const ringPointHit = getNearestPointOnTileFocusRing(
-        hoveredTileId,
-        e.clientX,
-        e.clientY,
-        getPointerCanvasPoint
-      );
-      if (!ringPointHit) return;
-
-      const anchorHit = getNearestAnchorForTile(hoveredTileId, e.clientX, e.clientY, getPointerCanvasPoint);
+      const pointerPoint = getPointerCanvasPoint(e.clientX, e.clientY);
+      const ringPointHit = hoveredTileId
+        ? getNearestPointOnTileFocusRing(
+            hoveredTileId,
+            e.clientX,
+            e.clientY,
+            getPointerCanvasPoint
+          )
+        : null;
+      const anchorHit = hoveredTileId
+        ? getNearestAnchorForTile(hoveredTileId, e.clientX, e.clientY, getPointerCanvasPoint)
+        : null;
       const nextSegment = applyEndpointRetarget(
         dragState.initial,
         dragState.endpoint,
-        ringPointHit.point,
+        ringPointHit?.point ?? pointerPoint,
         anchorHit?.anchor
       );
 

@@ -108,6 +108,7 @@ export interface TileProps {
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
   onEditLink?: () => void;
   onSizeChange?: (_tileId: string, _x: number, _y: number, _width: number, _height: number) => void;
+  onResizeInteractionEnd?: (_didResize: boolean) => void;
   onFocusRingPointerDown?: (_event: React.PointerEvent<HTMLElement | SVGElement>, _tileId: string) => void;
   suppressFocusRingGhostArrow?: boolean;
   onMetricsChange?: (

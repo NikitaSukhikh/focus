@@ -444,6 +444,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             title: tileToDelete.title,
             x: tileToDelete.x,
             y: tileToDelete.y,
+            width: tileToDelete.width,
+            height: tileToDelete.height,
             tag: tileToDelete.tag,
             url: tileToDelete.url,
             description: tileToDelete.description,
@@ -459,6 +461,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             content: tileToDelete.content || '',
             x: tileToDelete.x,
             y: tileToDelete.y,
+            width: tileToDelete.width,
+            height: tileToDelete.height,
           };
 
           // Local history store

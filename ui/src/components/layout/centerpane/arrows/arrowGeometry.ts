@@ -56,6 +56,16 @@ export const findFocusRingTileIdAtClientPoint = (clientX: number, clientY: numbe
     if (root?.dataset.focusRingTileId) {
       return root.dataset.focusRingTileId;
     }
+
+    // Endpoint retargeting should still resolve a tile when pointer is over tile content,
+    // not only when hovering focus-ring hitboxes.
+    const directIconTileId = el.dataset.iconTileId;
+    if (directIconTileId) return directIconTileId;
+
+    const iconTileRoot = el.closest('[data-icon-tile-id]') as HTMLElement | null;
+    if (iconTileRoot?.dataset.iconTileId) {
+      return iconTileRoot.dataset.iconTileId;
+    }
   }
   return null;
 };

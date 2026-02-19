@@ -52,6 +52,7 @@ export function Tile({
   onEdit,
   onEditLink,
   onSizeChange,
+  onResizeInteractionEnd,
   onFocusRingPointerDown,
   suppressFocusRingGhostArrow,
   onMetricsChange,
@@ -62,6 +63,7 @@ export function Tile({
   const [tileBoxSize, setTileBoxSize] = useState({ width: 0, height: 0 });
   const [textMinWidth, setTextMinWidth] = useState(0);
   const tileContainerRef = useRef<HTMLDivElement | null>(null);
+  const suppressClickUntilRef = useRef(0);
 
   const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
@@ -216,10 +218,23 @@ export function Tile({
     minHeight: minBoxHeight,
     lockAspectRatio: imageAspectRatio,
     lockAspectRatioInset: tilePadding,
+    onResizeInteractionEnd: (didResize) => {
+      suppressClickUntilRef.current = performance.now() + 250;
+      onResizeInteractionEnd?.(didResize);
+    },
     onResizeEnd: (tileId, newX, newY, newWidth, newHeight) => {
       onSizeChange?.(tileId, newX, newY, newWidth, newHeight);
     },
   });
+
+  const handleTileClick = (event: React.MouseEvent) => {
+    if (performance.now() < suppressClickUntilRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    onClick?.(event);
+  };
 
   const displayX = isResizing ? liveX : x;
   const displayY = isResizing ? liveY : y;
@@ -413,7 +428,7 @@ export function Tile({
           tileContainerRef.current = node;
           dragRef.current = node;
         }}
-        onClick={(event) => onClick?.(event)}
+        onClick={handleTileClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         title={tooltipText}

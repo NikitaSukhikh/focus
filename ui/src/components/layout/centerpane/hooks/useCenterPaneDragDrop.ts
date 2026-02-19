@@ -339,6 +339,8 @@ export const useCenterPaneDragDrop = ({
                       title: movedIcon.title,
                       x,
                       y,
+                      width: movedIcon.width,
+                      height: movedIcon.height,
                       url: movedIcon.url,
                       description: movedIcon.description,
                       faviconUrl: movedIcon.faviconUrl,

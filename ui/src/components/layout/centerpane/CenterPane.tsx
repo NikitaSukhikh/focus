@@ -1,12 +1,20 @@
-import React, { useRef, useImperativeHandle, forwardRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useRef, forwardRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { objectsApi } from '@/api/objects';
+import { undoApi } from '@/api/undo';
+import { ArrowContextMenuPortal, ArrowSvgLayer, useArrowRouting, usePersistReanchoredArrows } from '@/components/layout/centerpane/arrows';
+import type { ArrowContextMenuState, TileMetricsSnapshot } from '@/components/layout/centerpane/arrows';
+import { CanvasContextMenuPortal } from '@/components/layout/centerpane/CanvasContextMenuPortal';
 import { Tile } from '@/components/layout/centerpane/tile/Tile';
-import { ArrowSegment, CenterPaneProps, CenterPaneHandle, DroppedIcon, FocusRingEdge } from '@/components/layout/centerpane/types';
+import { CenterPaneProps, CenterPaneHandle, DroppedIcon } from '@/components/layout/centerpane/types';
+import { InlinePreviewsPanel } from '@/components/layout/centerpane/InlinePreviewsPanel';
+import { useCanvasContextMenu } from '@/components/layout/centerpane/hooks/useCanvasContextMenu';
+import type { CanvasMenuItem } from '@/components/layout/centerpane/hooks/useCanvasContextMenu';
+import { useCenterPaneHandle } from '@/components/layout/centerpane/hooks/useCenterPaneHandle';
+import { useCenterPanePreview } from '@/components/layout/centerpane/hooks/useCenterPanePreview';
+import { useCenterPaneViewport } from '@/components/layout/centerpane/hooks/useCenterPaneViewport';
 import { useCenterPaneLogic } from '@/components/layout/centerpane/useCenterPaneLogic';
 import { FONT_ROLES } from '@/styles/fontManager';
-import { getVideoEmbed } from '@/utils/videoEmbeds';
 import { Z_INDEX } from '@/constants/zIndex';
 import { AddLinkDialog } from '@/components/dialogs/AddLinkDialog';
 import { AddTextDialog } from '@/components/dialogs/AddTextDialog';
@@ -17,177 +25,13 @@ import { Loader2 } from 'lucide-react';
 import { useArrowDrawing } from '@/components/layout/centerpane/hooks/useArrowDrawing';
 import { useSearchFilter } from '@/components/layout/centerpane/hooks/useSearchFilter';
 import { useSearchStore } from '@/stores/searchStore';
-import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
-import { isPreviewPaneTargetAllowed } from '@/utils/previewTargets';
-import { buildArrowPath, buildArrowRoutePoints, getBestAnchorPairForRoute } from '@/components/layout/centerpane/arrowGeometry';
-import type { ArrowPathObstacle, RouteAnchorCandidate } from '@/components/layout/centerpane/arrowGeometry';
-import { TILE_RING } from '@/constants/objectsDimensions';
 import { TILE_RING_COLORS } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
 
-interface TileMetricsSnapshot {
-  width: number;
-  height: number;
-  contentInset: number;
-  isCentered: boolean;
-}
-
-const FOCUS_RING_DOTS_PER_EDGE = 3;
-const ARROW_ENDPOINT_DOT_OPACITY = 0;
-const ARROW_ROUTE_OBSTACLE_PADDING = 8;
-const ARROW_SEGMENT_EPSILON = 0.5;
-const ARROW_ENDPOINT_SEGMENT_HANDLE_WIDTH = Math.max(
-  ARROW_SETTINGS.strokeWidth + (ARROW_SETTINGS.clickAreaPadding * 2),
-  18
-);
+const TILE_CLICK_SUPPRESS_AFTER_RESIZE_MS = 250;
 type TileRingType = keyof typeof TILE_RING_COLORS;
 const LINK_LIKE_TYPES = new Set<DroppedIcon['type']>(['link', 'web_article', 'gmail', 'google_drive']);
-const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
-
-interface ArrowTileObstacle extends ArrowPathObstacle {
-  tileId: string;
-}
-
-interface EndpointSegmentHandle {
-  endpoint: 'start' | 'end';
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-}
-
-const segmentLength = (start: { x: number; y: number }, end: { x: number; y: number }) =>
-  Math.hypot(end.x - start.x, end.y - start.y);
-const isClose = (a: number, b: number) => Math.abs(a - b) <= ARROW_SEGMENT_EPSILON;
-
-type OrthogonalDirection = 'right' | 'left' | 'down' | 'up';
-
-const getOrthogonalDirection = (
-  start: { x: number; y: number },
-  end: { x: number; y: number }
-): OrthogonalDirection | null => {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  if (Math.abs(dx) <= ARROW_SEGMENT_EPSILON && Math.abs(dy) <= ARROW_SEGMENT_EPSILON) return null;
-  if (Math.abs(dx) <= ARROW_SEGMENT_EPSILON) return dy > 0 ? 'down' : 'up';
-  if (Math.abs(dy) <= ARROW_SEGMENT_EPSILON) return dx > 0 ? 'right' : 'left';
-  return null;
-};
-
-const toEndpointSegmentHandle = (
-  endpoint: 'start' | 'end',
-  start: { x: number; y: number },
-  end: { x: number; y: number }
-): EndpointSegmentHandle | null => {
-  const length = segmentLength(start, end);
-  if (length <= ARROW_SEGMENT_EPSILON) return null;
-  return {
-    endpoint,
-    x1: start.x,
-    y1: start.y,
-    x2: end.x,
-    y2: end.y,
-  };
-};
-
-const buildEndpointSegmentHandles = (
-  routePoints: Array<{ x: number; y: number }>
-): EndpointSegmentHandle[] => {
-  if (routePoints.length < 2) return [];
-
-  let startSegmentIndex: number | null = null;
-  for (let index = 0; index < routePoints.length - 1; index += 1) {
-    if (segmentLength(routePoints[index], routePoints[index + 1]) > ARROW_SEGMENT_EPSILON) {
-      startSegmentIndex = index;
-      break;
-    }
-  }
-
-  let endSegmentIndex: number | null = null;
-  for (let index = routePoints.length - 2; index >= 0; index -= 1) {
-    if (segmentLength(routePoints[index], routePoints[index + 1]) > ARROW_SEGMENT_EPSILON) {
-      endSegmentIndex = index;
-      break;
-    }
-  }
-
-  if (startSegmentIndex === null || endSegmentIndex === null) return [];
-
-  const startPoint = routePoints[startSegmentIndex];
-  const startDirection = getOrthogonalDirection(routePoints[startSegmentIndex], routePoints[startSegmentIndex + 1]);
-  if (!startDirection) return [];
-  let startTurnPoint = routePoints[startSegmentIndex + 1];
-  for (let index = startSegmentIndex + 1; index < routePoints.length - 1; index += 1) {
-    const direction = getOrthogonalDirection(routePoints[index], routePoints[index + 1]);
-    if (direction !== startDirection) break;
-    startTurnPoint = routePoints[index + 1];
-  }
-
-  const endPoint = routePoints[endSegmentIndex + 1];
-  const endDirection = getOrthogonalDirection(routePoints[endSegmentIndex], routePoints[endSegmentIndex + 1]);
-  if (!endDirection) return [];
-  let endTurnPoint = routePoints[endSegmentIndex];
-  for (let index = endSegmentIndex - 1; index >= 0; index -= 1) {
-    const direction = getOrthogonalDirection(routePoints[index], routePoints[index + 1]);
-    if (direction !== endDirection) break;
-    endTurnPoint = routePoints[index];
-  }
-
-  const handles: EndpointSegmentHandle[] = [];
-  const isSameRun = isClose(startPoint.x, endTurnPoint.x)
-    && isClose(startPoint.y, endTurnPoint.y)
-    && isClose(startTurnPoint.x, endPoint.x)
-    && isClose(startTurnPoint.y, endPoint.y);
-
-  if (isSameRun) {
-    // Single straight run: split at midpoint so both endpoints stay independently reachable.
-    const midpoint = {
-      x: (startPoint.x + endPoint.x) / 2,
-      y: (startPoint.y + endPoint.y) / 2,
-    };
-    const startHandle = toEndpointSegmentHandle('start', startPoint, midpoint);
-    const endHandle = toEndpointSegmentHandle('end', endPoint, midpoint);
-    if (startHandle) handles.push(startHandle);
-    if (endHandle) handles.push(endHandle);
-    return handles;
-  }
-
-  const startHandle = toEndpointSegmentHandle('start', startPoint, startTurnPoint);
-  const endHandle = toEndpointSegmentHandle('end', endPoint, endTurnPoint);
-  if (startHandle) handles.push(startHandle);
-  if (endHandle) handles.push(endHandle);
-  return handles;
-};
-
-const isSameAnchorRef = (a?: ArrowSegment['startAnchor'], b?: ArrowSegment['startAnchor']) => {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  return a.tileId === b.tileId && a.edge === b.edge && a.edgeIndex === b.edgeIndex;
-};
-
-const didArrowEndpointChange = (before: ArrowSegment, after: ArrowSegment) => {
-  const moved =
-    Math.abs(before.start.x - after.start.x) > 0.5
-    || Math.abs(before.start.y - after.start.y) > 0.5
-    || Math.abs(before.end.x - after.end.x) > 0.5
-    || Math.abs(before.end.y - after.end.y) > 0.5;
-  return moved || !isSameAnchorRef(before.startAnchor, after.startAnchor) || !isSameAnchorRef(before.endAnchor, after.endAnchor);
-};
-
-const toArrowMetadata = (arrow: ArrowSegment) => ({
-  arrow: true,
-  start_x: arrow.start.x,
-  start_y: arrow.start.y,
-  end_x: arrow.end.x,
-  end_y: arrow.end.y,
-  start_tile_id: arrow.startAnchor?.tileId ?? null,
-  start_anchor_edge: arrow.startAnchor?.edge ?? null,
-  start_anchor_index: arrow.startAnchor?.edgeIndex ?? null,
-  end_tile_id: arrow.endAnchor?.tileId ?? null,
-  end_anchor_edge: arrow.endAnchor?.edge ?? null,
-  end_anchor_index: arrow.endAnchor?.edgeIndex ?? null,
-});
 
 const toTileRingType = (iconType: DroppedIcon['type']): TileRingType => {
   if (iconType === 'text') return 'text';
@@ -200,9 +44,17 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const { t } = useTranslation();
   const zoom = zoomProp ?? 1;
-  const paneRef = useRef<HTMLDivElement | null>(null);
-  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const FILE_PREVIEW_DELAY_MS = 300;
+  const {
+    paneRef,
+    getCenterCanvasPos,
+    getCanvasPosFromClient,
+    toCanvasCoords,
+    handleWheel,
+  } = useCenterPaneViewport({
+    zoom,
+    onZoomIn,
+    onZoomOut,
+  });
 
   const logic = useCenterPaneLogic(paneRef, zoom);
   const selectedSpaceId = logic.selectedSpace?.id;
@@ -231,72 +83,24 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     return TILE_RING_COLORS[toTileRingType(icon.type)];
   }, [iconsById]);
 
-  // Expose methods to parent via ref
-  const getCenterCanvasPos = () => {
-    if (!paneRef.current) return { x: 200, y: 200 };
-    const rect = paneRef.current.getBoundingClientRect();
-    const scrollLeft = paneRef.current.scrollLeft;
-    const scrollTop = paneRef.current.scrollTop;
-    return {
-      x: (rect.width / 2 + scrollLeft) / Math.max(zoom, 0.01),
-      y: (rect.height / 2 + scrollTop) / Math.max(zoom, 0.01),
-    };
-  };
-
-  const getCanvasPosFromClient = (position: { x: number; y: number }) => {
-    if (!paneRef.current) return getCenterCanvasPos();
-    const rect = paneRef.current.getBoundingClientRect();
-    const scrollLeft = paneRef.current.scrollLeft;
-    const scrollTop = paneRef.current.scrollTop;
-    const paneStyle = window.getComputedStyle(paneRef.current);
-    const paddingLeft = Number.parseFloat(paneStyle.paddingLeft) || 0;
-    const paddingTop = Number.parseFloat(paneStyle.paddingTop) || 0;
-    const safeZoom = Math.max(zoom, 0.01);
-    return {
-      x: (position.x - rect.left - paddingLeft + scrollLeft) / safeZoom,
-      y: (position.y - rect.top - paddingTop + scrollTop) / safeZoom,
-    };
-  };
-
-  useImperativeHandle(ref, () => ({
-    addFiles: async (position?: { x: number; y: number }) => {
-      const target = position ? getCanvasPosFromClient(position) : getCenterCanvasPos();
-      await logic.handleAddFiles(target);
-    },
-    getTilesForSpace: (spaceId: string) => logic.iconsBySpace[spaceId] || [],
-    openAddLinkDialog: (position?: { x: number; y: number }) => {
-      const { x, y } = position ? getCanvasPosFromClient(position) : getCenterCanvasPos();
-      logic.openAddLinkDialog(x, y);
-    },
-    openAddWebArticleDialog: (position?: { x: number; y: number }) => {
-      const { x, y } = position ? getCanvasPosFromClient(position) : getCenterCanvasPos();
-      logic.openAddWebArticleDialog(x, y);
-    },
-    pasteFromClipboard: async (position?: { x: number; y: number }) => {
-      const target = position ? getCanvasPosFromClient(position) : undefined;
-      await logic.pasteFromClipboard(target);
-    },
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- individual logic.* properties tracked; logic object reference is not meaningful
-  }), [
-    getCanvasPosFromClient,
+  useCenterPaneHandle({
+    ref,
+    iconsBySpace: logic.iconsBySpace,
     getCenterCanvasPos,
-    logic.handleAddFiles,
-    logic.iconsBySpace,
-    logic.openAddLinkDialog,
-    logic.openAddWebArticleDialog,
-    logic.pasteFromClipboard,
-    zoom,
-  ]);
+    getCanvasPosFromClient,
+    addFilesAtPosition: logic.handleAddFiles,
+    openAddLinkDialogAtPosition: (position) => {
+      logic.openAddLinkDialog(position.x, position.y);
+    },
+    openAddWebArticleDialogAtPosition: (position) => {
+      logic.openAddWebArticleDialog(position.x, position.y);
+    },
+    pasteFromClipboardAtPosition: logic.pasteFromClipboard,
+  });
 
   const selectedIcons = useMemo(() => {
     return filteredIcons.filter((icon) => logic.selectedIconIds.includes(icon.id));
   }, [filteredIcons, logic.selectedIconIds]);
-  const INLINE_PREVIEW_LIMIT = 6;
-  const inlinePreviewIcons = useMemo(
-    () => selectedIcons.slice(0, INLINE_PREVIEW_LIMIT),
-    [selectedIcons]
-  );
-  const hiddenInlinePreviewCount = Math.max(0, selectedIcons.length - inlinePreviewIcons.length);
   const isEmptyState = !(logic.selectedSpace && (logic.iconsBySpace[logic.selectedSpace.id]?.length ?? 0) > 0);
 
   const ghostSize = useMemo(() => {
@@ -309,83 +113,31 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     };
   }, [logic.dragGhost]);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number; canvasX: number; canvasY: number } | null>(null);
-  const [arrowContextMenu, setArrowContextMenu] = useState<{ x: number; y: number; arrowId: string } | null>(null);
-  const arrowMenuBackdropRef = useRef<HTMLDivElement | null>(null);
-  const arrowMenuRef = useRef<HTMLDivElement | null>(null);
-  const canvasMenuRef = useRef<HTMLDivElement | null>(null);
-  const persistedArrowSignatureRef = useRef<Map<string, string>>(new Map());
-  const tileDragSeenRef = useRef(false);
-  const [arrowMenuSize, setArrowMenuSize] = useState({ width: 0, height: 0 });
-  const [canvasMenuSize, setCanvasMenuSize] = useState({ width: 0, height: 0 });
-  const VIEWPORT_MENU_MARGIN = 8;
-  useEffect(() => {
-    const handleKeyZoom = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+  const suppressTileClickUntilRef = useRef(0);
+  const [arrowContextMenu, setArrowContextMenu] = useState<ArrowContextMenuState | null>(null);
 
-      if (e.key === '+' || e.key === '=') {
-        e.preventDefault();
-        onZoomIn?.();
-      } else if (e.key === '-' || e.key === '_') {
-        e.preventDefault();
-        onZoomOut?.();
-      }
-    };
+  const menuItems = useMemo<CanvasMenuItem[]>(() => [
+    {
+      label: 'Add local files',
+      action: async () => {
+        await logic.handleAddFiles();
+      },
+    },
+    {
+      label: 'Add link',
+      action: (menuState) => {
+        if (!paneRef.current) return;
+        logic.openAddLinkDialog(menuState.canvasX, menuState.canvasY);
+      },
+    },
+  ], [logic, paneRef]);
 
-    window.addEventListener('keydown', handleKeyZoom, true);
-    return () => window.removeEventListener('keydown', handleKeyZoom, true);
-  }, [onZoomIn, onZoomOut]);
-
-  const toCanvasCoords = useCallback((clientX: number, clientY: number) => {
-    const safeZoom = Math.max(zoom, 0.01);
-    if (!paneRef.current) return { x: clientX / safeZoom, y: clientY / safeZoom };
-    const rect = paneRef.current.getBoundingClientRect();
-    const scrollLeft = paneRef.current.scrollLeft;
-    const scrollTop = paneRef.current.scrollTop;
-    const paneStyle = window.getComputedStyle(paneRef.current);
-    const paddingLeft = Number.parseFloat(paneStyle.paddingLeft) || 0;
-    const paddingTop = Number.parseFloat(paneStyle.paddingTop) || 0;
-    return {
-      x: (clientX - rect.left - paddingLeft + scrollLeft) / safeZoom,
-      y: (clientY - rect.top - paddingTop + scrollTop) / safeZoom,
-    };
-  }, [zoom]);
-
-  const clampMenuToViewport = useCallback((x: number, y: number, width: number, height: number) => {
-    const clampedX = Math.min(
-      Math.max(x, VIEWPORT_MENU_MARGIN),
-      Math.max(VIEWPORT_MENU_MARGIN, window.innerWidth - width - VIEWPORT_MENU_MARGIN)
-    );
-    const clampedY = Math.min(
-      Math.max(y, VIEWPORT_MENU_MARGIN),
-      Math.max(VIEWPORT_MENU_MARGIN, window.innerHeight - height - VIEWPORT_MENU_MARGIN)
-    );
-    return { x: clampedX, y: clampedY };
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!arrowContextMenu || !arrowMenuRef.current) return;
-    const { width, height } = arrowMenuRef.current.getBoundingClientRect();
-    setArrowMenuSize({ width, height });
-  }, [arrowContextMenu]);
-
-  useLayoutEffect(() => {
-    if (!contextMenu || !canvasMenuRef.current) return;
-    const { width, height } = canvasMenuRef.current.getBoundingClientRect();
-    setCanvasMenuSize({ width, height });
-  }, [contextMenu]);
-
-  const arrowMenuPosition = useMemo(() => {
-    if (!arrowContextMenu) return null;
-    return clampMenuToViewport(arrowContextMenu.x, arrowContextMenu.y, arrowMenuSize.width, arrowMenuSize.height);
-  }, [arrowContextMenu, arrowMenuSize.height, arrowMenuSize.width, clampMenuToViewport]);
-
-  const canvasMenuPosition = useMemo(() => {
-    if (!contextMenu) return null;
-    return clampMenuToViewport(contextMenu.x, contextMenu.y, canvasMenuSize.width, canvasMenuSize.height);
-  }, [contextMenu, canvasMenuSize.height, canvasMenuSize.width, clampMenuToViewport]);
+  const {
+    contextMenu,
+    setContextMenu,
+    canvasMenuRef,
+    canvasMenuPosition,
+  } = useCanvasContextMenu(menuItems);
 
   const {
     selectedArrowId,
@@ -448,6 +200,45 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         icon.id === tileId ? { ...icon, x: newX, y: newY, width: newWidth, height: newHeight } : icon
       ),
     }));
+
+    undoApi
+      .createEvent(selectedSpaceId, {
+        event_type: 'tile_move',
+        event_data: {
+          tile: {
+            id: existing.id,
+            type: existing.type,
+            title: existing.title,
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: newHeight,
+            url: existing.url,
+            description: existing.description,
+            faviconUrl: existing.faviconUrl,
+            filePath: existing.filePath,
+            serviceKey: existing.serviceKey,
+            service: existing.service,
+            content: existing.content,
+          },
+          from: {
+            x: existing.x,
+            y: existing.y,
+            width: existing.width ?? null,
+            height: existing.height ?? null,
+          },
+          to: {
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: newHeight,
+          },
+        },
+      })
+      .catch((err) => {
+        console.error('[Tile] Failed to create resize undo event:', err);
+      });
+
     objectsApi.updateSize(tileId, newX, newY, newWidth, newHeight).catch((err) => {
       console.error('[Tile] Failed to persist resize:', err);
     });
@@ -469,249 +260,34 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     });
   }, [currentSpaceIcons]);
 
-  const resolveAnchorPointForTile = useCallback(
-    (tileId: string, edge: FocusRingEdge, edgeIndex: number): { x: number; y: number } | null => {
-      const icon = iconsById.get(tileId);
-      const metrics = tileMetricsById[tileId];
-      if (!icon || !metrics) return null;
-      if (metrics.width <= 0 || metrics.height <= 0) return null;
-      if (edgeIndex < 0 || edgeIndex >= FOCUS_RING_DOTS_PER_EDGE) return null;
-
-      const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
-      const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
-      const ringOffset = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
-      const safeContentWidth = Math.max(1, metrics.width - (metrics.contentInset * 2));
-      const safeContentHeight = Math.max(1, metrics.height - (metrics.contentInset * 2));
-      const ringLeft = originLeft + metrics.contentInset - ringOffset;
-      const ringTop = originTop + metrics.contentInset - ringOffset;
-      const ringWidth = safeContentWidth + (ringOffset * 2);
-      const ringHeight = safeContentHeight + (ringOffset * 2);
-      const fraction = (edgeIndex + 1) / (FOCUS_RING_DOTS_PER_EDGE + 1);
-      const edgeX = ringLeft + (ringWidth * fraction);
-      const edgeY = ringTop + (ringHeight * fraction);
-
-      if (edge === 'top') return { x: edgeX, y: ringTop };
-      if (edge === 'right') return { x: ringLeft + ringWidth, y: edgeY };
-      if (edge === 'bottom') return { x: edgeX, y: ringTop + ringHeight };
-      return { x: ringLeft, y: edgeY };
-    },
-    [iconsById, tileMetricsById]
-  );
-
-  const resolveAnchorFromTileState = useCallback(
-    (
-      anchorRef: ArrowSegment['startAnchor'],
-      fallback: { x: number; y: number }
-    ): { x: number; y: number } => {
-      if (!anchorRef) return fallback;
-      return resolveAnchorPointForTile(anchorRef.tileId, anchorRef.edge, anchorRef.edgeIndex) ?? fallback;
-    },
-    [resolveAnchorPointForTile]
-  );
-
-  const buildTileAnchorCandidates = useCallback(
-    (tileId: string): RouteAnchorCandidate[] => {
-      const edges: FocusRingEdge[] = ['top', 'right', 'bottom', 'left'];
-      const candidates: RouteAnchorCandidate[] = [];
-
-      edges.forEach((edge) => {
-        for (let edgeIndex = 0; edgeIndex < FOCUS_RING_DOTS_PER_EDGE; edgeIndex += 1) {
-          const point = resolveAnchorPointForTile(tileId, edge, edgeIndex);
-          if (!point) continue;
-          candidates.push({
-            anchor: { tileId, edge, edgeIndex },
-            point,
-          });
-        }
-      });
-
-      return candidates;
-    },
-    [resolveAnchorPointForTile]
-  );
-
-  const arrowTileObstacles: ArrowTileObstacle[] = useMemo(
-    () => currentSpaceIcons
-      .map((icon) => {
-        const metrics = tileMetricsById[icon.id];
-        if (!metrics || metrics.width <= 0 || metrics.height <= 0) return null;
-
-        const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
-        const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
-        return {
-          tileId: icon.id,
-          left: originLeft - ARROW_ROUTE_OBSTACLE_PADDING,
-          top: originTop - ARROW_ROUTE_OBSTACLE_PADDING,
-          right: originLeft + metrics.width + ARROW_ROUTE_OBSTACLE_PADDING,
-          bottom: originTop + metrics.height + ARROW_ROUTE_OBSTACLE_PADDING,
-        };
-      })
-      .filter((obstacle): obstacle is ArrowTileObstacle => Boolean(obstacle)),
-    [currentSpaceIcons, tileMetricsById]
-  );
-
-  const renderArrowSegments: ArrowSegment[] = useMemo(
-    () =>
-      allArrowSegments.map((segment) => {
-        const resolvedStart = resolveAnchorFromTileState(segment.startAnchor, segment.start);
-        const resolvedEnd = resolveAnchorFromTileState(segment.endAnchor, segment.end);
-        if (!segment.startAnchor || !segment.endAnchor) {
-          return {
-            ...segment,
-            start: resolvedStart,
-            end: resolvedEnd,
-          };
-        }
-
-        const startCandidates = buildTileAnchorCandidates(segment.startAnchor.tileId)
-          .map((candidate) => ({
-            ...candidate,
-            scoreOffset:
-              (Math.hypot(candidate.point.x - resolvedStart.x, candidate.point.y - resolvedStart.y) * 8)
-              + (candidate.anchor.edge === segment.startAnchor?.edge
-                && candidate.anchor.edgeIndex === segment.startAnchor?.edgeIndex
-                ? 0
-                : 40),
-          }));
-        const endCandidates = buildTileAnchorCandidates(segment.endAnchor.tileId)
-          .map((candidate) => ({
-            ...candidate,
-            scoreOffset:
-              (Math.hypot(candidate.point.x - resolvedEnd.x, candidate.point.y - resolvedEnd.y) * 8)
-              + (candidate.anchor.edge === segment.endAnchor?.edge
-                && candidate.anchor.edgeIndex === segment.endAnchor?.edgeIndex
-                ? 0
-                : 40),
-          }));
-        if (!startCandidates.length || !endCandidates.length) {
-          return {
-            ...segment,
-            start: resolvedStart,
-            end: resolvedEnd,
-          };
-        }
-
-        const routingObstacles = arrowTileObstacles
-          .filter(
-            (obstacle) =>
-              obstacle.tileId !== segment.startAnchor?.tileId
-              && obstacle.tileId !== segment.endAnchor?.tileId
-          )
-          .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
-        const bestPair = getBestAnchorPairForRoute(startCandidates, endCandidates, {
-          obstacles: routingObstacles,
-        });
-        if (!bestPair) {
-          return {
-            ...segment,
-            start: resolvedStart,
-            end: resolvedEnd,
-          };
-        }
-
-        return {
-          ...segment,
-          start: bestPair.start.point,
-          end: bestPair.end.point,
-          startAnchor: bestPair.start.anchor,
-          endAnchor: bestPair.end.anchor,
-        };
-      }),
-    [allArrowSegments, arrowTileObstacles, buildTileAnchorCandidates, resolveAnchorFromTileState]
-  );
-
-  useEffect(() => {
-    if (logic.dragGhost) {
-      tileDragSeenRef.current = true;
-    }
-  }, [logic.dragGhost]);
-
-  useEffect(() => {
-    tileDragSeenRef.current = false;
-    persistedArrowSignatureRef.current.clear();
-  }, [selectedSpaceId]);
-
-  useEffect(() => {
-    if (!selectedSpaceId) return;
-    if (isDrawingArrow || draggingEndpoint || logic.dragGhost) return;
-    if (!tileDragSeenRef.current) return;
-    tileDragSeenRef.current = false;
-
-    const segmentById = new Map(allArrowSegments.map((segment) => [segment.id, segment]));
-    const changedSegments = renderArrowSegments
-      .filter((segment) => segment.id !== 'arrow-draft')
-      .map((segment) => ({ previous: segmentById.get(segment.id), next: segment }))
-      .filter((pair): pair is { previous: ArrowSegment; next: ArrowSegment } => Boolean(pair.previous))
-      .filter(({ previous, next }) => didArrowEndpointChange(previous, next));
-    if (!changedSegments.length) return;
-
-    const changedById = new Map(changedSegments.map(({ next }) => [next.id, next]));
-    setArrowsBySpace((prev) => {
-      const current = prev[selectedSpaceId] || [];
-      const nextArrows = current.map((segment) => changedById.get(segment.id) ?? segment);
-      return { ...prev, [selectedSpaceId]: nextArrows };
-    });
-
-    changedSegments.forEach(({ next }) => {
-      const signature = [
-        Math.round(next.start.x * 10),
-        Math.round(next.start.y * 10),
-        Math.round(next.end.x * 10),
-        Math.round(next.end.y * 10),
-        next.startAnchor?.tileId ?? '',
-        next.startAnchor?.edge ?? '',
-        next.startAnchor?.edgeIndex ?? -1,
-        next.endAnchor?.tileId ?? '',
-        next.endAnchor?.edge ?? '',
-        next.endAnchor?.edgeIndex ?? -1,
-      ].join('|');
-      if (persistedArrowSignatureRef.current.get(next.id) === signature) {
-        return;
-      }
-      persistedArrowSignatureRef.current.set(next.id, signature);
-      objectsApi.updateMetadata(next.id, toArrowMetadata(next)).catch((err) => {
-        console.error('[ARROW] Failed to persist re-anchored geometry:', err);
-      });
-    });
-  }, [
+  const { arrowTileObstacles, renderArrowSegments } = useArrowRouting({
+    iconsById,
+    currentSpaceIcons,
+    tileMetricsById,
     allArrowSegments,
-    draggingEndpoint,
-    isDrawingArrow,
-    logic.dragGhost,
-    renderArrowSegments,
+  });
+
+  usePersistReanchoredArrows({
     selectedSpaceId,
+    dragGhostActive: Boolean(logic.dragGhost),
+    isDrawingArrow,
+    draggingEndpoint,
+    allArrowSegments,
+    renderArrowSegments,
     setArrowsBySpace,
-  ]);
+  });
 
-  const menuItems = useMemo(() => [
-    {
-      label: 'Add local files',
-      action: async () => {
-        await logic.handleAddFiles();
-      }
-    },
-    {
-      label: 'Add link',
-      action: () => {
-        if (contextMenu && paneRef.current) {
-          logic.openAddLinkDialog(contextMenu.canvasX, contextMenu.canvasY);
-        }
-      }
-    },
-  ], [logic, contextMenu, paneRef]);
-
-  useEffect(() => {
-    if (!arrowContextMenu) return;
-
-    const handleArrowMenuKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setArrowContextMenu(null);
-      }
-    };
-
-    window.addEventListener('keydown', handleArrowMenuKey, true);
-    return () => window.removeEventListener('keydown', handleArrowMenuKey, true);
-  }, [arrowContextMenu]);
+  const {
+    clearPreviewTimeout,
+    queuePreviewForIcon,
+    handleTileResizeInteractionEnd,
+  } = useCenterPanePreview({
+    onObjectClick,
+    inlineEditorState: logic.inlineEditorState,
+    suppressTileClickUntilRef,
+    tileClickSuppressAfterResizeMs: TILE_CLICK_SUPPRESS_AFTER_RESIZE_MS,
+    filePreviewDelayMs: 300,
+  });
 
   useEffect(() => {
     setArrowContextMenu(null);
@@ -723,34 +299,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     clearArrowSelection();
   }, [clearArrowSelection, isSearchMode]);
 
-  useEffect(() => {
-    if (!contextMenu) return;
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (!contextMenu) return;
-      if (e.key === 'Escape') {
-        setContextMenu(null);
-        return;
-      }
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const delta = e.key === 'ArrowDown' ? 1 : -1;
-        const nextIndex = (contextMenu.index + delta + menuItems.length) % menuItems.length;
-        setContextMenu({ ...contextMenu, index: nextIndex });
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const item = menuItems[contextMenu.index];
-        if (item) {
-          void Promise.resolve(item.action()).finally(() => setContextMenu(null));
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [contextMenu, menuItems]);
-
   const handleArrowContextMenu = (e: React.MouseEvent<SVGPathElement>, arrowId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -759,40 +307,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     setSelectedArrowId(arrowId);
     setContextMenu(null);
     logic.setSelectedIconIds([]);
-  };
-
-  const closeArrowMenuAndForwardContextMenu = (e: React.MouseEvent<HTMLElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const { clientX, clientY } = e;
-    const menuElement = arrowMenuRef.current;
-    const backdropElement = arrowMenuBackdropRef.current;
-    const forwardTarget = document
-      .elementsFromPoint(clientX, clientY)
-      .find((element) => {
-        if (!(element instanceof HTMLElement)) return false;
-        if (menuElement?.contains(element)) return false;
-        if (backdropElement && element === backdropElement) return false;
-        return true;
-      });
-
-    setArrowContextMenu(null);
-
-    if (!(forwardTarget instanceof HTMLElement)) return;
-
-    // Re-dispatch after close so follow-up right-click targets the real element under the cursor.
-    window.requestAnimationFrame(() => {
-      forwardTarget.dispatchEvent(new MouseEvent('contextmenu', {
-        bubbles: true,
-        cancelable: true,
-        clientX,
-        clientY,
-        button: 2,
-        buttons: 2,
-        view: window,
-      }));
-    });
   };
 
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -820,66 +334,6 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     const y = base.y - 34 / Math.max(zoom, 0.01);
 
     logic.openInlineEditor(x, y);
-  };
-
-  const clearPreviewTimeout = () => {
-    if (previewTimeoutRef.current) {
-      clearTimeout(previewTimeoutRef.current);
-      previewTimeoutRef.current = null;
-    }
-  };
-
-  const openPreviewForIcon = (icon: DroppedIcon) => {
-    onObjectClick?.({
-      url: icon.url,
-      title: icon.title,
-      tileId: icon.id,
-      filePath: icon.filePath,
-      type: icon.type,
-      content: icon.content,
-      gmailEmail: icon.gmailEmail,
-    });
-  };
-
-  const schedulePreviewForIcon = (icon: DroppedIcon, delayMs: number) => {
-    clearPreviewTimeout();
-    previewTimeoutRef.current = setTimeout(() => {
-      // Skip opening preview if inline editor already active for this note
-      if (icon.type === 'text' && logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id) return;
-      openPreviewForIcon(icon);
-    }, delayMs);
-  };
-
-  const queuePreviewForIcon = (icon: DroppedIcon) => {
-    if (!isPreviewPaneTargetAllowed(icon)) {
-      onObjectClick?.({
-        tileId: icon.id,
-        type: icon.type,
-        filePath: icon.filePath,
-      });
-      return;
-    }
-
-    if (icon.type === 'file') {
-      schedulePreviewForIcon(icon, FILE_PREVIEW_DELAY_MS);
-      return;
-    }
-
-    openPreviewForIcon(icon);
-  };
-
-  useEffect(() => {
-    return () => clearPreviewTimeout();
-  }, []);
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!e.ctrlKey) return;
-    e.preventDefault();
-    if (e.deltaY < 0) {
-      onZoomIn?.();
-    } else if (e.deltaY > 0) {
-      onZoomOut?.();
-    }
   };
 
   return (
@@ -972,167 +426,21 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
             )}
 
             {(!isSearchMode && renderArrowSegments.length > 0) && (
-              <svg
-                aria-hidden
-                width={svgWidth}
-                height={svgHeight}
-                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  pointerEvents: isDrawingArrow ? 'none' : 'auto',
-                  overflow: 'visible',
-                  zIndex: Z_INDEX.CONTENT_DEFAULT - 1,
-                }}
-              >
-                {renderArrowSegments.map((segment) => {
-                  const isDraft = segment.id === 'arrow-draft';
-                  const isSelectedArrow = selectedArrowId === segment.id && !isDraft;
-                  const isDraggingStart = draggingEndpoint?.arrowId === segment.id && draggingEndpoint.endpoint === 'start';
-                  const isDraggingEnd = draggingEndpoint?.arrowId === segment.id && draggingEndpoint.endpoint === 'end';
-                  const clickableWidth = ARROW_SETTINGS.strokeWidth + (ARROW_SETTINGS.clickAreaPadding * 2);
-                  const arrowOpacity = isDraft
-                    ? ARROW_SETTINGS.opacity.draft
-                    : (isDark ? ARROW_SETTINGS.opacity.normal : 'var(--tile-ring-opacity, 0.8)');
-                  const startRingColor = getArrowColorForTile(segment.startAnchor?.tileId);
-                  const endRingColor = getArrowColorForTile(segment.endAnchor?.tileId);
-                  const fallbackArrowColor = startRingColor ?? endRingColor ?? ARROW_SETTINGS.color;
-                  const arrowStartColor = startRingColor ?? fallbackArrowColor;
-                  const arrowEndColor = endRingColor ?? fallbackArrowColor;
-                  const hasSplitGradient = arrowStartColor !== arrowEndColor;
-                  const svgSafeId = sanitizeSvgId(segment.id);
-                  const gradientId = `center-pane-arrow-gradient-${svgSafeId}`;
-                  const markerId = `center-pane-arrowhead-${svgSafeId}`;
-                  const visibleStroke = hasSplitGradient ? `url(#${gradientId})` : arrowStartColor;
-                  const routingObstacles = arrowTileObstacles
-                    .filter(
-                      (obstacle) =>
-                        obstacle.tileId !== segment.startAnchor?.tileId
-                        && obstacle.tileId !== segment.endAnchor?.tileId
-                    )
-                    .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
-                  const pathOptions = {
-                    startEdge: segment.startAnchor?.edge,
-                    endEdge: segment.endAnchor?.edge,
-                    obstacles: routingObstacles,
-                  };
-                  const pathData = buildArrowPath(segment.start, segment.end, pathOptions);
-                  const endpointSegmentHandles = buildEndpointSegmentHandles(
-                    buildArrowRoutePoints(segment.start, segment.end, pathOptions)
-                  );
-                  return (
-                    <g key={segment.id} style={{ opacity: arrowOpacity }}>
-                      <defs>
-                        {hasSplitGradient && (
-                          <linearGradient
-                            id={gradientId}
-                            gradientUnits="userSpaceOnUse"
-                            x1={segment.start.x}
-                            y1={segment.start.y}
-                            x2={segment.end.x}
-                            y2={segment.end.y}
-                          >
-                            <stop offset="0%" stopColor={arrowStartColor} />
-                            <stop offset="33.333%" stopColor={arrowStartColor} />
-                            <stop offset="66.667%" stopColor={arrowEndColor} />
-                            <stop offset="100%" stopColor={arrowEndColor} />
-                          </linearGradient>
-                        )}
-                        <marker
-                          id={markerId}
-                          markerWidth={ARROW_SETTINGS.marker.width}
-                          markerHeight={ARROW_SETTINGS.marker.height}
-                          refX={ARROW_SETTINGS.marker.refX}
-                          refY={ARROW_SETTINGS.marker.refY}
-                          orient="auto"
-                          markerUnits="userSpaceOnUse"
-                        >
-                          <path d={ARROW_SETTINGS.marker.path} fill={arrowEndColor} />
-                        </marker>
-                      </defs>
-                      {/* Invisible wider line for click area */}
-                      <path
-                        d={pathData}
-                        stroke="transparent"
-                        fill="none"
-                        strokeWidth={clickableWidth}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        style={{
-                          cursor: isDraft ? 'default' : 'pointer',
-                          pointerEvents: isDraft ? 'none' : ('stroke' as any),
-                        }}
-                        onPointerDown={
-                          isDraft
-                            ? undefined
-                            : (e) => {
-                                // Select arrow without affecting tile selection flow.
-                                handleArrowPointerDown(segment, e);
-                                logic.setSelectedIconIds([]);
-                              }
-                        }
-                        onClick={isDraft ? undefined : (e) => e.stopPropagation()}
-                        onContextMenu={isDraft ? undefined : (e) => handleArrowContextMenu(e, segment.id)}
-                      />
-                      {!isDraft && endpointSegmentHandles.map((handle) => {
-                        return (
-                          <line
-                            key={`${segment.id}-${handle.endpoint}-handle`}
-                            x1={handle.x1}
-                            y1={handle.y1}
-                            x2={handle.x2}
-                            y2={handle.y2}
-                            stroke="rgba(0,0,0,0.001)"
-                            strokeWidth={ARROW_ENDPOINT_SEGMENT_HANDLE_WIDTH}
-                            strokeLinecap="round"
-                            style={{
-                              cursor: 'pointer',
-                              pointerEvents: 'all',
-                            }}
-                            onPointerDown={(e) => {
-                              handleArrowEndpointPointerDown(segment, handle.endpoint, e);
-                              logic.setSelectedIconIds([]);
-                            }}
-                          />
-                        );
-                      })}
-                      {/* Visible arrow line */}
-                      <path
-                        d={pathData}
-                        stroke={visibleStroke}
-                        strokeWidth={ARROW_SETTINGS.strokeWidth}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                        markerEnd={`url(#${markerId})`}
-                        style={{ pointerEvents: 'none' }}
-                      />
-                      {isSelectedArrow && (
-                        <>
-                          <circle
-                            cx={segment.start.x}
-                            cy={segment.start.y}
-                            r={4.2}
-                            fill={isDraggingStart ? '#38BDF8' : arrowStartColor}
-                            stroke="#0f172a"
-                            strokeWidth={1}
-                            style={{ pointerEvents: 'none', opacity: ARROW_ENDPOINT_DOT_OPACITY }}
-                          />
-                          <circle
-                            cx={segment.end.x}
-                            cy={segment.end.y}
-                            r={4.8}
-                            fill={isDraggingEnd ? '#38BDF8' : arrowEndColor}
-                            stroke="#0f172a"
-                            strokeWidth={1}
-                            style={{ pointerEvents: 'none', opacity: ARROW_ENDPOINT_DOT_OPACITY }}
-                          />
-                        </>
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
+              <ArrowSvgLayer
+                segments={renderArrowSegments}
+                svgWidth={svgWidth}
+                svgHeight={svgHeight}
+                isDrawingArrow={isDrawingArrow}
+                selectedArrowId={selectedArrowId}
+                draggingEndpoint={draggingEndpoint}
+                isDark={isDark}
+                arrowTileObstacles={arrowTileObstacles}
+                getArrowColorForTile={getArrowColorForTile}
+                onArrowPointerDown={handleArrowPointerDown}
+                onArrowEndpointPointerDown={handleArrowEndpointPointerDown}
+                onArrowContextMenu={handleArrowContextMenu}
+                onClearTileSelection={() => logic.setSelectedIconIds([])}
+              />
             )}
 
             {showGrid && (
@@ -1183,6 +491,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   content={icon.content}
                   isSelected={logic.selectedIconIds.includes(icon.id)}
                   onClick={(event) => {
+                    if (performance.now() < suppressTileClickUntilRef.current) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      return;
+                    }
                     clearPreviewTimeout();
                     if (icon.type === 'web_article') return;
                     const isToggle = event.metaKey || event.ctrlKey;
@@ -1218,6 +531,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                     logic.openInlineEditor(x, y, content, id);
                   }}
                   onSizeChange={handleTileSizeChange}
+                  onResizeInteractionEnd={handleTileResizeInteractionEnd}
                   onFocusRingPointerDown={handleFocusRingPointerDown}
                   suppressFocusRingGhostArrow={isDrawingArrow && draftTargetTileId === icon.id}
                   onMetricsChange={handleTileMetricsChange}
@@ -1226,84 +540,19 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
             ))}
           </div>
 
-          {arrowContextMenu && arrowMenuPosition && ReactDOM.createPortal(
-            <>
-              <div
-                ref={arrowMenuBackdropRef}
-                className="fixed inset-0"
-                style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setArrowContextMenu(null);
-                }}
-                onContextMenu={closeArrowMenuAndForwardContextMenu}
-              />
-              <div
-                ref={arrowMenuRef}
-                className="fixed w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
-                style={{
-                  zIndex: Z_INDEX.CONTEXT_MENU,
-                  left: arrowMenuPosition.x,
-                  top: arrowMenuPosition.y,
-                }}
-                onContextMenu={closeArrowMenuAndForwardContextMenu}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteArrow(arrowContextMenu.arrowId);
-                    setArrowContextMenu(null);
-                  }}
-                  className="w-full px-3.5 py-2 text-left text-sm flex items-center gap-2 text-red-600 hover:bg-red-50"
-                  style={FONT_ROLES.topbarControl}
-                >
-                  Delete
-                </button>
-              </div>
-            </>,
-            document.body
-          )}
+          <ArrowContextMenuPortal
+            menu={arrowContextMenu}
+            onClose={() => setArrowContextMenu(null)}
+            onDelete={deleteArrow}
+          />
 
-          {contextMenu && canvasMenuPosition && ReactDOM.createPortal(
-            <>
-              <div
-                className="fixed inset-0"
-                style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
-                onClick={() => setContextMenu(null)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu(null);
-                }}
-              />
-              <div
-                ref={canvasMenuRef}
-                className="fixed w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
-                style={{
-                  zIndex: Z_INDEX.CONTEXT_MENU,
-                  left: canvasMenuPosition.x,
-                  top: canvasMenuPosition.y,
-                }}
-              >
-                {menuItems.map((item, idx) => (
-                  <button
-                    key={item.label}
-                    onClick={() => {
-                      void Promise.resolve(item.action()).finally(() => setContextMenu(null));
-                    }}
-                    className="w-full px-3.5 py-2 text-left text-sm flex items-center gap-2"
-                    style={{
-                      ...FONT_ROLES.topbarControl,
-                      background: contextMenu.index === idx ? 'var(--glass-bg)' : 'transparent',
-                      color: 'var(--color-text-primary)',
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </>,
-            document.body
-          )}
+          <CanvasContextMenuPortal
+            contextMenu={contextMenu}
+            canvasMenuPosition={canvasMenuPosition}
+            canvasMenuRef={canvasMenuRef}
+            menuItems={menuItems}
+            onClose={() => setContextMenu(null)}
+          />
         </div>
 
         {isEmptyState && (
@@ -1327,68 +576,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         )}
       </div>
 
-      {/* Inline preview grid for multi-selected links (YouTube/Vimeo embeds) */}
-      {selectedIcons.length > 1 && (
-        <div
-          className="border-t border-slate-200 bg-white/70 backdrop-blur-sm p-4 space-y-4"
-          style={{ boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.04)' }}
-        >
-          <div style={{ ...FONT_ROLES.paneSubtitle, color: 'var(--color-text-muted)' }}>
-            Inline previews ({selectedIcons.length})
-          </div>
-          {hiddenInlinePreviewCount > 0 && (
-            <div className="text-xs text-slate-500" style={{ ...FONT_ROLES.paneBodyMuted }}>
-              Showing first {INLINE_PREVIEW_LIMIT} items — {hiddenInlinePreviewCount} more selected.
-            </div>
-          )}
-          <div
-            className="grid gap-4"
-            style={{
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            }}
-          >
-            {inlinePreviewIcons.map((icon) => {
-              const embed = getVideoEmbed(icon.url);
-              if (!embed) {
-                return (
-                  <div
-                    key={icon.id}
-                    className="rounded-xl border border-slate-200 bg-white shadow-sm p-3 flex flex-col gap-2"
-                  >
-                    <div className="text-sm font-semibold text-slate-800 line-clamp-2">{icon.title}</div>
-                    <div className="text-xs text-slate-500">No inline preview available for this link.</div>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={icon.id}
-                  className="rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden"
-                >
-                  <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                    <iframe
-                      src={embed.embedUrl}
-                      title={icon.title || 'Preview'}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                      allowFullScreen
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        border: 0,
-                        background: '#000'
-                      }}
-                    />
-                  </div>
-                  <div className="p-3 text-sm font-semibold text-slate-800 line-clamp-2">{icon.title}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <InlinePreviewsPanel selectedIcons={selectedIcons} />
 
       {/* Add Link Dialog */}
       <AddLinkDialog

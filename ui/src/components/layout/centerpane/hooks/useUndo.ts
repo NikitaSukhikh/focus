@@ -98,6 +98,8 @@ export const useUndo = ({
     title: tile.title,
     x: tile.x,
     y: tile.y,
+    width: typeof tile.width === 'number' ? tile.width : undefined,
+    height: typeof tile.height === 'number' ? tile.height : undefined,
     tag: normalizeTag(tile.tag),
     url: tile.url,
     description: tile.description,
@@ -114,6 +116,8 @@ export const useUndo = ({
     title: text.title,
     x: text.x,
     y: text.y,
+    width: typeof text.width === 'number' ? text.width : undefined,
+    height: typeof text.height === 'number' ? text.height : undefined,
     tag: normalizeTag(text.tag),
     content: text.content,
   });
@@ -215,7 +219,18 @@ export const useUndo = ({
             [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredTile],
           }));
 
-          objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
+          const hasSize = typeof tile.width === 'number' || typeof tile.height === 'number';
+          const persist = hasSize
+            ? objectsApi.patchObject(tile.id, {
+                metadata: {
+                  x: tile.x,
+                  y: tile.y,
+                  width: typeof tile.width === 'number' ? tile.width : null,
+                  height: typeof tile.height === 'number' ? tile.height : null,
+                },
+              })
+            : objectsApi.updatePosition(tile.id, tile.x, tile.y);
+          persist.catch((err) => {
             console.error(`[${direction.toUpperCase()}] Failed to restore tile:`, err);
           });
         } else {
@@ -239,27 +254,59 @@ export const useUndo = ({
         const target = isRedo ? to : from;
         const targetX = typeof target?.x === 'number' ? target.x : tile.x;
         const targetY = typeof target?.y === 'number' ? target.y : tile.y;
+        const tileWidth = typeof tile?.width === 'number' ? tile.width : undefined;
+        const tileHeight = typeof tile?.height === 'number' ? tile.height : undefined;
+        const targetHasWidth = Boolean(target && Object.prototype.hasOwnProperty.call(target, 'width'));
+        const targetHasHeight = Boolean(target && Object.prototype.hasOwnProperty.call(target, 'height'));
+        const targetWidth = typeof target?.width === 'number' ? target.width : undefined;
+        const targetHeight = typeof target?.height === 'number' ? target.height : undefined;
 
         setIconsBySpace((prev) => {
           const current = prev[selectedSpaceId] || [];
           const existing = current.find((icon) => icon.id === tile.id);
 
           if (existing) {
+            const nextWidth = targetHasWidth ? targetWidth : existing.width;
+            const nextHeight = targetHasHeight ? targetHeight : existing.height;
             return {
               ...prev,
               [selectedSpaceId]: current.map((icon) =>
-                icon.id === tile.id ? { ...icon, x: targetX, y: targetY } : icon
+                icon.id === tile.id ? { ...icon, x: targetX, y: targetY, width: nextWidth, height: nextHeight } : icon
               ),
             };
           }
 
-          const fallbackTile = toDroppedIconFromTile({ ...tile, x: targetX, y: targetY });
+          const fallbackTile = toDroppedIconFromTile({
+            ...tile,
+            x: targetX,
+            y: targetY,
+            width: targetHasWidth ? targetWidth : tileWidth,
+            height: targetHasHeight ? targetHeight : tileHeight,
+          });
           return { ...prev, [selectedSpaceId]: [...current, fallbackTile] };
         });
 
-        objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
-          console.error(`[${direction.toUpperCase()}] Failed to move tile:`, err);
-        });
+        const shouldPersistSize = targetHasWidth || targetHasHeight || typeof tileWidth === 'number' || typeof tileHeight === 'number';
+        if (shouldPersistSize) {
+          const persistedWidth = targetHasWidth ? targetWidth : tileWidth;
+          const persistedHeight = targetHasHeight ? targetHeight : tileHeight;
+          objectsApi
+            .patchObject(tile.id, {
+              metadata: {
+                x: targetX,
+                y: targetY,
+                width: persistedWidth ?? null,
+                height: persistedHeight ?? null,
+              },
+            })
+            .catch((err) => {
+              console.error(`[${direction.toUpperCase()}] Failed to move/resize tile:`, err);
+            });
+        } else {
+          objectsApi.updatePosition(tile.id, targetX, targetY).catch((err) => {
+            console.error(`[${direction.toUpperCase()}] Failed to move tile:`, err);
+          });
+        }
         break;
       }
 
@@ -315,7 +362,18 @@ export const useUndo = ({
             [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredIcon],
           }));
 
-          objectsApi.updatePosition(tile.id, tile.x, tile.y).catch((err) => {
+          const hasSize = typeof tile.width === 'number' || typeof tile.height === 'number';
+          const persist = hasSize
+            ? objectsApi.patchObject(tile.id, {
+                metadata: {
+                  x: tile.x,
+                  y: tile.y,
+                  width: typeof tile.width === 'number' ? tile.width : null,
+                  height: typeof tile.height === 'number' ? tile.height : null,
+                },
+              })
+            : objectsApi.updatePosition(tile.id, tile.x, tile.y);
+          persist.catch((err) => {
             console.error('[UNDO] Failed to restore tile position:', err);
           });
           await restoreDeletedArrows(deletedArrows);
@@ -553,7 +611,18 @@ export const useUndo = ({
             [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredText],
           }));
 
-          objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
+          const hasSize = typeof text.width === 'number' || typeof text.height === 'number';
+          const persist = hasSize
+            ? objectsApi.patchObject(text.id, {
+                metadata: {
+                  x: text.x,
+                  y: text.y,
+                  width: typeof text.width === 'number' ? text.width : null,
+                  height: typeof text.height === 'number' ? text.height : null,
+                },
+              })
+            : objectsApi.updatePosition(text.id, text.x, text.y);
+          persist.catch((err) => {
             console.error('[REDO] Failed to restore text note:', err);
           });
         } else {
@@ -592,7 +661,18 @@ export const useUndo = ({
             [selectedSpaceId]: [...(prev[selectedSpaceId] || []), restoredText],
           }));
 
-          objectsApi.updatePosition(text.id, text.x, text.y).catch((err) => {
+          const hasSize = typeof text.width === 'number' || typeof text.height === 'number';
+          const persist = hasSize
+            ? objectsApi.patchObject(text.id, {
+                metadata: {
+                  x: text.x,
+                  y: text.y,
+                  width: typeof text.width === 'number' ? text.width : null,
+                  height: typeof text.height === 'number' ? text.height : null,
+                },
+              })
+            : objectsApi.updatePosition(text.id, text.x, text.y);
+          persist.catch((err) => {
             console.error('[UNDO] Failed to restore text note:', err);
           });
           await restoreDeletedArrows(deletedArrows);
