@@ -20,7 +20,7 @@ import { buildFaviconUrl } from '@/utils/favicon';
 import { decodeLinkTitleText, resolveLinkTitle } from '@/utils/text';
 import { DroppedIcon, IconKind, ArrowSegment } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
-import { isGmailUrl } from '@/components/layout/centerpane/utils';
+import { isGmailUrl, resolveObjectUrl } from '@/components/layout/centerpane/utils';
 import { calculateContentHeight } from '@/components/layout/centerpane/boundaries';
 import { API_BASE } from '@/config/api';
 
@@ -110,7 +110,14 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const customDescription = ((obj as any).custom_description as string | null | undefined) ?? null;
             const serviceKey = obj.type === 'google_drive' ? obj.description : undefined;
             const description = obj.type !== 'google_drive' ? (customDescription ?? obj.description ?? defaultDescription) : undefined;
-            const url = (obj.type === 'link' || obj.type === 'gmail' || obj.type === 'web_article') ? (meta.url as string) : undefined;
+            const url = (
+              obj.type === 'link'
+              || obj.type === 'gmail'
+              || obj.type === 'web_article'
+              || obj.type === 'google_drive'
+            )
+              ? resolveObjectUrl({ type: obj.type, metadata: meta })
+              : undefined;
             const effectiveDefaultTitle =
               obj.type === 'link' ? resolveLinkTitle(defaultTitle || obj.title, url) : defaultTitle;
             const service = meta.service as string | undefined;

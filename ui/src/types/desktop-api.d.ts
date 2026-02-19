@@ -6,6 +6,7 @@ declare global {
     platform: 'electron';
     openDialog: (_options: import('electron').OpenDialogOptions) => Promise<import('electron').OpenDialogReturnValue>;
     openExternal: (_url: string) => Promise<void>;
+    openExternalWindow: (_payload: { url: string; title?: string; width?: number; height?: number; reset?: boolean }) => Promise<void>;
     openFilePath: (_filePath: string) => Promise<void>;
     openAuthWindow: (_payload: { url: string; title?: string; width?: number; height?: number; partition?: string }) => Promise<void>;
     showItemInFolder: (_filePath: string) => Promise<void>;

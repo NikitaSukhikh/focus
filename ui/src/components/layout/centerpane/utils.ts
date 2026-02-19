@@ -14,6 +14,35 @@ export const isGmailUrl = (url: string): boolean => {
   }
 };
 
+const asNonEmptyString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || value.length === 0) return undefined;
+  return value;
+};
+
+interface ResolveObjectUrlArgs {
+  type: string;
+  metadata: Record<string, unknown>;
+}
+
+export const resolveObjectUrl = ({ type, metadata }: ResolveObjectUrlArgs): string | undefined => {
+  const directUrl =
+    asNonEmptyString(metadata.url)
+    || asNonEmptyString(metadata.web_view_link)
+    || asNonEmptyString(metadata.webViewLink);
+  if (directUrl) return directUrl;
+
+  if (type === 'gmail') {
+    const threadId = asNonEmptyString(metadata.thread_id) || asNonEmptyString(metadata.threadId);
+    return threadId ? `https://mail.google.com/mail/u/0/#inbox/${threadId}` : 'https://mail.google.com/';
+  }
+
+  if (type === 'google_drive') {
+    return 'https://drive.google.com/';
+  }
+
+  return undefined;
+};
+
 const wrapLongWord = (word: string, limit: number): string[] => {
   const chunks: string[] = [];
   for (let i = 0; i < word.length; i += limit) {

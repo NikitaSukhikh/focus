@@ -1,14 +1,5 @@
-export const normalizeUrl = (value: string): string => {
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-
-  // If URL doesn't have a protocol, add https://
-  if (!/^https?:\/\//i.test(trimmed)) {
-    return `https://${trimmed}`;
-  }
-
-  return trimmed;
-};
+// URL helpers keep user-provided URLs unchanged for open/navigation actions.
+export const normalizeUrl = (value: string): string => value;
 
 const hasLikelyWebHostname = (hostname: string): boolean => {
   if (!hostname) return false;

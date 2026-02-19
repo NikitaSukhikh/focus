@@ -6,7 +6,7 @@
  * - Toggling edit mode for space name
  * - Syncing editing state with selected space changes
  * - Handling keyboard interactions (Enter to save, Escape to cancel)
- * - Auto-focusing and selecting input text when edit mode starts
+ * - Auto-focusing and placing the caret at the end when edit mode starts
  * - Saving updated space name to the store
  */
 
@@ -49,8 +49,12 @@ export const useSpaceNameEditor = ({ selectedSpace, updateSpace }: SpaceNameEdit
   // Focus input when editing starts
   useEffect(() => {
     if (isEditingSpaceName && spaceNameInputRef.current) {
-      spaceNameInputRef.current.focus();
-      spaceNameInputRef.current.select();
+      const input = spaceNameInputRef.current;
+      input.focus();
+
+      // Keep text unselected and show a blinking caret at the end.
+      const caretPosition = input.value.length;
+      input.setSelectionRange(caretPosition, caretPosition);
     }
   }, [isEditingSpaceName]);
 

@@ -71,6 +71,7 @@ export function App() {
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
   const textFilePreviewCache = useRef<Record<string, string>>({});
+  const previewSuppressRef = useRef<{ tileId: string; untilTs: number } | null>(null);
 
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
   const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
@@ -189,14 +190,13 @@ export function App() {
     const handlePreviewSuppress = (e: Event) => {
       const customEvent = e as CustomEvent<{ tileId?: string }>;
       const tileId = customEvent.detail?.tileId;
-      if (!tileId) return;
-
-      setPreviewData((currentPreviewData) => {
-        if (currentPreviewData.tileId === tileId) {
-          setIsPreviewOpen(false);
-        }
-        return currentPreviewData;
-      });
+      if (tileId) {
+        previewSuppressRef.current = {
+          tileId,
+          untilTs: performance.now() + 400,
+        };
+      }
+      setIsPreviewOpen(false);
     };
 
     window.addEventListener('preview:suppress', handlePreviewSuppress);
@@ -256,6 +256,19 @@ export function App() {
 
   const normalizePreviewTarget = (target: PreviewTarget): PreviewTarget => {
     const normalized: PreviewTarget = { ...target };
+    const isGoogleDriveFamily =
+      normalized.type === 'google_drive'
+      || normalized.type === 'google_docs'
+      || normalized.type === 'google_sheets'
+      || normalized.type === 'google_slides';
+
+    if (!normalized.url) {
+      if (normalized.type === 'gmail') {
+        normalized.url = 'https://mail.google.com/';
+      } else if (isGoogleDriveFamily) {
+        normalized.url = 'https://drive.google.com/';
+      }
+    }
 
     if (target.filePath && target.type === 'file') {
       const { category } = detectFileType(target.filePath);
@@ -486,6 +499,14 @@ export function App() {
                 onZoomOut={handleZoomOut}
                 onOpenQuickAdd={openQuickAdd}
                 onObjectClick={(target: PreviewTarget) => {
+                  const suppressed = previewSuppressRef.current;
+                  if (suppressed && target?.tileId === suppressed.tileId) {
+                    if (performance.now() <= suppressed.untilTs) {
+                      return;
+                    }
+                    previewSuppressRef.current = null;
+                  }
+
                   const normalized = normalizePreviewTarget(target || {});
                   if (!canOpenPreviewPane(normalized)) {
                     setIsPreviewOpen(false);

@@ -1,8 +1,11 @@
+/**
+ * Coordinates Electron app lifecycle, IPC handlers, and window behavior for Focus.
+ */
 import { app, BrowserWindow, dialog, ipcMain, shell, session } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import {
   logStartup,
@@ -34,10 +37,19 @@ const backendExecutableByPlatform: Record<NodeJS.Platform, string> = {
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let backendProcess: ChildProcess | null = null;
+const auxiliaryWindows = new Set<BrowserWindow>();
+let externalWebWindow: BrowserWindow | null = null;
 let isFullWindowPreviewOpen = false;
 let bypassMetadataCloseGuard = false;
 let closeFlushPromise: Promise<void> | null = null;
 let bypassQuitFlushGuard = false;
+
+const trackAuxiliaryWindow = (window: BrowserWindow) => {
+  auxiliaryWindows.add(window);
+  window.on('closed', () => {
+    auxiliaryWindows.delete(window);
+  });
+};
 
 const METADATA_API_BASE = process.env.FOCUS_API_BASE?.trim() || 'http://localhost:8000/api';
 
@@ -177,6 +189,27 @@ const requestCloseFullWindowPreview = () => {
     return;
   }
   mainWindow.webContents.send('fullwindow-preview:close-request');
+};
+
+const isAltF4KeyDown = (input: { key?: string; alt?: boolean; type?: string }): boolean => {
+  const key = input.key?.toLowerCase();
+  const isAltF4 = key === 'f4' && !!input.alt;
+  const isKeyDownEvent = input.type === 'keyDown' || input.type === 'rawKeyDown';
+  return isKeyDownEvent && isAltF4;
+};
+
+const bindAuxiliaryWindowCloseBehavior = (targetWindow: BrowserWindow): void => {
+  // Keep close behavior scoped to this window so Alt+F4 never cascades to the whole app.
+  targetWindow.webContents.on('before-input-event', (event, input) => {
+    if (!isAltF4KeyDown(input)) {
+      return;
+    }
+
+    event.preventDefault();
+    if (!targetWindow.isDestroyed()) {
+      targetWindow.close();
+    }
+  });
 };
 
 const getBackendExecutableName = () => {
@@ -443,10 +476,7 @@ async function createMainWindow() {
   mainWindow.setMenuBarVisibility(false);
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    const key = input.key?.toLowerCase();
-    const isAltF4 = key === 'f4' && input.alt;
-    const isKeyDownEvent = input.type === 'keyDown' || input.type === 'rawKeyDown';
-    if (isKeyDownEvent && isAltF4 && isFullWindowPreviewOpen) {
+    if (isAltF4KeyDown(input) && isFullWindowPreviewOpen) {
       event.preventDefault();
       requestCloseFullWindowPreview();
     }
@@ -475,6 +505,12 @@ async function createMainWindow() {
   });
 
   mainWindow.on('close', (event) => {
+    if (isFullWindowPreviewOpen) {
+      event.preventDefault();
+      requestCloseFullWindowPreview();
+      return;
+    }
+
     if (bypassMetadataCloseGuard) {
       bypassMetadataCloseGuard = false;
       return;
@@ -716,28 +752,118 @@ ipcMain.handle('desktop:open-external', async (_event, targetUrl: string) => {
   if (typeof targetUrl !== 'string' || !targetUrl.trim()) {
     return;
   }
+
   try {
     await shell.openExternal(targetUrl);
   } catch (error) {
-    console.error('[Electron] Failed to open external URL:', error);
-    // Fallback: try to open in a new BrowserWindow if shell.openExternal fails
+    console.error('[Electron] Failed to open external URL:', error, { targetUrl });
     try {
-      const externalWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        icon: getIconPath(),
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-        },
+      if (process.platform === 'win32') {
+        const child = spawn('rundll32.exe', ['url.dll,FileProtocolHandler', targetUrl], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true,
+        });
+        child.unref();
+        return;
+      }
+
+      if (process.platform === 'darwin') {
+        const child = spawn('open', [targetUrl], {
+          detached: true,
+          stdio: 'ignore',
+        });
+        child.unref();
+        return;
+      }
+
+      const child = spawn('xdg-open', [targetUrl], {
+        detached: true,
+        stdio: 'ignore',
       });
-      externalWindow.loadURL(targetUrl);
+      child.unref();
+      return;
     } catch (fallbackError) {
-      console.error('[Electron] Fallback also failed:', fallbackError);
-      throw error; // Re-throw original error
+      console.error('[Electron] Fallback external open failed:', fallbackError);
+      throw error;
     }
   }
 });
+
+ipcMain.handle(
+  'desktop:open-external-window',
+  async (
+    _event,
+    payload: { url?: string; title?: string; width?: number; height?: number; reset?: boolean }
+  ) => {
+    const targetUrl = typeof payload?.url === 'string' ? payload.url.trim() : '';
+    if (!targetUrl) return;
+
+    const width = typeof payload.width === 'number' ? Math.max(480, Math.floor(payload.width)) : 1280;
+    const height = typeof payload.height === 'number' ? Math.max(360, Math.floor(payload.height)) : 840;
+    const title = typeof payload.title === 'string' && payload.title.trim() ? payload.title.trim() : 'Focus';
+    const shouldReset = payload.reset === true;
+
+    if (shouldReset) {
+      const previous = externalWebWindow;
+      externalWebWindow = null;
+      if (previous && !previous.isDestroyed()) {
+        previous.destroy();
+      }
+    }
+
+    const existing = externalWebWindow;
+    if (existing && !existing.isDestroyed()) {
+      existing.setMenuBarVisibility(false);
+      existing.setTitle(title);
+      if (typeof payload.width === 'number' || typeof payload.height === 'number') {
+        existing.setSize(width, height);
+      }
+      if (!existing.isVisible()) {
+        existing.show();
+      }
+      existing.focus();
+      try {
+        await existing.loadURL(targetUrl);
+      } catch (error) {
+        console.error('[Electron] Failed to navigate reusable external window URL:', error, { targetUrl });
+      }
+      return;
+    }
+
+    const externalWindow = new BrowserWindow({
+      width,
+      height,
+      title,
+      show: true,
+      modal: false,
+      icon: getIconPath(),
+      autoHideMenuBar: true,
+      webPreferences: {
+        contextIsolation: true,
+        sandbox: true,
+        nodeIntegration: false,
+      },
+    });
+
+    externalWebWindow = externalWindow;
+    trackAuxiliaryWindow(externalWindow);
+    externalWindow.once('closed', () => {
+      if (externalWebWindow === externalWindow) {
+        externalWebWindow = null;
+      }
+    });
+    externalWindow.setMenuBarVisibility(false);
+    bindAuxiliaryWindowCloseBehavior(externalWindow);
+    externalWindow.focus();
+    try {
+      await externalWindow.loadURL(targetUrl);
+    } catch (error) {
+      console.error('[Electron] Failed to load external window URL:', error, { targetUrl });
+      return;
+    }
+  }
+);
 
 ipcMain.handle('desktop:open-file-path', async (_event, filePath: string) => {
   if (typeof filePath !== 'string' || !filePath.trim()) {
@@ -782,7 +908,7 @@ ipcMain.handle('desktop:show-item-in-folder', async (_event, filePath: string) =
 
 ipcMain.handle('desktop:arrange-windows-side-by-side', async (_event) => {
   try {
-    const { screen, BrowserWindow } = await import('electron');
+    const { screen } = await import('electron');
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
     const execAsync = promisify(exec);
@@ -933,7 +1059,9 @@ ipcMain.handle('desktop:open-auth-window', async (_event, payload: { url?: strin
     },
   });
 
+  trackAuxiliaryWindow(authWindow);
   authWindow.setMenuBarVisibility(false);
+  bindAuxiliaryWindowCloseBehavior(authWindow);
   await authWindow.loadURL(targetUrl);
 });
 
@@ -1016,7 +1144,8 @@ ipcMain.handle('window:maximize', () => {
 });
 
 ipcMain.handle('window:close', () => {
-  mainWindow?.close();
+  const targetWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+  targetWindow?.close();
 });
 
 ipcMain.handle('window:is-maximized', () => {

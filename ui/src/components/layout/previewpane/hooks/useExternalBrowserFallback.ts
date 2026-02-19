@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { openExternalUrl } from '@/platform';
+import { openExternalUrl, openExternalWindow } from '@/platform';
 
 interface FailedLoadAttempt {
   url: string;
@@ -66,7 +66,10 @@ export function useExternalBrowserFallback() {
   }, []);
 
   const openInExternal = useCallback((url: string) => {
-    openExternalUrl(url);
+    void openExternalWindow(url).catch((error) => {
+      console.error('[PreviewFallback] Failed to open external window, fallback to OS browser', error);
+      return openExternalUrl(url);
+    });
     resetFailedLoad(url);
   }, [resetFailedLoad]);
 

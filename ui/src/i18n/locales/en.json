@@ -93,10 +93,10 @@
   "leftSidebar.deleteConfirm": "Are you sure you want to delete this space with all data?",
   "leftSidebar.settings": "Settings",
 
-  "tileContextMenu.openFullWindow": "Open in full window",
+  "tileContextMenu.openFullWindow": "Open in full preview",
   "tileContextMenu.share": "Share",
   "tileContextMenu.copyPathUrl": "Copy path/URL",
-  "tileContextMenu.openExternal": "Open in external browser",
+  "tileContextMenu.openExternal": "Open in external window",
   "tileContextMenu.refresh": "Refresh",
   "tileContextMenu.renameFile": "Rename file",
   "tileContextMenu.editUrl": "Edit URL",

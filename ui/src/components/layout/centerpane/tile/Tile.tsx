@@ -24,7 +24,7 @@ import { useTileResize } from '@/components/layout/centerpane/tile/useTileResize
 import { TileContextMenu } from '@/components/layout/centerpane/tile/TileContextMenu';
 import { TileDialogs } from '@/components/layout/centerpane/tile/TileDialogs';
 import { RenameFileDialog } from '@/components/dialogs/RenameFileDialog';
-import { openFilePath } from '@/platform';
+import { openExternalWindow, openFilePath } from '@/platform';
 import { TILE_RING_COLORS, TEXT_NOTE_BOX } from '@/styles/tileStyles';
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
@@ -64,6 +64,7 @@ export function Tile({
   const [textMinWidth, setTextMinWidth] = useState(0);
   const tileContainerRef = useRef<HTMLDivElement | null>(null);
   const suppressClickUntilRef = useRef(0);
+  const lastDoubleClickActionAtRef = useRef(0);
 
   const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
   const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
@@ -93,11 +94,25 @@ export function Tile({
     },
   });
 
-  const openLinkExternally = async () => {
-    if ((type !== 'link' && type !== 'web_article') || !url) return;
-    // Simply open URL in external browser - no OAuth needed
-    const { openExternalUrl } = await import('../../../../platform');
-    openExternalUrl(url);
+  const openLinkInFocusWindow = async (reset = false): Promise<boolean> => {
+    const candidateUrl = url
+      || (type === 'gmail' ? 'https://mail.google.com/' : undefined)
+      || (
+        type === 'google_drive'
+        || type === 'google_sheets'
+        || type === 'google_docs'
+        || type === 'google_slides'
+          ? 'https://drive.google.com/'
+          : undefined
+      );
+    if (!candidateUrl) return false;
+    try {
+      await openExternalWindow(candidateUrl, { title, reset });
+      return true;
+    } catch (error) {
+      console.error('[Tile] Failed to open Focus external window:', error);
+      return false;
+    }
   };
 
   const openFileExternally = async () => {
@@ -107,19 +122,38 @@ export function Tile({
 
   const handleDoubleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDoubleClick?.();
+    const now = performance.now();
+    if (now - lastDoubleClickActionAtRef.current < 180) {
+      return;
+    }
+    lastDoubleClickActionAtRef.current = now;
 
     if (type === 'text' && content !== undefined && onEdit) {
+      onDoubleClick?.();
       onEdit(x, y, content, id);
       return;
     }
 
     if (type === 'file') {
+      onDoubleClick?.();
       await openFileExternally();
       return;
     }
 
-    await openLinkExternally();
+    if (
+      type === 'link'
+      || type === 'web_article'
+      || type === 'gmail'
+      || type === 'google_drive'
+      || type === 'google_sheets'
+      || type === 'google_docs'
+      || type === 'google_slides'
+    ) {
+      const opened = await openLinkInFocusWindow(true);
+      if (opened) {
+        onDoubleClick?.();
+      }
+    }
   };
 
   const handleCopyPathClick = async () => {
@@ -154,12 +188,23 @@ export function Tile({
     setShowShareDialog(true);
   };
 
-  const handleOpenFullWindow = () => {
+  const handleOpenFullWindow = (overrideUrl?: string) => {
     setShowContextMenu(false);
+    const resolvedUrl = overrideUrl
+      || url
+      || (type === 'gmail' ? 'https://mail.google.com/' : undefined)
+      || (
+        type === 'google_drive'
+        || type === 'google_sheets'
+        || type === 'google_docs'
+        || type === 'google_slides'
+          ? 'https://drive.google.com/'
+          : undefined
+      );
 
     const event = new CustomEvent('open:fullwindow', {
       detail: {
-        url,
+        url: resolvedUrl,
         title,
         tileId: id,
         filePath,
@@ -231,6 +276,12 @@ export function Tile({
     if (performance.now() < suppressClickUntilRef.current) {
       event.preventDefault();
       event.stopPropagation();
+      return;
+    }
+    if (event.detail >= 2) {
+      event.preventDefault();
+      event.stopPropagation();
+      void handleDoubleClick(event);
       return;
     }
     onClick?.(event);
@@ -506,8 +557,7 @@ export function Tile({
         onShare={handleShareClick}
         onCopyPath={handleCopyPathClick}
         onOpenExternal={() => {
-          setShowContextMenu(false);
-          void openLinkExternally();
+          void openLinkInFocusWindow();
         }}
         onRefreshMetadata={handleRefreshMetadataClick}
         onRenameFile={type === 'file' && filePath ? () => {

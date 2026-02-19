@@ -155,7 +155,15 @@ export function TileContextMenu({
             {t('tileContextMenu.copyPathUrl')}
           </button>
         )}
-        {(type === 'link' || type === 'web_article') && url && (
+        {(
+          type === 'link'
+          || type === 'web_article'
+          || type === 'gmail'
+          || type === 'google_drive'
+          || type === 'google_sheets'
+          || type === 'google_docs'
+          || type === 'google_slides'
+        ) && url && (
           <button
             onClick={onOpenExternal}
             title={t('tileContextMenu.openExternal')}
@@ -165,7 +173,7 @@ export function TileContextMenu({
             {t('tileContextMenu.openExternal')}
           </button>
         )}
-        {(type === 'link' || type === 'web_article') && url && (
+        {(type === 'link' || type === 'web_article' || type === 'gmail' || type === 'google_drive') && url && (
           <button
             onClick={onRefreshMetadata}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"

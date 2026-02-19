@@ -1,6 +1,6 @@
 import { X, ExternalLink, Maximize2 } from 'lucide-react';
 import { FONT_ROLES } from '@/styles/fontManager';
-import { openExternalUrl } from '@/platform';
+import { openExternalUrl, openExternalWindow } from '@/platform';
 import { PREVIEW_PANE } from '@/constants/panesDimensions';
 import { ICON_SIZES } from '@/constants/objectsDimensions';
 import { renderFileTypeIcon, renderFaviconImage, getGoogleServiceIcon } from '@/components/layout/centerpane/tile/iconHelpers';
@@ -28,6 +28,15 @@ interface PreviewHeaderProps {
 export function PreviewHeader({ title, type, url, filePath, faviconUrl, onClose, onOpenFullWindow, ebookMetadata, showEditHint }: PreviewHeaderProps) {
   const displayTitle = ebookMetadata?.title || title;
   const showEbookInfo = ebookMetadata && (ebookMetadata.title || ebookMetadata.author);
+  const handleOpenExternal = async () => {
+    if (!url) return;
+    try {
+      await openExternalWindow(url, { title });
+    } catch (error) {
+      console.error('[PreviewHeader] Failed to open external window, falling back to OS browser', error);
+      await openExternalUrl(url);
+    }
+  };
 
   return (
     <div className="flex flex-col" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
@@ -82,13 +91,15 @@ export function PreviewHeader({ title, type, url, filePath, faviconUrl, onClose,
               e.currentTarget.style.color = 'var(--color-text-muted)';
               e.currentTarget.style.boxShadow = 'none';
             }}
-            title="Open in full window"
+            title="Open in full preview"
           >
             <Maximize2 size={ICON_SIZES.headerButton} />
           </button>
           {url && (
             <button
-              onClick={() => url && openExternalUrl(url)}
+              onClick={() => {
+                void handleOpenExternal();
+              }}
             className="p-1.5 rounded-lg transition-colors"
             style={{
               color: 'var(--color-text-muted)',
@@ -104,7 +115,7 @@ export function PreviewHeader({ title, type, url, filePath, faviconUrl, onClose,
               e.currentTarget.style.color = 'var(--color-text-muted)';
               e.currentTarget.style.boxShadow = 'none';
             }}
-            title="Open in external browser"
+            title="Open in external window"
           >
             <ExternalLink size={ICON_SIZES.headerButton} />
             </button>

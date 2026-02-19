@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, ExternalLink, Minimize2 } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
 import { FULL_WINDOW_PREVIEW } from '@/constants/panesDimensions';
-import { openExternalUrl } from '@/platform';
+import { openExternalUrl, openExternalWindow } from '@/platform';
 import { usePreviewPaneLogic } from '@/components/layout/previewpane/usePreviewPaneLogic';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { getVideoEmbed, getVideoEmbedRenderOptions } from '@/utils/videoEmbeds';
@@ -59,6 +59,7 @@ export function FullWindowPreview({
   // Guard saves/close so outside clicks and shortcuts share a single path
   const containerRef = useRef<HTMLDivElement>(null);
   const isClosingRef = useRef(false);
+  const openedAtRef = useRef<number>(0);
   const textPreviewRef = useRef<TextPreviewHandle | null>(null);
 
   const { isImageFile, isAudioFile, isVideoFile, isDocumentFile, isEbookFile, isPdfFile, isTextFile, isMarkdownFile, isHtmlFile, imagePreviewUrl, videoPreviewUrl, documentPreviewUrl, ebookPreviewUrl, htmlPreviewUrl } = useFileTypeDetection(type, filePath);
@@ -222,6 +223,10 @@ export function FullWindowPreview({
   }, [isOpen, isEditingText, handleSaveAndClose, onClose]);
 
   const handleBackdropClick = () => {
+    // Ignore the opening click-through that can immediately close the modal.
+    if (performance.now() - openedAtRef.current < 150) {
+      return;
+    }
     if (isEditingText) {
       void handleSaveAndClose();
     } else {
@@ -232,6 +237,7 @@ export function FullWindowPreview({
   // Handle keyboard shortcuts
   useEffect(() => {
     if (!isOpen) return;
+    openedAtRef.current = performance.now();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isEditingText) {
@@ -316,10 +322,16 @@ export function FullWindowPreview({
             </button>
             {url && (
               <button
-                onClick={() => url && openExternalUrl(url)}
+                onClick={() => {
+                  if (!url) return;
+                  void openExternalWindow(url, { title: displayTitle }).catch((error) => {
+                    console.error('[FullWindowPreview] Failed to open external window, fallback to OS browser', error);
+                    return openExternalUrl(url);
+                  });
+                }}
                 className="p-2 rounded-lg transition-colors hover:bg-slate-100"
                 style={{ color: 'var(--color-text-secondary)' }}
-                title="Open in external browser"
+                title="Open in external window"
               >
                 <ExternalLink size={20} />
               </button>

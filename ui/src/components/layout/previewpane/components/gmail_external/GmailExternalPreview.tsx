@@ -12,7 +12,7 @@
  * and Gmail API (to be placed in gmail_oauth folder).
  */
 
-import { openExternalUrl } from '@/platform';
+import { openExternalUrl, openExternalWindow } from '@/platform';
 import { FONT_ROLES } from '@/styles/fontManager';
 import { GmailIcon } from '@/components/icons/GoogleServiceIcons';
 
@@ -23,9 +23,14 @@ interface GmailExternalPreviewProps {
 }
 
 export function GmailExternalPreview({ url, title: _title, gmailEmail }: GmailExternalPreviewProps) {
-  const handleOpenInBrowser = () => {
+  const handleOpenInBrowser = async () => {
     if (url) {
-      openExternalUrl(url);
+      try {
+        await openExternalWindow(url, { title: 'Gmail' });
+      } catch (error) {
+        console.error('[GmailExternalPreview] Failed to open external window, fallback to OS browser', error);
+        await openExternalUrl(url);
+      }
     }
   };
 
@@ -68,7 +73,9 @@ export function GmailExternalPreview({ url, title: _title, gmailEmail }: GmailEx
 
         {/* Open in Browser Button */}
         <button
-          onClick={handleOpenInBrowser}
+          onClick={() => {
+            void handleOpenInBrowser();
+          }}
           disabled={!url}
           className="w-full px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
           style={{ ...FONT_ROLES.paneBody, fontSize: '16px', fontWeight: 600 }}

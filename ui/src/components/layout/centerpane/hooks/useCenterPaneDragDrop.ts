@@ -22,6 +22,7 @@ import { DroppedIcon, IconKind } from '@/components/layout/centerpane/types';
 import { useDebouncedPositionUpdate } from '@/hooks/useDebouncedPositionUpdate';
 import { normalizeTag } from '@/types/tags';
 import { getVideoTilePadding } from '@/components/layout/centerpane/tileBounds';
+import { resolveObjectUrl } from '@/components/layout/centerpane/utils';
 
 interface DragDropParams {
   selectedSpace: any;
@@ -494,14 +495,16 @@ export const useCenterPaneDragDrop = ({
             };
           }
           if (provider.includes('gmail') || key.includes('gmail')) {
+            const threadId = payload?.thread_id || crypto.randomUUID?.() || Date.now().toString();
             return {
               type: 'gmail',
               title: label,
-              thread_id: payload?.thread_id || crypto.randomUUID?.() || Date.now().toString(),
+              thread_id: threadId,
               message_id: payload?.message_id || crypto.randomUUID?.() || `${Date.now()}-msg`,
               subject: payload?.subject || label,
               sender: payload?.sender || 'unknown@example.com',
               snippet: payload?.snippet || '',
+              url: payload?.url || `https://mail.google.com/mail/u/0/#inbox/${threadId}`,
               x: position.x,
               y: position.y,
             };
@@ -594,6 +597,21 @@ export const useCenterPaneDragDrop = ({
       payload.type === 'link' ? 'link' :
       payload.type === 'file' ? 'file' :
       payload.type === 'text' ? 'text' : 'unknown';
+    const optimisticUrl = (
+      payload.type === 'link'
+      || payload.type === 'gmail'
+      || payload.type === 'google_drive'
+      || payload.type === 'web_article'
+    )
+      ? resolveObjectUrl({
+          type: payload.type,
+          metadata: {
+            url: (payload as any).url,
+            web_view_link: (payload as any).web_view_link,
+            thread_id: (payload as any).thread_id,
+          },
+        })
+      : undefined;
     const optimisticIcon: DroppedIcon = {
       id: tempId,
       type: optimisticType,
@@ -602,9 +620,9 @@ export const useCenterPaneDragDrop = ({
       y,
       tag: '',
       serviceKey,
-      url: payload.type === 'link' ? (payload as any).url : undefined,
+      url: optimisticUrl,
       description: payload.description,
-      faviconUrl: payload.type === 'link' ? (payload as any).favicon_url || buildFaviconUrl((payload as any).url) : undefined,
+      faviconUrl: optimisticUrl ? (payload as any).favicon_url || buildFaviconUrl(optimisticUrl) : undefined,
     };
     setIconsBySpace((prev) => {
       const current = prev[selectedSpace.id] || [];
@@ -640,9 +658,16 @@ export const useCenterPaneDragDrop = ({
         const meta = (created.metadata || {}) as Record<string, any>;
         const finalX = typeof meta.x === 'number' ? meta.x : x;
         const finalY = typeof meta.y === 'number' ? meta.y : y;
-        const finalUrl = created.type === 'link' ? (meta.url as string) : undefined;
+        const finalUrl = (
+          created.type === 'link'
+          || created.type === 'gmail'
+          || created.type === 'google_drive'
+          || created.type === 'web_article'
+        )
+          ? resolveObjectUrl({ type: created.type, metadata: meta })
+          : undefined;
         const finalDescription = created.type !== 'google_drive' ? created.description : undefined;
-        const finalFavicon = created.type === 'link'
+        const finalFavicon = (created.type === 'link' || created.type === 'gmail' || created.type === 'google_drive')
           ? (meta.favicon_url as string | undefined) || (finalUrl ? buildFaviconUrl(finalUrl) : undefined)
           : undefined;
         const finalTitle =

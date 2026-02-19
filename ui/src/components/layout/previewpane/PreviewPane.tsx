@@ -99,26 +99,8 @@ export function PreviewPane({ isOpen, onClose, url, title, filePath, type, conte
     if (hasNonWebviewPreview && view) {
       // Reset currentUrlRef so next webview preview triggers fresh load
       logic.currentUrlRef.current = undefined;
-
-      // Check if webview is ready before calling methods that require DOM attachment
-      const isReady = view.getWebContentsId && typeof view.getWebContentsId === 'function';
-      try {
-        // Only call stop/loadURL if the webview is attached and ready
-        if (isReady) {
-          view.getWebContentsId(); // This throws if not ready
-          if (view.stop) view.stop();
-          // Webview is ready, keep isReadyRef true
-          logic.isReadyRef.current = true;
-        }
-        // Setting src directly is safe even if not ready
-        if (view.src && view.src !== 'about:blank') {
-          view.src = 'about:blank';
-        }
-      } catch {
-        // Webview not ready yet, just set src directly
-        if (view.src && view.src !== 'about:blank') {
-          view.src = 'about:blank';
-        }
+      if (view.src && view.src !== 'about:blank') {
+        view.src = 'about:blank';
       }
     }
   }, [hasNonWebviewPreview, logic.currentUrlRef, logic.isReadyRef]);

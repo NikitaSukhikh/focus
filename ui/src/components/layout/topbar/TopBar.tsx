@@ -2,7 +2,7 @@
  * TopBar renders global workspace controls and routes user actions to layout state.
  * A dedicated AI assistant action is exposed in the right-side controls.
  */
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Menu, X, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon, Share } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -55,6 +55,8 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
   const aiAssistantButtonRef = useRef<HTMLButtonElement | null>(null);
   const aiAssistantDialogRef = useRef<HTMLDivElement | null>(null);
+  const spaceNameMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const [spaceNameInputWidth, setSpaceNameInputWidth] = useState(0);
   const shareOptions: Array<{ key: keyof SpaceShareFilters; label: string }> = [
     { key: 'links', label: t('topBar.shareLinks') },
     { key: 'webArticles', label: t('topBar.shareWebArticles') },
@@ -134,6 +136,14 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [isAiAssistantDialogOpen]);
+
+  useLayoutEffect(() => {
+    if (!logic.isEditingSpaceName || !spaceNameMeasureRef.current) return;
+
+    // Measure rendered text width to keep the edit underline aligned to actual glyph width.
+    const measuredWidth = Math.ceil(spaceNameMeasureRef.current.getBoundingClientRect().width);
+    setSpaceNameInputWidth(measuredWidth);
+  }, [logic.isEditingSpaceName, logic.editingSpaceName]);
 
   return (
     <header
@@ -223,7 +233,19 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
           >
             <Plus size={TOP_BAR.icons.small} />
           </button>
-          <div className="min-w-0" style={{ marginLeft: '6px' }}>
+          <div className="min-w-0 relative" style={{ marginLeft: '6px' }}>
+            <span
+              ref={spaceNameMeasureRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute whitespace-pre"
+              style={{
+                ...FONT_ROLES.topbarTitle,
+                color: 'transparent',
+                visibility: 'hidden',
+              }}
+            >
+              {logic.editingSpaceName || ' '}
+            </span>
             {logic.selectedSpace ? (
               logic.isEditingSpaceName ? (
                 <input
@@ -237,13 +259,15 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
                   style={{
                     ...FONT_ROLES.topbarTitle,
                     color: 'var(--primary-color)',
+                    borderBottom: `1px solid ${TOP_BAR_STYLES.spaceNameEditUnderlineColor}`,
+                    width: spaceNameInputWidth > 0 ? `${Math.min(spaceNameInputWidth, TOP_BAR.title.maxWidth)}px` : '1ch',
                     maxWidth: `${TOP_BAR.title.maxWidth}px`,
                   }}
                 />
               ) : (
                 <h1
                   onDoubleClick={() => logic.setIsEditingSpaceName(true)}
-                  className="cursor-pointer transition-colors truncate"
+                  className="cursor-pointer transition-colors truncate select-none"
                   style={{
                     ...FONT_ROLES.topbarTitle,
                     color: 'var(--primary-color)',

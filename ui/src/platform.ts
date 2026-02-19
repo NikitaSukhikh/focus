@@ -28,6 +28,27 @@ export async function openExternalUrl(url: string): Promise<void> {
 }
 
 /**
+ * Opens a URL in a separate Focus-managed web window.
+ */
+export async function openExternalWindow(
+  url: string,
+  opts: { title?: string; width?: number; height?: number; reset?: boolean } = {}
+): Promise<void> {
+  if (!url) return;
+  const api = (window as any).desktopAPI as DesktopAPI;
+  if (!api.openExternalWindow) {
+    throw new Error('desktopAPI.openExternalWindow is unavailable');
+  }
+  await api.openExternalWindow({
+    url,
+    title: opts.title,
+    width: opts.width,
+    height: opts.height,
+    reset: opts.reset,
+  });
+}
+
+/**
  * Opens a file with the OS default handler (or OS picker when no default exists).
  */
 export async function openFilePath(filePath: string): Promise<void> {

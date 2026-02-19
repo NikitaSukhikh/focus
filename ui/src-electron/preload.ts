@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.invoke('desktop:open-dialog', options),
   openExternal: (url: string) =>
     ipcRenderer.invoke('desktop:open-external', url),
+  openExternalWindow: (payload: { url: string; title?: string; width?: number; height?: number; reset?: boolean }) =>
+    ipcRenderer.invoke('desktop:open-external-window', payload),
   openFilePath: (filePath: string) =>
     ipcRenderer.invoke('desktop:open-file-path', filePath),
   showItemInFolder: (filePath: string) =>
