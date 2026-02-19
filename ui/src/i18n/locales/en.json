@@ -141,5 +141,6 @@
   "introSlideshow.slide6.title": "Double-click: to open files in your favorite app",
   "introSlideshow.slide6.description": "For deeper interactions with files (for instance, to edit them)\nopen them in any external app",
   "introSlideshow.slide7.title": "For quick access, use shortcuts:",
-  "introSlideshow.slide7.description": "\n\n\nCreate new space: Ctrl+Y\nAdd object: Ctrl+I\nToggle preview pane: Ctrl+U\nUndo/Redo: Ctrl+Z / Ctrl+Shift+Z\nOpen/Close left sidebar: Ctrl+ ←/→\nNavigate spaces on the left sidebar: Ctrl+↑/↓"
+  "introSlideshow.slide7.description": "\n\n\nCreate new space: Ctrl+Y\nAdd object: Ctrl+I\nToggle preview pane: Ctrl+U\nUndo/Redo: Ctrl+Z / Ctrl+Shift+Z\nOpen/Close left sidebar: Ctrl+ ←/→\nNavigate spaces on the left sidebar: Ctrl+↑/↓",
+  "introSlideshow.spaceNameLabel": "Name your first space"
 }

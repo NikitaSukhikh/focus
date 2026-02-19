@@ -126,5 +126,6 @@
   "introSlideshow.slide6.title": "Double clic: ouvrez les fichiers dans votre app préférée",
   "introSlideshow.slide6.description": "Pour des interactions avancées avec les fichiers, ouvrez-les dans des applications externes.",
   "introSlideshow.slide7.title": "Raccourcis pour un accès rapide",
-  "introSlideshow.slide7.description": "Créer un nouvel espace: Ctrl+Y\nAjouter un objet: Ctrl+I\nBasculer l'aperçu: Ctrl+U\nAnnuler/Rétablir: Ctrl+Z / Ctrl+Shift+Z\nOuvrir/Fermer la barre latérale gauche: Ctrl+Left/Right\nNaviguer entre espaces: Ctrl+Up/Down"
+  "introSlideshow.slide7.description": "Créer un nouvel espace: Ctrl+Y\nAjouter un objet: Ctrl+I\nBasculer l'aperçu: Ctrl+U\nAnnuler/Rétablir: Ctrl+Z / Ctrl+Shift+Z\nOuvrir/Fermer la barre latérale gauche: Ctrl+Left/Right\nNaviguer entre espaces: Ctrl+Up/Down",
+  "introSlideshow.spaceNameLabel": "Nommez votre premier espace"
 }

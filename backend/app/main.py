@@ -36,7 +36,7 @@ from app.core.logging import (
     set_request_context,
     clear_request_context,
 )
-from app.storage.db import init_db, AsyncSessionLocal
+from app.storage.db import init_db, AsyncSessionLocal, Space
 from app.storage.repositories.undo_repo import UndoEventRepository
 
 
@@ -49,6 +49,19 @@ if getattr(sys, "frozen", False):
     settings.server.debug = False
 setup_logging()
 logger = get_logger(__name__)
+
+
+async def ensure_default_space() -> None:
+    """Create a default space if none exist (prod bootstrap)."""
+    from sqlalchemy import select, func
+    from uuid import uuid4
+
+    async with AsyncSessionLocal() as session:
+        count = await session.scalar(select(func.count(Space.id)))
+        if count == 0:
+            session.add(Space(id=str(uuid4()), name="My Space", position=0, object_count=0))
+            await session.commit()
+            logger.info("Created default space on startup")
 
 
 @asynccontextmanager
@@ -74,6 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         app_logger.log_storage_operation("ensure_directories", status="success")
 
         await init_db()
+        await ensure_default_space()
 
         # Clear undo history on fresh launch so sessions don't share history
         async with AsyncSessionLocal() as session:

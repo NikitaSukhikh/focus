@@ -128,5 +128,6 @@
   "introSlideshow.slide6.title": "Doble clic: abre archivos en tu app favorita",
   "introSlideshow.slide6.description": "Para trabajar más a fondo con archivos, ábrelos en cualquier app externa.",
   "introSlideshow.slide7.title": "Atajos para acceso rápido",
-  "introSlideshow.slide7.description": "Crear nuevo espacio: Ctrl+Y\nAgregar objeto: Ctrl+I\nAlternar vista previa: Ctrl+U\nDeshacer/Rehacer: Ctrl+Z / Ctrl+Shift+Z\nAbrir/Cerrar barra lateral izquierda: Ctrl+Left/Right\nNavegar espacios en la barra lateral: Ctrl+Up/Down"
+  "introSlideshow.slide7.description": "Crear nuevo espacio: Ctrl+Y\nAgregar objeto: Ctrl+I\nAlternar vista previa: Ctrl+U\nDeshacer/Rehacer: Ctrl+Z / Ctrl+Shift+Z\nAbrir/Cerrar barra lateral izquierda: Ctrl+Left/Right\nNavegar espacios en la barra lateral: Ctrl+Up/Down",
+  "introSlideshow.spaceNameLabel": "Nombra tu primer espacio"
 }

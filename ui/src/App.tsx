@@ -76,6 +76,7 @@ export function App() {
   const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
   const initialize = useSpaceStore((state) => state.initialize);
   const spacesLoaded = useSpaceStore((state) => state.spacesLoaded);
+  const updateSpace = useSpaceStore((state) => state.updateSpace);
 
   usePersistedSpace();
 
@@ -87,9 +88,12 @@ export function App() {
     if (spacesLoaded && introSeen === false) setShowIntro(true);
   }, [spacesLoaded, introSeen]);
 
-  const handleCloseIntro = () => {
+  const handleCloseIntro = (spaceName: string) => {
     setShowIntro(false);
     void markIntroSeen();
+    if (selectedSpaceId && selectedSpace && spaceName !== selectedSpace.name) {
+      void updateSpace(selectedSpaceId, spaceName);
+    }
   };
 
   // Initialize space store on mount to load persisted selected space
@@ -434,7 +438,7 @@ export function App() {
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--background-dark)' }}>
       <AppLoadingScreen visible={!spacesLoaded} />
-      {showIntro && <IntroSlideshow onDone={handleCloseIntro} />}
+      {showIntro && <IntroSlideshow initialSpaceName={selectedSpace?.name} onDone={handleCloseIntro} />}
       <TopBar
         ref={topBarRef}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}

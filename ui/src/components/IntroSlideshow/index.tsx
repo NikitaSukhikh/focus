@@ -7,29 +7,37 @@ import { SLIDES } from './slides';
 import { SlideContent } from './SlideContent';
 import { NavBar } from './NavBar';
 
+const DEFAULT_SPACE_NAME = 'My Space';
+
 const CARD_MAX_WIDTH = 720;
 const CARD_MIN_HEIGHT = 560;
 const CARD_HORIZONTAL_PADDING = 48;
 const LOGO_HEIGHT = 58;
 
 interface IntroSlideshowProps {
-  onDone: () => void;
+  initialSpaceName?: string;
+  onDone: (spaceName: string) => void;
 }
 
-export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
+export function IntroSlideshow({ initialSpaceName, onDone }: IntroSlideshowProps) {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
   const [contentMinHeight, setContentMinHeight] = useState<number | undefined>(undefined);
+  const [spaceName, setSpaceName] = useState(initialSpaceName ?? DEFAULT_SPACE_NAME);
   const measureRefs = useRef<Array<HTMLDivElement | null>>([]);
   const isLast = current === SLIDES.length - 1;
 
+  const handleDone = useCallback(() => {
+    onDone(spaceName.trim() || DEFAULT_SPACE_NAME);
+  }, [onDone, spaceName]);
+
   const next = useCallback(() => {
     if (isLast) {
-      onDone();
+      handleDone();
     } else {
       setCurrent((c) => c + 1);
     }
-  }, [isLast, onDone]);
+  }, [isLast, handleDone]);
 
   const back = useCallback(() => {
     setCurrent((c) => Math.max(0, c - 1));
@@ -41,14 +49,14 @@ export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
         e.preventDefault();
         next();
       } else if (e.key === 'Escape') {
-        onDone();
+        handleDone();
       } else if (e.key === 'ArrowLeft') {
         back();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [next, back, onDone]);
+  }, [next, back, handleDone]);
 
   const measureMaxContentHeight = useCallback(() => {
     const maxHeight = measureRefs.current.reduce((max, el) => {
@@ -101,7 +109,7 @@ export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
           style={{ color: 'var(--color-text-secondary, #888)' }}
           onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          onClick={onDone}
+          onClick={handleDone}
         >
           {t('introSlideshow.skip')}
         </button>
@@ -112,6 +120,30 @@ export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
           style={{ minHeight: contentMinHeight }}
         >
           <SlideContent slide={SLIDES[current]} />
+          {isLast && (
+            <div className="w-full mt-6" style={{ maxWidth: 320 }}>
+              <label
+                className="block text-sm mb-2 text-left"
+                style={{ color: 'var(--color-text-secondary, #aaa)' }}
+              >
+                {t('introSlideshow.spaceNameLabel')}
+              </label>
+              <input
+                type="text"
+                value={spaceName}
+                onChange={(e) => setSpaceName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleDone()}
+                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                style={{
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: 'var(--color-text-primary, #fff)',
+                }}
+                maxLength={100}
+                autoFocus
+              />
+            </div>
+          )}
         </div>
 
         <NavBar

@@ -126,5 +126,6 @@
   "introSlideshow.slide6.title": "双击：用常用应用打开文件",
   "introSlideshow.slide6.description": "如需更深入处理文件，可在外部应用中打开。",
   "introSlideshow.slide7.title": "快捷键",
-  "introSlideshow.slide7.description": "创建新空间：Ctrl+Y\n添加对象：Ctrl+I\n切换预览：Ctrl+U\n撤销/重做：Ctrl+Z / Ctrl+Shift+Z\n打开/关闭左侧边栏：Ctrl+Left/Right\n切换空间：Ctrl+Up/Down"
+  "introSlideshow.slide7.description": "创建新空间：Ctrl+Y\n添加对象：Ctrl+I\n切换预览：Ctrl+U\n撤销/重做：Ctrl+Z / Ctrl+Shift+Z\n打开/关闭左侧边栏：Ctrl+Left/Right\n切换空间：Ctrl+Up/Down",
+  "introSlideshow.spaceNameLabel": "为你的第一个空间命名"
 }

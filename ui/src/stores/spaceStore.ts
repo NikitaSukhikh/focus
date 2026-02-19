@@ -97,33 +97,6 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
         return;
       }
 
-      // If no spaces exist, create a default space on first launch
-      if (data.spaces.length === 0) {
-        console.log('[SPACE_STORE] No spaces found, creating default space');
-        try {
-          // Generate UUID on frontend for consistency
-          const defaultSpaceId = crypto.randomUUID();
-          const defaultSpace = await spacesApi.create({ id: defaultSpaceId, name: 'My Space' });
-          console.log('[SPACE_STORE] Default space created:', defaultSpace);
-
-          // Increment fetch version to invalidate any in-flight requests
-          const newVersion = get()._fetchVersion + 1;
-          set({
-            spaces: [defaultSpace],
-            selectedSpaceId: defaultSpace.id,
-            _fetchVersion: newVersion,
-            spacesLoaded: true,
-          });
-          persistSelectedSpace(defaultSpace.id);
-          resetLoadRetry();
-          return;
-        } catch (error) {
-          console.error('[SPACE_STORE] Failed to create default space:', error);
-          set({ spaces: [], spacesLoaded: true });
-          return;
-        }
-      }
-
       const currentSelected = preferredSelectedId ?? get().selectedSpaceId;
       const nextSelected =
         (currentSelected && data.spaces.some((i) => i.id === currentSelected))
@@ -141,10 +114,6 @@ export const useSpaceStore = create<SpaceStore>((set, get) => ({
       resetLoadRetry();
     } catch (error) {
       console.error('[SPACE_STORE] Failed to load spaces:', error);
-      if (get().spaces.length === 0) {
-        set({ spaces: [] });
-      }
-
       if (loadRetryAttempt < LOAD_RETRY_MAX_ATTEMPTS) {
         const delay = Math.min(LOAD_RETRY_BASE_MS * Math.pow(2, loadRetryAttempt), LOAD_RETRY_MAX_MS);
         loadRetryAttempt += 1;

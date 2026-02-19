@@ -13,7 +13,7 @@ Focus also supports storing **Gmail** and **Google Drive** entry points as objec
 
 Tech stack:
 - **Frontend/UI**: Electron + React + TypeScript
-- **Backend**: Python (uv) + Uvicorn (FastAPI assumed)
+- **Backend**: Python (uv) + Uvicorn
 
 ## License
 Apache-2.0

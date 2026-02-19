@@ -128,5 +128,6 @@
   "introSlideshow.slide6.title": "Двойной клик: открыть файлы в избранном приложении",
   "introSlideshow.slide6.description": "Для более полного взаимодействия с файлами (например, редактирования)\nоткрывайте их во внешних приложениях",
   "introSlideshow.slide7.title": "Быстрый доступ с помощью горячих клавиш:",
-  "introSlideshow.slide7.description": "\n\n\nСоздать новое пространство: Ctrl+Y\nДобавить объект: Ctrl+I\nПереключить предпросмотр: Ctrl+U\nОтменить/Повторить: Ctrl+Z / Ctrl+Shift+Z\nОткрыть/Закрыть левую боковую панель: Ctrl+Left/Right\nНавигация по пространствам в левой панели: Ctrl+Up/Down"
+  "introSlideshow.slide7.description": "\n\n\nСоздать новое пространство: Ctrl+Y\nДобавить объект: Ctrl+I\nПереключить предпросмотр: Ctrl+U\nОтменить/Повторить: Ctrl+Z / Ctrl+Shift+Z\nОткрыть/Закрыть левую боковую панель: Ctrl+Left/Right\nНавигация по пространствам в левой панели: Ctrl+Up/Down",
+  "introSlideshow.spaceNameLabel": "Назовите ваше первое пространство"
 }

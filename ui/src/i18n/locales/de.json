@@ -126,5 +126,6 @@
   "introSlideshow.slide6.title": "Doppelklick: in Ihrer Lieblings-App öffnen",
   "introSlideshow.slide6.description": "Für tieferes Arbeiten mit Dateien können Sie diese in externen Apps öffnen.",
   "introSlideshow.slide7.title": "Schneller Zugriff per Tastenkombinationen",
-  "introSlideshow.slide7.description": "Neuen Space: Ctrl+Y\nObjekt hinzufügen: Ctrl+I\nVorschau umschalten: Ctrl+U\nRückgängig/Wiederholen: Ctrl+Z / Ctrl+Shift+Z\nLinke Seitenleiste öffnen/schließen: Ctrl+Left/Right\nSpaces in der Seitenleiste: Ctrl+Up/Down"
+  "introSlideshow.slide7.description": "Neuen Space: Ctrl+Y\nObjekt hinzufügen: Ctrl+I\nVorschau umschalten: Ctrl+U\nRückgängig/Wiederholen: Ctrl+Z / Ctrl+Shift+Z\nLinke Seitenleiste öffnen/schließen: Ctrl+Left/Right\nSpaces in der Seitenleiste: Ctrl+Up/Down",
+  "introSlideshow.spaceNameLabel": "Benenne deinen ersten Space"
 }
