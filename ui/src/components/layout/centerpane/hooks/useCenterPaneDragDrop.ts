@@ -406,6 +406,7 @@ export const useCenterPaneDragDrop = ({
 
         const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
         const optimisticIcon: DroppedIcon = {
+          renderKey: tempId,
           id: tempId,
           type: 'file',
           title: filename,
@@ -613,6 +614,7 @@ export const useCenterPaneDragDrop = ({
         })
       : undefined;
     const optimisticIcon: DroppedIcon = {
+      renderKey: tempId,
       id: tempId,
       type: optimisticType,
       title: payload.title,
@@ -685,6 +687,7 @@ export const useCenterPaneDragDrop = ({
             [selectedSpace.id]: [
               ...current,
               {
+                renderKey: tempId,
                 id: created.id,
                 type: iconType,
                 title: finalTitle,

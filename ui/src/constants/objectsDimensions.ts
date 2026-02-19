@@ -6,13 +6,25 @@
 import { TEXT_NOTE_BOX, TILE_RING } from '@/styles/tileStyles';
 export { TEXT_NOTE_BOX, TILE_RING } from '@/styles/tileStyles';
 
+export const DEFAULT_TILE_SIZES = {
+  file: {
+    width: 180,
+    height: 100,
+  },
+  image: 220,
+  linkGhost: {
+    width: 360,
+    height: 240,
+  },
+} as const;
+
 // ============================================
 // Tile Dimensions
 // ============================================
 export const TILE = {
   // Keep enough transparent wrapper space so the ring remains fully visible around the tile.
   hoverSafePadding: Math.ceil(TILE_RING.margin + TILE_RING.strokeWidth),
-  defaultFileTileSize: 128,
+  defaultFileTileSize: DEFAULT_TILE_SIZES.file.width,
   thumbnail: {
     defaultSize: 96,
     maxSize: 144,
@@ -32,6 +44,8 @@ export const EMBED_LINK = {
 // ============================================
 export const NON_EMBED_LINK = {
   size: 192,
+  width: 240,
+  height: 130,
   maxWidth: 420,
   descriptionMaxWidth: 220,
 };

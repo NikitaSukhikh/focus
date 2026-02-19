@@ -32,6 +32,7 @@ export const useCenterPanePreview = ({
   previewDelayMs,
 }: UseCenterPanePreviewProps): UseCenterPanePreviewResult => {
   const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPreviewTileIdRef = useRef<string | null>(null);
   const isCornerDraggingRef = useRef(false);
   const dragClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -39,6 +40,7 @@ export const useCenterPanePreview = ({
     if (!previewTimeoutRef.current) return;
     clearTimeout(previewTimeoutRef.current);
     previewTimeoutRef.current = null;
+    pendingPreviewTileIdRef.current = null;
   }, []);
 
   const openPreviewForIcon = useCallback((icon: DroppedIcon) => {
@@ -55,7 +57,10 @@ export const useCenterPanePreview = ({
 
   const schedulePreviewForIcon = useCallback((icon: DroppedIcon, delayMs: number) => {
     clearPreviewTimeout();
+    pendingPreviewTileIdRef.current = icon.id;
     previewTimeoutRef.current = setTimeout(() => {
+      previewTimeoutRef.current = null;
+      pendingPreviewTileIdRef.current = null;
       // Skip opening preview when the tile is currently being edited inline.
       if (icon.type === 'text' && inlineEditorState.isActive && inlineEditorState.editingId === icon.id) return;
       openPreviewForIcon(icon);
@@ -95,6 +100,18 @@ export const useCenterPanePreview = ({
     suppressTileClickUntilRef.current = performance.now() + tileClickSuppressAfterResizeMs;
     clearPreviewTimeout();
   }, [clearPreviewTimeout, suppressTileClickUntilRef, tileClickSuppressAfterResizeMs]);
+
+  useEffect(() => {
+    const handleTileDeleted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ tileId: string }>;
+      if (pendingPreviewTileIdRef.current === customEvent.detail.tileId) {
+        clearPreviewTimeout();
+      }
+    };
+
+    window.addEventListener('tile:deleted', handleTileDeleted);
+    return () => window.removeEventListener('tile:deleted', handleTileDeleted);
+  }, [clearPreviewTimeout]);
 
   useEffect(() => {
     return () => {

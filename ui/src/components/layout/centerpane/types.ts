@@ -32,6 +32,7 @@ export interface ArrowSegment {
 }
 
 export interface DroppedIcon {
+  renderKey?: string; // Stable UI key to avoid remounts when optimistic IDs are replaced by server IDs
   id: string;
   type: IconKind;
   title: string;

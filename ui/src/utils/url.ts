@@ -1,5 +1,11 @@
-// URL helpers keep user-provided URLs unchanged for open/navigation actions.
-export const normalizeUrl = (value: string): string => value;
+// Prepend https:// if the user typed a bare domain (no protocol).
+export const normalizeUrl = (value: string): string => {
+  const trimmed = value.trim();
+  if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+};
 
 const hasLikelyWebHostname = (hostname: string): boolean => {
   if (!hostname) return false;

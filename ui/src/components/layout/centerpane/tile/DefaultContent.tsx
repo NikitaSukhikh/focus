@@ -49,12 +49,13 @@ export function DefaultContent({
   const isGoogleIntegration = type === 'gmail' || type === 'google_drive';
   const ringType = isGoogleIntegration ? 'link' : 'file';
   const isImageFile = type === 'file' && !!filePath && canShowImageThumbnail(filePath);
+  const shouldShowImageRing = isImageFile && !!imageMetadata;
 
   if (isImageFile) {
     return (
       <div
         className={`transition-transform duration-150 ${hoverScaleClass}`}
-        style={{ pointerEvents: 'none', width: '100%', height: '100%', ...tileRingStyle('file'), outlineOffset: '0px', borderRadius: '6px' }}
+        style={{ pointerEvents: 'none', width: '100%', height: '100%', position: 'relative' }}
       >
         <div className={isSelected ? 'opacity-80' : ''}>
           <TileIcon
@@ -69,6 +70,18 @@ export function DefaultContent({
             onThumbnailError={onThumbnailError}
           />
         </div>
+        <div
+          style={{
+            pointerEvents: 'none',
+            position: 'absolute',
+            inset: 0,
+            ...tileRingStyle('file'),
+            outlineOffset: '0px',
+            borderRadius: '6px',
+            opacity: shouldShowImageRing ? 1 : 0,
+            transition: 'opacity 150ms ease',
+          }}
+        />
       </div>
     );
   }

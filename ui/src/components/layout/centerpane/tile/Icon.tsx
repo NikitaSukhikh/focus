@@ -1,4 +1,5 @@
 import { getIconComponent, getGoogleServiceIcon, renderFaviconImage, renderFileTypeIcon } from '@/components/layout/centerpane/tile/iconHelpers';
+import { canShowImageThumbnail } from '@/utils/fileTypes';
 
 interface TileIconProps {
   type: string;
@@ -29,7 +30,7 @@ export function TileIcon({
   if (type === 'file' && thumbnailUrl) {
     return (
       <div
-        className="rounded-md shadow-sm overflow-hidden bg-white"
+        className="rounded-md shadow-sm overflow-hidden"
         style={{
           width: `${thumbnailWidth}px`,
           height: `${thumbnailHeight}px`,
@@ -38,6 +39,7 @@ export function TileIcon({
         <img
           src={thumbnailUrl}
           alt={title}
+          decoding="async"
           style={{
             width: '100%',
             height: '100%',
@@ -48,6 +50,10 @@ export function TileIcon({
         />
       </div>
     );
+  }
+
+  if (type === 'file' && filePath && canShowImageThumbnail(filePath)) {
+    return <div style={{ width: '100%', height: '100%' }} />;
   }
 
   if (type === 'file' && filePath) {

@@ -10,7 +10,7 @@ import { useImageMetadata } from '@/components/layout/centerpane/tile/useImageMe
 import { useEbookMetadata } from '@/components/layout/centerpane/tile/useEbookMetadata';
 import { useContextMenu } from '@/components/layout/centerpane/tile/useContextMenu';
 import { useFileRename } from '@/components/layout/centerpane/tile/useFileRename';
-import { TILE, EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED, WEB_ARTICLE_EMBED } from '@/constants/objectsDimensions';
+import { TILE, EMBED_LINK, NON_EMBED_LINK, AUDIO_EMBED, VIDEO_EMBED, WEB_ARTICLE_EMBED, DEFAULT_TILE_SIZES } from '@/constants/objectsDimensions';
 import { getThumbnailDimensions } from '@/components/layout/centerpane/tile/thumbnailHelpers';
 import { VideoEmbedContent } from '@/components/layout/centerpane/tile/VideoEmbedContent';
 import { VideoFileEmbedContent } from '@/components/layout/centerpane/tile/VideoFileEmbedContent';
@@ -68,7 +68,7 @@ export function Tile({
   const lastDoubleClickActionAtRef = useRef(0);
 
   const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
-  const { thumbnailUrl, setThumbnailUrl } = useThumbnail(type, filePath, title);
+  const { thumbnailUrl, setThumbnailUrl, thumbnailAspectRatio } = useThumbnail(type, filePath);
   const { imageMetadata } = useImageMetadata(type, filePath);
   const { ebookMetadata } = useEbookMetadata(type, filePath);
   const {
@@ -238,23 +238,57 @@ export function Tile({
       : TILE_RING_COLORS.file;
   const tilePadding = type === 'text' ? 0 : TILE.hoverSafePadding;
   const isCenteredTile = type !== 'text';
+  const imageAspectRatio = isImageFile
+    ? (
+      imageMetadata && imageMetadata.height > 0
+        ? imageMetadata.width / imageMetadata.height
+        : (
+          typeof thumbnailAspectRatio === 'number' && Number.isFinite(thumbnailAspectRatio) && thumbnailAspectRatio > 0
+            ? thumbnailAspectRatio
+            : undefined
+        )
+    )
+    : undefined;
+  const resolvedThumbnailUrl = isImageFile && !(imageAspectRatio && imageAspectRatio > 0)
+    ? null
+    : thumbnailUrl;
+  // Use image geometry only when a real ratio is known.
+  const imageDefaultContentLongSide = DEFAULT_TILE_SIZES.image;
+  const imageInsetTotal = tilePadding * 2;
+  const imageDefaultContentWidth = !isImageFile
+    ? undefined
+    : imageAspectRatio && imageAspectRatio > 0
+      ? imageAspectRatio >= 1
+        ? imageDefaultContentLongSide
+        : imageDefaultContentLongSide * imageAspectRatio
+      : undefined;
+  const imageDefaultContentHeight = !isImageFile
+    ? undefined
+    : imageAspectRatio && imageAspectRatio > 0
+      ? imageAspectRatio >= 1
+        ? imageDefaultContentLongSide / imageAspectRatio
+        : imageDefaultContentLongSide
+      : undefined;
+  const imageDefaultWidth = imageDefaultContentWidth === undefined
+    ? undefined
+    : imageDefaultContentWidth + imageInsetTotal;
+  const imageDefaultHeight = imageDefaultContentHeight === undefined
+    ? undefined
+    : imageDefaultContentHeight + imageInsetTotal;
   const tileWidth = isWebArticle
     ? WEB_ARTICLE_EMBED.width
     : type === 'link'
-      ? (isVideoLink ? EMBED_LINK.width : undefined)
-      : (isAudioFile ? AUDIO_EMBED.width : isVideoFile ? VIDEO_EMBED.width : undefined);
+      ? (isVideoLink ? EMBED_LINK.width : NON_EMBED_LINK.width)
+      : (isAudioFile ? AUDIO_EMBED.width : isVideoFile ? VIDEO_EMBED.width : (imageDefaultWidth ?? DEFAULT_TILE_SIZES.file.width));
   const tileHeight = isWebArticle
     ? WEB_ARTICLE_EMBED.height
     : type === 'link'
-      ? (isVideoLink ? EMBED_LINK.height : undefined)
-      : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
+      ? (isVideoLink ? EMBED_LINK.height : NON_EMBED_LINK.height)
+      : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : (imageDefaultHeight ?? DEFAULT_TILE_SIZES.file.height));
   const fallbackTextMinWidth = (TEXT_NOTE_BOX.padding.x * 2) + 14;
   const textMinBoxWidth = textMinWidth > 0 ? textMinWidth : fallbackTextMinWidth;
   const minBoxWidth = isWebArticle ? 200 : (isVideoLink || isAudioFile || isVideoFile) ? 160 : type === 'text' ? textMinBoxWidth : 80;
   const minBoxHeight = isWebArticle ? 200 : (isVideoLink || isAudioFile || isVideoFile) ? 120 : type === 'text' ? 40 : 60;
-  const imageAspectRatio = isImageFile && imageMetadata && imageMetadata.height > 0
-    ? imageMetadata.width / imageMetadata.height
-    : undefined;
 
   const { isResizing, liveX, liveY, liveW, liveH, handleCornerPointerDown } = useTileResize({
     tileId: id,
@@ -311,7 +345,7 @@ export function Tile({
   const dragHandleBarClass = showDragHandles
     ? 'h-1.5 w-full rounded-full bg-slate-400/70 transition-colors group-hover:bg-slate-500/80'
     : 'h-1.5 w-full rounded-full bg-transparent';
-  const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata, {
+  const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, resolvedThumbnailUrl, imageMetadata, {
     maxWidth: contentBoxWidth,
     maxHeight: contentBoxHeight,
   });
@@ -435,7 +469,7 @@ export function Tile({
         <LinkContent
           url={url}
           filePath={filePath}
-          thumbnailUrl={thumbnailUrl}
+          thumbnailUrl={resolvedThumbnailUrl}
           thumbnailWidth={thumbnailWidth}
           thumbnailHeight={thumbnailHeight}
           title={title}
@@ -463,7 +497,7 @@ export function Tile({
         type={type}
         url={url}
         filePath={filePath}
-        thumbnailUrl={thumbnailUrl}
+        thumbnailUrl={resolvedThumbnailUrl}
         thumbnailWidth={thumbnailWidth}
         thumbnailHeight={thumbnailHeight}
         title={title}

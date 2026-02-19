@@ -28,6 +28,7 @@ import { useSearchStore } from '@/stores/searchStore';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
 import { TILE_RING_COLORS } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
+import { DEFAULT_TILE_SIZES } from '@/constants/objectsDimensions';
 
 const TILE_CLICK_SUPPRESS_AFTER_RESIZE_MS = 250;
 const TILE_PREVIEW_SKIP_AFTER_DOUBLE_CLICK_MS = 400;
@@ -105,12 +106,12 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const isEmptyState = !(logic.selectedSpace && (logic.iconsBySpace[logic.selectedSpace.id]?.length ?? 0) > 0);
 
   const ghostSize = useMemo(() => {
-    const fallback = { width: 128, height: 128 };
+    const fallback = DEFAULT_TILE_SIZES.file;
     if (!logic.dragGhost) return fallback;
     const isLink = logic.dragGhost.type === 'link';
     return {
-      width: isLink ? 360 : fallback.width,
-      height: isLink ? 240 : fallback.height,
+      width: isLink ? DEFAULT_TILE_SIZES.linkGhost.width : fallback.width,
+      height: isLink ? DEFAULT_TILE_SIZES.linkGhost.height : fallback.height,
     };
   }, [logic.dragGhost]);
 
@@ -477,7 +478,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
             {filteredIcons.map((icon) => (
               logic.inlineEditorState.isActive && logic.inlineEditorState.editingId === icon.id ? null : (
                 <Tile
-                  key={icon.id}
+                  key={icon.renderKey ?? icon.id}
                   id={icon.id}
                   type={icon.type}
                   title={icon.title}

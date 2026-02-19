@@ -185,6 +185,7 @@ export const useCenterPanePaste = ({
 
       const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}-${index}`;
       const optimisticIcon: DroppedIcon = {
+        renderKey: tempId,
         id: tempId,
         type: 'file',
         title: file.filename,
@@ -256,6 +257,7 @@ export const useCenterPanePaste = ({
 
     const tempId = `icon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const optimisticIcon: DroppedIcon = {
+      renderKey: tempId,
       id: tempId,
       type: 'link',
       title: initialTitle,
