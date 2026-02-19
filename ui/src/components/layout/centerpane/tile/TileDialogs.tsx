@@ -5,6 +5,7 @@ interface TileDialogsProps {
   url?: string;
   title: string;
   filePath?: string;
+  shareText?: string;
   onShareDialogClose: () => void;
 }
 
@@ -14,6 +15,7 @@ export function TileDialogs({
   url,
   title,
   filePath,
+  shareText,
   onShareDialogClose,
 }: TileDialogsProps) {
   return (
@@ -25,6 +27,7 @@ export function TileDialogs({
           url={url || ''}
           title={title}
           filePath={filePath}
+          shareText={shareText}
         />
       )}
     </>

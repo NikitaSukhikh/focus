@@ -67,6 +67,7 @@ export interface PreviewTarget {
 
 export interface CenterPaneProps {
   onObjectClick?: (_target: PreviewTarget) => void;
+  onSuppressPreview?: () => void;
   onCanvasEmptyClick?: () => void;
   showGrid?: boolean;
   zoom?: number;
@@ -108,6 +109,7 @@ export interface TileProps {
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
   onEditLink?: () => void;
   onSizeChange?: (_tileId: string, _x: number, _y: number, _width: number, _height: number) => void;
+  onResizeInteractionStart?: () => void;
   onResizeInteractionEnd?: (_didResize: boolean) => void;
   onFocusRingPointerDown?: (_event: React.PointerEvent<HTMLElement | SVGElement>, _tileId: string) => void;
   suppressFocusRingGhostArrow?: boolean;

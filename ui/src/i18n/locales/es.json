@@ -6,7 +6,6 @@
   "common.rename": "Renombrar",
   "common.yes": "Sí",
   "common.no": "No",
-
   "addLinkDialog.title": "Añadir enlace",
   "addLinkDialog.urlLabel": "URL *",
   "addLinkDialog.titleLabel": "Título",
@@ -18,32 +17,27 @@
   "addLinkDialog.useDefaultDescription": "Usar descripción predeterminada",
   "addLinkDialog.invalidUrl": "Por favor, introduce una URL válida",
   "addLinkDialog.customNameTooShort": "El nombre personalizado debe tener al menos 2 caracteres.",
-
   "addTextDialog.title": "Añadir nota",
   "addTextDialog.titleLabel": "Título",
   "addTextDialog.contentLabel": "Contenido",
   "addTextDialog.titlePlaceholder": "Introduce el título de la nota...",
   "addTextDialog.contentPlaceholder": "Escribe tu nota aquí... (Ctrl+Enter para guardar)",
   "addTextDialog.createNote": "Crear nota",
-
   "addWebArticleDialog.title": "Añadir artículo web",
   "addWebArticleDialog.urlLabel": "URL *",
   "addWebArticleDialog.titleLabel": "Título",
   "addWebArticleDialog.urlPlaceholder": "ejemplo.com/articulo",
   "addWebArticleDialog.titlePlaceholder": "Opcional — detectado automáticamente desde URL",
   "addWebArticleDialog.invalidUrl": "Por favor, introduce una URL válida",
-
   "renameFileDialog.title": "Renombrar archivo",
   "renameFileDialog.newFilenameLabel": "Nuevo nombre de archivo",
   "renameFileDialog.placeholder": "Introduce el nuevo nombre...",
   "renameFileDialog.renaming": "Renombrando...",
-
   "quickAddPopup.addFile": "Añadir archivo",
   "quickAddPopup.addLink": "Añadir enlace",
   "quickAddPopup.addWebArticle": "Añadir artículo web",
   "quickAddPopup.paste": "Pegar",
   "quickAddPopup.doubleClickHint": "Doble clic en cualquier lugar del panel central para añadir una nota de texto",
-
   "spaceShareDialog.title": "Compartir '{{spaceName}}'",
   "spaceShareDialog.itemsSelected": "{{count}} elemento(s) seleccionado(s) para compartir",
   "spaceShareDialog.scope": "Alcance: {{labels}} (editar/eliminar si es necesario)",
@@ -62,7 +56,6 @@
   "spaceShareDialog.webArticles": "Artículos web",
   "spaceShareDialog.files": "Archivos",
   "spaceShareDialog.textNotes": "Notas de texto",
-
   "topBar.openSidebar": "Abrir barra lateral",
   "topBar.closeSidebar": "Cerrar barra lateral",
   "topBar.addObjects": "Añadir objetos en el panel central (Ctrl+I)",
@@ -83,7 +76,8 @@
   "topBar.shareTextNotes": "Notas de texto",
   "topBar.shareOptions": "Opciones de compartir",
   "topBar.searchPlaceholder": "Buscar...",
-
+  "topBar.undo": "Deshacer (Ctrl+Z)",
+  "topBar.redo": "Rehacer (Ctrl+Shift+Z)",
   "leftSidebar.spaces": "Espacios",
   "leftSidebar.newSpace": "Nuevo espacio",
   "leftSidebar.closeSidebar": "Cerrar barra lateral",
@@ -92,7 +86,6 @@
   "leftSidebar.deleteSpace": "Eliminar espacio",
   "leftSidebar.deleteConfirm": "¿Estás seguro de que deseas eliminar este espacio con todos sus datos?",
   "leftSidebar.settings": "Ajustes",
-
   "tileContextMenu.openFullWindow": "Abrir en ventana completa",
   "tileContextMenu.share": "Compartir",
   "tileContextMenu.copyPathUrl": "Copiar ruta/URL",
@@ -101,16 +94,13 @@
   "tileContextMenu.renameFile": "Renombrar archivo",
   "tileContextMenu.editUrl": "Editar URL",
   "tileContextMenu.delete": "Eliminar",
-
   "assistantPane.title": "Asistente",
   "assistantPane.close": "Cerrar asistente",
   "assistantPane.inputPlaceholder": "Pregúntame lo que quieras...",
-
   "settings.title": "Ajustes",
   "settings.languageLabel": "Idioma de la interfaz",
   "settings.done": "Listo",
   "settings.viewTutorial": "Ver tutorial rápido",
-
   "shortcuts.createSpace": "Pulsa 'Ctrl+Y' para crear un nuevo espacio",
   "shortcuts.addLink": "'Ctrl+I' o clic derecho - añadir enlace/archivos",
   "shortcuts.toggleSidebar": "'Ctrl+Izq/Der' - abrir/cerrar barra lateral",
@@ -118,5 +108,25 @@
   "shortcuts.loadSpace": "'Ctrl+Enter' - cargar espacio seleccionado",
   "shortcuts.renameSpace": "'Ctrl+N' - renombrar espacio seleccionado",
   "shortcuts.deleteSpace": "'Ctrl+Supr' - eliminar espacio seleccionado",
-  "shortcuts.togglePreview": "'Ctrl+U' - alternar panel de vista previa"
+  "shortcuts.togglePreview": "'Ctrl+U' - alternar panel de vista previa",
+  "introSlideshow.skip": "Omitir",
+  "introSlideshow.back": "Atrás",
+  "introSlideshow.next": "Siguiente",
+  "introSlideshow.getStarted": "Comenzar",
+  "introSlideshow.slide0.title": "Bienvenido a Focus",
+  "introSlideshow.slide0.description": "Espacio de trabajo para organizar enlaces, artículos, notas rápidas, archivos y documentos en un solo lugar. Focus es tu centro de conocimiento para trabajo y aprendizaje.",
+  "introSlideshow.slide1.title": "385 tipos de archivo compatibles",
+  "introSlideshow.slide1.description": "Documentos, audio, video, imágenes, PDF, ebooks, presentaciones y hojas de cálculo. Arrastra, abre y previsualiza en Focus.",
+  "introSlideshow.slide2.title": "Conecta todo visualmente",
+  "introSlideshow.slide2.description": "Dibuja flechas entre objetos y ve cómo se relacionan tus ideas, enlaces y archivos.",
+  "introSlideshow.slide3.title": "Notas rápidas",
+  "introSlideshow.slide3.description": "Agrega notas de texto en cualquier lugar del panel central. Se guardan automáticamente.",
+  "introSlideshow.slide4.title": "Comparte con un clic",
+  "introSlideshow.slide4.description": "Comparte cualquier objeto o espacio completo al instante en plataformas populares.",
+  "introSlideshow.slide5.title": "Un clic: vista previa rápida",
+  "introSlideshow.slide5.description": "Navega entre enlaces y archivos en la vista previa derecha o en modo ventana completa.",
+  "introSlideshow.slide6.title": "Doble clic: abre archivos en tu app favorita",
+  "introSlideshow.slide6.description": "Para trabajar más a fondo con archivos, ábrelos en cualquier app externa.",
+  "introSlideshow.slide7.title": "Atajos para acceso rápido",
+  "introSlideshow.slide7.description": "Crear nuevo espacio: Ctrl+Y\nAgregar objeto: Ctrl+I\nAlternar vista previa: Ctrl+U\nDeshacer/Rehacer: Ctrl+Z / Ctrl+Shift+Z\nAbrir/Cerrar barra lateral izquierda: Ctrl+Left/Right\nNavegar espacios en la barra lateral: Ctrl+Up/Down"
 }

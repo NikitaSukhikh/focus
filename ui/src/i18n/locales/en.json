@@ -83,6 +83,8 @@
   "topBar.shareTextNotes": "Text notes",
   "topBar.shareOptions": "Share options",
   "topBar.searchPlaceholder": "Search...",
+  "topBar.undo": "Undo (Ctrl+Z)",
+  "topBar.redo": "Redo (Ctrl+Shift+Z)",
 
   "leftSidebar.spaces": "Spaces",
   "leftSidebar.newSpace": "New Space",
@@ -118,5 +120,26 @@
   "shortcuts.loadSpace": "'Ctrl+Enter' - load selected space",
   "shortcuts.renameSpace": "'Ctrl+N' - rename focused space",
   "shortcuts.deleteSpace": "'Ctrl+Delete' - delete focused space",
-  "shortcuts.togglePreview": "'Ctrl+U' - toggle preview pane"
+  "shortcuts.togglePreview": "'Ctrl+U' - toggle preview pane",
+
+  "introSlideshow.skip": "Skip",
+  "introSlideshow.back": "← Back",
+  "introSlideshow.next": "Next →",
+  "introSlideshow.getStarted": "Get started",
+  "introSlideshow.slide0.title": "Welcome to Focus",
+  "introSlideshow.slide0.description": "Workspace for organizing web links, articles, \nquick notes, files and documents — all in one place\n\nFocus is your knowledge hub for business,\nworkflows and learning processes\n\nBest for:\n- collecting and sharing ideas, sources\n- effecient brainstorming and research \n- seamless and fast interactions between files, links, and notes\n\nEnjoy staying focused!",
+  "introSlideshow.slide1.title": "385 file types supported",
+  "introSlideshow.slide1.description": "Documents, audio, video, images, PDF, ebooks, presentations, spreadsheets and many more. Drop, open and preview directly in Focus",
+  "introSlideshow.slide2.title": "Connect everything visually",
+  "introSlideshow.slide2.description": "Draw arrows between any objects to create visual graphs.\nSee how your ideas, links and files relate to each other.",
+  "introSlideshow.slide3.title": "Quick notes",
+  "introSlideshow.slide3.description": "Add text notes anywhere on the center pane\nNotes are automatically saved",
+  "introSlideshow.slide4.title": "Share in one click",
+  "introSlideshow.slide4.description": "Share any object or entire space instantly via all popular platforms\nYour audience doesn't need Focus to view shared content",
+  "introSlideshow.slide5.title": "Single-click: for quick preview",
+  "introSlideshow.slide5.description": "You can navigate between links and files inside the preview pane\neither on the right preview pane or in full window mode",
+  "introSlideshow.slide6.title": "Double-click: to open files in your favorite app",
+  "introSlideshow.slide6.description": "For deeper interactions with files (for instance, to edit them)\nopen them in any external app",
+  "introSlideshow.slide7.title": "For quick access, use shortcuts:",
+  "introSlideshow.slide7.description": "\n\n\nCreate new space: Ctrl+Y\nAdd object: Ctrl+I\nToggle preview pane: Ctrl+U\nUndo/Redo: Ctrl+Z / Ctrl+Shift+Z\nOpen/Close left sidebar: Ctrl+ ←/→\nNavigate spaces on the left sidebar: Ctrl+↑/↓"
 }

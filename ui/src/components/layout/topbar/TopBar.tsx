@@ -3,7 +3,7 @@
  * A dedicated AI assistant action is exposed in the right-side controls.
  */
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Menu, X, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon, Share } from 'lucide-react';
+import { Menu, X, PanelRight, Grid3x3, Slash, ZoomOut, Plus, Sun, Moon, Share, PlayCircle, Undo, Redo } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Z_INDEX } from '@/constants/zIndex';
 import { TOP_BAR } from '@/constants/panesDimensions';
@@ -39,6 +39,7 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
     onZoomOut: _onZoomOut,
     zoom,
     onOpenQuickAdd,
+    onViewTutorial,
     onOpenSpaceShareDialog,
     onTagsClick,
     isTagsOpen,
@@ -78,6 +79,14 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({}), []);
+
+  const handleUndoRedoClick = (direction: 'undo' | 'redo') => {
+    window.dispatchEvent(
+      new CustomEvent('focus:undo-redo', {
+        detail: { direction },
+      })
+    );
+  };
 
   useEffect(() => {
     if (!isShareMenuOpen) return;
@@ -215,24 +224,102 @@ const TopBarComponent = (props: TopBarProps, ref: React.Ref<TopBarHandle>) => {
             style={{
               background: 'var(--glass-bg)',
               color: 'var(--color-text-primary)',
-              boxShadow: '0 6px 14px rgba(0,0,0,0.08)',
-              border: '1px solid var(--color-border-subtle)',
+              boxShadow: 'none',
+              border: 'none',
               marginLeft: `${TOP_BAR.quickAddButton.marginLeft}px`,
               padding: `${TOP_BAR.quickAddButton.padding}px`,
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.12)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
             title={t('topBar.addObjects')}
             aria-label={t('topBar.addLinks')}
           >
             <Plus size={TOP_BAR.icons.small} />
           </button>
+          <button
+            onClick={onViewTutorial}
+            className="rounded-lg flex items-center justify-center transition-colors"
+            style={{
+              background: 'transparent',
+              color: 'var(--color-text-secondary)',
+              border: '1px solid transparent',
+              padding: `${TOP_BAR.button.padding}px`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--glass-bg)';
+              e.currentTarget.style.color = 'var(--primary-color)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+            }}
+            title={t('settings.viewTutorial')}
+            aria-label={t('settings.viewTutorial')}
+          >
+            <PlayCircle size={TOP_BAR.icons.tiny} style={{ opacity: 0.8, flexShrink: 0 }} />
+          </button>
+          <div className="flex items-center" style={{ columnGap: '2px' }}>
+            <button
+              onClick={() => handleUndoRedoClick('undo')}
+              disabled={!logic.selectedSpace}
+              className="rounded-lg flex items-center justify-center transition-colors"
+              style={{
+                background: 'transparent',
+                color: logic.selectedSpace ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
+                border: '1px solid transparent',
+                padding: `${TOP_BAR.button.padding}px`,
+                opacity: logic.selectedSpace ? 1 : 0.5,
+                cursor: logic.selectedSpace ? 'pointer' : 'default',
+              }}
+              onMouseEnter={(e) => {
+                if (!logic.selectedSpace) return;
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+              }}
+              onMouseLeave={(e) => {
+                if (!logic.selectedSpace) return;
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }}
+              title={t('topBar.undo')}
+              aria-label={t('topBar.undo')}
+            >
+              <Undo size={TOP_BAR.icons.tiny} style={{ opacity: 0.8, flexShrink: 0 }} />
+            </button>
+            <button
+              onClick={() => handleUndoRedoClick('redo')}
+              disabled={!logic.selectedSpace}
+              className="rounded-lg flex items-center justify-center transition-colors"
+              style={{
+                background: 'transparent',
+                color: logic.selectedSpace ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
+                border: '1px solid transparent',
+                padding: `${TOP_BAR.button.padding}px`,
+                opacity: logic.selectedSpace ? 1 : 0.5,
+                cursor: logic.selectedSpace ? 'pointer' : 'default',
+              }}
+              onMouseEnter={(e) => {
+                if (!logic.selectedSpace) return;
+                e.currentTarget.style.background = 'var(--glass-bg)';
+                e.currentTarget.style.color = 'var(--primary-color)';
+              }}
+              onMouseLeave={(e) => {
+                if (!logic.selectedSpace) return;
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }}
+              title={t('topBar.redo')}
+              aria-label={t('topBar.redo')}
+            >
+              <Redo size={TOP_BAR.icons.tiny} style={{ opacity: 0.8, flexShrink: 0 }} />
+            </button>
+          </div>
           <div className="min-w-0 relative" style={{ marginLeft: '6px' }}>
             <span
               ref={spaceNameMeasureRef}

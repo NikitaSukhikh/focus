@@ -134,6 +134,7 @@ interface UseTileResizeOptions {
   lockAspectRatio?: number;
   lockAspectRatioInset?: number;
   onResizeEnd: (tileId: string, x: number, y: number, width: number, height: number) => void;
+  onResizeInteractionStart?: () => void;
   onResizeInteractionEnd?: (_didResize: boolean) => void;
 }
 
@@ -148,6 +149,7 @@ export function useTileResize({
   lockAspectRatio,
   lockAspectRatioInset = 0,
   onResizeEnd,
+  onResizeInteractionStart,
   onResizeInteractionEnd,
 }: UseTileResizeOptions) {
   const [dragState, setDragState] = useState<ResizeDragState | null>(null);
@@ -173,6 +175,7 @@ export function useTileResize({
 
       setDragState(drag);
       setCurrentPointer({ x: e.clientX, y: e.clientY });
+      onResizeInteractionStart?.();
 
       const onMove = (ev: PointerEvent) => {
         setCurrentPointer({ x: ev.clientX, y: ev.clientY });
@@ -220,7 +223,20 @@ export function useTileResize({
       el.addEventListener('pointerup', onUp);
       el.addEventListener('pointercancel', onCancel);
     },
-    [tileId, tileX, tileY, isCentered, zoom, minWidth, minHeight, lockAspectRatio, lockAspectRatioInset, onResizeEnd, onResizeInteractionEnd],
+    [
+      tileId,
+      tileX,
+      tileY,
+      isCentered,
+      zoom,
+      minWidth,
+      minHeight,
+      lockAspectRatio,
+      lockAspectRatioInset,
+      onResizeEnd,
+      onResizeInteractionStart,
+      onResizeInteractionEnd,
+    ],
   );
 
   if (!dragState) {

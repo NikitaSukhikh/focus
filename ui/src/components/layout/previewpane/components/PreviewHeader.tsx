@@ -31,7 +31,7 @@ export function PreviewHeader({ title, type, url, filePath, faviconUrl, onClose,
   const handleOpenExternal = async () => {
     if (!url) return;
     try {
-      await openExternalWindow(url, { title });
+      await openExternalWindow(url, { title, reset: true });
     } catch (error) {
       console.error('[PreviewHeader] Failed to open external window, falling back to OS browser', error);
       await openExternalUrl(url);

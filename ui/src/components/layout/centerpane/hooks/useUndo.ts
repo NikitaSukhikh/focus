@@ -32,6 +32,14 @@ interface UndoArrowPayload {
   end_anchor?: { tile_id?: string; edge?: string; edge_index?: number };
 }
 
+type UndoDirection = 'undo' | 'redo';
+
+interface UndoRedoTriggerDetail {
+  direction: UndoDirection;
+}
+
+const UNDO_REDO_TRIGGER_EVENT = 'focus:undo-redo';
+
 const isUndoArrowPayload = (value: unknown): value is UndoArrowPayload => {
   const arrow = value as UndoArrowPayload | null;
   if (!arrow || typeof arrow !== 'object') return false;
@@ -89,8 +97,6 @@ export const useUndo = ({
 
     return null;
   };
-
-  type UndoDirection = 'undo' | 'redo';
 
   const toDroppedIconFromTile = (tile: any): DroppedIcon => ({
     id: tile.id,
@@ -684,6 +690,27 @@ export const useUndo = ({
         console.warn(`[${direction.toUpperCase()}] Unknown event type:`, event);
     }
   };
+
+  const triggerUndoRedo = (direction: UndoDirection) => {
+    if (!selectedSpaceId) return;
+    const runner = direction === 'redo' ? undoApi.redo : undoApi.undo;
+
+    void (async () => {
+      try {
+        const response = await runner(selectedSpaceId);
+        if (!response.success || !response.event) {
+          console.log(`[${direction.toUpperCase()}] No events to ${direction}`);
+          return;
+        }
+
+        console.log(`[${direction.toUpperCase()}] Processing event:`, response.event.event_type, response.event);
+        await processUndoRedoEvent(response.event, direction);
+      } catch (err) {
+        console.error(`[${direction.toUpperCase()}] Error processing ${direction}:`, err);
+      }
+    })();
+  };
+
   // Clear undo history on mount/unmount and before unload so no stale events persist across sessions.
   useEffect(() => {
     if (!selectedSpaceId) return;
@@ -736,30 +763,23 @@ export const useUndo = ({
         return;
       }
 
-      if (!selectedSpaceId) return;
-
       e.preventDefault();
-      const direction: UndoDirection = e.shiftKey ? 'redo' : 'undo';
-      const runner = direction === 'redo' ? undoApi.redo : undoApi.undo;
+      triggerUndoRedo(e.shiftKey ? 'redo' : 'undo');
+    };
 
-      void (async () => {
-        try {
-          const response = await runner(selectedSpaceId);
-          if (!response.success || !response.event) {
-            console.log(`[${direction.toUpperCase()}] No events to ${direction}`);
-            return;
-          }
-
-          console.log(`[${direction.toUpperCase()}] Processing event:`, response.event.event_type, response.event);
-          await processUndoRedoEvent(response.event, direction);
-        } catch (err) {
-          console.error(`[${direction.toUpperCase()}] Error processing ${direction}:`, err);
-        }
-      })();
+    const handleUndoRedoTrigger = (event: Event) => {
+      const customEvent = event as CustomEvent<UndoRedoTriggerDetail>;
+      const direction = customEvent.detail?.direction;
+      if (direction !== 'undo' && direction !== 'redo') return;
+      triggerUndoRedo(direction);
     };
 
     window.addEventListener('keydown', handleUndoRedo);
-    return () => window.removeEventListener('keydown', handleUndoRedo);
+    window.addEventListener(UNDO_REDO_TRIGGER_EVENT, handleUndoRedoTrigger as EventListener);
+    return () => {
+      window.removeEventListener('keydown', handleUndoRedo);
+      window.removeEventListener(UNDO_REDO_TRIGGER_EVENT, handleUndoRedoTrigger as EventListener);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- processUndoRedoEvent references store callbacks; re-subscribing on space change is the intended behavior
   }, [selectedSpaceId]);
 };

@@ -351,7 +351,7 @@ export function FocusRing({
         <span
           key={`resize-${handle.corner}`}
           data-resize-corner={handle.corner}
-          className="opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+          className="opacity-0"
           style={{
             position: 'absolute',
             left: `${handle.x}px`,

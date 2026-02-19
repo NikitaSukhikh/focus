@@ -71,7 +71,6 @@ export function App() {
   const centerPaneRef = useRef<CenterPaneHandle>(null);
   const topBarRef = useRef<TopBarHandle>(null);
   const textFilePreviewCache = useRef<Record<string, string>>({});
-  const previewSuppressRef = useRef<{ tileId: string; untilTs: number } | null>(null);
 
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
   const selectedSpace = useSpaceStore((state) => state.getSelectedSpace());
@@ -184,23 +183,6 @@ export function App() {
 
     window.addEventListener('tile:deleted', handleTileDeleted);
     return () => window.removeEventListener('tile:deleted', handleTileDeleted);
-  }, []);
-
-  useEffect(() => {
-    const handlePreviewSuppress = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tileId?: string }>;
-      const tileId = customEvent.detail?.tileId;
-      if (tileId) {
-        previewSuppressRef.current = {
-          tileId,
-          untilTs: performance.now() + 400,
-        };
-      }
-      setIsPreviewOpen(false);
-    };
-
-    window.addEventListener('preview:suppress', handlePreviewSuppress);
-    return () => window.removeEventListener('preview:suppress', handlePreviewSuppress);
   }, []);
 
   useEffect(() => {
@@ -469,6 +451,7 @@ export function App() {
         onZoomOut={handleZoomOut}
         zoom={zoom}
         onOpenQuickAdd={openQuickAdd}
+        onViewTutorial={() => setShowIntro(true)}
         onOpenSpaceShareDialog={handleTopBarSpaceShareDialogOpen}
       />
 
@@ -498,15 +481,8 @@ export function App() {
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
                 onOpenQuickAdd={openQuickAdd}
+                onSuppressPreview={() => setIsPreviewOpen(false)}
                 onObjectClick={(target: PreviewTarget) => {
-                  const suppressed = previewSuppressRef.current;
-                  if (suppressed && target?.tileId === suppressed.tileId) {
-                    if (performance.now() <= suppressed.untilTs) {
-                      return;
-                    }
-                    previewSuppressRef.current = null;
-                  }
-
                   const normalized = normalizePreviewTarget(target || {});
                   if (!canOpenPreviewPane(normalized)) {
                     setIsPreviewOpen(false);

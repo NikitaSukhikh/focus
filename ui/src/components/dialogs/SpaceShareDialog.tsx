@@ -14,6 +14,7 @@ import { spacesApi, SpaceShareExportResponse } from '@/api/spaces';
 import { API_BASE } from '@/config/api';
 import { canShowImageThumbnail } from '@/utils/fileTypes';
 import { renderFileTypeIcon } from '@/components/layout/centerpane/tile/iconHelpers';
+import { openExternalUrl } from '@/platform';
 
 interface SpaceShareDialogProps {
   isOpen: boolean;
@@ -288,11 +289,16 @@ export function SpaceShareDialog({ isOpen, onClose, spaceName, spaceId, filters 
     window.setTimeout(() => setIsSummaryCopied(false), 1500);
   };
 
-  const handlePlatformClick = (platform: SharePlatform) => {
+  const handlePlatformClick = async (platform: SharePlatform) => {
     const primaryUrl = sharePayload?.first_share_url || '';
     const platformText = buildPlatformShareText(composedShareText, primaryUrl) || shareTitle;
     const platformUrl = platform.getShareUrl(primaryUrl, platformText);
-    window.open(platformUrl, '_blank', 'noopener,noreferrer,width=720,height=620');
+    try {
+      await openExternalUrl(platformUrl);
+    } catch (error) {
+      console.error('[SPACE SHARE DIALOG] Failed to open via desktop API, falling back to window.open:', error);
+      window.open(platformUrl, '_blank', 'noopener,noreferrer,width=720,height=620');
+    }
   };
 
   const handleRemoveRowFromScope = (rowIndex: number) => {

@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { closeFocusedOrMainWindow, closeWindowIfAvailable, isAltF4KeyDown } from './windowClosePolicy.js';
 import {
   logStartup,
   logBackendStart,
@@ -191,13 +192,6 @@ const requestCloseFullWindowPreview = () => {
   mainWindow.webContents.send('fullwindow-preview:close-request');
 };
 
-const isAltF4KeyDown = (input: { key?: string; alt?: boolean; type?: string }): boolean => {
-  const key = input.key?.toLowerCase();
-  const isAltF4 = key === 'f4' && !!input.alt;
-  const isKeyDownEvent = input.type === 'keyDown' || input.type === 'rawKeyDown';
-  return isKeyDownEvent && isAltF4;
-};
-
 const bindAuxiliaryWindowCloseBehavior = (targetWindow: BrowserWindow): void => {
   // Keep close behavior scoped to this window so Alt+F4 never cascades to the whole app.
   targetWindow.webContents.on('before-input-event', (event, input) => {
@@ -206,9 +200,7 @@ const bindAuxiliaryWindowCloseBehavior = (targetWindow: BrowserWindow): void => 
     }
 
     event.preventDefault();
-    if (!targetWindow.isDestroyed()) {
-      targetWindow.close();
-    }
+    closeWindowIfAvailable(targetWindow);
   });
 };
 
@@ -1144,8 +1136,7 @@ ipcMain.handle('window:maximize', () => {
 });
 
 ipcMain.handle('window:close', () => {
-  const targetWindow = BrowserWindow.getFocusedWindow() || mainWindow;
-  targetWindow?.close();
+  closeFocusedOrMainWindow(BrowserWindow.getFocusedWindow(), mainWindow);
 });
 
 ipcMain.handle('window:is-maximized', () => {

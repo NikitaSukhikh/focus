@@ -4,6 +4,7 @@ import { X, Share2, Copy, CheckCircle2 } from 'lucide-react';
 import { Z_INDEX } from '@/constants/zIndex';
 import { SharePlatformButtons } from '@/components/dialogs/share/SharePlatformButtons';
 import { SharePlatform, SHARE_PLATFORMS } from '@/components/dialogs/share/sharePlatforms';
+import { openExternalUrl } from '@/platform';
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -11,18 +12,49 @@ interface ShareDialogProps {
   url: string;
   title: string;
   filePath?: string;
+  shareText?: string;
 }
 
-export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDialogProps) {
+const buildPlainTextShareUrl = (platform: SharePlatform, text: string, shareTitle: string): string => {
+  switch (platform.name) {
+    case 'Twitter':
+      return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    case 'Gmail':
+      return `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(text)}`;
+    case 'Reddit':
+      return `https://reddit.com/submit?title=${encodeURIComponent(shareTitle)}&text=${encodeURIComponent(text)}`;
+    case 'Instagram':
+      return 'https://www.instagram.com/';
+    case 'Facebook':
+      return 'https://www.facebook.com/';
+    case 'LinkedIn':
+      return 'https://www.linkedin.com/';
+    default:
+      return platform.getShareUrl('', shareTitle);
+  }
+};
+
+export function ShareDialog({ isOpen, onClose, url, title, filePath, shareText }: ShareDialogProps) {
   const [copied, setCopied] = React.useState(false);
   const [fileCopiedToClipboard, setFileCopiedToClipboard] = React.useState(false);
-  const openedBrowserWindowRef = React.useRef<Window | null>(null);
   const isFile = !!filePath;
+  const normalizedShareText = (shareText || '').trim();
+  const isPlainTextShare = !isFile && normalizedShareText.length > 0;
+  const valueToShare = isFile ? (filePath || '') : (isPlainTextShare ? normalizedShareText : url);
+  const openShareTarget = async (targetUrl: string): Promise<void> => {
+    if (!targetUrl) return;
+    try {
+      await openExternalUrl(targetUrl);
+    } catch (error) {
+      console.error('[SHARE DIALOG] Failed to open via desktop API, falling back to window.open:', error);
+      window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=600');
+    }
+  };
 
   const handleCopyLink = async () => {
+    if (!valueToShare) return;
     try {
-      const textToCopy = isFile ? filePath : url;
-      await navigator.clipboard.writeText(textToCopy);
+      await navigator.clipboard.writeText(valueToShare);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -64,44 +96,17 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
     }
   };
 
-  const tryOpenDesktopApp = async (desktopUrl: string, webUrl: string): Promise<Window | null> => {
-    return new Promise((resolve) => {
-      // Create a hidden iframe to test if the protocol handler exists
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-
-      let timeout: NodeJS.Timeout;
-      let resolved = false;
-
-      const cleanup = () => {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeout);
-          document.body.removeChild(iframe);
-        }
-      };
-
-      // If the page loses focus, the app likely opened (desktop app)
-      const onBlur = () => {
-        cleanup();
-        resolve(null); // Desktop app opened, no window to track
-      };
-
-      window.addEventListener('blur', onBlur, { once: true });
-
-      // Set a timeout to fall back to web version
-      timeout = setTimeout(() => {
-        window.removeEventListener('blur', onBlur);
-        cleanup();
-        // Open web version and return the window reference
-        const browserWindow = window.open(webUrl, '_blank', 'noopener,noreferrer,width=600,height=600');
-        resolve(browserWindow);
-      }, 1000);
-
-      // Try to open the desktop app
-      iframe.contentWindow!.location.href = desktopUrl;
-    });
+  const tryOpenDesktopApp = async (desktopUrl: string, webUrl: string): Promise<void> => {
+    if (!desktopUrl) {
+      await openShareTarget(webUrl);
+      return;
+    }
+    try {
+      await openExternalUrl(desktopUrl);
+    } catch (error) {
+      console.warn('[SHARE DIALOG] Desktop protocol launch failed, opening web share instead:', error);
+      await openShareTarget(webUrl);
+    }
   };
 
   const handlePlatformClick = async (platform: SharePlatform) => {
@@ -118,7 +123,7 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
       } else {
         // For other platforms, just open their web version
         const shareUrl = platform.getShareUrl('', '');
-        window.open(shareUrl, '_blank', 'noopener,noreferrer,width=800,height=600');
+        await openShareTarget(shareUrl);
       }
 
       if (isImage) {
@@ -148,28 +153,53 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
       return;
     }
 
+    if (isPlainTextShare) {
+      try {
+        await navigator.clipboard.writeText(normalizedShareText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('[SHARE DIALOG] Failed to copy plain text for share:', err);
+      }
+
+      if (platform.name === 'WhatsApp') {
+        const shareUrl = `https://wa.me/?text=${encodeURIComponent(normalizedShareText)}`;
+        const desktopUrl = `whatsapp://send?text=${encodeURIComponent(normalizedShareText)}`;
+        await tryOpenDesktopApp(desktopUrl, shareUrl);
+        return;
+      }
+
+      if (platform.name === 'Telegram') {
+        const shareUrl = `https://t.me/share/url?text=${encodeURIComponent(normalizedShareText)}`;
+        const desktopUrl = `tg://msg_url?url=${encodeURIComponent('')}&text=${encodeURIComponent(normalizedShareText)}`;
+        await tryOpenDesktopApp(desktopUrl, shareUrl);
+        return;
+      }
+
+      const shareUrl = buildPlainTextShareUrl(platform, normalizedShareText, title);
+      await openShareTarget(shareUrl);
+      return;
+    }
+
     // For URLs, proceed with normal sharing
     const shareUrl = platform.getShareUrl(url, title);
 
     // Handle WhatsApp with desktop app detection
     if (platform.name === 'WhatsApp') {
       const desktopUrl = `whatsapp://send?text=${encodeURIComponent(`${title}\n${url}`)}`;
-      const browserWindow = await tryOpenDesktopApp(desktopUrl, shareUrl);
-      if (browserWindow) openedBrowserWindowRef.current = browserWindow;
+      await tryOpenDesktopApp(desktopUrl, shareUrl);
       return;
     }
 
     // Handle Telegram with desktop app detection
     if (platform.name === 'Telegram') {
       const desktopUrl = `tg://msg_url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`;
-      const browserWindow = await tryOpenDesktopApp(desktopUrl, shareUrl);
-      if (browserWindow) openedBrowserWindowRef.current = browserWindow;
+      await tryOpenDesktopApp(desktopUrl, shareUrl);
       return;
     }
 
     // For all other platforms, open web version
-    const browserWindow = window.open(shareUrl, '_blank', 'noopener,noreferrer,width=600,height=600');
-    if (browserWindow) openedBrowserWindowRef.current = browserWindow;
+    await openShareTarget(shareUrl);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -207,10 +237,16 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
 
           {/* Content */}
           <div className="px-6 py-4">
-            {/* Title */}
+            {/* Shared payload preview */}
             <div className="mb-4 max-w-lg">
-              <p className="text-sm font-medium text-slate-700 line-clamp-2">{title}</p>
-              <p className="text-xs text-slate-500 mt-1 truncate">{isFile ? filePath : url}</p>
+              {isPlainTextShare ? (
+                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{valueToShare}</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-slate-700 line-clamp-2">{title}</p>
+                  <p className="text-xs text-slate-500 mt-1 truncate">{valueToShare}</p>
+                </>
+              )}
             </div>
 
             {/* Copy Link/Path Button */}
@@ -225,14 +261,14 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
                     {isFile
                       ? (/\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(filePath || '')
                           ? 'Image ready to paste!'
-                          : 'File ready! Drag from folder to messaging app →')
+                          : 'File ready! Drag from folder to messaging app ->')
                       : 'Copied!'}
                   </span>
                 </>
               ) : (
                 <>
                   <Copy size={18} />
-                  <span>{isFile ? 'Copy Path' : 'Copy Link'}</span>
+                  <span>{isFile ? 'Copy Path' : isPlainTextShare ? 'Copy Text' : 'Copy Link'}</span>
                 </>
               )}
             </button>
@@ -249,3 +285,4 @@ export function ShareDialog({ isOpen, onClose, url, title, filePath }: ShareDial
 
   return ReactDOM.createPortal(dialogContent, document.body);
 }
+

@@ -30,6 +30,7 @@ import { TILE_RING_COLORS } from '@/styles/tileStyles';
 import { useThemeToggle } from '@/hooks/useThemeToggle';
 
 const TILE_CLICK_SUPPRESS_AFTER_RESIZE_MS = 250;
+const TILE_PREVIEW_SKIP_AFTER_DOUBLE_CLICK_MS = 400;
 type TileRingType = keyof typeof TILE_RING_COLORS;
 const LINK_LIKE_TYPES = new Set<DroppedIcon['type']>(['link', 'web_article', 'gmail', 'google_drive']);
 
@@ -41,7 +42,7 @@ const toTileRingType = (iconType: DroppedIcon['type']): TileRingType => {
 
 // CenterPane renders the freeform canvas of tiles/arrows for the selected space, wiring user input to the composable center-pane logic hooks.
 const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHandle>) => {
-  const { onObjectClick, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
+  const { onObjectClick, onSuppressPreview, onCanvasEmptyClick, showGrid, zoom: zoomProp, onZoomIn, onZoomOut, onOpenQuickAdd } = props;
   const { t } = useTranslation();
   const zoom = zoomProp ?? 1;
   const {
@@ -114,6 +115,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   }, [logic.dragGhost]);
 
   const suppressTileClickUntilRef = useRef(0);
+  const suppressTilePreviewUntilRef = useRef<{ tileId: string; untilTs: number } | null>(null);
   const [arrowContextMenu, setArrowContextMenu] = useState<ArrowContextMenuState | null>(null);
 
   const menuItems = useMemo<CanvasMenuItem[]>(() => [
@@ -280,13 +282,14 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const {
     clearPreviewTimeout,
     queuePreviewForIcon,
+    handleTileResizeInteractionStart,
     handleTileResizeInteractionEnd,
   } = useCenterPanePreview({
     onObjectClick,
     inlineEditorState: logic.inlineEditorState,
     suppressTileClickUntilRef,
     tileClickSuppressAfterResizeMs: TILE_CLICK_SUPPRESS_AFTER_RESIZE_MS,
-    filePreviewDelayMs: 300,
+    previewDelayMs: 300,
   });
 
   useEffect(() => {
@@ -496,6 +499,13 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                       event.stopPropagation();
                       return;
                     }
+                    const suppressedPreview = suppressTilePreviewUntilRef.current;
+                    if (suppressedPreview && suppressedPreview.tileId === icon.id) {
+                      if (performance.now() <= suppressedPreview.untilTs) {
+                        return;
+                      }
+                      suppressTilePreviewUntilRef.current = null;
+                    }
                     clearPreviewTimeout();
                     if (icon.type === 'web_article') return;
                     const isToggle = event.metaKey || event.ctrlKey;
@@ -515,7 +525,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   }}
                   onDoubleClick={() => {
                     clearPreviewTimeout();
-                    window.dispatchEvent(new CustomEvent('preview:suppress', { detail: { tileId: icon.id } }));
+                    suppressTilePreviewUntilRef.current = {
+                      tileId: icon.id,
+                      untilTs: performance.now() + TILE_PREVIEW_SKIP_AFTER_DOUBLE_CLICK_MS,
+                    };
+                    onSuppressPreview?.();
                   }}
                   onDelete={() => logic.handleIconDelete(icon.id)}
                   onRefreshMetadata={() => logic.handleIconRefreshMetadata(icon.id, icon.url)}
@@ -531,6 +545,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                     logic.openInlineEditor(x, y, content, id);
                   }}
                   onSizeChange={handleTileSizeChange}
+                  onResizeInteractionStart={handleTileResizeInteractionStart}
                   onResizeInteractionEnd={handleTileResizeInteractionEnd}
                   onFocusRingPointerDown={handleFocusRingPointerDown}
                   suppressFocusRingGhostArrow={isDrawingArrow && draftTargetTileId === icon.id}

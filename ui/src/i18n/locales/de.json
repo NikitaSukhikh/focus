@@ -6,7 +6,6 @@
   "common.rename": "Umbenennen",
   "common.yes": "Ja",
   "common.no": "Nein",
-
   "addLinkDialog.title": "Link hinzufügen",
   "addLinkDialog.urlLabel": "URL *",
   "addLinkDialog.titleLabel": "Titel",
@@ -18,32 +17,27 @@
   "addLinkDialog.useDefaultDescription": "Standardbeschreibung verwenden",
   "addLinkDialog.invalidUrl": "Bitte geben Sie eine gültige URL ein",
   "addLinkDialog.customNameTooShort": "Der benutzerdefinierte Name muss mindestens 2 Zeichen lang sein.",
-
   "addTextDialog.title": "Notiz hinzufügen",
   "addTextDialog.titleLabel": "Titel",
   "addTextDialog.contentLabel": "Inhalt",
   "addTextDialog.titlePlaceholder": "Notiztitel eingeben...",
   "addTextDialog.contentPlaceholder": "Notiz hier schreiben... (Strg+Eingabe zum Speichern)",
   "addTextDialog.createNote": "Notiz erstellen",
-
   "addWebArticleDialog.title": "Webartikel hinzufügen",
   "addWebArticleDialog.urlLabel": "URL *",
   "addWebArticleDialog.titleLabel": "Titel",
   "addWebArticleDialog.urlPlaceholder": "beispiel.de/artikel",
   "addWebArticleDialog.titlePlaceholder": "Optional — automatisch von URL erkannt",
   "addWebArticleDialog.invalidUrl": "Bitte geben Sie eine gültige URL ein",
-
   "renameFileDialog.title": "Datei umbenennen",
   "renameFileDialog.newFilenameLabel": "Neuer Dateiname",
   "renameFileDialog.placeholder": "Neuen Dateinamen eingeben...",
   "renameFileDialog.renaming": "Wird umbenannt...",
-
   "quickAddPopup.addFile": "Datei hinzufügen",
   "quickAddPopup.addLink": "Link hinzufügen",
   "quickAddPopup.addWebArticle": "Webartikel hinzufügen",
   "quickAddPopup.paste": "Einfügen",
   "quickAddPopup.doubleClickHint": "Doppelklick irgendwo im mittleren Bereich, um eine Textnotiz hinzuzufügen",
-
   "spaceShareDialog.title": "'{{spaceName}}' teilen",
   "spaceShareDialog.itemsSelected": "{{count}} Element(e) zum Teilen ausgewählt",
   "spaceShareDialog.scope": "Bereich: {{labels}} (bei Bedarf bearbeiten/löschen)",
@@ -62,7 +56,6 @@
   "spaceShareDialog.webArticles": "Webartikel",
   "spaceShareDialog.files": "Dateien",
   "spaceShareDialog.textNotes": "Textnotizen",
-
   "topBar.openSidebar": "Seitenleiste öffnen",
   "topBar.closeSidebar": "Seitenleiste schließen",
   "topBar.addObjects": "Objekte im mittleren Bereich hinzufügen (Strg+I)",
@@ -83,7 +76,6 @@
   "topBar.shareTextNotes": "Textnotizen",
   "topBar.shareOptions": "Freigabeoptionen",
   "topBar.searchPlaceholder": "Suchen...",
-
   "leftSidebar.spaces": "Spaces",
   "leftSidebar.newSpace": "Neuer Space",
   "leftSidebar.closeSidebar": "Seitenleiste schließen",
@@ -92,7 +84,6 @@
   "leftSidebar.deleteSpace": "Space löschen",
   "leftSidebar.deleteConfirm": "Möchten Sie diesen Space mit allen Daten wirklich löschen?",
   "leftSidebar.settings": "Einstellungen",
-
   "tileContextMenu.openFullWindow": "Im Vollfenster öffnen",
   "tileContextMenu.share": "Teilen",
   "tileContextMenu.copyPathUrl": "Pfad/URL kopieren",
@@ -101,16 +92,13 @@
   "tileContextMenu.renameFile": "Datei umbenennen",
   "tileContextMenu.editUrl": "URL bearbeiten",
   "tileContextMenu.delete": "Löschen",
-
   "assistantPane.title": "Assistent",
   "assistantPane.close": "Assistent schließen",
   "assistantPane.inputPlaceholder": "Fragen Sie mich alles...",
-
   "settings.title": "Einstellungen",
   "settings.languageLabel": "Oberflächensprache",
   "settings.done": "Fertig",
   "settings.viewTutorial": "Schnell-Tutorial anzeigen",
-
   "shortcuts.createSpace": "Drücken Sie 'Strg+Y', um einen neuen Space zu erstellen",
   "shortcuts.addLink": "'Strg+I' oder Rechtsklick - Link/Dateien hinzufügen",
   "shortcuts.toggleSidebar": "'Strg+Links/Rechts' - Seitenleiste öffnen/schließen",
@@ -118,5 +106,25 @@
   "shortcuts.loadSpace": "'Strg+Eingabe' - ausgewählten Space laden",
   "shortcuts.renameSpace": "'Strg+N' - fokussierten Space umbenennen",
   "shortcuts.deleteSpace": "'Strg+Entf' - fokussierten Space löschen",
-  "shortcuts.togglePreview": "'Strg+U' - Vorschaubereich umschalten"
+  "shortcuts.togglePreview": "'Strg+U' - Vorschaubereich umschalten",
+  "introSlideshow.skip": "Überspringen",
+  "introSlideshow.back": "Zurück",
+  "introSlideshow.next": "Weiter",
+  "introSlideshow.getStarted": "Loslegen",
+  "introSlideshow.slide0.title": "Willkommen bei Focus",
+  "introSlideshow.slide0.description": "Arbeitsbereich für Weblinks, Artikel, Schnellnotizen, Dateien und Dokumente an einem Ort. Focus ist Ihr Wissenshub für Business, Workflows und Lernen.",
+  "introSlideshow.slide1.title": "385 unterstützte Dateitypen",
+  "introSlideshow.slide1.description": "Dokumente, Audio, Video, Bilder, PDF, E-Books, Präsentationen, Tabellen und mehr. Ablegen, öffnen und direkt in Focus vorschauen.",
+  "introSlideshow.slide2.title": "Alles visuell verbinden",
+  "introSlideshow.slide2.description": "Zeichnen Sie Pfeile zwischen Objekten und sehen Sie Beziehungen zwischen Ideen, Links und Dateien.",
+  "introSlideshow.slide3.title": "Schnellnotizen",
+  "introSlideshow.slide3.description": "Fügen Sie Textnotizen überall hinzu. Notizen werden automatisch gespeichert.",
+  "introSlideshow.slide4.title": "Teilen mit einem Klick",
+  "introSlideshow.slide4.description": "Teilen Sie Objekte oder ganze Spaces sofort über beliebte Plattformen.",
+  "introSlideshow.slide5.title": "Einfachklick: schnelle Vorschau",
+  "introSlideshow.slide5.description": "Navigieren Sie zwischen Links und Dateien im Vorschaufenster rechts oder im Vollfenster.",
+  "introSlideshow.slide6.title": "Doppelklick: in Ihrer Lieblings-App öffnen",
+  "introSlideshow.slide6.description": "Für tieferes Arbeiten mit Dateien können Sie diese in externen Apps öffnen.",
+  "introSlideshow.slide7.title": "Schneller Zugriff per Tastenkombinationen",
+  "introSlideshow.slide7.description": "Neuen Space: Ctrl+Y\nObjekt hinzufügen: Ctrl+I\nVorschau umschalten: Ctrl+U\nRückgängig/Wiederholen: Ctrl+Z / Ctrl+Shift+Z\nLinke Seitenleiste öffnen/schließen: Ctrl+Left/Right\nSpaces in der Seitenleiste: Ctrl+Up/Down"
 }

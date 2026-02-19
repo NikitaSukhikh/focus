@@ -6,7 +6,6 @@
   "common.rename": "Renommer",
   "common.yes": "Oui",
   "common.no": "Non",
-
   "addLinkDialog.title": "Ajouter un lien",
   "addLinkDialog.urlLabel": "URL *",
   "addLinkDialog.titleLabel": "Titre",
@@ -18,32 +17,27 @@
   "addLinkDialog.useDefaultDescription": "Utiliser la description par défaut",
   "addLinkDialog.invalidUrl": "Veuillez entrer une URL valide",
   "addLinkDialog.customNameTooShort": "Le nom personnalisé doit comporter au moins 2 caractères.",
-
   "addTextDialog.title": "Ajouter une note",
   "addTextDialog.titleLabel": "Titre",
   "addTextDialog.contentLabel": "Contenu",
   "addTextDialog.titlePlaceholder": "Entrez le titre de la note...",
   "addTextDialog.contentPlaceholder": "Rédigez votre note ici... (Ctrl+Entrée pour enregistrer)",
   "addTextDialog.createNote": "Créer une note",
-
   "addWebArticleDialog.title": "Ajouter un article web",
   "addWebArticleDialog.urlLabel": "URL *",
   "addWebArticleDialog.titleLabel": "Titre",
   "addWebArticleDialog.urlPlaceholder": "exemple.com/article",
   "addWebArticleDialog.titlePlaceholder": "Optionnel — détecté automatiquement depuis l'URL",
   "addWebArticleDialog.invalidUrl": "Veuillez entrer une URL valide",
-
   "renameFileDialog.title": "Renommer le fichier",
   "renameFileDialog.newFilenameLabel": "Nouveau nom de fichier",
   "renameFileDialog.placeholder": "Entrez le nouveau nom...",
   "renameFileDialog.renaming": "Renommage en cours...",
-
   "quickAddPopup.addFile": "Ajouter un fichier",
   "quickAddPopup.addLink": "Ajouter un lien",
   "quickAddPopup.addWebArticle": "Ajouter un article web",
   "quickAddPopup.paste": "Coller",
   "quickAddPopup.doubleClickHint": "Double-cliquez n'importe où sur le panneau central pour ajouter une note texte",
-
   "spaceShareDialog.title": "Partager '{{spaceName}}'",
   "spaceShareDialog.itemsSelected": "{{count}} élément(s) sélectionné(s) pour le partage",
   "spaceShareDialog.scope": "Portée : {{labels}} (modifier/supprimer si nécessaire)",
@@ -62,7 +56,6 @@
   "spaceShareDialog.webArticles": "Articles web",
   "spaceShareDialog.files": "Fichiers",
   "spaceShareDialog.textNotes": "Notes texte",
-
   "topBar.openSidebar": "Ouvrir la barre latérale",
   "topBar.closeSidebar": "Fermer la barre latérale",
   "topBar.addObjects": "Ajouter des objets dans le panneau central (Ctrl+I)",
@@ -83,7 +76,6 @@
   "topBar.shareTextNotes": "Notes texte",
   "topBar.shareOptions": "Options de partage",
   "topBar.searchPlaceholder": "Rechercher...",
-
   "leftSidebar.spaces": "Espaces",
   "leftSidebar.newSpace": "Nouvel espace",
   "leftSidebar.closeSidebar": "Fermer la barre latérale",
@@ -92,7 +84,6 @@
   "leftSidebar.deleteSpace": "Supprimer l'espace",
   "leftSidebar.deleteConfirm": "Êtes-vous sûr de vouloir supprimer cet espace avec toutes ses données ?",
   "leftSidebar.settings": "Paramètres",
-
   "tileContextMenu.openFullWindow": "Ouvrir en pleine fenêtre",
   "tileContextMenu.share": "Partager",
   "tileContextMenu.copyPathUrl": "Copier le chemin/URL",
@@ -101,16 +92,13 @@
   "tileContextMenu.renameFile": "Renommer le fichier",
   "tileContextMenu.editUrl": "Modifier l'URL",
   "tileContextMenu.delete": "Supprimer",
-
   "assistantPane.title": "Assistant",
   "assistantPane.close": "Fermer l'assistant",
   "assistantPane.inputPlaceholder": "Posez-moi n'importe quelle question...",
-
   "settings.title": "Paramètres",
   "settings.languageLabel": "Langue de l'interface",
   "settings.done": "Terminé",
   "settings.viewTutorial": "Voir le tutoriel rapide",
-
   "shortcuts.createSpace": "Appuyez sur 'Ctrl+Y' pour créer un nouvel espace",
   "shortcuts.addLink": "'Ctrl+I' ou clic droit - ajouter un lien/fichiers",
   "shortcuts.toggleSidebar": "'Ctrl+Gauche/Droite' - ouvrir/fermer la barre latérale",
@@ -118,5 +106,25 @@
   "shortcuts.loadSpace": "'Ctrl+Entrée' - charger l'espace sélectionné",
   "shortcuts.renameSpace": "'Ctrl+N' - renommer l'espace sélectionné",
   "shortcuts.deleteSpace": "'Ctrl+Suppr' - supprimer l'espace sélectionné",
-  "shortcuts.togglePreview": "'Ctrl+U' - basculer le panneau d'aperçu"
+  "shortcuts.togglePreview": "'Ctrl+U' - basculer le panneau d'aperçu",
+  "introSlideshow.skip": "Passer",
+  "introSlideshow.back": "Retour",
+  "introSlideshow.next": "Suivant",
+  "introSlideshow.getStarted": "Commencer",
+  "introSlideshow.slide0.title": "Bienvenue sur Focus",
+  "introSlideshow.slide0.description": "Espace de travail pour organiser liens web, articles, notes rapides, fichiers et documents au même endroit. Focus est votre hub de connaissances pour le travail et l'apprentissage.",
+  "introSlideshow.slide1.title": "385 types de fichiers pris en charge",
+  "introSlideshow.slide1.description": "Documents, audio, vidéo, images, PDF, ebooks, présentations, tableurs et plus. Déposez, ouvrez et prévisualisez dans Focus.",
+  "introSlideshow.slide2.title": "Connectez tout visuellement",
+  "introSlideshow.slide2.description": "Dessinez des flèches entre objets pour voir les liens entre vos idées, liens et fichiers.",
+  "introSlideshow.slide3.title": "Notes rapides",
+  "introSlideshow.slide3.description": "Ajoutez des notes texte n'importe où sur le panneau central. Les notes sont enregistrées automatiquement.",
+  "introSlideshow.slide4.title": "Partage en un clic",
+  "introSlideshow.slide4.description": "Partagez n'importe quel objet ou un espace entier instantanément sur les plateformes populaires.",
+  "introSlideshow.slide5.title": "Un clic: aperçu rapide",
+  "introSlideshow.slide5.description": "Naviguez entre liens et fichiers dans l'aperçu à droite ou en mode fenêtre complète.",
+  "introSlideshow.slide6.title": "Double clic: ouvrez les fichiers dans votre app préférée",
+  "introSlideshow.slide6.description": "Pour des interactions avancées avec les fichiers, ouvrez-les dans des applications externes.",
+  "introSlideshow.slide7.title": "Raccourcis pour un accès rapide",
+  "introSlideshow.slide7.description": "Créer un nouvel espace: Ctrl+Y\nAjouter un objet: Ctrl+I\nBasculer l'aperçu: Ctrl+U\nAnnuler/Rétablir: Ctrl+Z / Ctrl+Shift+Z\nOuvrir/Fermer la barre latérale gauche: Ctrl+Left/Right\nNaviguer entre espaces: Ctrl+Up/Down"
 }

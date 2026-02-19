@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Slide } from './types';
 
 interface SlideContentProps {
@@ -5,30 +6,34 @@ interface SlideContentProps {
 }
 
 export function SlideContent({ slide }: SlideContentProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="w-full flex flex-col items-center text-center">
       <h2
-        className="text-2xl font-bold mb-3"
+        className="text-lg font-bold mb-3"
         style={{ color: 'var(--color-text-primary, #fff)' }}
       >
-        {slide.title}
+        {t(slide.title)}
       </h2>
 
       <p
         className="text-base leading-relaxed"
-        style={{ color: 'var(--color-text-secondary, #aaa)' }}
+        style={{ color: 'var(--color-text-secondary, #aaa)', whiteSpace: 'pre-line', textAlign: slide.descriptionAlign ?? 'center' }}
       >
-        {slide.description}
+        {t(slide.description)}
       </p>
 
       {slide.image && (
-        <img
-          src={slide.image}
-          alt={slide.title}
-          className="mt-4 select-none pointer-events-none"
-          style={{ maxHeight: 250, maxWidth: '80%', objectFit: 'contain', borderRadius: 12, overflow: 'hidden' }}
-          draggable={false}
-        />
+        <div className="mt-4 w-full" style={{ height: 340, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+          <img
+            src={slide.image}
+            alt={slide.title}
+            className="select-none pointer-events-none"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            draggable={false}
+          />
+        </div>
       )}
 
       {slide.subtext !== undefined && (

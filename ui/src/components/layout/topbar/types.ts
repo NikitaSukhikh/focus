@@ -17,6 +17,7 @@ export interface TopBarProps {
   onZoomOut: () => void;
   zoom: number;
   onOpenQuickAdd: (position?: { x: number; y: number }) => void;
+  onViewTutorial: () => void;
   onOpenSpaceShareDialog?: (_filters: SpaceShareFilters) => void;
   onTagsClick?: () => void;
   isTagsOpen?: boolean;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
 import { Z_INDEX } from '@/constants/zIndex';
 import focusBrandImage from '../../../src-electron/focus-brand.png';
@@ -9,13 +10,14 @@ import { NavBar } from './NavBar';
 const CARD_MAX_WIDTH = 720;
 const CARD_MIN_HEIGHT = 560;
 const CARD_HORIZONTAL_PADDING = 48;
-const LOGO_HEIGHT = 72;
+const LOGO_HEIGHT = 58;
 
 interface IntroSlideshowProps {
   onDone: () => void;
 }
 
 export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
   const [contentMinHeight, setContentMinHeight] = useState<number | undefined>(undefined);
   const measureRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -78,7 +80,7 @@ export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
           width: '100%',
           maxWidth: CARD_MAX_WIDTH,
           minHeight: CARD_MIN_HEIGHT,
-          padding: `48px ${CARD_HORIZONTAL_PADDING}px 20px`,
+          padding: `32px ${CARD_HORIZONTAL_PADDING}px 20px`,
           background: 'color-mix(in srgb, var(--background-dark) 95%, transparent)',
           border: '1px solid rgba(255,255,255,0.08)',
         }}
@@ -88,7 +90,7 @@ export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
         <img
           src={focusBrandImage}
           alt="Focus"
-          className="select-none pointer-events-none mb-4"
+          className="select-none pointer-events-none mb-7"
           style={{ height: LOGO_HEIGHT, objectFit: 'contain' }}
           draggable={false}
         />
@@ -101,7 +103,7 @@ export function IntroSlideshow({ onDone }: IntroSlideshowProps) {
           onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
           onClick={onDone}
         >
-          Skip
+          {t('introSlideshow.skip')}
         </button>
 
         {/* Slide content */}

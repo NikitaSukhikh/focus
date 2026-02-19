@@ -14,12 +14,13 @@ interface UseCenterPanePreviewProps {
   inlineEditorState: InlineEditorStateSnapshot;
   suppressTileClickUntilRef: React.MutableRefObject<number>;
   tileClickSuppressAfterResizeMs: number;
-  filePreviewDelayMs: number;
+  previewDelayMs: number;
 }
 
 interface UseCenterPanePreviewResult {
   clearPreviewTimeout: () => void;
   queuePreviewForIcon: (_icon: DroppedIcon) => void;
+  handleTileResizeInteractionStart: () => void;
   handleTileResizeInteractionEnd: () => void;
 }
 
@@ -28,9 +29,11 @@ export const useCenterPanePreview = ({
   inlineEditorState,
   suppressTileClickUntilRef,
   tileClickSuppressAfterResizeMs,
-  filePreviewDelayMs,
+  previewDelayMs,
 }: UseCenterPanePreviewProps): UseCenterPanePreviewResult => {
   const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCornerDraggingRef = useRef(false);
+  const dragClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearPreviewTimeout = useCallback(() => {
     if (!previewTimeoutRef.current) return;
@@ -60,6 +63,7 @@ export const useCenterPanePreview = ({
   }, [clearPreviewTimeout, inlineEditorState.editingId, inlineEditorState.isActive, openPreviewForIcon]);
 
   const queuePreviewForIcon = useCallback((icon: DroppedIcon) => {
+    if (isCornerDraggingRef.current) return;
     if (!isPreviewPaneTargetAllowed(icon)) {
       onObjectClick?.({
         tileId: icon.id,
@@ -69,26 +73,40 @@ export const useCenterPanePreview = ({
       return;
     }
 
-    if (icon.type === 'file') {
-      schedulePreviewForIcon(icon, filePreviewDelayMs);
-      return;
-    }
-
-    openPreviewForIcon(icon);
-  }, [filePreviewDelayMs, onObjectClick, openPreviewForIcon, schedulePreviewForIcon]);
+    schedulePreviewForIcon(icon, previewDelayMs);
+  }, [previewDelayMs, onObjectClick, schedulePreviewForIcon]);
 
   const handleTileResizeInteractionEnd = useCallback(() => {
+    suppressTileClickUntilRef.current = performance.now() + tileClickSuppressAfterResizeMs;
+    clearPreviewTimeout();
+    if (dragClearTimerRef.current !== null) clearTimeout(dragClearTimerRef.current);
+    dragClearTimerRef.current = setTimeout(() => {
+      isCornerDraggingRef.current = false;
+      dragClearTimerRef.current = null;
+    }, 0);
+  }, [clearPreviewTimeout, suppressTileClickUntilRef, tileClickSuppressAfterResizeMs]);
+
+  const handleTileResizeInteractionStart = useCallback(() => {
+    isCornerDraggingRef.current = true;
+    if (dragClearTimerRef.current !== null) {
+      clearTimeout(dragClearTimerRef.current);
+      dragClearTimerRef.current = null;
+    }
     suppressTileClickUntilRef.current = performance.now() + tileClickSuppressAfterResizeMs;
     clearPreviewTimeout();
   }, [clearPreviewTimeout, suppressTileClickUntilRef, tileClickSuppressAfterResizeMs]);
 
   useEffect(() => {
-    return () => clearPreviewTimeout();
+    return () => {
+      clearPreviewTimeout();
+      if (dragClearTimerRef.current !== null) clearTimeout(dragClearTimerRef.current);
+    };
   }, [clearPreviewTimeout]);
 
   return {
     clearPreviewTimeout,
     queuePreviewForIcon,
+    handleTileResizeInteractionStart,
     handleTileResizeInteractionEnd,
   };
 };

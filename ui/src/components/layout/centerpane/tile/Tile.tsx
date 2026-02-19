@@ -52,6 +52,7 @@ export function Tile({
   onEdit,
   onEditLink,
   onSizeChange,
+  onResizeInteractionStart,
   onResizeInteractionEnd,
   onFocusRingPointerDown,
   suppressFocusRingGhostArrow,
@@ -158,13 +159,15 @@ export function Tile({
 
   const handleCopyPathClick = async () => {
     setShowContextMenu(false);
-    const pathToCopy = filePath || url || '';
-    if (pathToCopy) {
+    const valueToCopy = type === 'text'
+      ? ((content && content.trim()) || title || '')
+      : (filePath || url || '');
+    if (valueToCopy) {
       try {
-        await navigator.clipboard.writeText(pathToCopy);
-        console.log('[Tile] Path copied to clipboard:', pathToCopy);
+        await navigator.clipboard.writeText(valueToCopy);
+        console.log('[Tile] Value copied to clipboard:', valueToCopy);
       } catch (err) {
-        console.error('[Tile] Failed to copy path to clipboard:', err);
+        console.error('[Tile] Failed to copy value to clipboard:', err);
       }
     }
   };
@@ -263,6 +266,10 @@ export function Tile({
     minHeight: minBoxHeight,
     lockAspectRatio: imageAspectRatio,
     lockAspectRatioInset: tilePadding,
+    onResizeInteractionStart: () => {
+      suppressClickUntilRef.current = performance.now() + 250;
+      onResizeInteractionStart?.();
+    },
     onResizeInteractionEnd: (didResize) => {
       suppressClickUntilRef.current = performance.now() + 250;
       onResizeInteractionEnd?.(didResize);
@@ -576,6 +583,7 @@ export function Tile({
         url={url}
         title={title}
         filePath={filePath}
+        shareText={type === 'text' ? ((content && content.trim()) || title || '') : undefined}
         onShareDialogClose={() => setShowShareDialog(false)}
       />
 

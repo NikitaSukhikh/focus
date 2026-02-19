@@ -47,6 +47,7 @@ export function TileContextMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState({ width: 0, height: 0 });
   const VIEWPORT_MARGIN = 8;
+  const canShareOrCopy = hasFileOrUrl || (type === 'text' && hasContent);
 
   useLayoutEffect(() => {
     if (!show || !menuRef.current) return;
@@ -137,7 +138,7 @@ export function TileContextMenu({
 
           </button>
         )}
-        {hasFileOrUrl && (
+        {canShareOrCopy && (
           <button
             onClick={onShare}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
@@ -146,13 +147,13 @@ export function TileContextMenu({
             {t('tileContextMenu.share')}
           </button>
         )}
-        {hasFileOrUrl && (
+        {canShareOrCopy && (
           <button
             onClick={onCopyPath}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
           >
             <Copy size={14} />
-            {t('tileContextMenu.copyPathUrl')}
+            {type === 'text' ? t('spaceShareDialog.copy') : t('tileContextMenu.copyPathUrl')}
           </button>
         )}
         {(
