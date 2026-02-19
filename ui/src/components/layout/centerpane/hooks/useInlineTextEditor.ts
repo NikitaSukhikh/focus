@@ -14,8 +14,6 @@ import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { DroppedIcon } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
-import { autoWrapText } from '@/components/layout/centerpane/utils';
-import { TEXT_TILE } from '@/constants/objectsDimensions';
 
 interface InlineEditorParams {
   selectedSpace: any;
@@ -75,15 +73,15 @@ export const useInlineTextEditor = ({
 
     const { x, y, content, editingId } = editorState;
     const clamped = clampToBoundaries(x, y);
-    const formattedContent = autoWrapText(content, TEXT_TILE.charLimit);
-    const title = generateTitleFromContent(formattedContent);
+    const savedContent = content;
+    const title = generateTitleFromContent(savedContent);
 
     try {
       if (editingId) {
         // Update existing note - update both title and content in metadata
         await objectsApi.patchObject(editingId, {
           title,
-          metadata: { content: formattedContent },
+          metadata: { content: savedContent },
         });
 
         setIconsBySpace((prev) => {
@@ -92,7 +90,7 @@ export const useInlineTextEditor = ({
             ...prev,
             [selectedSpace.id]: current.map((icon) =>
               icon.id === editingId
-                ? { ...icon, title, content: formattedContent, description: formattedContent.substring(0, 100) }
+                ? { ...icon, title, content: savedContent, description: savedContent.substring(0, 100) }
                 : icon
             ),
           };
@@ -102,7 +100,7 @@ export const useInlineTextEditor = ({
         const created = await objectsApi.create(selectedSpace.id, {
           type: 'text',
           title,
-          content: formattedContent,
+          content: savedContent,
           x: clamped.x,
           y: clamped.y,
         });
@@ -114,8 +112,8 @@ export const useInlineTextEditor = ({
           x: clamped.x,
           y: clamped.y,
           tag: normalizeTag(created.tag),
-          description: formattedContent.substring(0, 100),
-          content: formattedContent,
+          description: savedContent.substring(0, 100),
+          content: savedContent,
         };
 
         setIconsBySpace((prev) => {
@@ -131,7 +129,7 @@ export const useInlineTextEditor = ({
             text: {
               id: created.id,
               title: created.title,
-              content: formattedContent,
+              content: savedContent,
               x: clamped.x,
               y: clamped.y,
               tag: normalizeTag(created.tag),

@@ -42,6 +42,9 @@ const getTileAnchorCandidates = (tileId: string): AnchorCandidate[] =>
     .map((anchorEl) => toAnchorCandidate(anchorEl))
     .filter((candidate): candidate is AnchorCandidate => Boolean(candidate));
 
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
+const average = (values: number[]): number => values.reduce((sum, value) => sum + value, 0) / values.length;
+
 export const findFocusRingTileIdAtClientPoint = (clientX: number, clientY: number): string | null => {
   const hits = document.elementsFromPoint(clientX, clientY);
   for (const element of hits) {
@@ -81,6 +84,71 @@ export const getNearestAnchorForTile = (
 
   return {
     anchor: nearest.anchor,
+    point: toCanvasCoords(nearest.clientX, nearest.clientY),
+  };
+};
+
+export const getNearestPointOnTileFocusRing = (
+  tileId: string,
+  clientX: number,
+  clientY: number,
+  toCanvasCoords: (_clientX: number, _clientY: number) => { x: number; y: number }
+): { edge: FocusRingEdge; point: { x: number; y: number } } | null => {
+  const candidates = getTileAnchorCandidates(tileId);
+  if (!candidates.length) return null;
+
+  const top = candidates.filter((candidate) => candidate.anchor.edge === 'top');
+  const right = candidates.filter((candidate) => candidate.anchor.edge === 'right');
+  const bottom = candidates.filter((candidate) => candidate.anchor.edge === 'bottom');
+  const left = candidates.filter((candidate) => candidate.anchor.edge === 'left');
+
+  if (!top.length || !right.length || !bottom.length || !left.length) {
+    const fallback = getNearestAnchorForTile(tileId, clientX, clientY, toCanvasCoords);
+    if (!fallback) return null;
+    return { edge: fallback.anchor.edge, point: fallback.point };
+  }
+
+  const ringTop = average(top.map((candidate) => candidate.clientY));
+  const ringRight = average(right.map((candidate) => candidate.clientX));
+  const ringBottom = average(bottom.map((candidate) => candidate.clientY));
+  const ringLeft = average(left.map((candidate) => candidate.clientX));
+
+  const projections: Array<{ edge: FocusRingEdge; clientX: number; clientY: number }> = [
+    {
+      edge: 'top',
+      clientX: clamp(clientX, ringLeft, ringRight),
+      clientY: ringTop,
+    },
+    {
+      edge: 'right',
+      clientX: ringRight,
+      clientY: clamp(clientY, ringTop, ringBottom),
+    },
+    {
+      edge: 'bottom',
+      clientX: clamp(clientX, ringLeft, ringRight),
+      clientY: ringBottom,
+    },
+    {
+      edge: 'left',
+      clientX: ringLeft,
+      clientY: clamp(clientY, ringTop, ringBottom),
+    },
+  ];
+
+  let nearest = projections[0];
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  projections.forEach((projection) => {
+    const distance = Math.hypot(projection.clientX - clientX, projection.clientY - clientY);
+    if (distance < nearestDistance) {
+      nearest = projection;
+      nearestDistance = distance;
+    }
+  });
+
+  return {
+    edge: nearest.edge,
     point: toCanvasCoords(nearest.clientX, nearest.clientY),
   };
 };
@@ -382,20 +450,29 @@ const buildRoundedPath = (
   const points = options.simplify === false ? rawPoints : simplifyOrthogonalPoints(rawPoints);
   if (points.length < 2) return `M ${points[0]?.x ?? 0} ${points[0]?.y ?? 0}`;
 
-  const commands: string[] = [`M ${points[0].x} ${points[0].y}`];
+  interface RoundedCornerMeta {
+    inUnit: { x: number; y: number };
+    outUnit: { x: number; y: number };
+  }
+
+  const cornerMeta = new Map<number, RoundedCornerMeta>();
+  const cornerRadii = new Array<number>(points.length).fill(0);
+  const segmentLengths = new Array<number>(Math.max(points.length - 1, 0)).fill(0);
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    segmentLengths[index] = distanceBetween(points[index], points[index + 1]);
+  }
 
   for (let index = 1; index < points.length - 1; index += 1) {
     const previous = points[index - 1];
     const current = points[index];
     const next = points[index + 1];
-
     const inVector = { x: current.x - previous.x, y: current.y - previous.y };
     const outVector = { x: next.x - current.x, y: next.y - current.y };
     const inLength = Math.hypot(inVector.x, inVector.y);
     const outLength = Math.hypot(outVector.x, outVector.y);
 
     if (inLength < STRAIGHT_EPSILON || outLength < STRAIGHT_EPSILON) {
-      commands.push(`L ${current.x} ${current.y}`);
       continue;
     }
 
@@ -405,25 +482,82 @@ const buildRoundedPath = (
     const dot = (inUnit.x * outUnit.x) + (inUnit.y * outUnit.y);
 
     if (Math.abs(cross) < 0.001 || dot < -0.999) {
-      commands.push(`L ${current.x} ${current.y}`);
       continue;
     }
 
-    const inRadius = Math.max(0, Math.min(ARROW_CORNER_RADIUS, (inLength / 2) - STRAIGHT_EPSILON));
-    const outRadius = Math.max(0, Math.min(ARROW_CORNER_RADIUS, (outLength / 2) - STRAIGHT_EPSILON));
+    cornerMeta.set(index, { inUnit, outUnit });
+    cornerRadii[index] = Math.max(
+      0,
+      Math.min(
+        ARROW_CORNER_RADIUS,
+        inLength - STRAIGHT_EPSILON,
+        outLength - STRAIGHT_EPSILON
+      )
+    );
+  }
 
-    if (inRadius <= STRAIGHT_EPSILON && outRadius <= STRAIGHT_EPSILON) {
+  // Keep corner radii as constant as possible while sharing limited segment space.
+  const maxIterations = Math.max(points.length * 2, 8);
+  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    let didChange = false;
+
+    for (let segmentIndex = 0; segmentIndex < segmentLengths.length; segmentIndex += 1) {
+      const available = Math.max(0, segmentLengths[segmentIndex] - STRAIGHT_EPSILON);
+      const leftRadius = cornerRadii[segmentIndex] ?? 0;
+      const rightRadius = cornerRadii[segmentIndex + 1] ?? 0;
+      const total = leftRadius + rightRadius;
+      if (total <= available + STRAIGHT_EPSILON) {
+        continue;
+      }
+
+      if (available <= STRAIGHT_EPSILON) {
+        if (leftRadius > 0) {
+          cornerRadii[segmentIndex] = 0;
+          didChange = true;
+        }
+        if (rightRadius > 0) {
+          cornerRadii[segmentIndex + 1] = 0;
+          didChange = true;
+        }
+        continue;
+      }
+
+      const scale = available / total;
+      const nextLeft = leftRadius * scale;
+      const nextRight = rightRadius * scale;
+      if (
+        Math.abs(nextLeft - leftRadius) > STRAIGHT_EPSILON / 100
+        || Math.abs(nextRight - rightRadius) > STRAIGHT_EPSILON / 100
+      ) {
+        cornerRadii[segmentIndex] = nextLeft;
+        cornerRadii[segmentIndex + 1] = nextRight;
+        didChange = true;
+      }
+    }
+
+    if (!didChange) {
+      break;
+    }
+  }
+
+  const commands: string[] = [`M ${points[0].x} ${points[0].y}`];
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const radius = cornerRadii[index] ?? 0;
+    const meta = cornerMeta.get(index);
+    if (!meta || radius <= STRAIGHT_EPSILON) {
       commands.push(`L ${current.x} ${current.y}`);
       continue;
     }
 
     const beforeCorner = {
-      x: current.x - (inUnit.x * inRadius),
-      y: current.y - (inUnit.y * inRadius),
+      x: current.x - (meta.inUnit.x * radius),
+      y: current.y - (meta.inUnit.y * radius),
     };
     const afterCorner = {
-      x: current.x + (outUnit.x * outRadius),
-      y: current.y + (outUnit.y * outRadius),
+      x: current.x + (meta.outUnit.x * radius),
+      y: current.y + (meta.outUnit.y * radius),
     };
 
     commands.push(`L ${beforeCorner.x} ${beforeCorner.y}`);
@@ -620,16 +754,6 @@ const scoreEdgeRoute = (
   };
 };
 
-const buildEdgeAwarePath = (
-  start: { x: number; y: number },
-  end: { x: number; y: number },
-  options: BuildArrowPathOptions
-): string => {
-  const points = buildEdgeAwarePoints(start, end, options);
-  // Keep start/end guide legs intact while allowing every corner to round.
-  return buildRoundedPath(points, { simplify: false });
-};
-
 const buildEdgeAwarePoints = (
   start: { x: number; y: number },
   end: { x: number; y: number },
@@ -706,26 +830,41 @@ export const countArrowSegments = (
   return (Math.abs(dx) < STRAIGHT_EPSILON || Math.abs(dy) < STRAIGHT_EPSILON) ? 1 : 2;
 };
 
-export const buildArrowPath = (
+export const buildArrowRoutePoints = (
   start: { x: number; y: number },
   end: { x: number; y: number },
   options: BuildArrowPathOptions = {}
-): string => {
+): Array<{ x: number; y: number }> => {
   if (options.startEdge || options.endEdge) {
-    return buildEdgeAwarePath(start, end, options);
+    return buildEdgeAwarePoints(start, end, options);
   }
 
   const dx = end.x - start.x;
   const dy = end.y - start.y;
 
   if (Math.abs(dx) < STRAIGHT_EPSILON || Math.abs(dy) < STRAIGHT_EPSILON) {
-    return buildStraightPath(start, end);
+    return [start, end];
   }
 
   const horizontalFirst = Math.abs(dx) >= Math.abs(dy);
   const corner = horizontalFirst
     ? { x: end.x, y: start.y }
     : { x: start.x, y: end.y };
+  return [start, corner, end];
+};
 
-  return buildRoundedPath([start, corner, end]);
+export const buildArrowPath = (
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  options: BuildArrowPathOptions = {}
+): string => {
+  const routePoints = buildArrowRoutePoints(start, end, options);
+  if (options.startEdge || options.endEdge) {
+    // Keep start/end guide legs intact while allowing every corner to round.
+    return buildRoundedPath(routePoints, { simplify: false });
+  }
+  if (routePoints.length <= 2) {
+    return buildStraightPath(start, end);
+  }
+  return buildRoundedPath(routePoints);
 };

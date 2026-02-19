@@ -5,7 +5,7 @@ import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles
 import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
-import { NON_EMBED_LINK, ICON_SIZES, GOOGLE_INTEGRATION_TILE } from '@/constants/objectsDimensions';
+import { ICON_SIZES, GOOGLE_INTEGRATION_TILE } from '@/constants/objectsDimensions';
 
 interface LinkContentProps {
   url?: string;
@@ -42,8 +42,8 @@ export function LinkContent({
       className={`transition-transform duration-150 flex flex-col items-center justify-center gap-2 px-1 ${hoverScaleClass}`}
       style={{
         pointerEvents: 'none',
-        width: 'fit-content',
-        maxWidth: `${NON_EMBED_LINK.maxWidth}px`,
+        width: '100%',
+        height: '100%',
         background: TILE_BACKGROUND,
         ...tileBackgroundFillStyle(TILE_BACKGROUND),
         ...tileRingStyle('link'),
@@ -120,7 +120,6 @@ export function LinkContent({
                   lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
                   fontWeight: TYPOGRAPHY_WEIGHTS.TILE_DESCRIPTION,
                   color: 'var(--color-text-muted)',
-                  maxWidth: `${NON_EMBED_LINK.descriptionMaxWidth}px`,
                 }}
               >
                 <HighlightText text={description} query={searchQuery} />

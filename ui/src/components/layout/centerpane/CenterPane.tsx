@@ -20,7 +20,7 @@ import { useSearchStore } from '@/stores/searchStore';
 import { ARROW_SETTINGS } from '@/styles/arrowSettings';
 import { SHORTCUT_HINT_TEXT } from '@/constants/shortcutHints';
 import { isPreviewPaneTargetAllowed } from '@/utils/previewTargets';
-import { buildArrowPath, getBestAnchorPairForRoute } from '@/components/layout/centerpane/arrowGeometry';
+import { buildArrowPath, buildArrowRoutePoints, getBestAnchorPairForRoute } from '@/components/layout/centerpane/arrowGeometry';
 import type { ArrowPathObstacle, RouteAnchorCandidate } from '@/components/layout/centerpane/arrowGeometry';
 import { TILE_RING } from '@/constants/objectsDimensions';
 import { TILE_RING_COLORS } from '@/styles/tileStyles';
@@ -36,6 +36,11 @@ interface TileMetricsSnapshot {
 const FOCUS_RING_DOTS_PER_EDGE = 3;
 const ARROW_ENDPOINT_DOT_OPACITY = 0;
 const ARROW_ROUTE_OBSTACLE_PADDING = 8;
+const ARROW_SEGMENT_EPSILON = 0.5;
+const ARROW_ENDPOINT_SEGMENT_HANDLE_WIDTH = Math.max(
+  ARROW_SETTINGS.strokeWidth + (ARROW_SETTINGS.clickAreaPadding * 2),
+  18
+);
 type TileRingType = keyof typeof TILE_RING_COLORS;
 const LINK_LIKE_TYPES = new Set<DroppedIcon['type']>(['link', 'web_article', 'gmail', 'google_drive']);
 const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -43,6 +48,117 @@ const sanitizeSvgId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
 interface ArrowTileObstacle extends ArrowPathObstacle {
   tileId: string;
 }
+
+interface EndpointSegmentHandle {
+  endpoint: 'start' | 'end';
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+const segmentLength = (start: { x: number; y: number }, end: { x: number; y: number }) =>
+  Math.hypot(end.x - start.x, end.y - start.y);
+const isClose = (a: number, b: number) => Math.abs(a - b) <= ARROW_SEGMENT_EPSILON;
+
+type OrthogonalDirection = 'right' | 'left' | 'down' | 'up';
+
+const getOrthogonalDirection = (
+  start: { x: number; y: number },
+  end: { x: number; y: number }
+): OrthogonalDirection | null => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  if (Math.abs(dx) <= ARROW_SEGMENT_EPSILON && Math.abs(dy) <= ARROW_SEGMENT_EPSILON) return null;
+  if (Math.abs(dx) <= ARROW_SEGMENT_EPSILON) return dy > 0 ? 'down' : 'up';
+  if (Math.abs(dy) <= ARROW_SEGMENT_EPSILON) return dx > 0 ? 'right' : 'left';
+  return null;
+};
+
+const toEndpointSegmentHandle = (
+  endpoint: 'start' | 'end',
+  start: { x: number; y: number },
+  end: { x: number; y: number }
+): EndpointSegmentHandle | null => {
+  const length = segmentLength(start, end);
+  if (length <= ARROW_SEGMENT_EPSILON) return null;
+  return {
+    endpoint,
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+  };
+};
+
+const buildEndpointSegmentHandles = (
+  routePoints: Array<{ x: number; y: number }>
+): EndpointSegmentHandle[] => {
+  if (routePoints.length < 2) return [];
+
+  let startSegmentIndex: number | null = null;
+  for (let index = 0; index < routePoints.length - 1; index += 1) {
+    if (segmentLength(routePoints[index], routePoints[index + 1]) > ARROW_SEGMENT_EPSILON) {
+      startSegmentIndex = index;
+      break;
+    }
+  }
+
+  let endSegmentIndex: number | null = null;
+  for (let index = routePoints.length - 2; index >= 0; index -= 1) {
+    if (segmentLength(routePoints[index], routePoints[index + 1]) > ARROW_SEGMENT_EPSILON) {
+      endSegmentIndex = index;
+      break;
+    }
+  }
+
+  if (startSegmentIndex === null || endSegmentIndex === null) return [];
+
+  const startPoint = routePoints[startSegmentIndex];
+  const startDirection = getOrthogonalDirection(routePoints[startSegmentIndex], routePoints[startSegmentIndex + 1]);
+  if (!startDirection) return [];
+  let startTurnPoint = routePoints[startSegmentIndex + 1];
+  for (let index = startSegmentIndex + 1; index < routePoints.length - 1; index += 1) {
+    const direction = getOrthogonalDirection(routePoints[index], routePoints[index + 1]);
+    if (direction !== startDirection) break;
+    startTurnPoint = routePoints[index + 1];
+  }
+
+  const endPoint = routePoints[endSegmentIndex + 1];
+  const endDirection = getOrthogonalDirection(routePoints[endSegmentIndex], routePoints[endSegmentIndex + 1]);
+  if (!endDirection) return [];
+  let endTurnPoint = routePoints[endSegmentIndex];
+  for (let index = endSegmentIndex - 1; index >= 0; index -= 1) {
+    const direction = getOrthogonalDirection(routePoints[index], routePoints[index + 1]);
+    if (direction !== endDirection) break;
+    endTurnPoint = routePoints[index];
+  }
+
+  const handles: EndpointSegmentHandle[] = [];
+  const isSameRun = isClose(startPoint.x, endTurnPoint.x)
+    && isClose(startPoint.y, endTurnPoint.y)
+    && isClose(startTurnPoint.x, endPoint.x)
+    && isClose(startTurnPoint.y, endPoint.y);
+
+  if (isSameRun) {
+    // Single straight run: split at midpoint so both endpoints stay independently reachable.
+    const midpoint = {
+      x: (startPoint.x + endPoint.x) / 2,
+      y: (startPoint.y + endPoint.y) / 2,
+    };
+    const startHandle = toEndpointSegmentHandle('start', startPoint, midpoint);
+    const endHandle = toEndpointSegmentHandle('end', endPoint, midpoint);
+    if (startHandle) handles.push(startHandle);
+    if (endHandle) handles.push(endHandle);
+    return handles;
+  }
+
+  const startHandle = toEndpointSegmentHandle('start', startPoint, startTurnPoint);
+  const endHandle = toEndpointSegmentHandle('end', endPoint, endTurnPoint);
+  if (startHandle) handles.push(startHandle);
+  if (endHandle) handles.push(endHandle);
+  return handles;
+};
 
 const isSameAnchorRef = (a?: ArrowSegment['startAnchor'], b?: ArrowSegment['startAnchor']) => {
   if (!a && !b) return true;
@@ -92,6 +208,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
   const selectedSpaceId = logic.selectedSpace?.id;
   const arrowsBySpace = logic.arrowsBySpace;
   const setArrowsBySpace = logic.setArrowsBySpace;
+  const setIconsBySpace = logic.setIconsBySpace;
   const isDuplicating = useSpaceStore((state) => state.isDuplicating);
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const isSearchMode = searchQuery.trim().length > 0;
@@ -284,6 +401,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
     contentHeightWithArrows,
     isDrawingArrow,
     draggingEndpoint,
+    draftTargetTileId,
   } = useArrowDrawing({
     zoom,
     paneRef,
@@ -310,6 +428,30 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
       return { ...prev, [tileId]: metrics };
     });
   }, []);
+
+  const handleTileSizeChange = useCallback((tileId: string, newX: number, newY: number, newWidth: number, newHeight: number) => {
+    if (!selectedSpaceId) return;
+    const existing = iconsById.get(tileId);
+    if (!existing) return;
+    if (
+      existing.x === newX
+      && existing.y === newY
+      && existing.width === newWidth
+      && existing.height === newHeight
+    ) {
+      return;
+    }
+
+    setIconsBySpace((prev) => ({
+      ...prev,
+      [selectedSpaceId]: (prev[selectedSpaceId] || []).map((icon) =>
+        icon.id === tileId ? { ...icon, x: newX, y: newY, width: newWidth, height: newHeight } : icon
+      ),
+    }));
+    objectsApi.updateSize(tileId, newX, newY, newWidth, newHeight).catch((err) => {
+      console.error('[Tile] Failed to persist resize:', err);
+    });
+  }, [iconsById, selectedSpaceId, setIconsBySpace]);
 
   useEffect(() => {
     const validIds = new Set(currentSpaceIcons.map((icon) => icon.id));
@@ -869,11 +1011,15 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                         && obstacle.tileId !== segment.endAnchor?.tileId
                     )
                     .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
-                  const pathData = buildArrowPath(segment.start, segment.end, {
+                  const pathOptions = {
                     startEdge: segment.startAnchor?.edge,
                     endEdge: segment.endAnchor?.edge,
                     obstacles: routingObstacles,
-                  });
+                  };
+                  const pathData = buildArrowPath(segment.start, segment.end, pathOptions);
+                  const endpointSegmentHandles = buildEndpointSegmentHandles(
+                    buildArrowRoutePoints(segment.start, segment.end, pathOptions)
+                  );
                   return (
                     <g key={segment.id} style={{ opacity: arrowOpacity }}>
                       <defs>
@@ -928,6 +1074,28 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                         onClick={isDraft ? undefined : (e) => e.stopPropagation()}
                         onContextMenu={isDraft ? undefined : (e) => handleArrowContextMenu(e, segment.id)}
                       />
+                      {!isDraft && endpointSegmentHandles.map((handle) => {
+                        return (
+                          <line
+                            key={`${segment.id}-${handle.endpoint}-handle`}
+                            x1={handle.x1}
+                            y1={handle.y1}
+                            x2={handle.x2}
+                            y2={handle.y2}
+                            stroke="rgba(0,0,0,0.001)"
+                            strokeWidth={ARROW_ENDPOINT_SEGMENT_HANDLE_WIDTH}
+                            strokeLinecap="round"
+                            style={{
+                              cursor: 'pointer',
+                              pointerEvents: 'all',
+                            }}
+                            onPointerDown={(e) => {
+                              handleArrowEndpointPointerDown(segment, handle.endpoint, e);
+                              logic.setSelectedIconIds([]);
+                            }}
+                          />
+                        );
+                      })}
                       {/* Visible arrow line */}
                       <path
                         d={pathData}
@@ -944,27 +1112,11 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                           <circle
                             cx={segment.start.x}
                             cy={segment.start.y}
-                            r={10}
-                            fill="transparent"
-                            style={{ cursor: 'grab', pointerEvents: 'all' }}
-                            onPointerDown={(e) => handleArrowEndpointPointerDown(segment, 'start', e)}
-                          />
-                          <circle
-                            cx={segment.start.x}
-                            cy={segment.start.y}
                             r={4.2}
                             fill={isDraggingStart ? '#38BDF8' : arrowStartColor}
                             stroke="#0f172a"
                             strokeWidth={1}
                             style={{ pointerEvents: 'none', opacity: ARROW_ENDPOINT_DOT_OPACITY }}
-                          />
-                          <circle
-                            cx={segment.end.x}
-                            cy={segment.end.y}
-                            r={10}
-                            fill="transparent"
-                            style={{ cursor: 'grab', pointerEvents: 'all' }}
-                            onPointerDown={(e) => handleArrowEndpointPointerDown(segment, 'end', e)}
                           />
                           <circle
                             cx={segment.end.x}
@@ -1020,6 +1172,9 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                   title={icon.title}
                   x={icon.x}
                   y={icon.y}
+                  width={icon.width}
+                  height={icon.height}
+                  zoom={zoom}
                   url={icon.url}
                   description={icon.description}
                   channelName={icon.channelName}
@@ -1062,7 +1217,9 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
                     clearPreviewTimeout();
                     logic.openInlineEditor(x, y, content, id);
                   }}
+                  onSizeChange={handleTileSizeChange}
                   onFocusRingPointerDown={handleFocusRingPointerDown}
+                  suppressFocusRingGhostArrow={isDrawingArrow && draftTargetTileId === icon.id}
                   onMetricsChange={handleTileMetricsChange}
                 />
               )

@@ -37,6 +37,8 @@ export interface DroppedIcon {
   title: string;
   x: number;
   y: number;
+  width?: number;  // Custom box width in canvas units (persisted)
+  height?: number; // Custom box height in canvas units (persisted)
   tag?: TagColor | '';
   serviceKey?: string; // To track specific Google services like 'sheets', 'docs', 'slides'
   url?: string; // For link objects
@@ -87,6 +89,9 @@ export interface TileProps {
   title: string;
   x: number;
   y: number;
+  width?: number;  // Custom box width in canvas units
+  height?: number; // Custom box height in canvas units
+  zoom?: number;   // Canvas zoom level (needed for resize delta math)
   url?: string;
   description?: string;
   channelName?: string;
@@ -102,7 +107,9 @@ export interface TileProps {
   onRefreshMetadata?: () => void;
   onEdit?: (_x: number, _y: number, _content: string, _id: string) => void;
   onEditLink?: () => void;
+  onSizeChange?: (_tileId: string, _x: number, _y: number, _width: number, _height: number) => void;
   onFocusRingPointerDown?: (_event: React.PointerEvent<HTMLElement | SVGElement>, _tileId: string) => void;
+  suppressFocusRingGhostArrow?: boolean;
   onMetricsChange?: (
     _tileId: string,
     _metrics: {

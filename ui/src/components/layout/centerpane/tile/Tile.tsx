@@ -20,10 +20,12 @@ import { LinkContent } from '@/components/layout/centerpane/tile/LinkContent';
 import { TextContent } from '@/components/layout/centerpane/tile/TextContent';
 import { DefaultContent } from '@/components/layout/centerpane/tile/DefaultContent';
 import { FocusRing } from '@/components/layout/centerpane/tile/FocusRing';
+import { useTileResize } from '@/components/layout/centerpane/tile/useTileResize';
 import { TileContextMenu } from '@/components/layout/centerpane/tile/TileContextMenu';
 import { TileDialogs } from '@/components/layout/centerpane/tile/TileDialogs';
 import { RenameFileDialog } from '@/components/dialogs/RenameFileDialog';
 import { openFilePath } from '@/platform';
+import { TILE_RING_COLORS, TEXT_NOTE_BOX } from '@/styles/tileStyles';
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
 export function Tile({
@@ -32,6 +34,9 @@ export function Tile({
   title,
   x,
   y,
+  width: propWidth,
+  height: propHeight,
+  zoom = 1,
   url,
   description,
   channelName,
@@ -46,13 +51,16 @@ export function Tile({
   onRefreshMetadata,
   onEdit,
   onEditLink,
+  onSizeChange,
   onFocusRingPointerDown,
+  suppressFocusRingGhostArrow,
   onMetricsChange,
 }: TileProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isInteractionLocked, setIsInteractionLocked] = useState(false);
   const [embedFailed, setEmbedFailed] = useState(false);
   const [tileBoxSize, setTileBoxSize] = useState({ width: 0, height: 0 });
+  const [textMinWidth, setTextMinWidth] = useState(0);
   const tileContainerRef = useRef<HTMLDivElement | null>(null);
 
   const { isDragging, skipTransition, handleDragStart: rawHandleDragStart, handleDragEnd, dragRef } = useDragHandling(id, x, y);
@@ -166,11 +174,18 @@ export function Tile({
   const fileCategory = type === 'file' && filePath ? detectFileType(filePath).category : null;
   const isAudioFile = fileCategory === 'audio';
   const isVideoFile = fileCategory === 'video';
+  const isImageFile = fileCategory === 'image';
   const isVideoLink = type === 'link' && !!effectiveVideoEmbed;
   const isWebArticle = type === 'web_article';
   const isGoogleIntegrationTile = type === 'gmail' || type === 'google_drive' || type === 'google_sheets' || type === 'google_docs' || type === 'google_slides';
+  const isLinkRingTile = type === 'link' || isWebArticle || isGoogleIntegrationTile;
   const isGmailTile = type === 'gmail';
   const isStandardFileTile = type === 'file' && !isAudioFile && !isVideoFile;
+  const focusRingColor = type === 'text'
+    ? TILE_RING_COLORS.text
+    : isLinkRingTile
+      ? TILE_RING_COLORS.link
+      : TILE_RING_COLORS.file;
   const tilePadding = type === 'text' ? 0 : TILE.hoverSafePadding;
   const isCenteredTile = type !== 'text';
   const tileWidth = isWebArticle
@@ -183,13 +198,50 @@ export function Tile({
     : type === 'link'
       ? (isVideoLink ? EMBED_LINK.height : undefined)
       : (isAudioFile ? AUDIO_EMBED.height : isVideoFile ? VIDEO_EMBED.height : undefined);
+  const fallbackTextMinWidth = (TEXT_NOTE_BOX.padding.x * 2) + 14;
+  const textMinBoxWidth = textMinWidth > 0 ? textMinWidth : fallbackTextMinWidth;
+  const minBoxWidth = isWebArticle ? 200 : (isVideoLink || isAudioFile || isVideoFile) ? 160 : type === 'text' ? textMinBoxWidth : 80;
+  const minBoxHeight = isWebArticle ? 200 : (isVideoLink || isAudioFile || isVideoFile) ? 120 : type === 'text' ? 40 : 60;
+  const imageAspectRatio = isImageFile && imageMetadata && imageMetadata.height > 0
+    ? imageMetadata.width / imageMetadata.height
+    : undefined;
+
+  const { isResizing, liveX, liveY, liveW, liveH, handleCornerPointerDown } = useTileResize({
+    tileId: id,
+    tileX: x,
+    tileY: y,
+    isCentered: isCenteredTile,
+    zoom,
+    minWidth: minBoxWidth,
+    minHeight: minBoxHeight,
+    lockAspectRatio: imageAspectRatio,
+    lockAspectRatioInset: tilePadding,
+    onResizeEnd: (tileId, newX, newY, newWidth, newHeight) => {
+      onSizeChange?.(tileId, newX, newY, newWidth, newHeight);
+    },
+  });
+
+  const displayX = isResizing ? liveX : x;
+  const displayY = isResizing ? liveY : y;
+
+  // Effective box dimensions: live during resize, stored prop if set, else type default
+  const effectiveWidth = isResizing ? liveW : (propWidth ?? tileWidth);
+  const effectiveHeight = isResizing ? liveH : (propHeight ?? tileHeight);
+  const currentBoxWidth = isResizing ? liveW : (effectiveWidth ?? tileBoxSize.width);
+  const currentBoxHeight = isResizing ? liveH : (effectiveHeight ?? tileBoxSize.height);
+  const contentBoxWidth = currentBoxWidth > 0 ? Math.max(1, currentBoxWidth - (tilePadding * 2)) : undefined;
+  const contentBoxHeight = currentBoxHeight > 0 ? Math.max(1, currentBoxHeight - (tilePadding * 2)) : undefined;
+
   // Keep drag handles functionally active while allowing visuals to be toggled during focus-ring iteration.
   const showDragHandles = false;
   const dragHandleHorizontalInset = TILE.hoverSafePadding + (isGmailTile ? 14 : 2);
   const dragHandleBarClass = showDragHandles
     ? 'h-1.5 w-full rounded-full bg-slate-400/70 transition-colors group-hover:bg-slate-500/80'
     : 'h-1.5 w-full rounded-full bg-transparent';
-  const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata);
+  const { thumbnailWidth, thumbnailHeight } = getThumbnailDimensions(type, thumbnailUrl, imageMetadata, {
+    maxWidth: contentBoxWidth,
+    maxHeight: contentBoxHeight,
+  });
   const tooltipText = (() => {
     if (videoEmbed?.provider === 'youtube') {
       const parts: string[] = [];
@@ -328,6 +380,7 @@ export function Tile({
         <TextContent
           content={content}
           hoverScaleClass={hoverScaleClass}
+          onMinWidthChange={setTextMinWidth}
         />
       );
     }
@@ -371,17 +424,19 @@ export function Tile({
           ${isDragging ? 'invisible' : ''}
         `}
         style={{
-          top: y,
-          left: x,
+          top: displayY,
+          left: displayX,
           transform: isCenteredTile ? 'translate(-50%, -50%)' : 'translate(0, 0)',
-          transition: skipTransition ? 'none' : 'all 0.2s',
+          transition: (skipTransition || isResizing) ? 'none' : 'all 0.2s',
           opacity: isDragging ? 0 : 1,
           userSelect: 'none',
           padding: tilePadding,
           border: 'none',
           background: 'transparent',
-          width: tileWidth ? `${tileWidth}px` : type === 'text' ? 'auto' : undefined,
-          height: tileHeight ? `${tileHeight}px` : type === 'text' ? 'auto' : undefined,
+          minWidth: `${minBoxWidth}px`,
+          minHeight: `${minBoxHeight}px`,
+          width: effectiveWidth ? `${effectiveWidth}px` : type === 'text' ? 'auto' : undefined,
+          height: effectiveHeight ? `${effectiveHeight}px` : type === 'text' ? 'auto' : undefined,
           zIndex: isSelected ? Z_INDEX.CONTENT_SELECTED : isDragging ? Z_INDEX.CONTENT_DRAGGING : Z_INDEX.CONTENT_DEFAULT
         } as any}
       >
@@ -412,11 +467,15 @@ export function Tile({
         {renderContent()}
         <FocusRing
           tileId={id}
-          tileWidth={tileBoxSize.width}
-          tileHeight={tileBoxSize.height}
+          tileWidth={isResizing ? liveW : tileBoxSize.width}
+          tileHeight={isResizing ? liveH : tileBoxSize.height}
           contentInset={tilePadding}
+          ringOutlineOffset={isImageFile ? 0 : undefined}
+          ringColor={focusRingColor}
           hoverScaleClass={hoverScaleClass}
           onPointerDown={onFocusRingPointerDown}
+          suppressGhostArrow={suppressFocusRingGhostArrow}
+          onCornerPointerDown={onSizeChange ? (e, corner) => handleCornerPointerDown(e, corner, tileBoxSize.width, tileBoxSize.height) : undefined}
         />
       </div>
 

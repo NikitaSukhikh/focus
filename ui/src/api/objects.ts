@@ -140,6 +140,10 @@ export const objectsApi = {
     return requestTracker.track(promise);
   },
 
+  async updateSize(objectId: string, x: number, y: number, width: number, height: number): Promise<ObjectResponse> {
+    return objectsApi.patchObject(objectId, { metadata: { x, y, width, height } });
+  },
+
   async updateTitle(objectId: string, title: string): Promise<ObjectResponse> {
     const safeTitle = truncateLinkTitle(title);
 

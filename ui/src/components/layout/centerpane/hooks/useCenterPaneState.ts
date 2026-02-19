@@ -100,6 +100,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
             const meta = (obj.metadata || {}) as Record<string, any>;
             const x = typeof meta.x === 'number' ? meta.x : 100 + (idx % 5) * 120;
             const y = typeof meta.y === 'number' ? meta.y : 100 + Math.floor(idx / 5) * 140;
+            const width = typeof meta.width === 'number' && meta.width > 0 ? meta.width : undefined;
+            const height = typeof meta.height === 'number' && meta.height > 0 ? meta.height : undefined;
 
             const defaultTitle = (obj as any).default_title as string | undefined;
             const defaultDescription = (obj as any).default_description as string | undefined;
@@ -158,6 +160,8 @@ export const useCenterPaneState = (paneRef: React.RefObject<HTMLDivElement | nul
               title: displayTitle,
               x,
               y,
+              width,
+              height,
               tag,
               serviceKey,
               url,

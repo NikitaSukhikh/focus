@@ -153,6 +153,7 @@ export const useCenterPaneLogic = (paneRef: React.RefObject<HTMLDivElement | nul
     // State
     isDragOver,
     iconsBySpace,
+    setIconsBySpace,
     arrowsBySpace,
     selectedIconId,
     selectedIconIds,

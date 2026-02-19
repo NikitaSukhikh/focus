@@ -13,8 +13,6 @@ import { objectsApi } from '@/api/objects';
 import { undoApi } from '@/api/undo';
 import { DroppedIcon } from '@/components/layout/centerpane/types';
 import { normalizeTag } from '@/types/tags';
-import { autoWrapText } from '@/components/layout/centerpane/utils';
-import { TEXT_TILE } from '@/constants/objectsDimensions';
 
 interface TextCreationParams {
   selectedSpace: any;
@@ -41,7 +39,7 @@ export const useCenterPaneTextCreation = ({
       return;
     }
 
-    const formattedContent = autoWrapText(content, TEXT_TILE.charLimit);
+    const savedContent = content;
     const { x, y } = pendingTextPosition;
     const clamped = clampToBoundaries(x, y);
 
@@ -49,7 +47,7 @@ export const useCenterPaneTextCreation = ({
       const created = await objectsApi.create(selectedSpace.id, {
         type: 'text',
         title,
-        content: formattedContent,
+        content: savedContent,
         x: clamped.x,
         y: clamped.y,
       });
@@ -62,8 +60,8 @@ export const useCenterPaneTextCreation = ({
         x: clamped.x,
         y: clamped.y,
         tag: normalizeTag(created.tag),
-        description: formattedContent.substring(0, 100), // Preview snippet
-        content: formattedContent,
+        description: savedContent.substring(0, 100), // Preview snippet
+        content: savedContent,
       };
 
       setIconsBySpace((prev) => {
@@ -79,7 +77,7 @@ export const useCenterPaneTextCreation = ({
             text: {
               id: created.id,
               title: created.title,
-              content: formattedContent,
+              content: savedContent,
               x: clamped.x,
               y: clamped.y,
               tag: normalizeTag(created.tag),

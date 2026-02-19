@@ -8,6 +8,7 @@ import {
   findFocusRingTileIdAtClientPoint,
   getBestAnchorPairForTiles,
   getNearestAnchorForTile,
+  getNearestPointOnTileFocusRing,
 } from '@/components/layout/centerpane/arrowGeometry';
 
 interface UseArrowDrawingProps {
@@ -296,7 +297,7 @@ export const useArrowDrawing = ({
   };
 
   const handleArrowEndpointPointerDown = useCallback(
-    (segment: ArrowSegment, endpoint: ArrowEndpoint, e: React.PointerEvent<SVGCircleElement>) => {
+    (segment: ArrowSegment, endpoint: ArrowEndpoint, e: React.PointerEvent<SVGElement>) => {
       if (e.button !== 0) return;
       if (!selectedSpaceId || isDrawingArrow) return;
 
@@ -432,12 +433,22 @@ export const useArrowDrawing = ({
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       if (!selectedSpaceId) return;
 
-      const anchorHit = getAnchorAtPointer(e.clientX, e.clientY);
-      const point = anchorHit?.point ?? getPointerCanvasPoint(e.clientX, e.clientY);
+      const hoveredTileId = findFocusRingTileIdAtClientPoint(e.clientX, e.clientY);
+      if (!hoveredTileId) return;
+
+      const ringPointHit = getNearestPointOnTileFocusRing(
+        hoveredTileId,
+        e.clientX,
+        e.clientY,
+        getPointerCanvasPoint
+      );
+      if (!ringPointHit) return;
+
+      const anchorHit = getNearestAnchorForTile(hoveredTileId, e.clientX, e.clientY, getPointerCanvasPoint);
       const nextSegment = applyEndpointRetarget(
         dragState.initial,
         dragState.endpoint,
-        point,
+        ringPointHit.point,
         anchorHit?.anchor
       );
 
@@ -602,6 +613,7 @@ export const useArrowDrawing = ({
     if (draftArrow) segments.push(draftArrow);
     return segments;
   }, [currentArrows, draftArrow]);
+  const draftTargetTileId = draftArrow?.endAnchor?.tileId ?? null;
 
   const maxArrowY = allArrowSegments.length
     ? Math.max(...allArrowSegments.map((segment) => Math.max(segment.start.y, segment.end.y)))
@@ -630,5 +642,6 @@ export const useArrowDrawing = ({
     contentHeightWithArrows,
     isDrawingArrow,
     draggingEndpoint,
+    draftTargetTileId,
   };
 };

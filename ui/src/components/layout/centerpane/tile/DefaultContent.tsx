@@ -2,9 +2,10 @@ import { TileIcon } from '@/components/layout/centerpane/tile/Icon';
 import { ImageMetadata } from '@/components/layout/centerpane/tile/useImageMetadata';
 import { TYPOGRAPHY_FONTS, TYPOGRAPHY_SIZES, TYPOGRAPHY_WEIGHTS } from '@/styles/typographics';
 import { tileRingStyle, tileBackgroundFillStyle, TILE_BACKGROUND } from '@/styles/tileStyles';
-import { TILE, GOOGLE_INTEGRATION_TILE } from '@/constants/objectsDimensions';
+import { GOOGLE_INTEGRATION_TILE } from '@/constants/objectsDimensions';
 import { HighlightText } from '@/components/layout/centerpane/tile/HighlightText';
 import { useSearchStore } from '@/stores/searchStore';
+import { canShowImageThumbnail } from '@/utils/fileTypes';
 
 interface EbookMetadata {
   title: string;
@@ -47,13 +48,36 @@ export function DefaultContent({
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const isGoogleIntegration = type === 'gmail' || type === 'google_drive';
   const ringType = isGoogleIntegration ? 'link' : 'file';
-  const contentWidth = imageMetadata ? thumbnailWidth : TILE.defaultFileTileSize;
+  const isImageFile = type === 'file' && !!filePath && canShowImageThumbnail(filePath);
+
+  if (isImageFile) {
+    return (
+      <div
+        className={`transition-transform duration-150 ${hoverScaleClass}`}
+        style={{ pointerEvents: 'none', width: '100%', height: '100%', ...tileRingStyle('file'), outlineOffset: '0px', borderRadius: '6px' }}
+      >
+        <div className={isSelected ? 'opacity-80' : ''}>
+          <TileIcon
+            type={type}
+            url={url}
+            filePath={filePath}
+            thumbnailUrl={thumbnailUrl}
+            thumbnailWidth={thumbnailWidth}
+            thumbnailHeight={thumbnailHeight}
+            title={title}
+            faviconUrl={faviconUrl}
+            onThumbnailError={onThumbnailError}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (isGoogleIntegration) {
     return (
       <div
         className={`flex flex-col items-center transition-transform duration-150 gap-1 px-1 ${hoverScaleClass}`}
-        style={{ pointerEvents: 'none', width: 'max-content', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
+        style={{ pointerEvents: 'none', width: '100%', height: '100%', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
       >
         <div className={isSelected ? 'drop-shadow-[0_4px_10px_rgba(59,130,246,0.25)]' : ''}>
           <TileIcon
@@ -72,8 +96,7 @@ export function DefaultContent({
         <div
           className="line-clamp-2 text-center break-words"
           style={{
-            minWidth: `${GOOGLE_INTEGRATION_TILE.titleMinWidth}px`,
-            maxWidth: `${GOOGLE_INTEGRATION_TILE.titleMaxWidth}px`,
+            width: '100%',
             fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
             fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
             lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
@@ -90,7 +113,7 @@ export function DefaultContent({
   return (
     <div
       className={`flex flex-col items-start transition-transform duration-150 ${hoverScaleClass}`}
-      style={{ pointerEvents: 'none', width: 'max-content', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
+      style={{ pointerEvents: 'none', width: '100%', height: '100%', background: TILE_BACKGROUND, ...tileBackgroundFillStyle(TILE_BACKGROUND), ...tileRingStyle(ringType) }}
     >
       {thumbnailUrl && (
         <div className={`text-slate-600 group-hover:text-blue-600 transition-all ${isSelected ? 'opacity-80' : ''}`}>
@@ -112,7 +135,7 @@ export function DefaultContent({
           <div
             className="px-1 flex items-start gap-1 mt-1 min-w-0"
             style={{
-              width: `${TILE.defaultFileTileSize}px`,
+              width: '100%',
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
               fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
               lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
@@ -160,7 +183,7 @@ export function DefaultContent({
           <div
             className="px-1 flex items-start gap-1 mt-1 min-w-0"
             style={{
-              width: `${contentWidth}px`,
+              width: '100%',
               fontFamily: TYPOGRAPHY_FONTS.TILE_TITLE,
               fontSize: TYPOGRAPHY_SIZES.TILE_TITLE.fontSize,
               lineHeight: TYPOGRAPHY_SIZES.TILE_TITLE.lineHeight,
@@ -192,7 +215,7 @@ export function DefaultContent({
             <div
               className="text-left whitespace-pre-line break-all line-clamp-2"
               style={{
-                width: `${contentWidth}px`,
+                width: '100%',
                 fontFamily: TYPOGRAPHY_FONTS.TILE_DESCRIPTION,
                 fontSize: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.fontSize,
                 lineHeight: TYPOGRAPHY_SIZES.TILE_DESCRIPTION.lineHeight,
