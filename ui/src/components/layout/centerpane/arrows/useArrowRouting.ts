@@ -35,7 +35,7 @@ export const useArrowRouting = ({
 
       const originLeft = metrics.isCentered ? icon.x - (metrics.width / 2) : icon.x;
       const originTop = metrics.isCentered ? icon.y - (metrics.height / 2) : icon.y;
-      const ringOffset = TILE_RING.margin + (TILE_RING.strokeWidth / 2);
+      const ringOffset = Math.max(0, metrics.ringOutlineOffset) + (TILE_RING.strokeWidth / 2);
       const safeContentWidth = Math.max(1, metrics.width - (metrics.contentInset * 2));
       const safeContentHeight = Math.max(1, metrics.height - (metrics.contentInset * 2));
       const ringLeft = originLeft + metrics.contentInset - ringOffset;

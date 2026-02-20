@@ -98,6 +98,45 @@ export const getNearestAnchorForTile = (
   };
 };
 
+export const getAxisAlignedAnchorForTile = (
+  tileId: string,
+  clientX: number,
+  clientY: number,
+  orientation: 'horizontal' | 'vertical',
+  toCanvasCoords: (_clientX: number, _clientY: number) => { x: number; y: number }
+): { anchor: ArrowAnchorRef; point: { x: number; y: number } } | null => {
+  const candidates = getTileAnchorCandidates(tileId);
+  if (!candidates.length) return null;
+
+  // For horizontal segments, prefer top/bottom anchors (vertical edges)
+  // For vertical segments, prefer left/right anchors (horizontal edges)
+  const preferredEdges: FocusRingEdge[] =
+    orientation === 'horizontal'
+      ? ['top', 'bottom']
+      : ['left', 'right'];
+
+  const preferredCandidates = candidates.filter(c => preferredEdges.includes(c.anchor.edge));
+  const candidatesToSearch = preferredCandidates.length > 0 ? preferredCandidates : candidates;
+
+  let nearest = candidatesToSearch[0];
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidatesToSearch) {
+    const dx = candidate.clientX - clientX;
+    const dy = candidate.clientY - clientY;
+    const dist = Math.hypot(dx, dy);
+    if (dist < nearestDistance) {
+      nearest = candidate;
+      nearestDistance = dist;
+    }
+  }
+
+  return {
+    anchor: nearest.anchor,
+    point: toCanvasCoords(nearest.clientX, nearest.clientY),
+  };
+};
+
 export const getNearestPointOnTileFocusRing = (
   tileId: string,
   clientX: number,

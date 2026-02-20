@@ -25,7 +25,7 @@ import { TileContextMenu } from '@/components/layout/centerpane/tile/TileContext
 import { TileDialogs } from '@/components/layout/centerpane/tile/TileDialogs';
 import { RenameFileDialog } from '@/components/dialogs/RenameFileDialog';
 import { openExternalWindow, openFilePath } from '@/platform';
-import { TILE_RING_COLORS, TEXT_NOTE_BOX } from '@/styles/tileStyles';
+import { TILE_RING, TILE_RING_COLORS, TEXT_NOTE_BOX } from '@/styles/tileStyles';
 
 // Tile renders an individual canvas item (link/file/text) with drag/drop, context menu, and preview wiring.
 export function Tile({
@@ -231,6 +231,7 @@ export function Tile({
   const isLinkRingTile = type === 'link' || isWebArticle || isGoogleIntegrationTile;
   const isGmailTile = type === 'gmail';
   const isStandardFileTile = type === 'file' && !isAudioFile && !isVideoFile;
+  const focusRingOutlineOffset = isImageFile ? 0 : TILE_RING.margin;
   const focusRingColor = type === 'text'
     ? TILE_RING_COLORS.text
     : isLinkRingTile
@@ -401,9 +402,10 @@ export function Tile({
       width: tileBoxSize.width,
       height: tileBoxSize.height,
       contentInset: tilePadding,
+      ringOutlineOffset: focusRingOutlineOffset,
       isCentered: isCenteredTile,
     });
-  }, [id, isCenteredTile, onMetricsChange, tileBoxSize.height, tileBoxSize.width, tilePadding]);
+  }, [focusRingOutlineOffset, id, isCenteredTile, onMetricsChange, tileBoxSize.height, tileBoxSize.width, tilePadding]);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (isInteractionLocked) {
@@ -577,7 +579,7 @@ export function Tile({
           tileWidth={isResizing ? liveW : tileBoxSize.width}
           tileHeight={isResizing ? liveH : tileBoxSize.height}
           contentInset={tilePadding}
-          ringOutlineOffset={isImageFile ? 0 : undefined}
+          ringOutlineOffset={focusRingOutlineOffset}
           ringColor={focusRingColor}
           hoverScaleClass={hoverScaleClass}
           onPointerDown={onFocusRingPointerDown}

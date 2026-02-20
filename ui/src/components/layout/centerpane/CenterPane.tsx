@@ -176,6 +176,7 @@ const CenterPaneComponent = (props: CenterPaneProps, ref: React.Ref<CenterPaneHa
         existing.width === metrics.width &&
         existing.height === metrics.height &&
         existing.contentInset === metrics.contentInset &&
+        existing.ringOutlineOffset === metrics.ringOutlineOffset &&
         existing.isCentered === metrics.isCentered
       ) {
         return prev;

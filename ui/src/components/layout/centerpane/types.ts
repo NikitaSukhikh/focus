@@ -120,6 +120,7 @@ export interface TileProps {
       width: number;
       height: number;
       contentInset: number;
+      ringOutlineOffset: number;
       isCentered: boolean;
     }
   ) => void;

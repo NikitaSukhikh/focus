@@ -7,6 +7,9 @@ export interface EndpointSegmentHandle {
   y1: number;
   x2: number;
   y2: number;
+  segmentIndex: number;
+  orientation: 'horizontal' | 'vertical';
+  isEndpointSegment: boolean;
 }
 
 type Point = { x: number; y: number };
@@ -27,16 +30,27 @@ const getOrthogonalDirection = (start: Point, end: Point): OrthogonalDirection |
 const toEndpointSegmentHandle = (
   endpoint: 'start' | 'end',
   start: Point,
-  end: Point
+  end: Point,
+  segmentIndex: number,
+  isEndpointSegment: boolean
 ): EndpointSegmentHandle | null => {
   const length = segmentLength(start, end);
   if (length <= ARROW_SEGMENT_EPSILON) return null;
+
+  const direction = getOrthogonalDirection(start, end);
+  if (!direction) return null;
+
+  const orientation = (direction === 'left' || direction === 'right') ? 'horizontal' : 'vertical';
+
   return {
     endpoint,
     x1: start.x,
     y1: start.y,
     x2: end.x,
     y2: end.y,
+    segmentIndex,
+    orientation,
+    isEndpointSegment,
   };
 };
 
@@ -95,15 +109,15 @@ export const buildEndpointSegmentHandles = (routePoints: Point[]): EndpointSegme
       x: (startPoint.x + endPoint.x) / 2,
       y: (startPoint.y + endPoint.y) / 2,
     };
-    const startHandle = toEndpointSegmentHandle('start', startPoint, midpoint);
-    const endHandle = toEndpointSegmentHandle('end', endPoint, midpoint);
+    const startHandle = toEndpointSegmentHandle('start', startPoint, midpoint, startSegmentIndex, true);
+    const endHandle = toEndpointSegmentHandle('end', endPoint, midpoint, endSegmentIndex, true);
     if (startHandle) handles.push(startHandle);
     if (endHandle) handles.push(endHandle);
     return handles;
   }
 
-  const startHandle = toEndpointSegmentHandle('start', startPoint, startTurnPoint);
-  const endHandle = toEndpointSegmentHandle('end', endPoint, endTurnPoint);
+  const startHandle = toEndpointSegmentHandle('start', startPoint, startTurnPoint, startSegmentIndex, true);
+  const endHandle = toEndpointSegmentHandle('end', endPoint, endTurnPoint, endSegmentIndex, true);
   if (startHandle) handles.push(startHandle);
   if (endHandle) handles.push(endHandle);
   return handles;

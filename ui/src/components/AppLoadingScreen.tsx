@@ -1,5 +1,7 @@
+// Keep startup branding aligned with Electron splash while backend initialization runs.
 import React from 'react';
 import focusLogo from '@/assets/focus.png';
+import '@/styles/appLoadingScreen.css';
 
 interface Props {
   visible: boolean;
@@ -7,35 +9,12 @@ interface Props {
 
 export function AppLoadingScreen({ visible }: Props) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'color-mix(in srgb, var(--background-dark) 88%, transparent)',
-        opacity: visible ? 1 : 0,
-        pointerEvents: visible ? 'all' : 'none',
-        transition: 'opacity 2s ease',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-        <img
-          src={focusLogo}
-          alt="Focus"
-          style={{ width: 96, height: 96 }}
-        />
-        <span
-          style={{
-            fontFamily: "'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
-            fontSize: '96px',
-            fontWeight: 700,
-            color: '#4A90E2',
-            letterSpacing: '0.1em',
-          }}
-        >
+    <div className={`app-loading-screen ${visible ? 'app-loading-screen--visible' : ''}`} aria-hidden={!visible}>
+      <div className="app-loading-screen__container">
+        <div className="app-loading-screen__logo">
+          <img src={focusLogo} alt="Focus" className="app-loading-screen__logo-icon" />
+        </div>
+        <span className="app-loading-screen__title">
           Focus
         </span>
       </div>

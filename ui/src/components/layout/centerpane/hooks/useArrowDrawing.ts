@@ -6,6 +6,7 @@ import { undoApi } from '@/api/undo';
 import { ArrowAnchorRef, ArrowSegment } from '@/components/layout/centerpane/types';
 import {
   findFocusRingTileIdAtClientPoint,
+  getAxisAlignedAnchorForTile,
   getBestAnchorPairForTiles,
   getNearestAnchorForTile,
   getNearestPointOnTileFocusRing,
@@ -52,6 +53,7 @@ interface EndpointDragState {
   arrowId: string;
   endpoint: ArrowEndpoint;
   initial: ArrowSegment;
+  orientation: 'horizontal' | 'vertical';
 }
 
 const ARROW_PADDING = 120;
@@ -297,7 +299,7 @@ export const useArrowDrawing = ({
   };
 
   const handleArrowEndpointPointerDown = useCallback(
-    (segment: ArrowSegment, endpoint: ArrowEndpoint, e: React.PointerEvent<SVGElement>) => {
+    (segment: ArrowSegment, endpoint: ArrowEndpoint, orientation: 'horizontal' | 'vertical', e: React.PointerEvent<SVGElement>) => {
       if (e.button !== 0) return;
       if (!selectedSpaceId || isDrawingArrow) return;
 
@@ -310,6 +312,7 @@ export const useArrowDrawing = ({
         arrowId: segment.id,
         endpoint,
         initial: cloneSegment(segment),
+        orientation,
       };
       setDraggingEndpoint({ arrowId: segment.id, endpoint });
     },
@@ -444,7 +447,7 @@ export const useArrowDrawing = ({
           )
         : null;
       const anchorHit = hoveredTileId
-        ? getNearestAnchorForTile(hoveredTileId, e.clientX, e.clientY, getPointerCanvasPoint)
+        ? getAxisAlignedAnchorForTile(hoveredTileId, e.clientX, e.clientY, dragState.orientation, getPointerCanvasPoint)
         : null;
       const nextSegment = applyEndpointRetarget(
         dragState.initial,
@@ -473,7 +476,10 @@ export const useArrowDrawing = ({
 
       if (!selectedSpaceId) return;
 
-      const anchorHit = getAnchorAtPointer(e.clientX, e.clientY);
+      const hoveredTileId = findFocusRingTileIdAtClientPoint(e.clientX, e.clientY);
+      const anchorHit = hoveredTileId
+        ? getAxisAlignedAnchorForTile(hoveredTileId, e.clientX, e.clientY, dragState.orientation, getPointerCanvasPoint)
+        : null;
       if (!anchorHit || !anchorHit.anchor) {
         setArrowsBySpace((prev) => {
           const current = prev[selectedSpaceId] || [];

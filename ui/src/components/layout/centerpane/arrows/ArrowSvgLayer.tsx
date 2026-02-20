@@ -24,6 +24,7 @@ interface ArrowSvgLayerProps {
   onArrowEndpointPointerDown: (
     segment: ArrowSegment,
     endpoint: 'start' | 'end',
+    orientation: 'horizontal' | 'vertical',
     event: React.PointerEvent<SVGElement>
   ) => void;
   onArrowContextMenu: (event: React.MouseEvent<SVGPathElement>, arrowId: string) => void;
@@ -164,7 +165,7 @@ export const ArrowSvgLayer = ({
                   pointerEvents: 'all',
                 }}
                 onPointerDown={(event) => {
-                  onArrowEndpointPointerDown(segment, handle.endpoint, event);
+                  onArrowEndpointPointerDown(segment, handle.endpoint, handle.orientation, event);
                   onClearTileSelection();
                 }}
                 onClick={(event) => {

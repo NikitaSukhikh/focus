@@ -5,6 +5,7 @@ export interface TileMetricsSnapshot {
   width: number;
   height: number;
   contentInset: number;
+  ringOutlineOffset: number;
   isCentered: boolean;
 }
 
