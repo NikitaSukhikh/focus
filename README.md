@@ -1,6 +1,15 @@
+![Tutorial Slide 0](ui/public/tutorial-slide-0.png)
+![Tutorial Slide 1](ui/public/tutorial-slide-1.png)
+![Tutorial Slide 2](ui/public/tutorial-slide-2.png)
+![Tutorial Slide 3](ui/public/tutorial-slide-3.png)
+![Tutorial Slide 4](ui/public/tutorial-slide-4.png)
+![Tutorial Slide 5](ui/public/tutorial-slide-5.png)
+![Tutorial Slide 6](ui/public/tutorial-slide-6.png)
+![Tutorial Slide 7](ui/public/tutorial-slide-7.png)
+
 # Focus (Desktop) — Developer README
 
-Focus is a desktop application that lets users collect “objects” (links and files, more than 320 file formats in total) onto customizable workspaces called **Spaces** for fast access. The UI is a three-pane layout:
+Focus is a desktop application that lets users collect "objects" (links and files, more than 380 file formats in total) onto customizable workspaces called **Spaces** for fast access. The UI is a three-pane layout:
 
 
 If you're looking for an end-user guide, see `USER_GUIDE.md`.

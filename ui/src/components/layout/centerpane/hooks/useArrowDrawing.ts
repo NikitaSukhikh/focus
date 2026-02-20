@@ -322,7 +322,14 @@ export const useArrowDrawing = ({
   useEffect(() => {
     if (!isDrawingArrow) return;
 
-    const handlePointerMove = (e: PointerEvent) => {
+    let rafId: number | null = null;
+    let latestPointerEvent: PointerEvent | null = null;
+
+    const updateDraftArrow = () => {
+      rafId = null;
+      if (!latestPointerEvent) return;
+
+      const e = latestPointerEvent;
       const drawState = drawStateRef.current;
       if (!drawState) return;
       if (e.pointerId !== drawState.pointerId) return;
@@ -336,6 +343,17 @@ export const useArrowDrawing = ({
         startAnchor: next.startAnchor,
         endAnchor: next.endAnchor ?? undefined,
       });
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const drawState = drawStateRef.current;
+      if (!drawState) return;
+      if (e.pointerId !== drawState.pointerId) return;
+
+      latestPointerEvent = e;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(updateDraftArrow);
+      }
     };
 
     const finishDrawing = (e: PointerEvent) => {
@@ -422,6 +440,9 @@ export const useArrowDrawing = ({
     window.addEventListener('pointercancel', finishDrawing, true);
 
     return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       window.removeEventListener('pointermove', handlePointerMove, true);
       window.removeEventListener('pointerup', finishDrawing, true);
       window.removeEventListener('pointercancel', finishDrawing, true);
@@ -431,23 +452,39 @@ export const useArrowDrawing = ({
   useEffect(() => {
     if (!draggingEndpoint) return;
 
-    const handlePointerMove = (e: PointerEvent) => {
+    let rafId: number | null = null;
+    let latestPointerEvent: PointerEvent | null = null;
+
+    const updateArrowPosition = () => {
+      rafId = null;
+      if (!latestPointerEvent) return;
+
+      const e = latestPointerEvent;
       const dragState = endpointDragStateRef.current;
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       if (!selectedSpaceId) return;
 
       const hoveredTileId = findFocusRingTileIdAtClientPoint(e.clientX, e.clientY);
+      const originalTileId = dragState.endpoint === 'start'
+        ? dragState.initial.startAnchor?.tileId
+        : dragState.initial.endAnchor?.tileId;
+
+      // Keep arrow tied to original ring unless hovering a different tile
+      const targetTileId = (hoveredTileId && hoveredTileId !== originalTileId)
+        ? hoveredTileId
+        : originalTileId;
+
       const pointerPoint = getPointerCanvasPoint(e.clientX, e.clientY);
-      const ringPointHit = hoveredTileId
+      const ringPointHit = targetTileId
         ? getNearestPointOnTileFocusRing(
-            hoveredTileId,
+            targetTileId,
             e.clientX,
             e.clientY,
             getPointerCanvasPoint
           )
         : null;
-      const anchorHit = hoveredTileId
-        ? getAxisAlignedAnchorForTile(hoveredTileId, e.clientX, e.clientY, dragState.orientation, getPointerCanvasPoint)
+      const anchorHit = targetTileId
+        ? getAxisAlignedAnchorForTile(targetTileId, e.clientX, e.clientY, dragState.orientation, getPointerCanvasPoint)
         : null;
       const nextSegment = applyEndpointRetarget(
         dragState.initial,
@@ -465,6 +502,16 @@ export const useArrowDrawing = ({
           ),
         };
       });
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const dragState = endpointDragStateRef.current;
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+
+      latestPointerEvent = e;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(updateArrowPosition);
+      }
     };
 
     const finishRetarget = (e: PointerEvent) => {
@@ -533,6 +580,9 @@ export const useArrowDrawing = ({
     window.addEventListener('pointercancel', finishRetarget, true);
 
     return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       window.removeEventListener('pointermove', handlePointerMove, true);
       window.removeEventListener('pointerup', finishRetarget, true);
       window.removeEventListener('pointercancel', finishRetarget, true);
